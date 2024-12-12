@@ -136,32 +136,34 @@ const startChatBot = async (username: string) => {
     return; // Don't start the bot again if it's already connected
   }
 
-  const client = new tmi.Client({
-    channels: [sanitizedUsername], 
-    identity: {
-      username: process.env.TWITCH_BOT_USERNAME,
-      password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
-    },
-  });
+  try {
+    const client = new tmi.Client({
+      channels: [sanitizedUsername],
+      identity: {
+        username: process.env.TWITCH_BOT_USERNAME,
+        password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
+      },
+    });
 
-  client.connect();
+    await client.connect(); // Await connection before proceeding
+    connectedChannels.add(sanitizedUsername);
 
-  connectedChannels.add(sanitizedUsername);
+    client.on('message', (channel, tags, message, self) => {
+      if (self) return;
+      const command = message.trim().toLowerCase().split(' ')[0];
+      const args = message.trim().slice(command.length).split(' ').filter(arg => arg.length > 0);
 
-  client.on('message', (channel, tags, message, self) => {
-    if (self) return;
+      if (commandHandler[command]) {
+        commandHandler[command](client, channel, message, tags, args);
+      }
+    });
 
-    const command = message.trim().toLowerCase().split(' ')[0];
-    const args = message.trim().slice(command.length).split(' ').filter(arg => arg.length > 0); // Extract arguments
-
-    if (commandHandler[command]) {
-      commandHandler[command](client, channel, message, tags, args); // Pass client correctly
-    }
-  });
-
-  client.on('connected', (addr, port) => {
-    console.log(`Bot connected to ${addr}:${port}`);
-  });
+    client.on('connected', (addr, port) => {
+      console.log(`Bot connected to ${addr}:${port}`);
+    });
+  } catch (error) {
+    console.error(`Error connecting bot to ${sanitizedUsername}:`, error);
+  }
 };
 
 // Load channels from the database and start the bot for each one

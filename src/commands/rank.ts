@@ -1,13 +1,11 @@
-// commands/rank.ts
 import { Client, Userstate } from 'tmi.js';
 import fetch from 'node-fetch';
 import { Channel } from '../db';  // Import the Channel model
 
-export const execute = async (client: Client, channel: string, user: Userstate) => {
-  // Normalize the channel name by removing the '#' if present
+export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
+
   const normalizedChannel = channel.replace('#', '');
 
-  // Rank mapping based on the rank system
   const rankMapping: Record<number, { name: string }> = {
     0: { name: "Unranked" },
     1: { name: "Bronze 1" },
@@ -46,7 +44,7 @@ export const execute = async (client: Client, channel: string, user: Userstate) 
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
 
     if (!channelInstance || !channelInstance.player_id) {
-      client.say(channel, `@${user.username}, no player ID linked to this channel.`);
+      client.say(channel, `@${tags['display-name'] || tags.username}, no player ID linked to this channel.`);
       return;
     }
 
@@ -59,12 +57,14 @@ export const execute = async (client: Client, channel: string, user: Userstate) 
     const data = await response.json();
     const { current_solo_rank, rank_rating } = data.stats;
 
-    // Get rank name from rankMapping
+
     const soloRank = rankMapping[current_solo_rank]?.name || "Unknown Rank";
 
-    client.say(channel, `@${user.username}, Current Solo Rank: ${soloRank} - Rating: ${rank_rating}`);
+    const username = tags['display-name'] || tags.username || 'Player';
+    client.say(channel, `@${username}, Current Solo Rank: ${soloRank} - Rating: ${rank_rating}`);
   } catch (error) {
     console.error("Error fetching rank data:", (error as Error).message);
-    client.say(channel, `@${user.username}, Sorry, I couldn't fetch the rank data.`);
+    const username = tags['display-name'] || tags.username || 'Player';
+    client.say(channel, `@${username}, Sorry, I couldn't fetch the rank data.`);
   }
 };

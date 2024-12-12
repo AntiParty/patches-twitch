@@ -177,7 +177,6 @@ const loadChannels = async () => {
   }
 };
 
-
 http.createServer(app).listen(port, async () => {
   console.log(`Server is running at http://localhost:${port}`);
   await loadChannels(); // Load saved channels on startup

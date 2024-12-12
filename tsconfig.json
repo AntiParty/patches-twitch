@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "baseUrl": "./src"  // Ensure this points to 'src' folder
+    "baseUrl": "."  // Ensure this points to 'src' folder
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]

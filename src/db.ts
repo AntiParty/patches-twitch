@@ -11,6 +11,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
 
 // Define the Channel model with player_id field
 class Channel extends Model {}
+// db.ts
 Channel.init(
   {
     username: {
@@ -20,8 +21,16 @@ Channel.init(
     },
     player_id: {
       type: DataTypes.STRING,
-      allowNull: true,  // Player ID can be null initially
+      allowNull: true, // Player ID can be null initially
       defaultValue: null,
+    },
+    access_token: {
+      type: DataTypes.STRING,
+      allowNull: true, // Access token will be set after authorization
+    },
+    refresh_token: {
+      type: DataTypes.STRING,
+      allowNull: true, // Refresh token to renew expired access tokens
     },
   },
   { sequelize, modelName: 'Channel' }

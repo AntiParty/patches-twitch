@@ -59,7 +59,7 @@ app.get('/callback', async (req: Request, res: Response) => {
   }
 
   try {
-    const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+    const tokenResponse = await axios.post('https://id.twitch.tv/oauth2/token', null, {
       params: {
         client_id: clientId,
         client_secret: clientSecret,
@@ -69,29 +69,32 @@ app.get('/callback', async (req: Request, res: Response) => {
       },
     });
 
-    accessToken = response.data.access_token;
+    const { access_token, refresh_token } = tokenResponse.data;
+
     const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${access_token}`,
         'Client-ID': clientId,
       },
     });
 
-    twitchUsername = userResponse.data.data[0].login; // Store the Twitch username
+    twitchUsername = userResponse.data.data[0].login; // Get Twitch username
 
-    // Save the authenticated channel to the database
-    await Channel.findOrCreate({ where: { username: twitchUsername } });
+    // Save the user's access and refresh tokens in the database
+    await Channel.upsert({
+      username: twitchUsername,
+      access_token,
+      refresh_token,
+    });
 
     res.send('Successfully authenticated with Twitch!');
-
-    // Connect the bot to the channel
-    startChatBot(twitchUsername);
-
+    startChatBot(twitchUsername); // Connect the bot to the channel
   } catch (error) {
     console.error('Error during OAuth process:', error);
     res.status(500).send('Authentication failed');
   }
 });
+
 
 app.get('/status', (req: Request, res: Response) => {
   if (accessToken) {

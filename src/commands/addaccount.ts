@@ -6,6 +6,11 @@ export const execute = async (client: Client, channel: string, message: string, 
     // Remove the "#" symbol if it exists
     const sanitizedChannel = channel.replace(/^#/, '');
 
+    if (tags['display-name'] !== sanitizedChannel) {
+      client.say(channel, `@${tags['display-name']}, you do not have permission to run this command.`);
+      return;
+    }
+
     // Ensure a player ID is provided
     if (!args || args.length < 1) {
       client.say(channel, `@${tags['display-name']}, please provide a valid player ID.`);

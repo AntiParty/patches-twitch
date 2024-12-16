@@ -14,7 +14,7 @@ export const execute = async (client: Client, channel: string, message: string, 
   // Normalize the channel name by removing the '#' if present
   const normalizedChannel = channel.replace('#', '');
 
-  // Retrieve player ID dynamically based on the normalized channel name
+ 
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
 

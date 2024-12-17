@@ -10,7 +10,9 @@
   "dependencies": {
     "@types/sequelize": "^4.28.20",
     "axios": "^1.7.9",
+    "discord.js": "^14.16.3",
     "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
     "express": "^4.21.2",
     "mysql2": "^3.11.5",
     "pg-hstore": "^2.3.4",

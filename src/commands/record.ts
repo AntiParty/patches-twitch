@@ -33,27 +33,33 @@ const wasStreamLiveDuringMatch = (streamStartTime: Date, matchDate: Date, curren
   return streamStartTime <= matchDate && matchDate <= currentTime;
 };
 
-
 export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
   const normalizedChannel = channel.replace('#', ''); // Normalize channel name
+  const username = tags['display-name'] || tags.username;
+  const messageId = tags['id']; // Get the message ID for replying
+
+  if (!username || !messageId) {
+    console.error('Missing username or message ID.');
+    return;
+  }
 
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
 
     if (!channelInstance || !channelInstance.player_id) {
-      client.say(channel, `@${tags['display-name']}, no player ID linked to this channel.`);
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no player ID linked to this channel.`);
       return;
     }
 
     const accessToken = channelInstance.access_token;
     if (!accessToken) {
-      client.say(channel, `@${tags['display-name']}, no valid access token found.`);
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no valid access token found.`);
       return;
     }
 
     const streamStatus = await getStreamStatusForUser(normalizedChannel, accessToken);
     if (!streamStatus) {
-      client.say(channel, `@${tags['display-name']}, the stream is not live.`);
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, the stream is not live.`);
       return;
     }
 
@@ -69,7 +75,7 @@ export const execute = async (client: Client, channel: string, message: string, 
 
     const data = await response.json();
     if (!data.matches || data.matches.length === 0) {
-      client.say(channel, `@${tags['display-name']}, no matches played yet during this stream.`);
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no matches played yet during this stream.`);
       return;
     }
 
@@ -80,7 +86,7 @@ export const execute = async (client: Client, channel: string, message: string, 
     console.log(`Last Match Date: ${matchDate}, Stream Start: ${streamStartTime}, Current Time: ${currentTime}`);
 
     if (!wasStreamLiveDuringMatch(streamStartTime, matchDate, currentTime)) {
-      client.say(channel, `@${tags['display-name']}, no matches have been played yet.`);
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no matches have been played yet.`);
       return;
     }
 
@@ -120,12 +126,9 @@ export const execute = async (client: Client, channel: string, message: string, 
 
     const srStatus = srChange > 0 ? "up" : srChange < 0 ? "down" : "no change";
 
-    client.say(
-      channel,
-      `${channelInstance.username} is ${srStatus} ${Math.abs(srChange)} SR, Won ${record.winCount} - Lost ${record.lossCount} this stream`
-    );
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${channelInstance.username} is ${srStatus} ${Math.abs(srChange)} SR, Won ${record.winCount} - Lost ${record.lossCount} this stream`);
   } catch (error) {
     console.error("Error in !record command:", (error as Error).message);
-    client.say(channel, `@${tags['display-name']}, Sorry, I couldn't fetch the record data.`);
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, Sorry, I couldn't fetch the record data.`);
   }
 };

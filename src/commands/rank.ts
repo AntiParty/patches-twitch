@@ -3,8 +3,14 @@ import fetch from 'node-fetch';
 import { Channel } from '../db';  // Import the Channel model
 
 export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
-
   const normalizedChannel = channel.replace('#', '');
+  const username = tags['display-name'] || tags.username;
+  const messageId = tags['id']; // Get the message ID for replying
+
+  if (!username || !messageId) {
+    console.error('Missing username or message ID.');
+    return;
+  }
 
   const rankMapping: Record<number, { name: string }> = {
     0: { name: "Unranked" },
@@ -39,12 +45,11 @@ export const execute = async (client: Client, channel: string, message: string, 
     29: { name: "Champion" },
   };
 
-  // Retrieve player ID dynamically based on the normalized channel name
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
 
     if (!channelInstance || !channelInstance.player_id) {
-      client.say(channel, `@${tags['display-name'] || tags.username}, no player ID linked to this channel.`);
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no player ID linked to this channel.`);
       return;
     }
 
@@ -57,14 +62,11 @@ export const execute = async (client: Client, channel: string, message: string, 
     const data = await response.json();
     const { current_solo_rank, rank_rating } = data.stats;
 
-
     const soloRank = rankMapping[current_solo_rank]?.name || "Unknown Rank";
 
-    const username = tags['display-name'] || tags.username || 'Player';
-    client.say(channel, `@${username}, Current Solo Rank: ${soloRank} - Rating: ${rank_rating}`);
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, Current Solo Rank: ${soloRank} - Rating: ${rank_rating}`);
   } catch (error) {
     console.error("Error fetching rank data:", (error as Error).message);
-    const username = tags['display-name'] || tags.username || 'Player';
-    client.say(channel, `@${username}, Sorry, I couldn't fetch the rank data.`);
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, Sorry, I couldn't fetch the rank data.`);
   }
 };

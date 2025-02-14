@@ -8,6 +8,7 @@ import path from 'path';
 import { sequelize, Channel } from './db';  // Import from db.ts
 import { getStreamStatusWithAutoRefresh } from './twitchUtils';
 import { sendMessageToDiscord } from './handlers/discordHandler';  // Import the sendMessage function
+import { options } from 'node_modules/axios/index.cjs';
 
 dotenv.config();
 
@@ -18,8 +19,6 @@ const port = 3000;
 const clientId = process.env.TWITCH_CLIENT_ID;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 const redirectUri = process.env.TWITCH_REDIRECT_URI;
-const botUsername = process.env.TWITCH_BOT_USERNAME;
-const botToken = process.env.TWITCH_BOT_TOKEN;
 
 // Variables for OAuth tokens
 let accessToken: string | null = null;
@@ -51,7 +50,7 @@ commandFiles.forEach(file => {
 console.log('Commands loaded:', Object.keys(commandHandler));
 
 app.get('/login', (req: Request, res: Response) => {
-  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=channel:read:subscriptions&force_verify=true`;
+  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=user:read:chat+user:bot+channel:bot&force_verify=true`;
   console.log(`Generated auth URL: ${authUrl}`);
   res.redirect(authUrl);
 });
@@ -215,11 +214,13 @@ const startChatBot = async (username: string) => {
     }
 
     const client = new tmi.Client({
+      options: { debug: true },
       channels: [sanitizedUsername],
       identity: {
         username: process.env.TWITCH_BOT_USERNAME,
         password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
       },
+      capabilities: ['twitch.tv/tags']
     });
 
     await client.connect(); // Await connection before proceeding

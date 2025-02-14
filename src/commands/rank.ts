@@ -70,3 +70,5 @@ export const execute = async (client: Client, channel: string, message: string, 
     client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, Sorry, I couldn't fetch the rank data.`);
   }
 };
+
+export const aliases = ['rank', 'rating', 'elo', 'rr'];

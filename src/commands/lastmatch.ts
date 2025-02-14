@@ -78,3 +78,5 @@ export const execute = async (client: Client, channel: string, message: string, 
     client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, sorry, I couldn't fetch the last match data.`);
   }
 };
+
+export const aliases = ['lastmatch', 'lastgame', 'last'];

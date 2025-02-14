@@ -49,3 +49,5 @@ export const execute = async (client: Client, channel: string, message: string, 
     client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, there was an error executing the command.`);
   }
 };
+
+export const aliases = ['addaccount', 'linkaccount', 'link', 'add'];

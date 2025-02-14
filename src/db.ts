@@ -4,14 +4,22 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: 'mysql',
-  logging: false,
-});
+// Determine the database configuration based on the environment
+const isTestEnvironment = process.env.NODE_ENV === 'test';
+
+const sequelize = isTestEnvironment
+  ? new Sequelize({
+      dialect: 'sqlite', // Use SQLite for testing
+      storage: './test-database.sqlite', // SQLite database file
+      logging: false, // Disable logging for cleaner test output
+    })
+  : new Sequelize(process.env.DATABASE_URL, {
+      dialect: 'mysql', // Use MySQL for production
+      logging: false,
+    });
 
 // Define the Channel model with player_id field
 class Channel extends Model {}
-// db.ts
 Channel.init(
   {
     username: {

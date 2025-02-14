@@ -36,14 +36,23 @@ const commandHandler: { [key: string]: Function } = {};
 commandFiles.forEach(file => {
   const commandName = path.basename(file, path.extname(file));
   try {
-    const command = require(path.join(commandsDir, file)); // Import the command file
-    if (command && typeof command.execute === 'function') {
-      commandHandler[`!${commandName.toLowerCase()}`] = command.execute; // Register the command handler
-    } else {
-      console.error(`Command file "${file}" does not export an "execute" function.`);
-    }
+      const command = require(path.join(commandsDir, file)); // Import the command file
+
+      if (command && typeof command.execute === 'function') {
+          // Register the main command
+          commandHandler[`!${commandName.toLowerCase()}`] = command.execute;
+
+          // Register aliases for the command (if any)
+          if (command.aliases && Array.isArray(command.aliases)) {
+              command.aliases.forEach((alias: string) => {
+                  commandHandler[`!${alias.toLowerCase()}`] = command.execute;
+              });
+          }
+      } else {
+          console.error(`Command file "${file}" does not export an "execute" function.`);
+      }
   } catch (err) {
-    console.error(`Error loading command "${file}":`, err);
+      console.error(`Error loading command "${file}":`, err);
   }
 });
 

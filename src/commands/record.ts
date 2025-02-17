@@ -1,7 +1,7 @@
 import { Client, Userstate } from 'tmi.js';
 import fetch from 'node-fetch';
 import { Channel } from '../db'; // Import the Channel model
-import { getStreamStatusForUser } from '../twitchUtils';  // Ensure the path is correct
+import { getStreamStatusForUser } from '../util/twitchUtils';  // Ensure the path is correct
 
 const mapNameMapping: Record<string, string> = {
   Metro_P: "Metro",

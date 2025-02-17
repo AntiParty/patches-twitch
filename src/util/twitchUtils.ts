@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { Channel } from './db'; // Adjust the path if necessary
+import { Channel } from '../db'; // Adjust the path if necessary
 
 // Function to get the stream status for a user from Twitch
 export const getStreamStatusForUser = async (username: string, accessToken: string) => {

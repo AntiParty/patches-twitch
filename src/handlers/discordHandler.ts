@@ -15,7 +15,7 @@ const sendMessageToDiscord = async (message: string) => {
     await axios.post(discordWebhookUrl, {
       content: message,  // The message to send
     });
-    console.log('Message sent to Discord webhook');
+    //console.log('Message sent to Discord webhook');
   } catch (error) {
     console.error('Error sending message to Discord webhook:', error);
   }

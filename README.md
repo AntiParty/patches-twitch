@@ -71,6 +71,45 @@ The bot supports the following commands:
 - `!resetdb`: Reset the database (restricted to specific users).
 - `!unlink`: Unlink the account and make the bot leave the channel.
 
+## Creating Commands
+Commands are structured as individual modules using TypeScript and `tmi.js`. Each command requires an `execute` function and can include aliases.
+
+### Example: Help Command
+
+```typescript
+import { Client, Userstate } from 'tmi.js';
+
+export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
+    try {
+        const username = tags['display-name'];
+        const messageId = tags['id'];
+
+        if (!username || !messageId) {
+            console.error('Missing username or message ID.');
+            return;
+        }
+
+        const replyMessage = `Commands: !rank (check rank), !lastmatch (last match stats), !record (overall record), !addaccount <playerID> (link account). Need help? Join our Discord: discord.gg/santaigg`;
+
+        // Send a reply message
+        client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);
+    } catch (error) {
+        console.error('Error executing help command:', error);
+    }
+};
+
+// Define aliases for this command
+export const aliases = ['commands', 'info', 'h'];
+```
+
+### Required Components
+- `execute`: The main function to handle command logic.
+- `client`: The `tmi.js` client instance for Twitch chat.
+- `channel`: The Twitch channel where the command was used.
+- `message`: The full message text.
+- `tags`: User metadata such as `display-name` and `id`.
+- `aliases`: Alternative names for triggering the command.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.

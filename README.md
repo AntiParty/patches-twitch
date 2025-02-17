@@ -18,10 +18,15 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    git clone https://github.com/yourusername/patches-twitch.git
    cd patches-twitch
    ```
-2. Install dependencies:
+2. Install [Bun](https://bun.sh/) if you haven't already.
    ```bash
-   npm install
+   curl -fsSL https://bun.sh/install | bash
    ```
+3. Install dependencies:
+   ```bash
+   bun install
+   ```
+
 
 ## Configuration
 
@@ -48,16 +53,9 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
 
 1. Start the development server:
    ```bash
-   npm run dev
+   bun run dev
    ```
-2. Build the project:
-   ```bash
-   npm run build
-   ```
-3. Start the production server:
-   ```bash
-   npm start
-   ```
+
 
 ## Commands
 

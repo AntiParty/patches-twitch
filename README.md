@@ -7,6 +7,7 @@ A Twitch bot that integrates with Discord and provides various commands for Twit
 - [Configuration](#configuration)
 - [Running the Bot](#running-the-bot)
 - [Commands](#commands)
+- [Creating Commands](#creating-commands)
 - [Contributing](#contributing)
 - [License](#license)
 

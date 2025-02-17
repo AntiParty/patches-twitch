@@ -1,6 +1,6 @@
 # Patches-Twitch
 
-A Twitch bot that integrates with Discord and provides various commands for Twitch streamers.
+Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player stats, account linking, and other interactive commands for streamers
 
 ## Table of Contents
 - [Installation](#installation)

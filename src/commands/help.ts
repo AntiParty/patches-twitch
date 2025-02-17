@@ -12,6 +12,7 @@ export const execute = async (client: Client, channel: string, message: string, 
 
         const replyMessage = `Commands: !rank (check rank), !lastmatch (last match stats), !record (overall record), !addaccount <playerID> (link account). Need help? Join our Discord: discord.gg/santaigg`;
 
+        // send a reply message
         client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);
     } catch (error) {
         console.error('Error executing help command:', error);

@@ -40,6 +40,10 @@ Channel.init(
       type: DataTypes.STRING,
       allowNull: true, // Refresh token to renew expired access tokens
     },
+    token_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    }
   },
   { sequelize, modelName: 'Channel' }
 );

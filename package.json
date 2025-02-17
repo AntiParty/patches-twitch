@@ -18,7 +18,8 @@
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.5",
     "sqlite3": "^5.1.7",
-    "tmi.js": "^1.8.5"
+    "tmi.js": "^1.8.5",
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",

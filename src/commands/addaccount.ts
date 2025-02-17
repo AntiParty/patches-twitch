@@ -1,5 +1,6 @@
 import { Client, Userstate } from 'tmi.js';
 import { Channel } from '../db';
+import logger from '../util/logger';
 
 export const execute = async (client: Client, channel: string, message: string, tags: Userstate, args: string[]) => {
   try {
@@ -8,7 +9,7 @@ export const execute = async (client: Client, channel: string, message: string, 
     const messageId = tags['id']; // Get the message ID for replying
 
     if (!username || !messageId) {
-      console.error('Missing username or message ID.');
+      logger.error('Missing username or message ID.');
       return;
     }
 
@@ -29,7 +30,7 @@ export const execute = async (client: Client, channel: string, message: string, 
     }
 
     const playerId = args[0]; 
-    console.log(`Linking player ID: ${playerId}`);
+    logger.info(`Linking player ID: ${playerId}`);
 
     // Find or create the channel in the database
     const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
@@ -45,7 +46,7 @@ export const execute = async (client: Client, channel: string, message: string, 
       client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`);
     }
   } catch (error) {
-    console.error("Error executing command:", error);
+    logger.error("Error executing command:", error);
     client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, there was an error executing the command.`);
   }
 };

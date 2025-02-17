@@ -1,9 +1,0 @@
-2025-02-17T02:25:20.816Z [INFO]: Server is running at http://localhost:3000
-2025-02-17T02:25:50.664Z [INFO]: Server is running at http://localhost:3000
-2025-02-17T02:25:50.673Z [INFO]: Loading channel: antiparty
-2025-02-17T02:25:50.827Z [INFO]: [antiparty] Token is valid. Expires in 236.8 minutes.
-2025-02-17T02:25:50.827Z [INFO]: [antiparty] Next token refresh scheduled in 231.80 minutes.
-2025-02-17T02:25:50.829Z [INFO]: Loading stored tokens...
-2025-02-17T02:25:50.831Z [INFO]: Validating token for antiparty...
-2025-02-17T02:25:50.870Z [INFO]: [antiparty] Token is valid. Expires in 236.8 minutes.
-2025-02-17T02:25:50.870Z [INFO]: [antiparty] Next token refresh scheduled in 231.80 minutes.

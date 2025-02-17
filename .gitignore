@@ -2,3 +2,4 @@
 .env
 test-database.sqlite
 PATCHES_TWITCH.md
+/logs

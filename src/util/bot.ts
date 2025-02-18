@@ -5,6 +5,8 @@ import { loadCommands } from '../handlers/commands'; // Import loadCommands
 const commandHandler = loadCommands(); // ✅ Initialize commands
 const connectedChannels: { [key: string]: Set<string> } = {};
 
+let client: tmi.Client | null = null;
+
 export const startChatBot = async (username: string) => {
     const sanitizedUsername = username.replace(/^#/, '');
 
@@ -29,7 +31,7 @@ export const startChatBot = async (username: string) => {
         }
 
         console.log('Initializing Twitch client...');
-        const client = new tmi.Client({
+        client = new tmi.Client({
             options: { debug: false },
             channels: [sanitizedUsername],
             identity: {
@@ -42,8 +44,6 @@ export const startChatBot = async (username: string) => {
         console.log('Connecting to Twitch...');
         await client.connect();
         connectedChannels[username].add(sanitizedUsername);
-
-        
 
         client.on('message', (channel, tags, message, self) => {
             if (self) return;
@@ -65,10 +65,12 @@ export const startChatBot = async (username: string) => {
     }
 };
 
-export const stopChatBot = async (client: tmi.Client, channel: string,) => {
+export const stopChatBot = async (channel: string) => {
     try {
-        await client.leave(`#${channel}`);
-        console.log(`Bot left channel: ${channel}`);
+        if (client) {
+            await client.leave(`#${channel}`);
+            console.log(`Bot left channel: ${channel}`);
+        }
     } catch (error) {
         console.error(`Error leaving channel ${channel}:`, error);
     }
@@ -80,3 +82,5 @@ export const reconnectChatBot = async (username: string) => {
         await startChatBot(username);
     }
 };
+
+export { client };

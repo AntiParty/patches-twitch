@@ -43,7 +43,7 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
         const newExpirationTime = new Date(new Date().getTime() + expires_in * 1000);
         // Update database
         await Channel.update(
-            { access_token, refresh_token: newRefreshToken, token_expires_at: newExpirationTime  },
+            { access_token, refresh_token: newRefreshToken, token_expires_at: newExpirationTime },
             { where: { username } }
         );
 
@@ -93,8 +93,8 @@ export const validateToken = async (username: string, accessToken: string, refre
     }
 };
 
-export const loadTokensOnStartup = async () => {
-    logger.info('Loading stored tokens...');
+const validateAllTokens = async () => {
+    logger.info('Validating tokens for all users...');
     const channels = await Channel.findAll();
 
     for (const channel of channels) {
@@ -112,6 +112,18 @@ export const loadTokensOnStartup = async () => {
             logger.warn(`No tokens found for ${username}, skipping...`);
         }
     }
+};
+
+const startTokenValidationInterval = () => {
+    const intervalTime = 15 * 1000; // 15 seconds (adjust as needed)
+    setInterval(validateAllTokens, intervalTime);
+    logger.info(`Started periodic token validation every ${intervalTime / 1000} seconds.`);
+};
+
+export const loadTokensOnStartup = async () => {
+    logger.info('Loading stored tokens...');
+    await validateAllTokens(); // Validate tokens on startup
+    startTokenValidationInterval(); // Start periodic validation
 };
 
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
@@ -194,7 +206,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
             // Schedule token refresh before expiration
             const refreshTime = timeLeft - 5 * 60 * 1000; // Refresh 5 minutes before expiration
-            setTimeout(refreshTokenFunction, refreshTime);
+            setTimeout(() => refreshTokenFunction(twitchUsername, refresh_token), refreshTime);
 
             res.send('Successfully authenticated with Twitch!');
         } catch (error) {

@@ -10,7 +10,7 @@ export const execute = async (client: Client, channel: string, message: string, 
             return;
         }
 
-        const replyMessage = `Commands: !rank (check rank), !lastmatch (last match stats), !record (overall record), !addaccount <playerID> (link account). Need help? Join our Discord: discord.gg/santaigg`;
+        const replyMessage = `WIP: This is a placeholder for the help command. Please check back later for more information.`;
 
         // send a reply message
         client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);

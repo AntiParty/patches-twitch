@@ -2,52 +2,67 @@ import { Client, Userstate } from 'tmi.js';
 import { Channel } from '../db';
 import logger from '../util/logger';
 
-export const execute = async (client: Client, channel: string, message: string, tags: Userstate, args: string[]) => {
+export const execute = async (
+  client: Client,
+  channel: string,
+  message: string,
+  tags: Userstate,
+  args: string[]
+) => {
   try {
     const sanitizedChannel = channel.replace(/^#/, '');
     const username = tags['display-name'];
-    const messageId = tags['id']; // Get the message ID for replying
+    const messageId = tags['id'];
 
     if (!username || !messageId) {
       logger.error('Missing username or message ID.');
       return;
     }
 
-    // Permission check
+    // Case-insensitive permission check
+    const usernameLower = username.toLowerCase();
+    const sanitizedChannelLower = sanitizedChannel.toLowerCase();
+
     if (
-      username !== sanitizedChannel &&
-      !tags['badges']?.moderator &&  
-      username !== 'antiparty'
+      usernameLower !== sanitizedChannelLower &&
+      !tags['badges']?.moderator &&
+      usernameLower !== 'antiparty'
     ) {
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, you do not have permission to run this command.`);
+      client.raw(
+        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, you do not have permission to run this command.`
+      );
       return;
     }
 
-    // Ensure a player ID is provided
     if (!args || args.length < 1) {
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, please provide a valid player ID.`);
+      client.raw(
+        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, please provide a valid player ID.`
+      );
       return;
     }
 
-    const playerId = args[0]; 
+    const playerId = args[0];
     logger.info(`Linking player ID: ${playerId}`);
 
-    // Find or create the channel in the database
-    const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
+    let channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
 
     if (!channelInstance) {
-      // Create a new channel entry if none exists
       await Channel.create({ username: sanitizedChannel, player_id: playerId });
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`);
+      client.raw(
+        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`
+      );
     } else {
-      // Update the existing player_id
       channelInstance.player_id = playerId;
       await channelInstance.save();
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`);
+      client.raw(
+        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`
+      );
     }
   } catch (error) {
-    logger.error("Error executing command:", error);
-    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, there was an error executing the command.`);
+    logger.error('Error executing command:', error);
+    client.raw(
+      `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, there was an error executing the command.`
+    );
   }
 };
 

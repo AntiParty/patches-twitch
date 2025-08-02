@@ -5,6 +5,10 @@ import { sendMessageToDiscord } from './handlers/discordHandler';
 import { startChatBot, reconnectChatBot } from './util/bot';
 import { loadCommands } from './handlers/commands';
 import logger from './util/logger';
+import path from 'path';
+import rateLimit from 'express-rate-limit';
+import fs from 'fs';
+const cachefilePath = path.join(__dirname, 'src', ' cache', 'connectedAccounts.json');
 
 const clientId = process.env.TWITCH_CLIENT_ID;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET;
@@ -16,6 +20,12 @@ let expirationTime: number | null = null;
 let twitchUsername: string | null = null;
 
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
+
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: 'Too many requests, please try again later.',
+})
 
 const getAuthUrl = () => {
     return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=user:read:chat+user:bot+channel:bot&force_verify=true`;
@@ -129,19 +139,52 @@ export const loadTokensOnStartup = async () => {
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
     const app = express();
 
+    app.use(express.static(path.join(__dirname, 'frontend')))
+    app.use('/callback', authLimiter);
+
     app.get('/login', (req: Request, res: Response) => {
         const authUrl = getAuthUrl();
         logger.info(`Generated auth URL: ${authUrl}`);
         res.redirect(authUrl);
     });
 
-    app.get('/api/v2/connected-accounts', async (req: Request, res: Response) => {
-        const accounts = await Channel.findAll();
-        res.json(accounts.map((account) => account.id));
+    app.get('/api/v2/connected-accounts', async (req, res) => {
+        const oneDay = 24 * 60 * 60 * 1000;
+
+        // Try reading from cache file
+        try {
+            if (fs.existsSync(cacheFilePath)) {
+                const data = JSON.parse(fs.readFileSync(cacheFilePath, 'utf-8'));
+                const { count, timestamp } = data;
+
+                if (Date.now() - timestamp < oneDay) {
+                    return res.json({ count }); // Cache hit
+                }
+            }
+        } catch (error) {
+            logger.warn('Failed to read cache:', error);
+        }
+
+        // Cache miss or expired — fetch fresh count
+        try {
+            const accounts = await Channel.findAll({ attributes: ['id'] });
+            const count = accounts.length;
+
+            // Write to cache
+            fs.writeFileSync(cacheFilePath, JSON.stringify({
+                count,
+                timestamp: Date.now()
+            }));
+
+            res.json({ count });
+        } catch (error) {
+            logger.error('Error fetching connected accounts:', error);
+            res.status(500).json({ error: 'Failed to fetch account count' });
+        }
     });
 
     app.get('/', (req: Request, res: Response) => {
-        res.redirect('/login');
+        res.send(``)
     });
 
     app.get('/callback', async (req: Request, res: Response) => {
@@ -191,7 +234,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
             // Start the chatbot for the user
             try {
                 await startChatBot(twitchUsername, commandHandler);
-                sendMessageToDiscord(`New account added ${twitchUsername}`);
+                sendMessageToDiscord(`${twitchUsername}`);
                 logger.info('Chatbot started successfully.');
             } catch (error) {
                 logger.error('Error starting chatbot:', error);
@@ -208,7 +251,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
             const refreshTime = timeLeft - 5 * 60 * 1000; // Refresh 5 minutes before expiration
             setTimeout(() => refreshTokenFunction(twitchUsername, refresh_token), refreshTime);
 
-            res.send('Successfully authenticated with Twitch!');
+            res.sendFile(path.join(__dirname, 'frontend', 'auth.html'))
         } catch (error) {
             logger.error('Error during OAuth process:', error);
             res.status(500).send('Authentication failed');

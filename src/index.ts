@@ -4,7 +4,11 @@ import { loadCommands } from './handlers/commands';
 import { Channel } from './db';
 import { validateToken, loadTokensOnStartup } from './server'; // Import from server.ts now
 import { startChatBot, client } from './util/bot';
+import { updateLeaderboardCache, startCacheUpdater } from './jobs/cacheUpdater';
+
 import logger from './util/logger';
+
+import fs from 'fs/promises';
 
 const commandHandler = loadCommands();
 const app = setupServer(commandHandler);
@@ -19,8 +23,10 @@ const loadChannels = async () => {
     }
 };
 
+
 http.createServer(app).listen(3000, async () => {
     logger.info('Server is running at http://localhost:3000');
     await loadChannels();
     loadTokensOnStartup(client);
+    startCacheUpdater();
 });

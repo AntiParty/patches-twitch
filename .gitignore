@@ -3,3 +3,7 @@
 test-database.sqlite
 PATCHES_TWITCH.md
 /logs
+src/cache/connectedAccounts.json
+accounts.sqlite
+src/jobs/leaderboardCache.json
+src/jobs/wtLeaderboardCache.json

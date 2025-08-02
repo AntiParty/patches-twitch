@@ -32,5 +32,4 @@ export const execute = async (client: Client, channel: string, message: string, 
     }
 };
 
-// Optional: Add aliases for the command
 export const aliases = ['remove', 'disconnect'];

@@ -1,74 +1,126 @@
-import { Client, Userstate } from 'tmi.js';
-import fetch from 'node-fetch';
-import { Channel } from '../db';  // Import the Channel model
+import { Client, Userstate } from "tmi.js";
+import { Channel } from "../db";
+import path from "path";
+import fs from "fs/promises";
+import logger from "@/util/logger";
 
-export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
-  const normalizedChannel = channel.replace('#', '');
-  const username = tags['display-name'] || tags.username;
-  const messageId = tags['id']; // Get the message ID for replying
+const CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/leaderboardCache.json");
+const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/WTrankCache.json");
+
+// Track processed message IDs to avoid duplicate responses
+const processedMessages = new Set<string>();
+
+async function getCachedLeaderboardData() {
+  try {
+    logger.info(`Trying to read leaderboard cache from: ${CACHE_FILE_PATH}`);
+    const rawData = await fs.readFile(CACHE_FILE_PATH, "utf8");
+    const parsed = JSON.parse(rawData);
+
+    if (Array.isArray(parsed)) {
+      logger.info(`Cache contains ${parsed.length} entries. First 3 entries:`);
+      logger.info(parsed.slice(0, 3).map((e: any) => e.name).join(", "));
+      return parsed;
+    } else {
+      logger.warn("Cache file parsed but is not an array.");
+      return null;
+    }
+  } catch (err) {
+    logger.error("Failed to read leaderboard cache file:", err);
+    return null;
+  }
+}
+
+async function getWorldTourData() {
+  try {
+    logger.info(`Trying to read World Tour cache from: ${WT_CACHE_FILE_PATH}`);
+    const raw = await fs.readFile(WT_CACHE_FILE_PATH, "utf8");
+    const parsed = JSON.parse(raw);
+
+    if (Array.isArray(parsed)) {
+      logger.info(`WT cache loaded with ${parsed.length} entries.`);
+      return parsed;
+    } else {
+      logger.warn("WT cache parsed but not an array.");
+      return null;
+    }
+  } catch (err) {
+    logger.error("Failed to read World Tour leaderboard cache file:", err);
+    return null;
+  }
+}
+
+export const execute = async (
+  client: Client,
+  channel: string,
+  message: string,
+  tags: Userstate
+) => {
+  logger.info("[rank.ts] Rank command triggered");
+
+  const normalizedChannel = channel.replace("#", "");
+  const username = tags["display-name"] || tags.username;
+  const messageId = tags["id"];
 
   if (!username || !messageId) {
-    console.error('Missing username or message ID.');
+    logger.error("[rank.ts] Missing username or message ID in tags");
     return;
   }
 
-  const rankMapping: Record<number, { name: string }> = {
-    0: { name: "Unranked" },
-    1: { name: "Bronze 1" },
-    2: { name: "Bronze 2" },
-    3: { name: "Bronze 3" },
-    4: { name: "Bronze 4" },
-    5: { name: "Silver 1" },
-    6: { name: "Silver 2" },
-    7: { name: "Silver 3" },
-    8: { name: "Silver 4" },
-    9: { name: "Gold 1" },
-    10: { name: "Gold 2" },
-    11: { name: "Gold 3" },
-    12: { name: "Gold 4" },
-    13: { name: "Platinum 1" },
-    14: { name: "Platinum 2" },
-    15: { name: "Platinum 3" },
-    16: { name: "Platinum 4" },
-    17: { name: "Emerald 1" },
-    18: { name: "Emerald 2" },
-    19: { name: "Emerald 3" },
-    20: { name: "Emerald 4" },
-    21: { name: "Ruby 1" },
-    22: { name: "Ruby 2" },
-    23: { name: "Ruby 3" },
-    24: { name: "Ruby 4" },
-    25: { name: "Diamond 1" },
-    26: { name: "Diamond 2" },
-    27: { name: "Diamond 3" },
-    28: { name: "Diamond 4" },
-    29: { name: "Champion" },
-  };
+  // Prevent duplicate replies for the same message
+  if (processedMessages.has(messageId)) {
+    logger.info(`[rank.ts] Skipping duplicate response for messageId: ${messageId}`);
+    return;
+  }
+  processedMessages.add(messageId);
+  setTimeout(() => processedMessages.delete(messageId), 10_000); // 10s cleanup
 
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
 
-    if (!channelInstance || !channelInstance.player_id) {
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no player ID linked to this channel.`);
+    if (!channelInstance?.player_id?.trim()) {
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`);
       return;
     }
 
-    const playerId = channelInstance.player_id;
-    const apiUrl = `https://wavescan-production.up.railway.app/api/v1/player/${playerId}/profile`;
+    const finalsName = channelInstance.player_id.toLowerCase();
+    const cachedData = await getCachedLeaderboardData();
+    const worldTourData = await getWorldTourData();
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) throw new Error("Failed to fetch rank data.");
+    if (!cachedData) {
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, leaderboard data is temporarily unavailable. Please try again later.`);
+      return;
+    }
 
-    const data = await response.json();
-    const { current_solo_rank, rank_rating } = data.stats;
+    let player = cachedData.find((entry: any) => entry.name.toLowerCase() === finalsName);
+    if (!player) {
+      const baseName = finalsName.split("#")[0];
+      player = cachedData.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
+    }
 
-    const soloRank = rankMapping[current_solo_rank]?.name || "Unknown Rank";
+    if (!player) {
+      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, you aren't currently in the Top 1000.`);
+      return;
+    }
 
-    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, Current Solo Rank: ${soloRank} - Rating: ${rank_rating}`);
+    const { rank, rankScore, league } = player;
+    let wtRankStr = "";
+
+    if (worldTourData) {
+      let wtPlayer = worldTourData.find((entry: any) => entry.name.toLowerCase() === finalsName);
+      if (!wtPlayer) {
+        const baseName = finalsName.split("#")[0];
+        wtPlayer = worldTourData.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
+      }
+
+      if (wtPlayer) {
+        wtRankStr = ` | WT rank: #${wtPlayer.rank}`;
+      }
+    }
+
+    const responseMessage = `@${username}, #${rank} ${league} - ${rankScore.toLocaleString()} RS${wtRankStr}`;
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${responseMessage}`);
   } catch (error) {
-    console.error("Error fetching rank data:", (error as Error).message);
-    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, Sorry, I couldn't fetch the rank data.`);
+    logger.error("[rank.ts] Error in rank command execution:", error);
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, something went wrong fetching your rank.`);
   }
 };
-
-export const aliases = ['rank', 'rating', 'elo', 'rr'];

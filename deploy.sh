@@ -26,4 +26,5 @@ npm install
 # Restart your app with pm2 (adjust the app name accordingly)
 pm2 restart finalsrr-prod
 
+
 echo "Deployment complete."

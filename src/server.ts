@@ -66,7 +66,7 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
         await reconnectChatBot(username);
         logger.info(`[${username}] Bot reconnected after token refresh.`);
 
-        sendMessageToDiscord(`🔄 Token refreshed for ${username}.`);
+        //sendMessageToDiscord(`🔄 Token refreshed for ${username}.`);
     } catch (error) {
         logger.error(`[${username}] Token refresh failed:`, error);
         logger.info('Retrying in 1 minute...');

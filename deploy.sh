@@ -17,17 +17,13 @@ fi
 # Pull latest changes from origin/main
 git pull origin main
 
-# Install dependencies (you can add --production if you want only prod deps)
+# Install dependencies
 npm install
 
-# Build your project if needed (uncomment if applicable)
+# Build your project if needed
 # npm run build
 
 # Restart your app with pm2 (adjust the app name accordingly)
 pm2 restart finalsrr-prod
 
-<<<<<<< HEAD
 echo "Deployment complete."
-=======
-echo "Deployment complete."
->>>>>>> 2ab71d6 (Update .gitignore)

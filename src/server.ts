@@ -132,7 +132,7 @@ export const loadTokensOnStartup = async () => {
 
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
 	const app = express();
-	app.set('trust proxy', true);
+	app.set('trust proxy', 1);
 
 	if (process.env.NODE_ENV === 'production') {
 		app.use(express.static(path.join(__dirname, 'frontend')));

@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts",
+    "dev": "NODE_ENV=development bun run src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts"
   },
   "dependencies": {

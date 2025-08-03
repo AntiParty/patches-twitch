@@ -8,3 +8,6 @@ accounts.sqlite
 src/jobs/leaderboardCache.json
 src/jobs/wtLeaderboardCache.json
 src/jobs/WTrankCache.json
+.env.example
+.env.development
+.env.production

@@ -138,6 +138,7 @@ export const loadTokensOnStartup = async () => {
 
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
     const app = express();
+    app.set('trust proxy', true);
 
     app.use(express.static(path.join(__dirname, 'frontend')))
     app.use('/callback', authLimiter);

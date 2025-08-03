@@ -182,6 +182,80 @@ nav.navbar a:hover {
   -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 30%, transparent 90%);
 }
 
+/* About Section Styles */
+.about-section {
+  margin: 4rem auto;
+  max-width: 1200px;
+  text-align: center;
+}
+
+.about-section h2 {
+  color: #fff;
+  font-size: 2.5rem;
+  margin-bottom: 3rem;
+  position: relative;
+  display: inline-block;
+}
+
+.about-section h2::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: #9146ff;
+}
+
+.about-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.about-card {
+  background: rgba(22, 22, 22, 0.7);
+  border: 1px solid #313032;
+  border-radius: 12px;
+  padding: 2rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.about-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(145, 70, 255, 0.1);
+}
+
+.about-card h3 {
+  color: #9146ff;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.about-card p {
+  color: #bbb;
+  line-height: 1.6;
+}
+
+.discord-button {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #5865F2;
+  color: white;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.discord-button:hover {
+  background-color: #4752C4;
+}
+
 
 
 @keyframes shimmerGrid {

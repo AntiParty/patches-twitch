@@ -1,112 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  
-  <title>FinalsRR - The Ultimate THE FINALS Twitch Bot for Player Stats</title>
-  <meta name="description" content="FinalsRR is the premier Twitch bot for THE FINALS, giving you real-time stats, leaderboards, and rank tracking for your Twitch channel." />
-  <meta name="keywords" content="THE FINALS, Twitch bot, Twitch stats bot, FinalsRR, game stats, Twitch commands, THE FINALS leaderboard, Twitch integration" />
-  <meta name="author" content="Antiparty" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="FinalsRR - The Ultimate THE FINALS Twitch Bot for Player Stats" />
-  <meta property="og:description" content="FinalsRR provides Twitch streamers real-time statistics, rank tracking, and leaderboard data for THE FINALS." />
-  <meta property="og:image" content="https://app.antiparty.dev/finalsrr-social-preview.png" />
-  <meta property="og:url" content="https://app.antiparty.dev/" />
-  <meta property="og:site_name" content="FinalsRR" />
+    <title>FinalsRR - The Ultimate THE FINALS Twitch Bot for Player
+      Stats</title>
+    <meta name="description"
+      content="FinalsRR is the premier Twitch bot for THE FINALS, giving you real-time stats, leaderboards, and rank tracking for your Twitch channel." />
+    <meta name="keywords"
+      content="THE FINALS, Twitch bot, Twitch stats bot, FinalsRR, game stats, Twitch commands, THE FINALS leaderboard, Twitch integration" />
+    <meta name="author" content="Antiparty" />
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="FinalsRR - THE FINALS Twitch Bot" />
-  <meta name="twitter:description" content="Get live stats and leaderboards for THE FINALS with FinalsRR Twitch bot." />
-  <meta name="twitter:image" content="https://yourdomain.com/finalsrr-social-preview.png" />
-  <meta name="twitter:site" content="@AntipartyVAL" />
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title"
+      content="FinalsRR - The Ultimate THE FINALS Twitch Bot for Player Stats" />
+    <meta property="og:description"
+      content="FinalsRR provides Twitch streamers real-time statistics, rank tracking, and leaderboard data for THE FINALS." />
+    <meta property="og:image"
+      content="https://app.antiparty.dev/finalsrr-social-preview.png" />
+    <meta property="og:url" content="https://app.antiparty.dev/" />
+    <meta property="og:site_name" content="FinalsRR" />
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FinalsRR - THE FINALS Twitch Bot" />
+    <meta name="twitter:description"
+      content="Get live stats and leaderboards for THE FINALS with FinalsRR Twitch bot." />
+    <meta name="twitter:image"
+      content="https://yourdomain.com/finalsrr-social-preview.png" />
+    <meta name="twitter:site" content="@AntipartyVAL" />
 
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap"
+      rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-<body>
-  <nav class="navbar" role="navigation" aria-label="Primary Navigation">
-    <!-- Left Edge -->
-    <img src="RadialShape_075.png" alt="" class="edge-icon" />
+  <body>
+    <nav class="navbar" role="navigation" aria-label="Primary Navigation">
+      <!-- Left Edge -->
+      <img src="RadialShape_075.png" alt class="edge-icon" />
 
-    <!-- Nav Links -->
-    <div class="nav-links">
-      <a href="#" aria-current="page">Home</a>
-      <a href="#features">Features</a>
-      <a href="#testimonials">Testimonials</a>
-      <a href="https://discord.gg/yourserver" target="_blank" rel="noopener noreferrer">Discord</a>
-    </div>
-
-    <!-- Right Edge -->
-    <img src="RadialShape_075.png" alt="" class="edge-icon" style="transform: rotate(180deg);" />
-  </nav>
-
-  <header class="header-text" role="banner">
-    <h1>FinalsRR</h1>
-    <p>All your THE FINALS statistics in one place.</p>
-    <p>Connect your Twitch account to get started.</p>
-    <button class="cta-button" id="connect-twitch-btn" aria-label="Connect Twitch Account">Connect Twitch</button>
-  </header>
-
-  <main class="responsive-padding">
-    <section class="image-wrapper" aria-label="FinalsRR Twitch style chat preview">
-      <img src="finalsrr-chat-preview.png"
-           alt="FinalsRR Twitch style chat preview showing bot commands and responses"
-           loading="lazy"
-           decoding="async" />
-    </section>
-
-    <!-- Testimonials Carousel -->
-    <section id="testimonials" class="carousel-container" aria-label="User testimonials carousel">
-      <h2>What Our Users Say</h2>
-      <div class="carousel-wrapper">
-        <button class="carousel-nav prev" aria-label="Previous testimonial">&#8249;</button>
-        <div class="slides" role="list">
-          <article class="slide" role="listitem">
-            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/60a92041-15dc-42cd-90b1-6b886aca06b1-profile_image-70x70.png"
-                 alt="Alex G profile picture"
-                 class="pfp" />
-            <p>"FinalsRR completely changed how I track my stats — super easy to use and accurate!"</p>
-            <a href="https://twitch.tv/wtfslump" target="_blank" rel="noopener noreferrer" class="username">- Ginger man</a>
-          </article>
-          <article class="slide" role="listitem">
-            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/jamiel-profile_image-4a7b1e5db3b45f1b-70x70.jpeg"
-                 alt="Jamie L profile picture"
-                 class="pfp" />
-            <p>"Connecting my Twitch was seamless. Love the clean UI and fast updates."</p>
-            <a href="https://twitch.tv/jamiel" target="_blank" rel="noopener noreferrer" class="username">- Jamie L.</a>
-          </article>
-          <article class="slide" role="listitem">
-            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/morgank-profile_image-21c051f5d4f1a-70x70.jpeg"
-                 alt="Morgan K profile picture"
-                 class="pfp" />
-            <p>"A must-have for every THE FINALS player. Reliable and intuitive."</p>
-            <a href="https://twitch.tv/morgank" target="_blank" rel="noopener noreferrer" class="username">- Morgan K.</a>
-          </article>
-        </div>
-        <button class="carousel-nav next" aria-label="Next testimonial">&#8250;</button>
+      <!-- Nav Links -->
+      <div class="nav-links">
+        <a href="#" aria-current="page">Home</a>
+        <a href="#features">Features</a>
+        <a href="#testimonials">Testimonials</a>
+        <a href="https://discord.gg/yourserver" target="_blank"
+          rel="noopener noreferrer">Discord</a>
       </div>
-    </section>
-  </main>
 
-  <footer class="navbar site-footer" role="contentinfo">
-    <div class="footer-content">
-      <p>© 2025 FinalsRR. All rights reserved.</p>
-      <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="#">Home</a>
-        <a href="https://twitter.com/AntipartyVAL" target="_blank" rel="noopener noreferrer">Twitter</a>
-        <a href="https://discord.gg/yourserver" target="_blank" rel="noopener noreferrer">Discord</a>
-      </nav>
-    </div>
-  </footer>
+      <!-- Right Edge -->
+      <img src="RadialShape_075.png" alt class="edge-icon"
+        style="transform: rotate(180deg);" />
+    </nav>
 
-  <script src="script.js" defer></script>
-</body>
+    <header class="header-text" role="banner">
+      <h1>FinalsRR</h1>
+      <p>All your THE FINALS statistics in one place.</p>
+      <p>Connect your Twitch account to get started.</p>
+      <button class="cta-button" id="connect-twitch-btn"
+        aria-label="Connect Twitch Account">Connect Twitch</button>
+    </header>
 
+    <main class="responsive-padding">
+      <section class="image-wrapper"
+        aria-label="FinalsRR Twitch style chat preview">
+        <img src="finalsrr-chat-preview.png"
+          alt="FinalsRR Twitch style chat preview showing bot commands and responses"
+          loading="lazy"
+          decoding="async" />
+      </section>
+
+      <!-- New Why This Was Developed Section -->
+      <section id="why-developed" aria-label="Why This Was Developed">
+        <h2>Why This Was Developed</h2>
+        <p>
+          As a huge fan and streamer of <strong>THE FINALS</strong>, I’ve really
+          wanted the developers to provide more official APIs. With better
+          access to game data, creators like me could build tools that make
+          streams more engaging — real-time player stats, live leaderboards,
+          interactive Twitch commands, and beyond.
+        </p>
+        <p>
+          Right now, the ranked leaderboard API is a great start, but it only
+          scratches the surface. That’s why I built <strong>FinalsRR</strong> —
+          to bring that leaderboard data together with live stats and rank
+          tracking, creating a Twitch bot that streamers and viewers can rely
+          on.
+        </p>
+        <p>
+          I’m excited about what’s possible if the devs expand their API
+          offerings. More open APIs would empower the community to create
+          innovative projects that elevate the whole <strong>THE FINALS</strong>
+          experience. I hope this encourages the developers to continue
+          supporting creators by unlocking even more data.
+        </p>
+      </section>
+
+      <!-- Testimonials Carousel -->
+      <section id="testimonials" class="carousel-container"
+        aria-label="User testimonials carousel">
+        <h2>What Our Users Say</h2>
+        <div class="carousel-wrapper">
+          <button class="carousel-nav prev"
+            aria-label="Previous testimonial">&#8249;</button>
+          <div class="slides" role="list">
+            <article class="slide" role="listitem">
+              <img
+                src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
+                alt="Antiparty profile picture"
+                class="pfp" />
+              <p>"totally not biased but 10/10 bot"</p>
+              <a href="https://twitch.tv/antiparty" target="_blank"
+                rel="noopener noreferrer" class="username">- Antiparty</a>
+            </article>
+            <article class="slide" role="listitem">
+              <img
+                src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png"
+                alt="its_gdawg profile picture"
+                class="pfp" />
+              <p>"Connecting my Twitch was seamless. Love the clean UI and fast updates."</p>
+              <a href="https://twitch.tv/its_gdawg" target="_blank"
+                rel="noopener noreferrer" class="username">- its_gdawg</a>
+            </article>
+            <article class="slide" role="listitem">
+              <img
+                src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png"
+                alt="leftclicksnipe profile picture"
+                class="pfp" />
+              <p>"Makes it super convenient for me and my viewers to update ourselves on rank status. Impressed on how efficient it works."</p>
+              <a href="https://twitch.tv/LeftClickSnipe" target="_blank"
+                rel="noopener noreferrer" class="username">- Morgan K.</a>
+            </article>
+          </div>
+          <button class="carousel-nav next"
+            aria-label="Next testimonial">&#8250;</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="navbar site-footer" role="contentinfo">
+      <div class="footer-content">
+        <p>© 2025 FinalsRR. All rights reserved.</p>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <a href="#">Home</a>
+          <a href="https://twitter.com/AntipartyVAL" target="_blank"
+            rel="noopener noreferrer">Twitter</a>
+          <a href="https://discord.gg/yourserver" target="_blank"
+            rel="noopener noreferrer">Discord</a>
+        </nav>
+      </div>
+    </footer>
+
+    <script src="script.js" defer></script>
+  </body>
 </html>

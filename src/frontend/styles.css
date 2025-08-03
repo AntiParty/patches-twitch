@@ -249,7 +249,32 @@ nav.navbar a:hover {
   background: #ddd;
   color: #111;
 }
+#why-developed {
+  max-width: 700px;
+  margin: 2rem auto 4rem auto;
+  color: #ddd;
+  user-select: text; /* allow text selection */
+}
 
+#why-developed h2 {
+  color: #9146ff;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  font-size: 2rem;
+  user-select: text;
+}
+
+#why-developed p {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  margin-top: 1rem;
+  color: #ddd;
+  user-select: text;
+}
+
+#why-developed p:first-of-type {
+  margin-top: 0;
+}
 main {
   margin: auto;
   user-select: none;

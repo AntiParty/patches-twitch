@@ -74,34 +74,34 @@ export const execute = async (
       return;
     }
 
-    // Regular leaderboard search
-    let player = regularData?.find((entry: any) => entry.name.toLowerCase() === finalsName);
-    if (!player && finalsName.includes("#")) {
-      const baseName = finalsName.split("#")[0];
-      player = regularData?.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
-    }
+    // Helper to find player by exact or base name match
+    const findPlayer = (data: any[] | null, name: string) => {
+      if (!data) return null;
+      let player = data.find(entry => entry.name.toLowerCase() === name);
+      if (!player && name.includes("#")) {
+        const baseName = name.split("#")[0];
+        player = data.find(entry => entry.name.toLowerCase().startsWith(baseName));
+      }
+      return player;
+    };
 
-    // World Tour search
-    let wtPlayer = worldTourData?.find((entry: any) => entry.name.toLowerCase() === finalsName);
-    if (!wtPlayer && finalsName.includes("#")) {
-      const baseName = finalsName.split("#")[0];
-      wtPlayer = worldTourData?.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
-    }
+    const player = findPlayer(regularData, finalsName);
+    const wtPlayer = findPlayer(worldTourData, finalsName);
 
-    // Build response
     let response = `@${username}, `;
-    if (player) {
-      response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS`;
-    } else {
-      response += ``;
-    }
 
-    if (wtPlayer) {
-      response += player ? ` | ` : ` `;
+    if (player && wtPlayer) {
+      // Both leaderboards
+      response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS | WT rank: #${wtPlayer.rank}`;
+    } else if (player) {
+      // Only regular leaderboard
+      response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS`;
+    } else if (wtPlayer) {
+      // Only World Tour leaderboard
       response += `WT rank: #${wtPlayer.rank}`;
-    } else if (!player) {
-      // Only show this if they're not in either
-      response += ` or World Tour leaderboard`;
+    } else {
+      // Neither leaderboard
+      response += `not found on regular or World Tour leaderboards.`;
     }
 
     client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`);

@@ -1,13 +1,11 @@
 import tmi from 'tmi.js';
 import { getStreamStatusWithAutoRefresh } from '../util/twitchUtils';
 import { loadCommands } from '../handlers/commands'; // Import loadCommands
-
-const commandHandler = loadCommands(); // ✅ Initialize commands
 const connectedChannels: { [key: string]: Set<string> } = {};
 
 let client: tmi.Client | null = null;
 
-export const startChatBot = async (username: string) => {
+export const startChatBot = async (username: string, commandHandler: Record<string, any>) => {
     const sanitizedUsername = username.replace(/^#/, '');
 
     console.log(`Starting bot for username: ${sanitizedUsername}`);
@@ -82,10 +80,10 @@ export const stopChatBot = async (channel: string) => {
     }
 };
 
-export const reconnectChatBot = async (username: string) => {
+export const reconnectChatBot = async (username: string, commandHandler: Record<string, any>) => {
     if (client) {
         await stopChatBot(username);
-        await startChatBot(username);
+        await startChatBot(username, commandHandler);
     }
 };
 

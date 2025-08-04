@@ -27,6 +27,6 @@ const loadChannels = async () => {
 http.createServer(app).listen(3000, async () => {
     logger.info('Server is running at http://localhost:3000');
     await loadChannels();
-    loadTokensOnStartup(client);
+    loadTokensOnStartup();
     startCacheUpdater();
 });

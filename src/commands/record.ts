@@ -81,7 +81,7 @@ export const execute = async (
     if (!(streamKey in streamStartScores)) {
       streamStartScores[streamKey] = currentScore;
       client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, tracking started at ${currentScore.toLocaleString()} RS.`
+        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, tracking started at ${currentScore.toLocaleString()} RS`
       );
       return;
     }
@@ -91,7 +91,7 @@ export const execute = async (
     const absDiff = Math.abs(diff);
 
     client.raw(
-      `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS) | Live ${streamStatus.liveDuration}`
+      `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`
     );
   } catch (error) {
     logger.error("[record.ts] Error in record command:", error);

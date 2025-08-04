@@ -1,91 +1,85 @@
 import tmi from 'tmi.js';
 import { getStreamStatusWithAutoRefresh } from '../util/twitchUtils';
-import { loadCommands } from '../handlers/commands'; // Import loadCommands
-const connectedChannels: { [key: string]: Set<string> } = {};
 
-let client: tmi.Client | null = null;
+const clients: { [username: string]: tmi.Client } = {};
 
 export const startChatBot = async (username: string, commandHandler: Record<string, any>) => {
-    const sanitizedUsername = username.replace(/^#/, '');
+  const sanitizedUsername = username.replace(/^#/, '');
 
+  if (clients[sanitizedUsername]) {
+    console.log(`Bot already connected for ${sanitizedUsername}`);
+    return;
+  }
+
+  try {
     console.log(`Starting bot for username: ${sanitizedUsername}`);
 
-    if (!connectedChannels[username]) {
-        connectedChannels[username] = new Set();
+    const streamStatus = await getStreamStatusWithAutoRefresh(sanitizedUsername);
+    if (!streamStatus) {
+      console.error(`Could not fetch stream status for ${sanitizedUsername}`);
+      return;
     }
 
-    if (connectedChannels[username].has(sanitizedUsername)) {
-        console.log(`Bot is already connected to ${sanitizedUsername}`);
-        return;
-    }
+    const client = new tmi.Client({
+      options: { debug: false },
+      channels: [sanitizedUsername],
+      identity: {
+        username: process.env.TWITCH_BOT_USERNAME,
+        password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
+      },
+      capabilities: ['twitch.tv/tags'],
+    });
 
-    try {
-        console.log('Fetching stream status...');
-        const streamStatus = await getStreamStatusWithAutoRefresh(sanitizedUsername);
+    await client.connect();
+    clients[sanitizedUsername] = client;
 
-        if (!streamStatus) {
-            console.error(`Could not fetch stream status for ${sanitizedUsername}`);
-            return;
+    client.on('message', async (channel, tags, message, self) => {
+      if (self) return;
+
+      const rawCommand = message.trim().split(' ')[0].toLowerCase();
+      const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
+
+      const commandEntry = commandHandler[rawCommand];
+      if (commandEntry?.execute) {
+        try {
+          await commandEntry.execute(client, channel, message, tags, args);
+        } catch (err) {
+          console.error(`[${rawCommand}] Error executing command:`, err);
         }
+      }
+    });
 
-        console.log('Initializing Twitch client...');
-        client = new tmi.Client({
-            options: { debug: false },
-            channels: [sanitizedUsername],
-            identity: {
-                username: process.env.TWITCH_BOT_USERNAME,
-                password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
-            },
-            capabilities: ['twitch.tv/tags'],
-        });
+    client.on('connected', (addr, port) => {
+      console.log(`Bot connected to ${addr}:${port}`);
+      console.log(`[${sanitizedUsername}] Ready to receive commands:`, Object.keys(commandHandler));
+    });
 
-        console.log('Connecting to Twitch...');
-        await client.connect();
-        connectedChannels[username].add(sanitizedUsername);
-
-        client.on('message', async (channel, tags, message, self) => {
-            if (self) return;
-
-            const rawCommand = message.trim().split(' ')[0].toLowerCase();
-            const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
-
-            const commandEntry = commandHandler[rawCommand];
-            if (commandEntry?.execute) {
-                try {
-                    await commandEntry.execute(client!, channel, message, tags, args);
-                } catch (err) {
-                    console.error(`[${rawCommand}] Error executing command:`, err);
-                }
-            }
-        });
-
-        client.on('connected', (addr, port) => {
-            console.log(`Bot connected to ${addr}:${port}`);
-            console.log(`[${sanitizedUsername}] Ready to receive commands:`, Object.keys(commandHandler));
-        });
-
-        console.log('Bot setup complete.');
-    } catch (error) {
-        console.error(`Error connecting bot to ${sanitizedUsername}:`, error);
-    }
+    console.log('Bot setup complete.');
+  } catch (error) {
+    console.error(`Error connecting bot to ${sanitizedUsername}:`, error);
+  }
 };
 
-export const stopChatBot = async (channel: string) => {
-    try {
-        if (client) {
-            await client.leave(`#${channel}`);
-            console.log(`Bot left channel: ${channel}`);
-        }
-    } catch (error) {
-        console.error(`Error leaving channel ${channel}:`, error);
-    }
+export const stopChatBot = async (username: string) => {
+  const client = clients[username];
+  if (!client) {
+    console.log(`No client found for ${username}`);
+    return;
+  }
+
+  try {
+    await client.leave(`#${username}`);
+    await client.disconnect();
+    delete clients[username];
+    console.log(`Bot left channel and disconnected for ${username}`);
+  } catch (error) {
+    console.error(`Error stopping bot for ${username}:`, error);
+  }
 };
 
 export const reconnectChatBot = async (username: string, commandHandler: Record<string, any>) => {
-    if (client) {
-        await stopChatBot(username);
-        await startChatBot(username, commandHandler);
-    }
+  await stopChatBot(username);
+  await startChatBot(username, commandHandler);
 };
 
-export { client };
+export { clients };

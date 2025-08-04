@@ -3,7 +3,7 @@ import { setupServer } from './server';
 import { loadCommands } from './handlers/commands';
 import { Channel } from './db';
 import { validateToken, loadTokensOnStartup } from './server'; // Import from server.ts now
-import { startChatBot, client } from './util/bot';
+import { startChatBot, clients } from './util/bot';
 import { updateLeaderboardCache, startCacheUpdater } from './jobs/cacheUpdater';
 
 import logger from './util/logger';

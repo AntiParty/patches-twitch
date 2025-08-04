@@ -33,6 +33,13 @@ async function updateCache(name: 'regular' | 'worldTour') {
     console.log(`${name} cache updated with ${leaderboardData.length} entries.`);
   } catch (error) {
     console.error(`Error updating ${name} cache:`, error);
+    try {
+      const cachedData = await fs.readFile(cachePath, 'utf8');
+      console.log(`Loaded fallback ${name} cache with ${JSON.parse(cachedData).length} entries.`);
+
+    } catch {
+      console.error(`No valid fallback ${name} cache found.`);
+    }
   }
 }
 

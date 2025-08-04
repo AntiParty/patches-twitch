@@ -45,13 +45,19 @@ export const startChatBot = async (username: string) => {
         await client.connect();
         connectedChannels[username].add(sanitizedUsername);
 
-        client.on('message', (channel, tags, message, self) => {
+        client.on('message', async (channel, tags, message, self) => {
             if (self) return;
-            const command = message.trim().toLowerCase().split(' ')[0];
-            const args = message.trim().slice(command.length).split(' ').filter(arg => arg.length > 0);
 
-            if (commandHandler[command]) {
-                commandHandler[command](client, channel, message, tags, args);
+            const rawCommand = message.trim().split(' ')[0].toLowerCase();
+            const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
+
+            const commandEntry = commandHandler[rawCommand];
+            if (commandEntry?.execute) {
+                try {
+                    await commandEntry.execute(client!, channel, message, tags, args);
+                } catch (err) {
+                    console.error(`[${rawCommand}] Error executing command:`, err);
+                }
             }
         });
 

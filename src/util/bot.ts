@@ -61,6 +61,7 @@ export const startChatBot = async (username: string, commandHandler: Record<stri
 
         client.on('connected', (addr, port) => {
             console.log(`Bot connected to ${addr}:${port}`);
+            console.log(`[${sanitizedUsername}] Ready to receive commands:`, Object.keys(commandHandler));
         });
 
         console.log('Bot setup complete.');

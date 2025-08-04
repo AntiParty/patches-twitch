@@ -146,6 +146,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 		res.redirect(authUrl);
 	});
 
+	
 	app.get('/api/v2/connected-accounts', async (req, res) => {
 		const oneDay = 24 * 60 * 60 * 1000;
 

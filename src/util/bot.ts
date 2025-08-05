@@ -40,9 +40,6 @@ export const startChatBot = async (
 
     client.on("message", async (channel, tags, message, self) => {
       if (self) return;
-      console.log(
-        `[${channel}] <${tags["display-name"] || tags.username}>: ${message}`
-      ); // Add this debug line
 
       const rawCommand = message.trim().split(" ")[0].toLowerCase();
       const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
@@ -72,6 +69,9 @@ export const startChatBot = async (
   }
 };
 
+const isClientConnected = (client: tmi.Client): boolean => {
+  return !!client?.conn && client.conn.readyState() === 1; // 1 = OPEN
+};
 export const stopChatBot = async (username: string) => {
   const client = clients[username];
   if (!client) {
@@ -80,12 +80,17 @@ export const stopChatBot = async (username: string) => {
   }
 
   try {
-    await client.leave(`#${username}`);
-    await client.disconnect();
-    delete clients[username];
-    console.log(`Bot left channel and disconnected for ${username}`);
+    if (isClientConnected(client)) {
+      await client.leave(`#${username}`);
+      await client.disconnect();
+      console.log(`Bot left channel and disconnected for ${username}`);
+    } else {
+      console.warn(`Bot for ${username} is not connected to server.`);
+    }
   } catch (error) {
     console.error(`Error stopping bot for ${username}:`, error);
+  } finally {
+    delete clients[username]; // Always clean up
   }
 };
 

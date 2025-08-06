@@ -56,7 +56,7 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
 			"https://id.twitch.tv/oauth2/token",
 			null,
 			{
-				params: {
+				params: {a
 					client_id: clientId,
 					client_secret: clientSecret,
 					refresh_token: refreshToken,
@@ -91,7 +91,7 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
 			newRefreshToken,
 			expires_in * 1000 - 5 * 60 * 1000
 		);
-		await reconnectChatBot(username);
+		await reconnectChatBot(username, commandHandler);
 		logger.info(`[${username}] Bot reconnected after token refresh.`);
 	} catch (error) {
 		logger.error(`[${username}] Token refresh failed:`, error);
@@ -257,7 +257,6 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 				system: cpuUsage.system,
 			},
 			database: dbHealthy ? 'connected' : 'disconnected',
-			connectedBots: Object.keys(commandHandler).length,
 		});
 	});
 	app.get("/", (req: Request, res: Response) => {

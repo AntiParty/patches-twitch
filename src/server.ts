@@ -56,7 +56,7 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
 			"https://id.twitch.tv/oauth2/token",
 			null,
 			{
-				params: {a
+				params: {
 					client_id: clientId,
 					client_secret: clientSecret,
 					refresh_token: refreshToken,

@@ -269,6 +269,117 @@ h2 {
   user-select: text;
 }
 
+.features-grid {
+  max-width: 1100px;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.features-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.feature-card {
+  background: #1a1a1a;
+  padding: 2rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid #2c2c2e;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.feature-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #f0f0f0;
+}
+
+.feature-card p {
+  font-size: 1rem;
+  color: #bbb;
+  line-height: 1.5;
+}
+
+/* FAQ Styles */
+.faq-section {
+  max-width: 900px;
+  margin: 4rem auto 6rem auto;
+  padding: 0 1.5rem;
+  color: #ddd;
+}
+
+.faq-section h2 {
+  text-align: center;
+  color: #9146ff;
+  margin-bottom: 2rem;
+}
+
+.faq-container details {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+}
+
+.faq-container details[open] {
+  background: #222;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.faq-container summary {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #fff;
+  list-style: none;
+}
+
+.faq-container summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-container summary::after {
+  content: "▾";
+  float: right;
+  transition: transform 0.3s ease;
+}
+
+.faq-container details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.faq-container p {
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  color: #bbb;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
 /* Carousel Container */
 .carousel-container {
   max-width: 900px;
@@ -812,11 +923,17 @@ nav.navbar a:hover {
   background: #ddd;
   color: #111;
 }
+
 #why-developed {
   max-width: 700px;
   margin: 2rem auto 4rem auto;
+  padding: 0 1rem;
   color: #ddd;
-  user-select: text; /* allow text selection */
+  user-select: text;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 #why-developed h2 {
@@ -833,11 +950,14 @@ nav.navbar a:hover {
   margin-top: 1rem;
   color: #ddd;
   user-select: text;
+  max-width: 700px;
+  text-align: center;           /* Force center-align inside <p> */
 }
 
 #why-developed p:first-of-type {
   margin-top: 0;
 }
+
 main {
   margin: auto;
   user-select: none;

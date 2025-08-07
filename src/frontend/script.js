@@ -17,6 +17,16 @@ document.getElementById('connect-twitch-btn').addEventListener('click', () => {
   window.location.href = '/login';
 })
 
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener("click", function (e) {
+    const target = document.querySelector(this.getAttribute("href"));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+});
+
 window.addEventListener('scroll', checkScroll);
 window.addEventListener('load', checkScroll);
 (() => {

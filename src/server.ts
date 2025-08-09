@@ -189,6 +189,8 @@ export const loadTokensOnStartup = async () => {
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
 	const app = express();
 	app.set("trust proxy", 1);
+	app.set('view engine', 'ejs');
+	app.set('views', path.join(__dirname, 'frontend'));
 	app.use(express.json());
 
 	if (process.env.NODE_ENV === "production") {
@@ -347,13 +349,16 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 			const refreshTime = timeLeft - 5 * 60 * 1000;
 			setTimeout(() => refreshTokenFunction(twitchUsername!, refresh_token), refreshTime);
 
-			res.sendFile(path.join(__dirname, "frontend", "auth.html"));
+			res.render('auth', {
+				title: 'Twitch Authenticated',
+				logoPath: '/logo.png', // relative to your static folder
+				heading: 'Successfully Authenticated with Twitch',
+				botUsername: 'FinalsRR'
+			});
 		} catch (error) {
 			logger.error("Error during OAuth process:", error);
 			res.status(500).send("Authentication failed");
 		}
 	});
-
-
 	return app;
 };

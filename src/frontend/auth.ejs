@@ -49,18 +49,39 @@
       font-family: monospace;
       color: #ff9d5c;
     }
+    .channel-button {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #9146FF;
+      color: white;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background-color 0.3s ease;
+    }
+    .channel-button:hover {
+      background-color: #772ce8;
+    }
   </style>
 </head>
 <body>
   <main>
     <div class="success-message">
       <img src="<%= logoPath || 'logo.png' %>" alt="Logo" class="logo">
-      <h1>Thanks, <%= username %>! 🎉</h1>
+      <h1><%= username %> You’ve successfully authenticated with FinalsRR</h1>
       <p>
         You’ve successfully authenticated with Twitch.<br>
         Please do <code>/mod <%= botUsername || 'FinalsRR' %></code> 
         to begin, then type <code>!help</code> in your chat to see available commands.
       </p>
+      <% if (username) { %>
+        <a href="https://twitch.tv/<%= username %>" target="_blank" class="channel-button">
+          Go to My Twitch Channel
+        </a>
+      <% } %>
     </div>
   </main>
 </body>

@@ -352,7 +352,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 			res.render('auth', {
 				title: 'Twitch Authenticated',
 				logoPath: '/logo.png', // relative to your static folder
-				heading: 'Successfully Authenticated with Twitch',
+				username: twitchUsername,
 				botUsername: 'FinalsRR'
 			});
 		} catch (error) {

@@ -23,11 +23,19 @@ export async function getAppAccessToken() {
     tokenExpiration = Date.now() + resp.data.expires_in * 1000;
     logger.info("Obtained new app access token for EventSub");
     return appAccessToken;
-  } catch (err) {
-    logger.error("Failed to get app access token:", err);
+  } catch (err: any) {
+    // Log full error response from Twitch if available
+    if (err.response) {
+      logger.error(
+        `Failed to get app access token. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
+      );
+    } else {
+      logger.error(`Failed to get app access token: ${err.message}`);
+    }
     throw err;
   }
 }
+
 
 export async function createEventSubSubscription(
   type: "stream.online" | "stream.offline",
@@ -49,21 +57,32 @@ export async function createEventSubSubscription(
   };
 
   try {
-    const resp = await axios.post("https://api.twitch.tv/helix/eventsub/subscriptions", body, {
-      headers: {
-        "Client-ID": CLIENT_ID,
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const resp = await axios.post(
+      "https://api.twitch.tv/helix/eventsub/subscriptions",
+      body,
+      {
+        headers: {
+          "Client-ID": CLIENT_ID,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     logger.info(`Subscribed to ${type} for user ID ${broadcasterUserId}`);
     return resp.data;
-  } catch (err) {
-    logger.error(`Failed to subscribe to ${type} for user ID ${broadcasterUserId}`, err);
+  } catch (err: any) {
+    if (err.response) {
+      logger.error(
+        `Failed to subscribe to ${type} for user ID ${broadcasterUserId}. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
+      );
+    } else {
+      logger.error(`Failed to subscribe to ${type} for user ID ${broadcasterUserId}: ${err.message}`);
+    }
     throw err;
   }
 }
+
 
 export async function getUserId(username: string) {
   const token = await getAppAccessToken();
@@ -98,5 +117,8 @@ export function verifyTwitchSignature(req: any): boolean {
   hmac.update(hmacMessage);
   const expectedSignature = "sha256=" + hmac.digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
 }

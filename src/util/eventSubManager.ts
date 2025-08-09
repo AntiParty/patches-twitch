@@ -17,7 +17,7 @@ export async function getAppAccessToken() {
 
   try {
     const resp = await axios.post(
-      `https://id.twitch.tv/oauth2/token?client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&grant_type=client_credentials&scope=eventsub:manage`
+      `https://id.twitch.tv/oauth2/token?client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&grant_type=client_credentials`
     );
     appAccessToken = resp.data.access_token;
     tokenExpiration = Date.now() + resp.data.expires_in * 1000;

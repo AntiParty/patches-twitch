@@ -42,7 +42,8 @@ const authLimiter = rateLimit({
 });
 
 const getAuthUrl = () => {
-	return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=user:read:chat+user:bot+channel:bot&force_verify=true`;
+  const scope = encodeURIComponent("user:read:chat user:bot channel:bot channel:read:streaming");
+  return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
 const refreshTokenFunction = async (username: string, refreshToken: string) => {

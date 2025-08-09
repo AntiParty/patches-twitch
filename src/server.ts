@@ -189,6 +189,7 @@ export const loadTokensOnStartup = async () => {
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
 	const app = express();
 	app.set("trust proxy", 1);
+	app.use(express.json());
 
 	if (process.env.NODE_ENV === "production") {
 		app.use(express.static(path.join(__dirname, "frontend")));
@@ -211,6 +212,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 	});
 
 	app.post("/eventsub/webhook", async (req, res) => {
+		logger.info("Received POST on /eventsub/webhook");
 		if (!verifyTwitchSignature(req)) {
 			return res.status(403).send("Forbidden");
 		}

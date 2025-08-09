@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title><%= title || 'Authenticated' %></title>
-  <style>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title || 'Authenticated' %></title>
+    <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Poppins', sans-serif;
@@ -66,23 +66,26 @@
       background-color: #772ce8;
     }
   </style>
-</head>
-<body>
-  <main>
-    <div class="success-message">
-      <img src="<%= logoPath || 'logo.png' %>" alt="Logo" class="logo">
-      <h1><%= username %> You’ve successfully authenticated with FinalsRR</h1>
-      <p>
-        You’ve successfully authenticated with Twitch.<br>
-        Please do <code>/mod <%= botUsername || 'FinalsRR' %></code> 
-        to begin, then type <code>!help</code> in your chat to see available commands.
-      </p>
-      <% if (username) { %>
-        <a href="https://twitch.tv/<%= username %>" target="_blank" class="channel-button">
+  </head>
+  <body>
+    <main>
+      <div class="success-message">
+        <img src="<%= logoPath || 'logo.png' %>" alt="Logo" class="logo">
+        <h1>🎉 Welcome, <%= username %>!</h1>
+        <p>You’ve successfully authenticated with <strong>FinalsRR</strong>.</p>
+        <p>
+          You’ve successfully authenticated with Twitch.<br>
+          Please do <code>/mod <%= botUsername || 'FinalsRR' %></code>
+          to begin, then type <code>!help</code> in your chat to see available
+          commands.
+        </p>
+        <% if (username) { %>
+        <a href="https://twitch.tv/<%= username %>" target="_blank"
+          class="channel-button">
           Go to My Twitch Channel
         </a>
-      <% } %>
-    </div>
-  </main>
-</body>
+        <% } %>
+      </div>
+    </main>
+  </body>
 </html>

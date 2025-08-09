@@ -214,7 +214,12 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 	});
 
 	app.post("/eventsub/webhook", async (req, res) => {
-		logger.info("Received POST on /eventsub/webhook");
+		express.raw({ type: "application/json" }),
+		(req,res) => {
+			if (!verifyTwitchSignature(req)) return res.sendStatus(403);
+
+			const notification = JSON.parse(req.body.toString('utf8'));
+		}
 
 		if (!verifyTwitchSignature(req)) {
 			return res.status(403).send("Forbidden");

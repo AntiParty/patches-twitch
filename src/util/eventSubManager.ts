@@ -102,23 +102,22 @@ export async function getUserId(username: string) {
   }
 }
 
-export function verifyTwitchSignature(req: any): boolean {
-  const messageId = req.header("Twitch-Eventsub-Message-Id");
-  const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
-  const signature = req.header("Twitch-Eventsub-Message-Signature");
-  const body = JSON.stringify(req.body);
+export function verifyTwitchSignature(req: any, rawBody: Buffer): boolean {
+    const messageId = req.header("Twitch-Eventsub-Message-Id");
+    const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
+    const signature = req.header("Twitch-Eventsub-Message-Signature");
 
-  if (!messageId || !timestamp || !signature) {
-    return false;
-  }
+    if (!messageId || !timestamp || !signature) {
+        return false;
+    }
 
-  const hmacMessage = messageId + timestamp + body;
-  const hmac = crypto.createHmac("sha256", EVENTSUB_SECRET);
-  hmac.update(hmacMessage);
-  const expectedSignature = "sha256=" + hmac.digest("hex");
+    const hmacMessage = messageId + timestamp + rawBody;
+    const hmac = crypto.createHmac("sha256", EVENTSUB_SECRET);
+    hmac.update(hmacMessage);
+    const expectedSignature = "sha256=" + hmac.digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+    return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature)
+    );
 }

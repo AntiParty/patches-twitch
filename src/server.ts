@@ -10,6 +10,7 @@ import path from "path";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
 import * as dotenv from "dotenv";
+import bodyParser from "body-parser";
 
 // Load environment file based on NODE_ENV
 const envFile =
@@ -213,36 +214,42 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 		res.status(404).send("Not Found");
 	});
 
-	app.post("/eventsub/webhook", async (req, res) => {
-		express.raw({ type: "application/json" }),
-		(req,res) => {
-			if (!verifyTwitchSignature(req)) return res.sendStatus(403);
+	app.post(
+		"/eventsub/webhook",
+		bodyParser.raw({ type: 'application/json' }),
+		(req, res) => {
+			logger.info("Received POST on /eventsub/webhook");
 
-			const notification = JSON.parse(req.body.toString('utf8'));
+			// Verify HMAC
+			if (!verifyTwitchSignature(req, req.body)) {
+				logger.warn("Signature verification failed");
+				return res.status(403).send("Forbidden");
+			}
+
+			// Parse JSON only after verification
+			const notification = JSON.parse(req.body.toString("utf8"));
+			const messageType = req.header("Twitch-Eventsub-Message-Type");
+
+			// Verification challenge from Twitch
+			if (messageType === "webhook_callback_verification") {
+				logger.info("Responding to Twitch verification challenge");
+				return res.status(200).send(notification.challenge);
+			}
+
+			// Handle actual events
+			if (notification.subscription.type === "stream.online") {
+				const username = notification.event.broadcaster_user_login;
+				logger.info(`Stream online event for ${username}`);
+				// your logic here...
+			} else if (notification.subscription.type === "stream.offline") {
+				const username = notification.event.broadcaster_user_login;
+				logger.info(`Stream offline event for ${username}`);
+				// your logic here...
+			}
+
+			res.sendStatus(200);
 		}
-
-		if (!verifyTwitchSignature(req)) {
-			return res.status(403).send("Forbidden");
-		}
-
-		const messageType = req.header("Twitch-Eventsub-Message-Type");
-		const notification = req.body;
-
-		if (messageType === "webhook_callback_verification") {
-			logger.info("Responding to Twitch verification challenge");
-			return res.status(200).send(notification.challenge);
-		}
-
-		if (notification.subscription.type === "stream.online") {
-			const username = notification.event.broadcaster_user_login;
-			logger.info(`Stream online event for ${username}`);
-		} else if (notification.subscription.type === "stream.offline") {
-			const username = notification.event.broadcaster_user_login;
-			logger.info(`Stream offline event for ${username}`);
-		}
-
-		res.status(200).send();
-	});
+	);
 
 
 	app.get('/health', async (req: Request, res: Response) => {

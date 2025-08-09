@@ -8,6 +8,9 @@
   filter: blur(0);
   transform: none;
 }
+html {
+  scroll-behavior: smooth;
+}
 
 @media (min-width: 640px) {
   .responsive-padding {

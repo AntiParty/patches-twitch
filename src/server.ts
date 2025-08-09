@@ -3,6 +3,7 @@ import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
+import { verifyTwitchSignature, createEventSubSubscription, getUserId } from "./util/eventSubManager";
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
 import path from "path";
@@ -200,35 +201,29 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 		res.redirect(authUrl);
 	});
 
-	app.get("/api/v2/connected-accounts", async (req, res) => {
-		const oneDay = 24 * 60 * 60 * 1000;
-
-		try {
-			if (fs.existsSync(cacheFilePath)) {
-				const data = JSON.parse(fs.readFileSync(cacheFilePath, "utf-8"));
-				const { count, timestamp } = data;
-
-				if (Date.now() - timestamp < oneDay) {
-					return res.json({ count });
-				}
-			}
-		} catch (error) {
-			logger.warn("Failed to read cache:", error);
+	app.get("/eventsub/webhook", (req, res) => {
+		const challenge = req.query["hub.challenge"];
+		if (challenge) {
+			return res.status(200).send(challenge);
 		}
+		res.status(404).send("Not Found");
+	});
 
-		try {
-			const accounts = await Channel.findAll({ attributes: ["id"] });
-			const count = accounts.length;
-
-			fs.writeFileSync(
-				cacheFilePath,
-				JSON.stringify({ count, timestamp: Date.now() })
-			);
-			res.json({ count });
-		} catch (error) {
-			logger.error("Error fetching connected accounts:", error);
-			res.status(500).json({ error: "Failed to fetch account count" });
+	app.post("/eventsub/webhook", async (req, res) => {
+		if (!verifyTwitchSignature(req)) {
+			return res.status(403).send("Forbidden");
 		}
+		const notification = req.body;
+
+		if (notification.subscription.type === "stream.online") {
+			const username = notification.event.broadcaster_user_login;
+			logger.info(`Stream online event for ${username}`);
+		} else if (notification.subscription.type === "stream.offline") {
+			const username = notification.event.broadcaster_user_login;
+			logger.info(`Stream offline event for ${username}`);
+		}
+		// You need to send a response here:
+		res.status(200).send();  // <<< ADD THIS LINE
 	});
 
 	app.get('/health', async (req: Request, res: Response) => {
@@ -299,6 +294,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 				}
 			);
 
+			const twitchUserId = userResponse.data.data[0].id;
 			twitchUsername = userResponse.data.data[0].login;
 
 			await Channel.upsert({
@@ -306,7 +302,23 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 				access_token,
 				refresh_token,
 				token_expires_at: expirationTime,
+				twitch_user_id: twitchUserId,
 			});
+
+			// Automatically subscribe to EventSub stream.online and stream.offline events
+			try {
+				await createEventSubSubscription("stream.online", twitchUserId);
+				logger.info(`Subscribed to stream.online for ${twitchUsername}`);
+			} catch (err) {
+				logger.error(`Failed to subscribe to stream.online:`, err);
+			}
+
+			try {
+				await createEventSubSubscription("stream.offline", twitchUserId);
+				logger.info(`Subscribed to stream.offline for ${twitchUsername}`);
+			} catch (err) {
+				logger.error(`Failed to subscribe to stream.offline:`, err);
+			}
 
 			await startChatBot(twitchUsername, commandHandler);
 			sendMessageToDiscord(`${twitchUsername}`);
@@ -314,19 +326,14 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
 			const timeLeft = expirationTime - new Date().getTime();
 			const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-			const minutesLeft = Math.floor(
-				(timeLeft % (1000 * 60 * 60)) / (1000 * 60)
-			);
+			const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
 			const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
 			logger.info(
 				`Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
 			);
 
 			const refreshTime = timeLeft - 5 * 60 * 1000;
-			setTimeout(
-				() => refreshTokenFunction(twitchUsername!, refresh_token),
-				refreshTime
-			);
+			setTimeout(() => refreshTokenFunction(twitchUsername!, refresh_token), refreshTime);
 
 			res.sendFile(path.join(__dirname, "frontend", "auth.html"));
 		} catch (error) {
@@ -334,6 +341,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 			res.status(500).send("Authentication failed");
 		}
 	});
+
 
 	return app;
 };

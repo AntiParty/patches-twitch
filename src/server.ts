@@ -42,8 +42,8 @@ const authLimiter = rateLimit({
 });
 
 const getAuthUrl = () => {
-  const scope = encodeURIComponent("user:read:chat user:bot channel:bot");
-  return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
+	const scope = encodeURIComponent("user:read:chat user:bot channel:bot");
+	return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
 const refreshTokenFunction = async (username: string, refreshToken: string) => {
@@ -213,10 +213,18 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
 	app.post("/eventsub/webhook", async (req, res) => {
 		logger.info("Received POST on /eventsub/webhook");
+
 		if (!verifyTwitchSignature(req)) {
 			return res.status(403).send("Forbidden");
 		}
+
+		const messageType = req.header("Twitch-Eventsub-Message-Type");
 		const notification = req.body;
+
+		if (messageType === "webhook_callback_verification") {
+			logger.info("Responding to Twitch verification challenge");
+			return res.status(200).send(notification.challenge);
+		}
 
 		if (notification.subscription.type === "stream.online") {
 			const username = notification.event.broadcaster_user_login;
@@ -225,9 +233,10 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 			const username = notification.event.broadcaster_user_login;
 			logger.info(`Stream offline event for ${username}`);
 		}
-		// You need to send a response here:
-		res.status(200).send();  // <<< ADD THIS LINE
+
+		res.status(200).send();
 	});
+
 
 	app.get('/health', async (req: Request, res: Response) => {
 		const memoryUsage = process.memoryUsage();

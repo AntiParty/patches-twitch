@@ -51,7 +51,7 @@ export async function createEventSubSubscription(
     },
     transport: {
       method: "webhook",
-      callback: CALLBACK_URL,
+      callback: `${CALLBACK_URL}/eventsub/webhook`,
       secret: EVENTSUB_SECRET,
     },
   };

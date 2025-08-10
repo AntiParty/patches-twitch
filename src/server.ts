@@ -227,11 +227,12 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       const messageType = req.header("Twitch-Eventsub-Message-Type");
       const rawBody = req.body;
-
+      /*
       if (!verifyTwitchSignature(req, rawBody)) {
         logger.warn("❌ Signature verification failed");
         return res.status(403).send("Forbidden");
       }
+        */
 
       let notification;
       try {

@@ -242,6 +242,10 @@ class TwitchEventSubWSClient {
     this.ws.on("open", () => {
       logger.info("Twitch EventSub WebSocket connected.");
     });
+    this.ws.on("ping", () => {
+      this.ws?.pong();
+      logger.debug("Responded with pong");
+    });
 
     this.ws.on("message", async (data) => {
       try {
@@ -258,7 +262,9 @@ class TwitchEventSubWSClient {
     });
 
     this.ws.on("close", (code, reason) => {
-      logger.warn(`WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`);
+      logger.warn(
+        `WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`
+      );
       this.cleanupAndReconnect();
     });
   }
@@ -342,6 +348,10 @@ class TwitchEventSubWSClient {
       data: {
         topics,
         auth_token: this.authToken,
+        transport: {
+          method: "websocket",
+          session_id: this.sessionId,
+        },
       },
     };
 
@@ -410,7 +420,9 @@ class TwitchEventSubWSClient {
         break;
 
       case "notification":
-        logger.info(`Received notification for type: ${payload.subscription.type}`);
+        logger.info(
+          `Received notification for type: ${payload.subscription.type}`
+        );
         this.handleNotification(payload);
         break;
 

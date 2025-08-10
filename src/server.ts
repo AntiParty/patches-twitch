@@ -22,6 +22,7 @@ const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 const redirectUri = process.env.TWITCH_REDIRECT_URI!;
 const eventsubSecret = process.env.TWITCH_EVENTSUB_SECRET!;
+const eventsubBaseUrl = process.env.BASE_CALLBACK_URL!; // Must be your public HTTPS callback URL
 const cacheFilePath = path.join(
   __dirname,
   "src",
@@ -383,7 +384,39 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         twitch_user_id: twitchUserId,
       });
 
-      // Removed EventSub subscriptions here (if needed, add after this)
+      // === EventSub subscriptions for stream.online and stream.offline ===
+      const subscriptionTypes = ["stream.online", "stream.offline"];
+      for (const type of subscriptionTypes) {
+        const subscriptionPayload = {
+          type,
+          version: "1",
+          condition: {
+            broadcaster_user_id: twitchUserId,
+          },
+          transport: {
+            method: "webhook",
+            callback: `${eventsubBaseUrl}/eventsub`,
+            secret: eventsubSecret,
+          },
+        };
+
+        try {
+          const subscribeResponse = await axios.post(
+            "https://api.twitch.tv/helix/eventsub/subscriptions",
+            subscriptionPayload,
+            {
+              headers: {
+                Authorization: `Bearer ${access_token}`,
+                "Client-ID": clientId,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          logger.info(`EventSub subscription created for ${type}: ${JSON.stringify(subscribeResponse.data)}`);
+        } catch (err) {
+          logger.error(`Failed to create EventSub subscription for ${type}:`, err);
+        }
+      }
 
       await startChatBot(twitchUsername, commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);

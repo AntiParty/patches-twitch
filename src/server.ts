@@ -3,7 +3,7 @@ import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { handleEventSubWebhook, subscribeUserToEventSub } from "./util/eventSubManager";
+import { connectEventSubWebSocket, addUserSubscription } from "./util/twitchEventSubWs";
 
 
 (async () => {
@@ -191,17 +191,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("views", path.join(__dirname, "frontend"));
 
 
-  // Raw body middleware for Twitch EventSub signature verification
-  app.use('/eventsub/webhook', (req, res, next) => {
-    let data: Buffer[] = [];
-    req.on('data', chunk => data.push(chunk));
-    req.on('end', () => {
-      (req as any).rawBody = Buffer.concat(data);
-      next();
-    });
-  });
-
-  // Use JSON middleware for all other routes
+  // Use JSON middleware for all routes
   app.use(express.json());
 
   if (process.env.NODE_ENV === "production") {
@@ -216,12 +206,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  // Use only the custom raw body middleware for EventSub webhook
-  app.post('/eventsub/webhook', handleEventSubWebhook);
-
-  // Endpoint to check EventSub subscription status for a user
-  const { eventsubStatusHandler } = require('./handlers/eventsubStatus');
-  app.get('/eventsub/status', eventsubStatusHandler);
+  // Start EventSub WebSocket connection
+  connectEventSubWebSocket();
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
@@ -302,8 +288,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         twitch_user_id: twitchUserId,
       });
 
-      // Subscribe user to EventSub after authentication
-      await subscribeUserToEventSub(twitchUserId);
+  // Subscribe user to EventSub via WebSocket after authentication
+  addUserSubscription(twitchUserId, access_token, twitchUserId);
 
       await startChatBot(twitchUsername || '', commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);

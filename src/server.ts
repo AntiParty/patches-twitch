@@ -3,18 +3,17 @@ import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { verifyTwitchSignature, subscribeUserToEventSub } from "./util/eventSubManager";
+import { subscribeUserToEventSub } from "./util/eventSubManager";
 // Subscribe all users to EventSub on startup
 const subscribeAllUsersToEventSub = async () => {
   const channels = await Channel.findAll();
   for (const channel of channels) {
     const twitch_user_id = (channel as any).twitch_user_id || channel.get && channel.get('twitch_user_id');
-    const access_token = (channel as any).access_token || channel.get && channel.get('access_token');
-    if (twitch_user_id && access_token) {
-      await subscribeUserToEventSub(twitch_user_id, access_token);
-    }
+    if (twitch_user_id) {
+      await subscribeUserToEventSub(twitch_user_id);
     }
   }
+}
 
 
 (async () => {
@@ -210,59 +209,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  // Middleware for raw body (needed for Twitch signature verification)
-  app.use((req: any, res, next) => {
-    if (req.path === "/eventsub/webhook") {
-      let data = Buffer.alloc(0);
-      req.on("data", (chunk: Buffer) => {
-        data = Buffer.concat([data, chunk]);
-      });
-      req.on("end", () => {
-        req.rawBody = data;
-        next();
-      });
-    } else {
-      express.json()(req, res, next);
-    }
-  });
-
-  // EventSub webhook endpoint
-  app.post("/eventsub/webhook", async (req: any, res: Response) => {
-  logger.info("[EventSub] Webhook called", { headers: req.headers, body: req.body });
-    // Twitch signature verification
-    const isValid = verifyTwitchSignature(req, req.rawBody);
-    if (!isValid) {
-      logger.warn("Invalid Twitch EventSub signature");
-      return res.status(403).send("Forbidden");
-    }
-
-    const messageType = req.headers["twitch-eventsub-message-type"];
-    if (messageType === "webhook_callback_verification") {
-      logger.info("Twitch EventSub webhook verification");
-      return res.status(200).send(req.body.challenge);
-    }
-
-    if (messageType === "notification") {
-      const event = req.body.event;
-      const subType = req.body.subscription.type;
-      const userId = event.broadcaster_user_id;
-      if (subType === "stream.online") {
-        logger.info(`User ${userId} is now LIVE!`);
-      } else if (subType === "stream.offline") {
-        logger.info(`User ${userId} is now OFFLINE.`);
-      } else {
-        logger.info(`Received EventSub notification: ${subType}`);
-      }
-      return res.status(200).send("OK");
-    }
-
-    if (messageType === "revocation") {
-      logger.warn(`EventSub subscription revoked: ${req.body.subscription.type}`);
-      return res.status(200).send("OK");
-    }
-
-    return res.status(200).send("OK");
-  });
+  // Use JSON middleware for all routes
+  app.use(express.json());
 
   if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "frontend")));
@@ -359,9 +307,9 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       });
 
       // Subscribe user to EventSub after authentication
-  await subscribeUserToEventSub(twitchUserId);
+      await subscribeUserToEventSub(twitchUserId);
 
-  await startChatBot(twitchUsername || '', commandHandler);
+      await startChatBot(twitchUsername || '', commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 

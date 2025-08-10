@@ -10,6 +10,7 @@ import path from "path";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
 import * as dotenv from "dotenv";
+import WebSocket from "ws";
 
 // Load environment file based on NODE_ENV
 const envFile =
@@ -90,13 +91,26 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
     logger.info(
       `[${username}] Token refreshed. Expires in ${expires_in / 60} minutes.`
     );
+
+    // Update global tokens if current user
+    if (username === twitchUsername) {
+      accessToken = access_token;
+      refreshToken = newRefreshToken;
+    }
+
     scheduleTokenRefresh(
       username,
       newRefreshToken,
       expires_in * 1000 - 5 * 60 * 1000
     );
+
     await reconnectChatBot(username, commandHandler);
     logger.info(`[${username}] Bot reconnected after token refresh.`);
+
+    // Reconnect EventSub WebSocket with new token if current user
+    if (username === twitchUsername && twitchEventSubClient) {
+      twitchEventSubClient.updateAuthToken(access_token);
+    }
   } catch (error) {
     logger.error(`[${username}] Token refresh failed:`, error);
     logger.info("Retrying in 1 minute...");
@@ -188,16 +202,240 @@ export const loadTokensOnStartup = async () => {
   startTokenValidationInterval();
 };
 
+// -------- Twitch EventSub WebSocket Client --------
+
+const TWITCH_EVENTSUB_WS_URL = "wss://eventsub.wss.twitch.tv/ws";
+
+interface TwitchEvent {
+  subscription: {
+    id: string;
+    type: string;
+    status: string;
+    version: string;
+    condition: any;
+    transport: any;
+    created_at: string;
+  };
+  event: any;
+}
+
+class TwitchEventSubWSClient {
+  private ws: WebSocket | null = null;
+  private reconnectTimeout?: NodeJS.Timeout;
+  private sessionId: string | null = null;
+  private lastMessageTimestamp: number = 0;
+  private authToken: string;
+
+  constructor(authToken: string) {
+    this.authToken = authToken;
+  }
+
+  connect() {
+    logger.info("Connecting to Twitch EventSub WebSocket...");
+    this.ws = new WebSocket(TWITCH_EVENTSUB_WS_URL);
+
+    this.ws.on("open", () => {
+      logger.info("Twitch EventSub WebSocket connected.");
+    });
+
+    this.ws.on("message", (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        this.lastMessageTimestamp = Date.now();
+        this.handleMessage(message);
+      } catch (err) {
+        logger.error("Failed to parse WebSocket message:", err);
+      }
+    });
+
+    this.ws.on("error", (error) => {
+      logger.error("WebSocket error:", error);
+    });
+
+    this.ws.on("close", (code, reason) => {
+      logger.warn(
+        `WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`
+      );
+      this.cleanupAndReconnect();
+    });
+  }
+
+  cleanupAndReconnect() {
+    if (this.ws) {
+      this.ws.removeAllListeners();
+      this.ws = null;
+    }
+
+    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
+
+    this.reconnectTimeout = setTimeout(() => {
+      logger.info("Reconnecting to Twitch EventSub WebSocket...");
+      this.connect();
+    }, 10000);
+  }
+
+  sendMessage(msg: object) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    } else {
+      logger.warn("WebSocket not open, cannot send message.");
+    }
+  }
+
+  handleMessage(message: any) {
+    const { metadata, payload } = message;
+
+    if (!metadata) {
+      logger.warn("Received message without metadata:", message);
+      return;
+    }
+
+    switch (metadata.message_type) {
+      case "session_welcome":
+        this.sessionId = payload.session.id;
+        logger.info(`Session established with ID: ${this.sessionId}`);
+
+        this.subscribeToEvents();
+        break;
+
+      case "session_keepalive":
+        logger.debug("Received keepalive");
+        break;
+
+      case "notification":
+        logger.info(
+          `Received notification for type: ${payload.subscription.type}`
+        );
+        this.handleNotification(payload);
+        break;
+
+      case "session_reconnect":
+        logger.info("Session reconnect requested by Twitch.");
+        this.ws?.close();
+        break;
+
+      case "revocation":
+        logger.warn(`Subscription revoked: ${JSON.stringify(payload)}`);
+        break;
+
+      default:
+        logger.debug("Unhandled message type:", metadata.message_type);
+    }
+  }
+
+  subscribeToEvents() {
+    if (!this.sessionId) {
+      logger.error("No session ID to subscribe events.");
+      return;
+    }
+    if (!this.authToken) {
+      logger.error("No access token for subscription.");
+      return;
+    }
+    if (!twitchUsername) {
+      logger.error("No twitchUsername to subscribe topics.");
+      return;
+    }
+
+    const topics = [
+      `stream.online.${twitchUsername}`,
+      `channel.follow.${twitchUsername}`,
+      // Add more topics here if needed
+    ];
+
+    const subscribeMsg = {
+      type: "LISTEN",
+      nonce: Math.random().toString(36).substring(2, 15), // random nonce
+      data: {
+        topics,
+        auth_token: this.authToken,
+      },
+    };
+
+    logger.info(`Subscribing to topics: ${topics.join(", ")}`);
+    this.sendMessage(subscribeMsg);
+  }
+
+  handleNotification(payload: TwitchEvent) {
+    const { subscription, event } = payload;
+    switch (subscription.type) {
+      case "stream.online":
+        logger.info(
+          `Stream online event received for user ${event.broadcaster_user_login}`
+        );
+        handleStreamOnline(event);
+        break;
+
+      case "channel.follow":
+        logger.info(
+          `New follow event received from ${event.user_login} to ${event.broadcaster_user_login}`
+        );
+        handleChannelFollow(event);
+        break;
+
+      default:
+        logger.warn(`Unhandled event type: ${subscription.type}`);
+    }
+  }
+
+  updateAuthToken(newToken: string) {
+    logger.info("Updating EventSub WS auth token.");
+    this.authToken = newToken;
+    if (this.sessionId) {
+      this.subscribeToEvents();
+    }
+  }
+}
+
+// Global instance of EventSub WS client
+let twitchEventSubClient: TwitchEventSubWSClient | null = null;
+
+// Event handlers
+
+function handleStreamOnline(event: any) {
+  logger.info(
+    `[Event Handler] Stream is now ONLINE for user ${event.broadcaster_user_login}`
+  );
+  sendMessageToDiscord(
+    `🔴 ${event.broadcaster_user_login} has gone live! Title: ${event.title}`
+  );
+}
+
+function handleChannelFollow(event: any) {
+  logger.info(
+    `[Event Handler] New follower: ${event.user_login} followed ${event.broadcaster_user_login}`
+  );
+  sendMessageToDiscord(
+    `👏 ${event.user_login} just followed ${event.broadcaster_user_login}!`
+  );
+}
+
+// Start EventSub WebSocket client helper
+function startEventSubWebSocket(username: string, token: string) {
+  twitchUsername = username;
+  accessToken = token;
+
+  if (twitchEventSubClient) {
+    // If client exists, update auth token and reconnect
+    twitchEventSubClient.updateAuthToken(token);
+  } else {
+    twitchEventSubClient = new TwitchEventSubWSClient(token);
+    twitchEventSubClient.connect();
+  }
+}
+
+// --- Express server setup ---
+
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
   const app = express();
   app.set("trust proxy", 1);
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  // This middleware handles the raw body for the webhook and JSON for all other routes.
+  // Middleware to handle raw body for webhook & JSON for others
   app.use((req: any, res, next) => {
     if (req.path === "/eventsub/webhook") {
-      // Removed eventsub webhook route, just skip parsing for now
+      // Skipping webhook route as per your setup
       return res.status(404).send("Not Found");
     } else {
       express.json()(req, res, next);
@@ -216,8 +454,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  // Removed /eventsub/webhook and /eventsub/status routes entirely
-
+  // Health check endpoint
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
@@ -298,31 +535,25 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         twitch_user_id: twitchUserId,
       });
 
-      // Removed EventSub subscriptions here
-
       await startChatBot(twitchUsername, commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 
+      // Start EventSub WebSocket client here
+      startEventSubWebSocket(twitchUsername, access_token);
+
       const timeLeft = expirationTime - new Date().getTime();
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.floor(
-        (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
-      );
+      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
-      logger.info(
-        `Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
-      );
+      logger.info(`Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`);
 
       const refreshTime = timeLeft - 5 * 60 * 1000;
-      setTimeout(
-        () => refreshTokenFunction(twitchUsername!, refresh_token),
-        refreshTime
-      );
+      setTimeout(() => refreshTokenFunction(twitchUsername!, refresh_token), refreshTime);
 
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/logo.png", // relative to your static folder
+        logoPath: "/logo.png",
         username: twitchUsername,
         botUsername: "FinalsRR",
       });

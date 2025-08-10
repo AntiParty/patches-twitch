@@ -219,13 +219,11 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     "/eventsub/webhook",
     bodyParser.raw({ type: "application/json" }),
     (req, res) => {
-      logger.info(
-        `Incoming webhook: Message-Type=${req.header(
-          "Twitch-Eventsub-Message-Type"
-        )}, ID=${req.header("Twitch-Eventsub-Message-Id")}`
-      );
+      logger.info(`Webhook received - headers: ${JSON.stringify(req.headers)}`);
+      logger.info(`Raw body length: ${req.body.length}`);
 
       const messageType = req.header("Twitch-Eventsub-Message-Type");
+      logger.info(`Message-Type: ${messageType}`);
       const rawBody = req.body;
       /*
       if (!verifyTwitchSignature(req, rawBody)) {

@@ -243,15 +243,15 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
     if (messageType === "notification") {
       const event = req.body.event;
-      logger.info(`Received EventSub notification: ${req.body.subscription.type}`);
-      // TODO: Handle event types globally (e.g., stream.online, stream.offline)
-      // Example:
-      // if (req.body.subscription.type === "stream.online") {
-      //   // Do something when a user goes online
-      // }
-      // if (req.body.subscription.type === "stream.offline") {
-      //   // Do something when a user goes offline
-      // }
+      const subType = req.body.subscription.type;
+      const userId = event.broadcaster_user_id;
+      if (subType === "stream.online") {
+        logger.info(`User ${userId} is now LIVE!`);
+      } else if (subType === "stream.offline") {
+        logger.info(`User ${userId} is now OFFLINE.`);
+      } else {
+        logger.info(`Received EventSub notification: ${subType}`);
+      }
       return res.status(200).send("OK");
     }
 
@@ -358,7 +358,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       });
 
       // Subscribe user to EventSub after authentication
-  await subscribeUserToEventSub(twitchUserId, access_token);
+  await subscribeUserToEventSub(twitchUserId);
 
   await startChatBot(twitchUsername || '', commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);

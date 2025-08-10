@@ -223,46 +223,48 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     "/eventsub/webhook",
     bodyParser.raw({ type: "application/json" }),
     (req, res) => {
-      logger.info("Received POST on /eventsub/webhook");
-
-      const rawBody = req.body;
       const messageType = req.header("Twitch-Eventsub-Message-Type");
+      const rawBody = req.body;
 
-      // Verify HMAC for all messages
+      // Parse JSON only once
+      let notification: any;
+      try {
+        notification = JSON.parse(rawBody.toString("utf8"));
+      } catch {
+        return res.status(400).send("Invalid JSON");
+      }
+
+      // Handle verification immediately (before signature verification)
+      if (messageType === "webhook_callback_verification") {
+        logger.info("✅ Responding to Twitch verification challenge");
+        return res
+          .status(200)
+          .set("Content-Type", "text/plain")
+          .send(notification.challenge);
+      }
+
+      // Verify HMAC for all non-verification messages
       if (!verifyTwitchSignature(req, rawBody)) {
         logger.warn("❌ Signature verification failed");
         return res.status(403).send("Forbidden");
       }
 
-      const notification = JSON.parse(rawBody.toString("utf8"));
-
-      // Handle verification challenge
-      if (messageType === "webhook_callback_verification") {
-        logger.info("✅ Responding to Twitch verification challenge");
-        return res
-          .set("Content-Type", "text/plain")
-          .status(200)
-          .send(notification.challenge);
-      }
-
-      // Handle normal events
       if (messageType === "notification") {
-        res.sendStatus(204); // respond fast
+        res.sendStatus(204); // Acknowledge quickly
         process.nextTick(() => {
           if (notification.subscription.type === "stream.online") {
             logger.info(
-              `📡 Stream online for ${notification.event.broadcaster_user_login}`
+              `🎥 ${notification.event.broadcaster_user_login} went live`
             );
           } else if (notification.subscription.type === "stream.offline") {
             logger.info(
-              `📡 Stream offline for ${notification.event.broadcaster_user_login}`
+              `📴 ${notification.event.broadcaster_user_login} went offline`
             );
           }
         });
         return;
       }
 
-      // Handle revocations
       if (messageType === "revocation") {
         logger.warn(
           `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`

@@ -1,16 +1,15 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { verifyTwitchSignature } from "./util/eventSubManager"; // keep only verify function
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
 import path from "path";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
+import crypto from "crypto";
 import * as dotenv from "dotenv";
-import WebSocket from "ws";
 
 // Load environment file based on NODE_ENV
 const envFile =
@@ -22,6 +21,7 @@ dotenv.config({ path: path.resolve(__dirname, "..", envFile) });
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 const redirectUri = process.env.TWITCH_REDIRECT_URI!;
+const eventsubSecret = process.env.TWITCH_EVENTSUB_SECRET!;
 const cacheFilePath = path.join(
   __dirname,
   "src",
@@ -91,26 +91,13 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
     logger.info(
       `[${username}] Token refreshed. Expires in ${expires_in / 60} minutes.`
     );
-
-    // Update global tokens if current user
-    if (username === twitchUsername) {
-      accessToken = access_token;
-      refreshToken = newRefreshToken;
-    }
-
     scheduleTokenRefresh(
       username,
       newRefreshToken,
       expires_in * 1000 - 5 * 60 * 1000
     );
-
     await reconnectChatBot(username, commandHandler);
     logger.info(`[${username}] Bot reconnected after token refresh.`);
-
-    // Reconnect EventSub WebSocket with new token if current user
-    if (username === twitchUsername && twitchEventSubClient) {
-      twitchEventSubClient.updateAuthToken(access_token);
-    }
   } catch (error) {
     logger.error(`[${username}] Token refresh failed:`, error);
     logger.info("Retrying in 1 minute...");
@@ -202,283 +189,47 @@ export const loadTokensOnStartup = async () => {
   startTokenValidationInterval();
 };
 
-// -------- Twitch EventSub WebSocket Client --------
+// --- Helper: Verify Twitch EventSub Signature ---
+function verifyTwitchEventSubSignature(
+  req: Request,
+  secret: string
+): boolean {
+  try {
+    const messageId = req.header("Twitch-Eventsub-Message-Id");
+    const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
+    const messageSignature = req.header("Twitch-Eventsub-Message-Signature");
 
-const TWITCH_EVENTSUB_WS_URL = "wss://eventsub.wss.twitch.tv/ws";
+    if (!messageId || !timestamp || !messageSignature) return false;
 
-interface TwitchEvent {
-  subscription: {
-    id: string;
-    type: string;
-    status: string;
-    version: string;
-    condition: any;
-    transport: any;
-    created_at: string;
-  };
-  event: any;
-}
+    const rawBody = (req as any).rawBody;
+    if (!rawBody) return false;
 
-class TwitchEventSubWSClient {
-  private ws: WebSocket | null = null;
-  private reconnectTimeout?: NodeJS.Timeout;
-  private sessionId: string | null = null;
-  private lastMessageTimestamp: number = 0;
-  private authToken: string;
-  private hasSubscribed = false;
-  private sessionReady = false; // new flag
+    const hmacMessage = messageId + timestamp + rawBody;
 
-  constructor(authToken: string) {
-    this.authToken = authToken;
-  }
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(hmacMessage);
+    const computedSignature = `sha256=${hmac.digest("hex")}`;
 
-  connect() {
-    logger.info("Connecting to Twitch EventSub WebSocket...");
-    this.ws = new WebSocket(TWITCH_EVENTSUB_WS_URL);
-    this.hasSubscribed = false;
-    this.sessionReady = false;
-    this.sessionId = null;
+    const signatureBuffer = Buffer.from(messageSignature, "utf8");
+    const computedBuffer = Buffer.from(computedSignature, "utf8");
 
-    this.ws.on("open", () => {
-      logger.info("Twitch EventSub WebSocket connected.");
-    });
-    this.ws.on("ping", () => {
-      this.ws?.pong();
-      logger.debug("Responded with pong");
-    });
+    if (signatureBuffer.length !== computedBuffer.length) return false;
 
-    this.ws.on("message", async (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        this.lastMessageTimestamp = Date.now();
-        await this.handleMessage(message);
-      } catch (err) {
-        logger.error("Failed to parse WebSocket message:", err);
-      }
-    });
-
-    this.ws.on("error", (error) => {
-      logger.error("WebSocket error:", error);
-    });
-
-    this.ws.on("close", (code, reason) => {
-      logger.warn(
-        `WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`
-      );
-      this.cleanupAndReconnect();
-    });
-  }
-
-  cleanupAndReconnect() {
-    if (this.ws) {
-      this.hasSubscribed = false;
-      this.sessionReady = false;
-      this.sessionId = null;
-      this.ws.removeAllListeners();
-      this.ws = null;
-    }
-
-    if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
-
-    this.reconnectTimeout = setTimeout(() => {
-      logger.info("Reconnecting to Twitch EventSub WebSocket...");
-      this.connect();
-    }, 10000);
-  }
-
-  sendMessage(msg: object) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(msg));
-    } else {
-      logger.warn("WebSocket not open, cannot send message.");
-    }
-  }
-
-  // Fetch Twitch User ID dynamically from API by username
-  async fetchTwitchUserId(username: string): Promise<string | null> {
-    try {
-      const response = await axios.get(
-        `https://api.twitch.tv/helix/users?login=${username}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-            "Client-ID": clientId,
-          },
-        }
-      );
-      if (response.data.data && response.data.data.length > 0) {
-        return response.data.data[0].id;
-      }
-      logger.error(`No user found for username ${username}`);
-      return null;
-    } catch (error) {
-      logger.error(`Failed to fetch Twitch user ID for ${username}`, error);
-      return null;
-    }
-  }
-
-  async subscribeToEvents() {
-    if (!this.sessionId) {
-      logger.error("No session ID to subscribe events.");
-      return;
-    }
-    if (!this.authToken) {
-      logger.error("No access token for subscription.");
-      return;
-    }
-    if (!twitchUsername) {
-      logger.error("No twitchUsername defined to fetch user ID.");
-      return;
-    }
-
-    const twitchUserId = await this.fetchTwitchUserId(twitchUsername);
-    if (!twitchUserId) {
-      logger.error("Unable to get twitch user ID, abort subscribing.");
-      return;
-    }
-
-    const topics = [
-      `stream.online.${twitchUserId}`,
-      `channel.follow.${twitchUserId}`,
-    ];
-
-    const subscribeMsg = {
-      type: "LISTEN",
-      nonce: Math.random().toString(36).substring(2, 15),
-      data: {
-        topics,
-        auth_token: this.authToken,
-        transport: {
-          method: "websocket",
-          session_id: this.sessionId,
-        },
-      },
-    };
-
-    logger.info(`Subscribing to topics: ${topics.join(", ")}`);
-    this.sendMessage(subscribeMsg);
-  }
-
-  handleNotification(payload: TwitchEvent) {
-    const { subscription, event } = payload;
-    switch (subscription.type) {
-      case "stream.online":
-        logger.info(
-          `Stream online event received for user ${event.broadcaster_user_login}`
-        );
-        handleStreamOnline(event);
-        break;
-
-      case "channel.follow":
-        logger.info(
-          `New follow event received from ${event.user_login} to ${event.broadcaster_user_login}`
-        );
-        handleChannelFollow(event);
-        break;
-
-      default:
-        logger.warn(`Unhandled event type: ${subscription.type}`);
-    }
-  }
-
-  updateAuthToken(newToken: string) {
-    logger.info("Updating EventSub WS auth token.");
-    this.authToken = newToken;
-    // Only subscribe if session is ready and not yet subscribed
-    if (this.sessionReady && !this.hasSubscribed) {
-      setTimeout(() => {
-        this.subscribeToEvents();
-        this.hasSubscribed = true;
-      }, 3000);
-    }
-  }
-  private async handleMessage(message: any) {
-    const { metadata, payload } = message;
-
-    if (!metadata) {
-      logger.warn("Received message without metadata:", message);
-      return;
-    }
-
-    switch (metadata.message_type) {
-      case "session_welcome":
-        this.sessionId = payload.session.id;
-        this.sessionReady = true;
-        logger.info(`Session established with ID: ${this.sessionId}`);
-
-        if (!this.hasSubscribed) {
-          // Wait 3 seconds after welcome before subscribing
-          setTimeout(() => {
-            this.subscribeToEvents();
-            this.hasSubscribed = true;
-          }, 3000);
-        }
-        break;
-
-      case "session_keepalive":
-        logger.debug("Received keepalive");
-        break;
-
-      case "notification":
-        logger.info(
-          `Received notification for type: ${payload.subscription.type}`
-        );
-        this.handleNotification(payload);
-        break;
-
-      case "session_reconnect":
-        logger.info("Session reconnect requested by Twitch.");
-        this.ws?.close();
-        break;
-
-      case "revocation":
-        logger.warn(`Subscription revoked: ${JSON.stringify(payload)}`);
-        break;
-
-      default:
-        logger.debug("Unhandled message type:", metadata.message_type);
-    }
+    return crypto.timingSafeEqual(signatureBuffer, computedBuffer);
+  } catch {
+    return false;
   }
 }
 
-// Global instance of EventSub WS client
-let twitchEventSubClient: TwitchEventSubWSClient | null = null;
-
-// Event handlers
-
-function handleStreamOnline(event: any) {
-  logger.info(
-    `[Event Handler] Stream is now ONLINE for user ${event.broadcaster_user_login}`
-  );
-  sendMessageToDiscord(
-    `🔴 ${event.broadcaster_user_login} has gone live! Title: ${event.title}`
-  );
-}
-
-function handleChannelFollow(event: any) {
-  logger.info(
-    `[Event Handler] New follower: ${event.user_login} followed ${event.broadcaster_user_login}`
-  );
-  sendMessageToDiscord(
-    `👏 ${event.user_login} just followed ${event.broadcaster_user_login}!`
-  );
-}
-
-// Start EventSub WebSocket client helper
-function startEventSubWebSocket(username: string, token: string) {
-  twitchUsername = username;
-  accessToken = token;
-
-  if (twitchEventSubClient) {
-    // If client exists, update auth token and reconnect
-    twitchEventSubClient.updateAuthToken(token);
-  } else {
-    twitchEventSubClient = new TwitchEventSubWSClient(token);
-    twitchEventSubClient.connect();
+// --- Dummy auth middleware: Replace with your real auth check ---
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  // TODO: Implement your actual auth check here
+  const isAuthenticated = true; // Replace with real logic
+  if (!isAuthenticated) {
+    return res.status(401).json({ error: "Unauthorized" });
   }
-}
-
-// --- Express server setup ---
+  next();
+};
 
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
   const app = express();
@@ -486,16 +237,17 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  // Middleware to handle raw body for webhook & JSON for others
+  // Middleware to parse JSON for all routes except /eventsub (need raw)
   app.use((req: any, res, next) => {
-    if (req.path === "/eventsub/webhook") {
-      // Skipping webhook route as per your setup
-      return res.status(404).send("Not Found");
+    if (req.path === "/eventsub") {
+      // We'll parse raw body in /eventsub route
+      next();
     } else {
       express.json()(req, res, next);
     }
   });
 
+  // Production static assets
   if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "frontend")));
   }
@@ -508,7 +260,49 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  // Health check endpoint
+  // --- EventSub webhook route ---
+  app.post(
+    "/eventsub",
+    express.raw({ type: "application/json" }), // raw body parser needed for signature verification
+    authMiddleware,
+    (req: Request, res: Response) => {
+      if (!verifyTwitchEventSubSignature(req, eventsubSecret)) {
+        logger.warn("EventSub signature verification failed");
+        // Reject quickly
+        return res.status(401).send("Invalid signature");
+      }
+
+      const body = JSON.parse(req.body.toString("utf8"));
+      const messageType = req.header("Twitch-Eventsub-Message-Type");
+      logger.info(`EventSub message type: ${messageType}`);
+
+      switch (messageType) {
+        case "webhook_callback_verification":
+          logger.info(`Responding to webhook verification challenge`);
+          return res.status(200).send(body.challenge);
+
+        case "notification":
+          logger.info(
+            `Received EventSub notification for subscription ID ${body.subscription.id}`
+          );
+          // TODO: Add your event processing logic here
+          // e.g. handle body.event and update DB, send discord messages, etc.
+          return res.status(200).send("OK");
+
+        case "revocation":
+          logger.warn(
+            `EventSub subscription revoked: ${body.subscription.id}, reason: ${body.subscription.status}`
+          );
+          // TODO: Clean up subscription from DB or cache if needed
+          return res.status(200).send("Revocation acknowledged");
+
+        default:
+          logger.warn(`Unknown EventSub message type: ${messageType}`);
+          return res.status(400).send("Unknown message type");
+      }
+    }
+  );
+
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
@@ -589,12 +383,11 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         twitch_user_id: twitchUserId,
       });
 
+      // Removed EventSub subscriptions here (if needed, add after this)
+
       await startChatBot(twitchUsername, commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
-
-      // Start EventSub WebSocket client here
-      startEventSubWebSocket(twitchUsername, access_token);
 
       const timeLeft = expirationTime - new Date().getTime();
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
@@ -614,7 +407,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/logo.png",
+        logoPath: "/logo.png", // relative to your static folder
         username: twitchUsername,
         botUsername: "FinalsRR",
       });

@@ -251,85 +251,137 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.send("");
   });
 
+  // GET /callback: Twitch OAuth code exchange
   app.get("/callback", async (req: Request, res: Response) => {
     const { code } = req.query;
     if (!code || typeof code !== "string") {
       return res.status(400).send("Invalid code");
     }
-
     try {
       const tokenResponse = await axios.post(
         "https://id.twitch.tv/oauth2/token",
         null,
         {
           params: {
-            client_id: clientId,
-            client_secret: clientSecret,
+            client_id: process.env.TWITCH_CLIENT_ID,
+            client_secret: process.env.TWITCH_CLIENT_SECRET,
             code,
             grant_type: "authorization_code",
-            redirect_uri: redirectUri,
+            redirect_uri: process.env.BASE_CALLBACK_URL,
           },
         }
       );
-
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
-      expirationTime = new Date().getTime() + expires_in * 1000;
-      accessToken = access_token;
-      refreshToken = refresh_token;
-
       const userResponse = await axios.get(
         "https://api.twitch.tv/helix/users",
         {
           headers: {
             Authorization: `Bearer ${access_token}`,
-            "Client-ID": clientId,
+            "Client-ID": process.env.TWITCH_CLIENT_ID,
           },
         }
       );
-
       const twitchUserId = userResponse.data.data[0].id;
-      twitchUsername = userResponse.data.data[0].login;
-
+      const twitchUsername = userResponse.data.data[0].login;
       await Channel.upsert({
         username: twitchUsername,
         access_token,
         refresh_token,
-        token_expires_at: expirationTime,
+        token_expires_at: new Date().getTime() + expires_in * 1000,
         twitch_user_id: twitchUserId,
       });
-
-      // Removed EventSub subscriptions here
-
       await startChatBot(twitchUsername, commandHandler);
-      sendMessageToDiscord(`${twitchUsername}`);
-      logger.info("Chatbot started successfully.");
-
-      const timeLeft = expirationTime - new Date().getTime();
-      const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.floor(
-        (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
-      );
-      const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
-      logger.info(
-        `Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
-      );
-
-      const refreshTime = timeLeft - 5 * 60 * 1000;
-      setTimeout(
-        () => refreshTokenFunction(twitchUsername!, refresh_token),
-        refreshTime
-      );
-
+      logger.info(`Chatbot started for ${twitchUsername}`);
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/logo.png", // relative to your static folder
+        logoPath: "/logo.png",
         username: twitchUsername,
         botUsername: "FinalsRR",
       });
     } catch (error) {
-      logger.error("Error during OAuth process:", error);
+      logger.error("OAuth error:", error);
       res.status(500).send("Authentication failed");
     }
+  });
+
+  // POST /callback: Twitch EventSub webhook
+  app.post("/callback", express.raw({ type: "application/json" }), (req: Request, res: Response) => {
+    const messageId = req.header("Twitch-Eventsub-Message-Id");
+    const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
+    const signature = req.header("Twitch-Eventsub-Message-Signature");
+    const secret = process.env.TWITCH_EVENTSUB_SECRET;
+    const body = req.body;
+    // Verify signature
+    const crypto = require("crypto");
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(messageId + timestamp + body);
+    const expectedSig = "sha256=" + hmac.digest("hex");
+    if (signature !== expectedSig) {
+      logger.warn("Invalid EventSub signature");
+      return res.status(403).send("Forbidden");
+    }
+    let payload;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return res.status(400).send("Invalid JSON");
+    }
+    // Respond to webhook verification
+    if (payload.challenge) {
+      return res.status(200).send(payload.challenge);
+    }
+    // Handle stream.online and stream.offline
+    if (payload.subscription && payload.event) {
+      const type = payload.subscription.type;
+      if (type === "stream.online" || type === "stream.offline") {
+        logger.info(`EventSub: ${type} for user ${payload.event.broadcaster_user_id}`);
+      }
+    }
+    res.status(200).end();
+  });
+
+  // POST /subscribe: Register EventSub subscriptions for multiple users
+  app.post("/subscribe", express.json(), async (req: Request, res: Response) => {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds)) {
+      return res.status(400).send("userIds must be an array");
+    }
+    const callbackUrl = process.env.BASE_CALLBACK_URL;
+    const secret = process.env.TWITCH_EVENTSUB_SECRET;
+    const clientId = process.env.TWITCH_CLIENT_ID;
+    const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
+    const results = [];
+    for (const userId of userIds) {
+      for (const type of ["stream.online", "stream.offline"]) {
+        try {
+          const resp = await axios.post(
+            "https://api.twitch.tv/helix/eventsub/subscriptions",
+            {
+              type,
+              version: "1",
+              condition: { broadcaster_user_id: userId },
+              transport: {
+                method: "webhook",
+                callback: callbackUrl,
+                secret,
+              },
+            },
+            {
+              headers: {
+                "Client-ID": clientId,
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          results.push({ userId, type, status: "subscribed" });
+        } catch (err) {
+          logger.error(`Failed to subscribe ${userId} to ${type}:`, err);
+          results.push({ userId, type, status: "error" });
+        }
+      }
+    }
+    res.json({ results });
   });
 
   return app;

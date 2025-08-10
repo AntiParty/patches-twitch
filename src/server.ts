@@ -3,21 +3,10 @@ import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { subscribeUserToEventSub } from "./util/eventSubManager";
-// Subscribe all users to EventSub on startup
-const subscribeAllUsersToEventSub = async () => {
-  const channels = await Channel.findAll();
-  for (const channel of channels) {
-    const twitch_user_id = (channel as any).twitch_user_id || channel.get && channel.get('twitch_user_id');
-    if (twitch_user_id) {
-      await subscribeUserToEventSub(twitch_user_id);
-    }
-  }
-}
+import { handleEventSubNotification } from "./util/eventSubManager";
 
 
 (async () => {
-  await subscribeAllUsersToEventSub();
 })();
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
@@ -224,8 +213,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  // Removed /eventsub/webhook and /eventsub/status routes entirely
-
+  app.post('/eventsub/webhook', express.json(), handleEventSubNotification);
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

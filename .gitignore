@@ -11,3 +11,4 @@ src/jobs/WTrankCache.json
 .env.example
 .env.development
 .env.production
+src/util/eventSubManager.ts.bak

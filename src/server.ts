@@ -225,6 +225,8 @@ class TwitchEventSubWSClient {
   private sessionId: string | null = null;
   private lastMessageTimestamp: number = 0;
   private authToken: string;
+  private hasSubscribed = false;
+  private sessionReady = false; // new flag
 
   constructor(authToken: string) {
     this.authToken = authToken;
@@ -233,6 +235,9 @@ class TwitchEventSubWSClient {
   connect() {
     logger.info("Connecting to Twitch EventSub WebSocket...");
     this.ws = new WebSocket(TWITCH_EVENTSUB_WS_URL);
+    this.hasSubscribed = false;
+    this.sessionReady = false;
+    this.sessionId = null;
 
     this.ws.on("open", () => {
       logger.info("Twitch EventSub WebSocket connected.");
@@ -253,9 +258,7 @@ class TwitchEventSubWSClient {
     });
 
     this.ws.on("close", (code, reason) => {
-      logger.warn(
-        `WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`
-      );
+      logger.warn(`WebSocket closed. Code: ${code}, Reason: ${reason.toString()}`);
       this.cleanupAndReconnect();
     });
   }
@@ -263,6 +266,8 @@ class TwitchEventSubWSClient {
   cleanupAndReconnect() {
     if (this.ws) {
       this.hasSubscribed = false;
+      this.sessionReady = false;
+      this.sessionId = null;
       this.ws.removeAllListeners();
       this.ws = null;
     }
@@ -329,7 +334,6 @@ class TwitchEventSubWSClient {
     const topics = [
       `stream.online.${twitchUserId}`,
       `channel.follow.${twitchUserId}`,
-      // add more topics if needed
     ];
 
     const subscribeMsg = {
@@ -370,11 +374,14 @@ class TwitchEventSubWSClient {
   updateAuthToken(newToken: string) {
     logger.info("Updating EventSub WS auth token.");
     this.authToken = newToken;
-    if (this.sessionId) {
-      this.subscribeToEvents();
+    // Only subscribe if session is ready and not yet subscribed
+    if (this.sessionReady && !this.hasSubscribed) {
+      setTimeout(() => {
+        this.subscribeToEvents();
+        this.hasSubscribed = true;
+      }, 3000);
     }
   }
-  private hasSubscribed = false;
   private async handleMessage(message: any) {
     const { metadata, payload } = message;
 
@@ -386,23 +393,24 @@ class TwitchEventSubWSClient {
     switch (metadata.message_type) {
       case "session_welcome":
         this.sessionId = payload.session.id;
+        this.sessionReady = true;
         logger.info(`Session established with ID: ${this.sessionId}`);
 
         if (!this.hasSubscribed) {
+          // Wait 3 seconds after welcome before subscribing
           setTimeout(() => {
             this.subscribeToEvents();
             this.hasSubscribed = true;
           }, 3000);
         }
         break;
+
       case "session_keepalive":
         logger.debug("Received keepalive");
         break;
 
       case "notification":
-        logger.info(
-          `Received notification for type: ${payload.subscription.type}`
-        );
+        logger.info(`Received notification for type: ${payload.subscription.type}`);
         this.handleNotification(payload);
         break;
 

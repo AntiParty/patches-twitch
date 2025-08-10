@@ -228,6 +228,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
   // EventSub webhook endpoint
   app.post("/eventsub/webhook", async (req: any, res: Response) => {
+  logger.info("[EventSub] Webhook called", { headers: req.headers, body: req.body });
     // Twitch signature verification
     const isValid = verifyTwitchSignature(req, req.rawBody);
     if (!isValid) {

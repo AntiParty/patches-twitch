@@ -211,69 +211,57 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  app.get("/eventsub/webhook", (req, res) => {
-    const challenge = req.query["hub.challenge"];
-    if (challenge) {
-      return res.status(200).send(challenge);
-    }
-    res.status(404).send("Not Found");
-  });
-
   app.post(
-    "/eventsub/webhook",
-    bodyParser.raw({ type: "application/json" }),
-    (req, res) => {
-      const messageType = req.header("Twitch-Eventsub-Message-Type");
-      const rawBody = req.body;
+  "/eventsub/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  (req, res) => {
+    const messageType = req.header("Twitch-Eventsub-Message-Type");
+    const rawBody = req.body;
 
-      // Parse JSON only once
-      let notification: any;
-      try {
-        notification = JSON.parse(rawBody.toString("utf8"));
-      } catch {
-        return res.status(400).send("Invalid JSON");
-      }
-
-      // Handle verification immediately (before signature verification)
-      if (messageType === "webhook_callback_verification") {
-        logger.info("✅ Responding to Twitch verification challenge");
-        return res
-          .status(200)
-          .set("Content-Type", "text/plain")
-          .send(notification.challenge);
-      }
-
-      // Verify HMAC for all non-verification messages
-      if (!verifyTwitchSignature(req, rawBody)) {
-        logger.warn("❌ Signature verification failed");
-        return res.status(403).send("Forbidden");
-      }
-
-      if (messageType === "notification") {
-        res.sendStatus(204); // Acknowledge quickly
-        process.nextTick(() => {
-          if (notification.subscription.type === "stream.online") {
-            logger.info(
-              `🎥 ${notification.event.broadcaster_user_login} went live`
-            );
-          } else if (notification.subscription.type === "stream.offline") {
-            logger.info(
-              `📴 ${notification.event.broadcaster_user_login} went offline`
-            );
-          }
-        });
-        return;
-      }
-
-      if (messageType === "revocation") {
-        logger.warn(
-          `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
-        );
-      }
-
-      res.sendStatus(204);
+    // Verify signature first
+    if (!verifyTwitchSignature(req, rawBody)) {
+      logger.warn("❌ Signature verification failed");
+      return res.status(403).send("Forbidden");
     }
-  );
+
+    // Parse JSON after verification
+    let notification;
+    try {
+      notification = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return res.status(400).send("Invalid JSON");
+    }
+
+    // Respond to webhook_callback_verification with challenge string
+    if (messageType === "webhook_callback_verification") {
+      logger.info("✅ Responding to Twitch verification challenge");
+      return res
+        .status(200)
+        .set("Content-Type", "text/plain")
+        .send(notification.challenge);
+    }
+
+    // Process notifications and revocations
+    if (messageType === "notification") {
+      res.sendStatus(204); // Acknowledge immediately
+      process.nextTick(() => {
+        // Your processing logic here...
+      });
+      return;
+    }
+
+    if (messageType === "revocation") {
+      logger.warn(
+        `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
+      );
+      return res.sendStatus(204);
+    }
+
+    // Unknown message type
+    res.sendStatus(400);
+  }
+);
+
 
   app.get("/eventsub/status", async (req, res) => {
     try {

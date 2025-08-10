@@ -65,6 +65,45 @@ export function connectEventSubWebSocket() {
     } else if (type === 'notification') {
       logger.info(`Event: ${msg.payload.subscription.type} for ${msg.payload.event.broadcaster_user_name}`);
       logger.info(JSON.stringify(msg.payload.event, null, 2));
+      // Auto-start tracking when stream goes live
+      if (msg.payload.subscription.type === 'stream.online') {
+        const channelName = msg.payload.event.broadcaster_user_login;
+        // Find the channel instance in DB
+        const { Channel } = require('../db');
+        Channel.findOne({ where: { username: channelName } }).then(async (channelInstance: any) => {
+          const playerId = channelInstance?.player_id;
+          if (!playerId) {
+            logger.info(`[EventSubWs] No linked THE FINALS account for ${channelName}`);
+            return;
+          }
+          // Load leaderboard cache
+          const path = require('path');
+          const fs = require('fs/promises');
+          const CACHE_FILE_PATH = path.resolve(__dirname, '../jobs/leaderboardCache.json');
+          let cachedData;
+          try {
+            const rawData = await fs.readFile(CACHE_FILE_PATH, 'utf8');
+            cachedData = JSON.parse(rawData);
+          } catch (err) {
+            logger.error('[EventSubWs] Failed to read leaderboard cache:', err);
+            return;
+          }
+          const finalsName = playerId.toLowerCase();
+          let player = cachedData.find((entry: any) => entry.name.toLowerCase() === finalsName);
+          if (!player) {
+            const baseName = finalsName.split('#')[0];
+            player = cachedData.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
+          }
+          if (!player) {
+            logger.info(`[EventSubWs] ${channelName} isn't currently in the Top 1000.`);
+            return;
+          }
+          // Set initial score for tracking
+          const record = require('../commands/record');
+          record.streamStartScores[channelName] = player.rankScore;
+          logger.info(`[EventSubWs] Tracking started for ${channelName} at ${player.rankScore}`);
+        });
+      }
     } else if (type === 'session_keepalive') {
       logger.info('Received keepalive');
     } else if (type === 'session_reconnect') {

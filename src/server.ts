@@ -228,16 +228,15 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       const rawBody = req.body;
       const messageType = req.header("Twitch-Eventsub-Message-Type");
 
-      // Verify HMAC signature for all messages
+      // Verify HMAC for all messages
       if (!verifyTwitchSignature(req, rawBody)) {
         logger.warn("❌ Signature verification failed");
         return res.status(403).send("Forbidden");
       }
 
-      // Parse after verification
       const notification = JSON.parse(rawBody.toString("utf8"));
 
-      // Handle different message types
+      // Handle verification challenge
       if (messageType === "webhook_callback_verification") {
         logger.info("✅ Responding to Twitch verification challenge");
         return res
@@ -246,18 +245,24 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
           .send(notification.challenge);
       }
 
+      // Handle normal events
       if (messageType === "notification") {
-        if (notification.subscription.type === "stream.online") {
-          const username = notification.event.broadcaster_user_login;
-          logger.info(`📡 Stream online event for ${username}`);
-          //  logic here
-        } else if (notification.subscription.type === "stream.offline") {
-          const username = notification.event.broadcaster_user_login;
-          logger.info(`📡 Stream offline event for ${username}`);
-          //  logic here
-        }
+        res.sendStatus(204); // respond fast
+        process.nextTick(() => {
+          if (notification.subscription.type === "stream.online") {
+            logger.info(
+              `📡 Stream online for ${notification.event.broadcaster_user_login}`
+            );
+          } else if (notification.subscription.type === "stream.offline") {
+            logger.info(
+              `📡 Stream offline for ${notification.event.broadcaster_user_login}`
+            );
+          }
+        });
+        return;
       }
 
+      // Handle revocations
       if (messageType === "revocation") {
         logger.warn(
           `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
@@ -267,6 +272,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       res.sendStatus(204);
     }
   );
+
   app.get("/eventsub/status", async (req, res) => {
     try {
       const token = await getAppAccessToken();

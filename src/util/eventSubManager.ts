@@ -29,7 +29,7 @@ export async function getAppAccessToken() {
         `Failed to get app access token. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
       );
     } else {
-      logger.error(`Failed to get app access token: ${err.message}`);
+      logger.error(`Failed to get app access token: ${err.message || err}`);
     }
     throw err;
   }
@@ -64,6 +64,8 @@ export async function createEventSubSubscription(
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
+        // Twitch returns 202 or 204 on success, so accept both
+        validateStatus: (status) => status === 202 || status === 204,
       }
     );
 
@@ -75,7 +77,7 @@ export async function createEventSubSubscription(
         `Failed to subscribe to ${type} for user ID ${broadcasterUserId}. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
       );
     } else {
-      logger.error(`Failed to subscribe to ${type} for user ID ${broadcasterUserId}: ${err.message}`);
+      logger.error(`Failed to subscribe to ${type} for user ID ${broadcasterUserId}: ${err.message || err}`);
     }
     throw err;
   }
@@ -100,16 +102,16 @@ export async function getUserId(username: string) {
 }
 
 export function verifyTwitchSignature(req: any, rawBody: Buffer): boolean {
-  const messageId = req.header("Twitch-Eventsub-Message-Id");
-  const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
-  const signature = req.header("Twitch-Eventsub-Message-Signature");
+  // Support case-insensitive header retrieval for robustness
+  const messageId = req.header("twitch-eventsub-message-id") || req.header("Twitch-Eventsub-Message-Id");
+  const timestamp = req.header("twitch-eventsub-message-timestamp") || req.header("Twitch-Eventsub-Message-Timestamp");
+  const signature = req.header("twitch-eventsub-message-signature") || req.header("Twitch-Eventsub-Message-Signature");
 
   if (!messageId || !timestamp || !signature) {
     logger.warn("Missing Twitch EventSub headers for signature verification.");
     return false;
   }
 
-  // Correctly concatenate messageId + timestamp + rawBody as buffers
   const messageBuffer = Buffer.concat([
     Buffer.from(messageId, "utf8"),
     Buffer.from(timestamp, "utf8"),
@@ -140,7 +142,7 @@ export async function subscriptionExists(type: string, broadcasterUserId: string
         "Client-ID": CLIENT_ID,
         Authorization: `Bearer ${token}`,
       },
-      params: { "type": type, "status": "enabled" },
+      params: { type, status: "enabled" },
     }
   );
   return response.data.data.some(

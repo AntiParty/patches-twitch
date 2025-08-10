@@ -47,7 +47,9 @@ const authLimiter = rateLimit({
 });
 
 const getAuthUrl = () => {
-  const scope = encodeURIComponent("user:read:chat user:bot channel:bot");
+  const scope = encodeURIComponent(
+    "channel:moderate user:read:chat user:bot channel:bot"
+  );
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
@@ -238,7 +240,10 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         logger.info("✅ Responding to Twitch verification challenge");
         // The correct response is a 200 OK with the challenge string as the body
         // and Content-Type: text/plain.
-        return res.status(200).set("Content-Type", "text/plain").send(challenge);
+        return res
+          .status(200)
+          .set("Content-Type", "text/plain")
+          .send(challenge);
       } else {
         logger.error("❌ Webhook verification challenge missing.");
         return res.status(400).send("Bad Request: Challenge not found.");
@@ -251,7 +256,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       logger.warn("❌ Signature verification failed");
       return res.status(403).send("Forbidden");
     }
-    
+
     if (messageType === "notification") {
       // Respond immediately to the webhook to avoid timeouts.
       res.sendStatus(204);
@@ -296,48 +301,76 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     return res.sendStatus(400);
   });
 
-  app.get("/eventsub/status", async (req, res) => {
+  app.post("/eventsub/webhook", (req, res) => {
+    // @ts-ignore
+    const rawBody = req.body;
+    const messageType = req.get("Twitch-Eventsub-Message-Type");
+
+    let notification;
     try {
-      const token = await getAppAccessToken();
+      notification = JSON.parse(rawBody.toString("utf8"));
+    } catch (err) {
+      logger.warn("Invalid JSON in webhook payload");
+      return res.status(400).send("Invalid JSON");
+    }
 
-      const response = await axios.get(
-        "https://api.twitch.tv/helix/eventsub/subscriptions",
-        {
-          headers: {
-            "Client-ID": process.env.TWITCH_CLIENT_ID!,
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      logger.info("📋 Current EventSub Subscriptions:", response.data);
-
-      res.status(200).json({
-        count: response.data.total,
-        subscriptions: response.data.data.map((sub: any) => ({
-          id: sub.id,
-          type: sub.type,
-          status: sub.status,
-          created_at: sub.created_at,
-          broadcaster_user_id: sub.condition?.broadcaster_user_id,
-          callback: sub.transport?.callback,
-        })),
-      });
-    } catch (err: any) {
-      if (err.response) {
-        logger.error(
-          `❌ Failed to fetch EventSub subscriptions: ${
-            err.response.status
-          } — ${JSON.stringify(err.response.data)}`
-        );
-        return res.status(err.response.status).json(err.response.data);
+    if (messageType === "webhook_callback_verification") {
+      const challenge = notification.challenge;
+      if (challenge) {
+        logger.info("✅ Responding to Twitch verification challenge");
+        // Return plain text challenge exactly as Twitch requires
+        return res
+          .status(200)
+          .set("Content-Type", "text/plain")
+          .send(challenge);
       } else {
-        logger.error(
-          `❌ Failed to fetch EventSub subscriptions: ${err.message}`
-        );
-        return res.status(500).json({ error: err.message });
+        logger.error("❌ Webhook verification challenge missing.");
+        return res.status(400).send("Bad Request: Challenge not found.");
       }
     }
+
+    // Verify signature for all other message types (notification, revocation)
+    if (!verifyTwitchSignature(req, rawBody)) {
+      logger.warn("❌ Signature verification failed");
+      return res.status(403).send("Forbidden");
+    }
+
+    if (messageType === "notification") {
+      res.sendStatus(204);
+      process.nextTick(() => {
+        try {
+          const subType = notification.subscription.type;
+          const event = notification.event;
+          if (!event) {
+            logger.warn("Received notification with no event data");
+            return;
+          }
+          if (subType === "stream.online") {
+            logger.info(`${event.broadcaster_user_login} is now live!`);
+            // sendMessageToDiscord(`${event.broadcaster_user_login} just went live!`);
+          } else if (subType === "stream.offline") {
+            logger.info(`${event.broadcaster_user_login} has gone offline.`);
+            // sendMessageToDiscord(`${event.broadcaster_user_login} just went offline.`);
+          } else {
+            logger.info(
+              `Received notification for subscription type: ${subType}`
+            );
+          }
+        } catch (error) {
+          logger.error("Error processing EventSub notification:", error);
+        }
+      });
+      return;
+    }
+
+    if (messageType === "revocation") {
+      logger.warn(
+        `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
+      );
+      return res.sendStatus(204);
+    }
+
+    return res.sendStatus(400);
   });
 
   app.get("/health", async (req: Request, res: Response) => {

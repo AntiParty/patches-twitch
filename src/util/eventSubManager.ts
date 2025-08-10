@@ -1,47 +1,103 @@
-// removed duplicate imports
-
-export async function subscribeUserToEventSub(userId: string) {
-  const eventTypes = ["stream.online", "stream.offline"];
-  const appAccessToken = await getAppAccessToken();
-  for (const type of eventTypes) {
-    try {
-      await axios.post(
-        "https://api.twitch.tv/helix/eventsub/subscriptions",
-        {
-          type,
-          version: "1",
-          condition: { broadcaster_user_id: userId },
-          transport: {
-            method: "webhook",
-            callback: process.env.EVENTSUB_CALLBACK_URL,
-            secret: process.env.EVENTSUB_SECRET,
-          },
-        },
-        {
-          headers: {
-            "Client-ID": process.env.TWITCH_CLIENT_ID!,
-            Authorization: `Bearer ${appAccessToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      logger.info(`Subscribed ${userId} to ${type}`);
-    } catch (err: any) {
-      logger.error(`Failed to subscribe ${userId} to ${type}: ${err.response?.data?.message || err.message}`);
-    }
-  }
-}
 import axios from "axios";
+import WebSocket from "ws";
 import crypto from "crypto";
 import logger from "./logger";
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID!;
 const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET!;
-const EVENTSUB_SECRET = process.env.TWITCH_EVENTSUB_SECRET!;
-const CALLBACK_URL = process.env.BASE_CALLBACK_URL!;
 
+let ws: WebSocket | null = null;
+let sessionId: string | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_INTERVAL = 5000;
 let appAccessToken = "";
 let tokenExpiration = 0;
+
+// Keep track of our subscriptions
+const activeSubscriptions = new Map<string, {
+  type: string;
+  userId: string;
+  condition: any;
+}>(); function setupWebSocket() {
+  if (ws) {
+    ws.close();
+  }
+
+  ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
+
+  ws.on('open', () => {
+    logger.info('EventSub WebSocket connected');
+    reconnectAttempts = 0;
+  });
+
+  ws.on('message', async (data: WebSocket.Data) => {
+    try {
+      const message = JSON.parse(data.toString());
+      
+      switch (message.metadata.message_type) {
+        case 'session_welcome':
+          sessionId = message.payload.session.id;
+          logger.info(`EventSub session established: ${sessionId}`);
+          await resubscribeAll();
+          break;
+
+        case 'notification':
+          await handleNotification(message.payload);
+          break;
+
+        case 'session_reconnect':
+          logger.info('Received reconnect message, updating connection...');
+          setupWebSocket();
+          break;
+
+        case 'revocation':
+          logger.warn(`Subscription revoked: ${message.payload.subscription.type}`, message.payload);
+          break;
+
+        default:
+          logger.debug('Received unknown message type:', message.metadata.message_type);
+      }
+    } catch (err: any) {
+      logger.error('Error processing WebSocket message:', err.message);
+    }
+  });
+
+  ws.on('close', () => {
+    logger.warn('EventSub WebSocket disconnected');
+    sessionId = null;
+
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      logger.info(`Attempting to reconnect in ${RECONNECT_INTERVAL}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+      setTimeout(setupWebSocket, RECONNECT_INTERVAL);
+    } else {
+      logger.error('Max reconnection attempts reached');
+    }
+  });
+
+  ws.on('error', (error) => {
+    logger.error('EventSub WebSocket error:', error);
+  });
+}
+
+async function handleNotification(payload: any) {
+  const { type } = payload.subscription;
+  const { broadcaster_user_id } = payload.event;
+
+  switch (type) {
+    case 'stream.online':
+      logger.info(`User ${broadcaster_user_id} is now LIVE!`);
+      break;
+
+    case 'stream.offline':
+      logger.info(`User ${broadcaster_user_id} is now OFFLINE`);
+      break;
+
+    default:
+      logger.info(`Received ${type} event for user ${broadcaster_user_id}`);
+  }
+}
 
 export async function getAppAccessToken() {
   if (appAccessToken && Date.now() < tokenExpiration) {
@@ -57,61 +113,123 @@ export async function getAppAccessToken() {
     logger.info("Obtained new app access token for EventSub");
     return appAccessToken;
   } catch (err: any) {
-    if (err.response) {
-      logger.error(
-        `Failed to get app access token. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
-      );
-    } else {
-      logger.error(`Failed to get app access token: ${err.message || err}`);
-    }
+    logger.error(`Failed to get app access token: ${err.response?.data?.message || err.message}`);
     throw err;
   }
 }
 
-export async function createEventSubSubscription(
-  type: "stream.online" | "stream.offline",
-  broadcasterUserId: string
-) {
+async function resubscribeAll() {
+  if (!sessionId) {
+    logger.error('No session ID available for resubscribe');
+    return;
+  }
+
   const token = await getAppAccessToken();
 
-  const body = {
-    type,
-    version: "1",
-    condition: {
-      broadcaster_user_id: broadcasterUserId,
-    },
-    transport: {
-      method: "webhook",
-      callback: `${CALLBACK_URL}/eventsub/webhook`,
-      secret: EVENTSUB_SECRET,
-    },
-  };
-
-  try {
-    const resp = await axios.post(
-      "https://api.twitch.tv/helix/eventsub/subscriptions",
-      body,
-      {
-        headers: {
-          "Client-ID": CLIENT_ID,
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+  for (const sub of activeSubscriptions.values()) {
+    try {
+      await axios.post(
+        'https://api.twitch.tv/helix/eventsub/subscriptions',
+        {
+          type: sub.type,
+          version: '1',
+          condition: sub.condition,
+          transport: {
+            method: 'websocket',
+            session_id: sessionId
+          }
         },
-        // Twitch returns 202 or 204 on success, so accept both
-        validateStatus: (status) => status === 202 || status === 204,
-      }
-    );
-
-    logger.info(`Subscribed to ${type} for user ID ${broadcasterUserId}`);
-    return resp.data;
-  } catch (err: any) {
-    if (err.response) {
-      logger.error(
-        `Failed to subscribe to ${type} for user ID ${broadcasterUserId}. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
+        {
+          headers: {
+            'Client-ID': CLIENT_ID,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
-    } else {
-      logger.error(`Failed to subscribe to ${type} for user ID ${broadcasterUserId}: ${err.message || err}`);
+      logger.info(`Resubscribed to ${sub.type} for user ${sub.userId}`);
+    } catch (err: any) {
+      logger.error(`Failed to resubscribe to ${sub.type} for user ${sub.userId}:`, err.response?.data?.message || err.message);
     }
+  }
+}
+
+export async function subscribeUserToEventSub(userId: string) {
+  if (!sessionId) {
+    logger.error('No EventSub session available');
+    return;
+  }
+
+  const eventTypes = ['stream.online', 'stream.offline'];
+  const token = await getAppAccessToken();
+
+  for (const type of eventTypes) {
+    try {
+      const condition = { broadcaster_user_id: userId };
+      
+      const response = await axios.post(
+        'https://api.twitch.tv/helix/eventsub/subscriptions',
+        {
+          type,
+          version: '1',
+          condition,
+          transport: {
+            method: 'websocket',
+            session_id: sessionId
+          }
+        },
+        {
+          headers: {
+            'Client-ID': CLIENT_ID,
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Store subscription for reconnects
+      activeSubscriptions.set(`${type}-${userId}`, {
+        type,
+        userId,
+        condition
+      });
+
+      logger.info(`Subscribed ${userId} to ${type}`);
+    } catch (err: any) {
+      if (err.response?.data?.message === 'subscription already exists') {
+        logger.info(`Subscription ${type} for user ${userId} already exists`);
+      } else {
+        logger.error(`Failed to subscribe ${userId} to ${type}:`, err.response?.data?.message || err.message);
+      }
+    }
+  }
+}
+
+export async function wipeSubscriptions() {
+  const token = await getAppAccessToken();
+  
+  try {
+    const response = await axios.get('https://api.twitch.tv/helix/eventsub/subscriptions', {
+      headers: {
+        'Client-ID': CLIENT_ID,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    for (const sub of response.data.data) {
+      await axios.delete(`https://api.twitch.tv/helix/eventsub/subscriptions?id=${sub.id}`, {
+        headers: {
+          'Client-ID': CLIENT_ID,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      logger.info(`Deleted subscription ${sub.id} (${sub.type})`);
+    }
+
+    activeSubscriptions.clear();
+    logger.info('All EventSub subscriptions wiped');
+  } catch (err: any) {
+    logger.error('Failed to wipe subscriptions:', err.response?.data?.message || err.message);
     throw err;
   }
 }
@@ -134,83 +252,8 @@ export async function getUserId(username: string) {
   }
 }
 
-/**
- * Verifies Twitch EventSub message signature per:
- * https://dev.twitch.tv/docs/eventsub/handling-webhook-events/#verifying-the-event-message
- */
-export function verifyTwitchSignature(req: any, rawBody: Buffer): boolean {
-  // Get headers (case-insensitive)
-  const messageId =
-    req.get("Twitch-Eventsub-Message-Id") ||
-    req.get("twitch-eventsub-message-id");
-  const timestamp =
-    req.get("Twitch-Eventsub-Message-Timestamp") ||
-    req.get("twitch-eventsub-message-timestamp");
-  const signature =
-    req.get("Twitch-Eventsub-Message-Signature") ||
-    req.get("twitch-eventsub-message-signature");
+// Initialize WebSocket connection on startup
+setupWebSocket();
 
-  // Ensure required headers are present
-  if (!messageId || !timestamp || !signature) {
-    logger.warn("❌ Missing Twitch EventSub signature headers.");
-    return false;
-  }
-
-  // Twitch recommends rejecting messages older than 10 minutes to prevent replay attacks
-  const FIVE_MINUTES = 5 * 60 * 1000;
-  const messageAge = Math.abs(Date.now() - new Date(timestamp).getTime());
-  if (messageAge > FIVE_MINUTES) {
-    logger.warn("⚠️ EventSub message is too old. Possible replay attack.");
-    return false;
-  }
-
-  // Create HMAC message: id + timestamp + raw body
-  const hmacMessage = Buffer.concat([
-    Buffer.from(messageId, "utf8"),
-    Buffer.from(timestamp, "utf8"),
-    rawBody,
-  ]);
-
-  // Calculate expected HMAC
-  const hmac = crypto.createHmac("sha256", EVENTSUB_SECRET);
-  hmac.update(hmacMessage);
-  const expectedSignature = `sha256=${hmac.digest("hex")}`;
-
-  // Compare signatures in constant time
-  const match =
-    signature.length === expectedSignature.length &&
-    crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
-
-  if (!match) {
-    logger.warn("❌ EventSub signature mismatch.");
-    logger.debug(`Expected: ${expectedSignature}`);
-    logger.debug(`Received: ${signature}`);
-  } else {
-    logger.info("✅ EventSub signature verified successfully.");
-  }
-
-  return match;
-}
-
-export async function subscriptionExists(type: string, broadcasterUserId: string) {
-  const token = await getAppAccessToken();
-  const response = await axios.get(
-    "https://api.twitch.tv/helix/eventsub/subscriptions",
-    {
-      headers: {
-        "Client-ID": CLIENT_ID,
-        Authorization: `Bearer ${token}`,
-      },
-      params: { type, status: "enabled" },
-    }
-  );
-  return response.data.data.some(
-    (sub: any) =>
-      sub.type === type &&
-      sub.condition?.broadcaster_user_id === broadcasterUserId &&
-      sub.status === "enabled"
-  );
-}
+// Initialize WebSocket connection on startup
+setupWebSocket();

@@ -18,7 +18,7 @@ export async function subscribeUserToEventSub(userId: string, accessToken: strin
         },
         {
           headers: {
-            "Client-ID": process.env.TWITCH_ID!,
+            "Client-ID": process.env.TWITCH_CLIENT_ID!,
             Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },

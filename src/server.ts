@@ -218,6 +218,10 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
   // Use only the custom raw body middleware for EventSub webhook
   app.post('/eventsub/webhook', handleEventSubWebhook);
+
+  // Endpoint to check EventSub subscription status for a user
+  const { eventsubStatusHandler } = require('./handlers/eventsubStatus');
+  app.get('/eventsub/status', eventsubStatusHandler);
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

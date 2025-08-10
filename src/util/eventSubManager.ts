@@ -1,7 +1,8 @@
 // removed duplicate imports
 
-export async function subscribeUserToEventSub(userId: string, accessToken: string) {
+export async function subscribeUserToEventSub(userId: string) {
   const eventTypes = ["stream.online", "stream.offline"];
+  const appAccessToken = await getAppAccessToken();
   for (const type of eventTypes) {
     try {
       await axios.post(
@@ -19,7 +20,7 @@ export async function subscribeUserToEventSub(userId: string, accessToken: strin
         {
           headers: {
             "Client-ID": process.env.TWITCH_CLIENT_ID!,
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${appAccessToken}`,
             "Content-Type": "application/json",
           },
         }

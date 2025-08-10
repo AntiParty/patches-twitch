@@ -198,7 +198,18 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  // Use JSON middleware for all routes
+
+  // Raw body middleware for Twitch EventSub signature verification
+  app.use('/eventsub/webhook', (req, res, next) => {
+    let data: Buffer[] = [];
+    req.on('data', chunk => data.push(chunk));
+    req.on('end', () => {
+      (req as any).rawBody = Buffer.concat(data);
+      next();
+    });
+  });
+
+  // Use JSON middleware for all other routes
   app.use(express.json());
 
   if (process.env.NODE_ENV === "production") {
@@ -213,7 +224,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  app.post('/eventsub/webhook', express.raw({ type: 'application/json' }), handleEventSubWebhook);
+  // Use only the custom raw body middleware for EventSub webhook
+  app.post('/eventsub/webhook', handleEventSubWebhook);
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

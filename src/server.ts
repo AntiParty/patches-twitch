@@ -222,15 +222,17 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       logger.info(`Webhook received - headers: ${JSON.stringify(req.headers)}`);
       logger.info(`Raw body length: ${req.body.length}`);
 
-      const messageType = req.header("Twitch-Eventsub-Message-Type");
+      const messageType = req.get("Twitch-Eventsub-Message-Type");
       logger.info(`Message-Type: ${messageType}`);
+
       const rawBody = req.body;
+
       /*
-      if (!verifyTwitchSignature(req, rawBody)) {
-        logger.warn("❌ Signature verification failed");
-        return res.status(403).send("Forbidden");
-      }
-        */
+    if (!verifyTwitchSignature(req, rawBody)) {
+      logger.warn("❌ Signature verification failed");
+      return res.status(403).send("Forbidden");
+    }
+    */
 
       let notification;
       try {
@@ -245,13 +247,13 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         const challenge = notification.challenge;
         res.set({
           "Content-Type": "text/plain",
-          "Content-Length": Buffer.byteLength(challenge, "utf8"),
+          "Content-Length": Buffer.byteLength(challenge, "utf8").toString(),
         });
         return res.status(200).send(challenge);
       }
 
       if (messageType === "notification") {
-        res.sendStatus(204);
+        res.sendStatus(204); // Acknowledge immediately
         process.nextTick(() => {
           try {
             const subType = notification.subscription.type;
@@ -285,7 +287,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         return res.sendStatus(204);
       }
 
-      res.sendStatus(400);
+      // Unknown message type
+      return res.sendStatus(400);
     }
   );
 

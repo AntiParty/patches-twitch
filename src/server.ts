@@ -120,15 +120,10 @@ const scheduleTokenRefresh = (
       () => refreshTokenFunction(username, refreshToken),
       refreshTime
     );
-    logger.info(
-      `[${username}] Next token refresh scheduled in ${(
-        refreshTime /
-        1000 /
-        60
-      ).toFixed(2)} minutes.`
+    //logger.info(`[${username}] Next token refresh scheduled in ${(refreshTime /1000 /60).toFixed(2)} minutes.`
     );
   } else {
-    logger.warn(`[${username}] Refresh time invalid, retrying in 1 minute.`);
+    //logger.warn(`[${username}] Refresh time invalid, retrying in 1 minute.`);
     setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);
   }
 };
@@ -143,9 +138,7 @@ export const validateToken = async (
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const expiresIn = response.data.expires_in;
-    logger.info(
-      `[${username}] Token is valid. Expires in ${expiresIn / 60} minutes.`
-    );
+    //logger.info(`[${username}] Token is valid. Expires in ${expiresIn / 60} minutes.`);
     scheduleTokenRefresh(
       username,
       refreshToken,
@@ -158,7 +151,7 @@ export const validateToken = async (
 };
 
 const validateAllTokens = async () => {
-  logger.info("Validating tokens for all users...");
+  //logger.info("Validating tokens for all users...");
   const channels = await Channel.findAll();
 
   for (const channel of channels) {

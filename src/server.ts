@@ -238,11 +238,11 @@ class TwitchEventSubWSClient {
       logger.info("Twitch EventSub WebSocket connected.");
     });
 
-    this.ws.on("message", (data) => {
+    this.ws.on("message", async (data) => {
       try {
         const message = JSON.parse(data.toString());
         this.lastMessageTimestamp = Date.now();
-        this.handleMessage(message);
+        await this.handleMessage(message);
       } catch (err) {
         logger.error("Failed to parse WebSocket message:", err);
       }
@@ -282,48 +282,30 @@ class TwitchEventSubWSClient {
     }
   }
 
-  handleMessage(message: any) {
-    const { metadata, payload } = message;
-
-    if (!metadata) {
-      logger.warn("Received message without metadata:", message);
-      return;
-    }
-
-    switch (metadata.message_type) {
-      case "session_welcome":
-        this.sessionId = payload.session.id;
-        logger.info(`Session established with ID: ${this.sessionId}`);
-
-        this.subscribeToEvents();
-        break;
-
-      case "session_keepalive":
-        logger.debug("Received keepalive");
-        break;
-
-      case "notification":
-        logger.info(
-          `Received notification for type: ${payload.subscription.type}`
-        );
-        this.handleNotification(payload);
-        break;
-
-      case "session_reconnect":
-        logger.info("Session reconnect requested by Twitch.");
-        this.ws?.close();
-        break;
-
-      case "revocation":
-        logger.warn(`Subscription revoked: ${JSON.stringify(payload)}`);
-        break;
-
-      default:
-        logger.debug("Unhandled message type:", metadata.message_type);
+  // Fetch Twitch User ID dynamically from API by username
+  async fetchTwitchUserId(username: string): Promise<string | null> {
+    try {
+      const response = await axios.get(
+        `https://api.twitch.tv/helix/users?login=${username}`,
+        {
+          headers: {
+            Authorization: `Bearer ${this.authToken}`,
+            "Client-ID": clientId,
+          },
+        }
+      );
+      if (response.data.data && response.data.data.length > 0) {
+        return response.data.data[0].id;
+      }
+      logger.error(`No user found for username ${username}`);
+      return null;
+    } catch (error) {
+      logger.error(`Failed to fetch Twitch user ID for ${username}`, error);
+      return null;
     }
   }
 
-  subscribeToEvents() {
+  async subscribeToEvents() {
     if (!this.sessionId) {
       logger.error("No session ID to subscribe events.");
       return;
@@ -332,9 +314,14 @@ class TwitchEventSubWSClient {
       logger.error("No access token for subscription.");
       return;
     }
+    if (!twitchUsername) {
+      logger.error("No twitchUsername defined to fetch user ID.");
+      return;
+    }
+
+    const twitchUserId = await this.fetchTwitchUserId(twitchUsername);
     if (!twitchUserId) {
-      // You need to store this globally like twitchUsername
-      logger.error("No twitchUserId to subscribe topics.");
+      logger.error("Unable to get twitch user ID, abort subscribing.");
       return;
     }
 
@@ -346,7 +333,7 @@ class TwitchEventSubWSClient {
 
     const subscribeMsg = {
       type: "LISTEN",
-      nonce: Math.random().toString(36).substring(2, 15), // random nonce
+      nonce: Math.random().toString(36).substring(2, 15),
       data: {
         topics,
         auth_token: this.authToken,
@@ -384,6 +371,47 @@ class TwitchEventSubWSClient {
     this.authToken = newToken;
     if (this.sessionId) {
       this.subscribeToEvents();
+    }
+  }
+
+  private async handleMessage(message: any) {
+    const { metadata, payload } = message;
+
+    if (!metadata) {
+      logger.warn("Received message without metadata:", message);
+      return;
+    }
+
+    switch (metadata.message_type) {
+      case "session_welcome":
+        this.sessionId = payload.session.id;
+        logger.info(`Session established with ID: ${this.sessionId}`);
+
+        await this.subscribeToEvents();
+        break;
+
+      case "session_keepalive":
+        logger.debug("Received keepalive");
+        break;
+
+      case "notification":
+        logger.info(
+          `Received notification for type: ${payload.subscription.type}`
+        );
+        this.handleNotification(payload);
+        break;
+
+      case "session_reconnect":
+        logger.info("Session reconnect requested by Twitch.");
+        this.ws?.close();
+        break;
+
+      case "revocation":
+        logger.warn(`Subscription revoked: ${JSON.stringify(payload)}`);
+        break;
+
+      default:
+        logger.debug("Unhandled message type:", metadata.message_type);
     }
   }
 }

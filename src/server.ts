@@ -332,15 +332,16 @@ class TwitchEventSubWSClient {
       logger.error("No access token for subscription.");
       return;
     }
-    if (!twitchUsername) {
-      logger.error("No twitchUsername to subscribe topics.");
+    if (!twitchUserId) {
+      // You need to store this globally like twitchUsername
+      logger.error("No twitchUserId to subscribe topics.");
       return;
     }
 
     const topics = [
-      `stream.online.${twitchUsername}`,
-      `channel.follow.${twitchUsername}`,
-      // Add more topics here if needed
+      `stream.online.${twitchUserId}`,
+      `channel.follow.${twitchUserId}`,
+      // add more topics if needed
     ];
 
     const subscribeMsg = {
@@ -544,12 +545,19 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       const timeLeft = expirationTime - new Date().getTime();
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const minutesLeft = Math.floor(
+        (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
+      );
       const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
-      logger.info(`Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`);
+      logger.info(
+        `Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
+      );
 
       const refreshTime = timeLeft - 5 * 60 * 1000;
-      setTimeout(() => refreshTokenFunction(twitchUsername!, refresh_token), refreshTime);
+      setTimeout(
+        () => refreshTokenFunction(twitchUsername!, refresh_token),
+        refreshTime
+      );
 
       res.render("auth", {
         title: "Twitch Authenticated",

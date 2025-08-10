@@ -101,36 +101,65 @@ export async function getUserId(username: string) {
   }
 }
 
+/**
+ * Verifies Twitch EventSub message signature per:
+ * https://dev.twitch.tv/docs/eventsub/handling-webhook-events/#verifying-the-event-message
+ */
 export function verifyTwitchSignature(req: any, rawBody: Buffer): boolean {
-  // Support case-insensitive header retrieval for robustness
-  const messageId = req.header("twitch-eventsub-message-id") || req.header("Twitch-Eventsub-Message-Id");
-  const timestamp = req.header("twitch-eventsub-message-timestamp") || req.header("Twitch-Eventsub-Message-Timestamp");
-  const signature = req.header("twitch-eventsub-message-signature") || req.header("Twitch-Eventsub-Message-Signature");
+  // Get headers (case-insensitive)
+  const messageId =
+    req.get("Twitch-Eventsub-Message-Id") ||
+    req.get("twitch-eventsub-message-id");
+  const timestamp =
+    req.get("Twitch-Eventsub-Message-Timestamp") ||
+    req.get("twitch-eventsub-message-timestamp");
+  const signature =
+    req.get("Twitch-Eventsub-Message-Signature") ||
+    req.get("twitch-eventsub-message-signature");
 
+  // Ensure required headers are present
   if (!messageId || !timestamp || !signature) {
-    logger.warn("Missing Twitch EventSub headers for signature verification.");
+    logger.warn("❌ Missing Twitch EventSub signature headers.");
     return false;
   }
 
-  const messageBuffer = Buffer.concat([
+  // Twitch recommends rejecting messages older than 10 minutes to prevent replay attacks
+  const FIVE_MINUTES = 5 * 60 * 1000;
+  const messageAge = Math.abs(Date.now() - new Date(timestamp).getTime());
+  if (messageAge > FIVE_MINUTES) {
+    logger.warn("⚠️ EventSub message is too old. Possible replay attack.");
+    return false;
+  }
+
+  // Create HMAC message: id + timestamp + raw body
+  const hmacMessage = Buffer.concat([
     Buffer.from(messageId, "utf8"),
     Buffer.from(timestamp, "utf8"),
     rawBody,
   ]);
 
+  // Calculate expected HMAC
   const hmac = crypto.createHmac("sha256", EVENTSUB_SECRET);
-  hmac.update(messageBuffer);
-  const expectedSignature = "sha256=" + hmac.digest("hex");
+  hmac.update(hmacMessage);
+  const expectedSignature = `sha256=${hmac.digest("hex")}`;
 
-  try {
-    return crypto.timingSafeEqual(
+  // Compare signatures in constant time
+  const match =
+    signature.length === expectedSignature.length &&
+    crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)
     );
-  } catch {
-    // timingSafeEqual throws if buffers are not same length
-    return false;
+
+  if (!match) {
+    logger.warn("❌ EventSub signature mismatch.");
+    logger.debug(`Expected: ${expectedSignature}`);
+    logger.debug(`Received: ${signature}`);
+  } else {
+    logger.info("✅ EventSub signature verified successfully.");
   }
+
+  return match;
 }
 
 export async function subscriptionExists(type: string, broadcasterUserId: string) {

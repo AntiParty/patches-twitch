@@ -7,6 +7,7 @@ import {
   verifyTwitchSignature,
   createEventSubSubscription,
   getUserId,
+  getAppAccessToken,
 } from "./util/eventSubManager";
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";

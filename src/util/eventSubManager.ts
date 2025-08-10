@@ -24,7 +24,6 @@ export async function getAppAccessToken() {
     logger.info("Obtained new app access token for EventSub");
     return appAccessToken;
   } catch (err: any) {
-    // Log full error response from Twitch if available
     if (err.response) {
       logger.error(
         `Failed to get app access token. Status: ${err.response.status}, Data: ${JSON.stringify(err.response.data)}`
@@ -35,7 +34,6 @@ export async function getAppAccessToken() {
     throw err;
   }
 }
-
 
 export async function createEventSubSubscription(
   type: "stream.online" | "stream.offline",
@@ -83,7 +81,6 @@ export async function createEventSubSubscription(
   }
 }
 
-
 export async function getUserId(username: string) {
   const token = await getAppAccessToken();
 
@@ -103,21 +100,33 @@ export async function getUserId(username: string) {
 }
 
 export function verifyTwitchSignature(req: any, rawBody: Buffer): boolean {
-    const messageId = req.header("Twitch-Eventsub-Message-Id");
-    const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
-    const signature = req.header("Twitch-Eventsub-Message-Signature");
+  const messageId = req.header("Twitch-Eventsub-Message-Id");
+  const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
+  const signature = req.header("Twitch-Eventsub-Message-Signature");
 
-    if (!messageId || !timestamp || !signature) {
-        return false;
-    }
+  if (!messageId || !timestamp || !signature) {
+    logger.warn("Missing Twitch EventSub headers for signature verification.");
+    return false;
+  }
 
-    const hmacMessage = messageId + timestamp + rawBody;
-    const hmac = crypto.createHmac("sha256", EVENTSUB_SECRET);
-    hmac.update(hmacMessage);
-    const expectedSignature = "sha256=" + hmac.digest("hex");
+  // Correctly concatenate messageId + timestamp + rawBody as buffers
+  const messageBuffer = Buffer.concat([
+    Buffer.from(messageId, "utf8"),
+    Buffer.from(timestamp, "utf8"),
+    rawBody,
+  ]);
 
+  const hmac = crypto.createHmac("sha256", EVENTSUB_SECRET);
+  hmac.update(messageBuffer);
+  const expectedSignature = "sha256=" + hmac.digest("hex");
+
+  try {
     return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
     );
+  } catch {
+    // timingSafeEqual throws if buffers are not same length
+    return false;
+  }
 }

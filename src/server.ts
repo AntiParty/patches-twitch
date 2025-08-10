@@ -262,6 +262,7 @@ class TwitchEventSubWSClient {
 
   cleanupAndReconnect() {
     if (this.ws) {
+      this.hasSubscribed = false;
       this.ws.removeAllListeners();
       this.ws = null;
     }
@@ -373,7 +374,7 @@ class TwitchEventSubWSClient {
       this.subscribeToEvents();
     }
   }
-
+  private hasSubscribed = false;
   private async handleMessage(message: any) {
     const { metadata, payload } = message;
 
@@ -387,10 +388,12 @@ class TwitchEventSubWSClient {
         this.sessionId = payload.session.id;
         logger.info(`Session established with ID: ${this.sessionId}`);
 
-        // Add delay before subscribing
-        setTimeout(() => {
-          this.subscribeToEvents();
-        }, 1000);
+        if (!this.hasSubscribed) {
+          setTimeout(() => {
+            this.subscribeToEvents();
+            this.hasSubscribed = true;
+          }, 3000);
+        }
         break;
       case "session_keepalive":
         logger.debug("Received keepalive");

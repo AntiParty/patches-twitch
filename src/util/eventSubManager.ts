@@ -156,21 +156,31 @@ async function resubscribeAll() {
     return;
   }
 
+  if (activeSubscriptions.size === 0) {
+    logger.warn('No active subscriptions to resubscribe');
+    return;
+  }
+
+  logger.info(`Resubscribing ${activeSubscriptions.size} subscriptions with session ${sessionId}`);
   const token = await getAppAccessToken();
 
   for (const sub of activeSubscriptions.values()) {
     try {
-      await axios.post(
+      const payload = {
+        type: sub.type,
+        version: '1',
+        condition: sub.condition,
+        transport: {
+          method: 'websocket',
+          session_id: sessionId
+        }
+      };
+
+      logger.debug('Subscription request:', JSON.stringify(payload));
+
+      const response = await axios.post(
         'https://api.twitch.tv/helix/eventsub/subscriptions',
-        {
-          type: sub.type,
-          version: '1',
-          condition: sub.condition,
-          transport: {
-            method: 'websocket',
-            session_id: sessionId
-          }
-        },
+        payload,
         {
           headers: {
             'Client-ID': CLIENT_ID,
@@ -179,9 +189,19 @@ async function resubscribeAll() {
           }
         }
       );
-      logger.info(`Resubscribed to ${sub.type} for user ${sub.userId}`);
+
+      if (response.status === 202) {
+        logger.info(`Successfully resubscribed to ${sub.type} for user ${sub.userId}`);
+      } else {
+        logger.warn(`Unexpected status ${response.status} when resubscribing to ${sub.type} for user ${sub.userId}`);
+      }
     } catch (err: any) {
-      logger.error(`Failed to resubscribe to ${sub.type} for user ${sub.userId}:`, err.response?.data?.message || err.message);
+      const errorMessage = err.response?.data?.message || err.message;
+      const errorStatus = err.response?.status;
+      logger.error(`Failed to resubscribe to ${sub.type} for user ${sub.userId}. Status: ${errorStatus}, Error: ${errorMessage}`);
+      if (err.response?.data) {
+        logger.debug('Full error response:', JSON.stringify(err.response.data));
+      }
     }
   }
 }

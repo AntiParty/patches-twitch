@@ -15,7 +15,7 @@ const subscribeAllUsersToEventSub = async () => {
     }
     }
   }
-};
+
 
 (async () => {
   await subscribeAllUsersToEventSub();

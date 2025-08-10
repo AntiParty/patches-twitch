@@ -216,55 +216,75 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   });
 
   app.post(
-    "/eventsub/webhook",
-    bodyParser.raw({ type: "application/json" }),
-    (req, res) => {
-      const messageType = req.header("Twitch-Eventsub-Message-Type");
-      const rawBody = req.body;
+  "/eventsub/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  (req, res) => {
+    const messageType = req.header("Twitch-Eventsub-Message-Type");
+    const rawBody = req.body;
 
-      // Verify signature first
-      if (!verifyTwitchSignature(req, rawBody)) {
-        logger.warn("❌ Signature verification failed");
-        return res.status(403).send("Forbidden");
-      }
-
-      // Parse JSON after verification
-      let notification;
-      try {
-        notification = JSON.parse(rawBody.toString("utf8"));
-      } catch {
-        return res.status(400).send("Invalid JSON");
-      }
-
-      // Respond to webhook_callback_verification with challenge string
-      if (messageType === "webhook_callback_verification") {
-        logger.info("✅ Responding to Twitch verification challenge");
-        return res
-          .status(200)
-          .set("Content-Type", "text/plain")
-          .send(notification.challenge);
-      }
-
-      // Process notifications and revocations
-      if (messageType === "notification") {
-        res.sendStatus(204); // Acknowledge immediately
-        process.nextTick(() => {
-          // Your processing logic here...
-        });
-        return;
-      }
-
-      if (messageType === "revocation") {
-        logger.warn(
-          `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
-        );
-        return res.sendStatus(204);
-      }
-
-      // Unknown message type
-      res.sendStatus(400);
+    // Verify signature first
+    if (!verifyTwitchSignature(req, rawBody)) {
+      logger.warn("❌ Signature verification failed");
+      return res.status(403).send("Forbidden");
     }
-  );
+
+    // Parse JSON after verification
+    let notification;
+    try {
+      notification = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return res.status(400).send("Invalid JSON");
+    }
+
+    // Respond to webhook_callback_verification with challenge string
+    if (messageType === "webhook_callback_verification") {
+      logger.info("✅ Responding to Twitch verification challenge");
+      return res.status(200).set("Content-Type", "text/plain").send(notification.challenge);
+    }
+
+    // Process notifications and revocations
+    if (messageType === "notification") {
+      res.sendStatus(204); // Acknowledge immediately
+
+      process.nextTick(() => {
+        try {
+          const subType = notification.subscription.type;
+          const event = notification.event;
+          if (!event) {
+            logger.warn("Received notification with no event data");
+            return;
+          }
+
+          if (subType === "stream.online") {
+            logger.info(`${event.broadcaster_user_login} is now live!`);
+            // TODO: add your chat bot or Discord notification call here
+            // e.g. sendMessageToDiscord(`${event.broadcaster_user_login} just went live!`);
+          } else if (subType === "stream.offline") {
+            logger.info(`${event.broadcaster_user_login} has gone offline.`);
+            // TODO: add your chat bot or Discord notification call here
+          } else {
+            logger.info(`Received notification for subscription type: ${subType}`);
+          }
+        } catch (error) {
+          logger.error("Error processing EventSub notification:", error);
+        }
+      });
+
+      return;
+    }
+
+    if (messageType === "revocation") {
+      logger.warn(
+        `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
+      );
+      return res.sendStatus(204);
+    }
+
+    // Unknown message type
+    res.sendStatus(400);
+  }
+);
+
 
   app.get("/eventsub/status", async (req, res) => {
     try {

@@ -120,8 +120,7 @@ const scheduleTokenRefresh = (
       () => refreshTokenFunction(username, refreshToken),
       refreshTime
     );
-    //logger.info(`[${username}] Next token refresh scheduled in ${(refreshTime /1000 /60).toFixed(2)} minutes.`
-    );
+  //logger.info(`[${username}] Next token refresh scheduled in ${(refreshTime /1000 /60).toFixed(2)} minutes.`);
   } else {
     //logger.warn(`[${username}] Refresh time invalid, retrying in 1 minute.`);
     setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);

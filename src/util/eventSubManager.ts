@@ -24,28 +24,30 @@ const activeSubscriptions = new Map<string, {
     ws.terminate(); // Force close any existing connection
   }
 
-  // Initialize WebSocket with ping/pong settings
+  // Initialize WebSocket
   ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws', {
-    perMessageDeflate: false, // Disable compression for better stability
-    handshakeTimeout: 10000, // 10 second timeout for initial connection
+    perMessageDeflate: false // Disable compression for better stability
   });
 
-  // Set a ping interval (15 seconds)
-  const pingInterval = setInterval(() => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.ping();
+  // Set up keepalive monitoring
+  let lastKeepAliveTime = Date.now();
+  const keepAliveTimeout = 30000; // 30 seconds timeout (Twitch sends keepalive every ~15s)
+  
+  const keepAliveChecker = setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    
+    const timeSinceLastKeepalive = Date.now() - lastKeepAliveTime;
+    if (timeSinceLastKeepalive > keepAliveTimeout) {
+      logger.warn('No keepalive received for 30 seconds, reconnecting...');
+      ws.terminate();
+      clearInterval(keepAliveChecker);
     }
-  }, 15000);
+  }, 10000);
 
   ws.on('open', () => {
     logger.info('EventSub WebSocket connected');
     reconnectAttempts = 0;
-  });
-
-  ws.on('ping', () => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.pong();
-    }
+    lastKeepAliveTime = Date.now();
   });
 
   ws.on('message', async (data: WebSocket.Data) => {
@@ -65,7 +67,7 @@ const activeSubscriptions = new Map<string, {
 
         case 'session_reconnect':
           logger.info('Received reconnect message, updating connection...');
-          clearInterval(pingInterval); // Clear the ping interval before reconnecting
+          clearInterval(keepAliveChecker);
           setupWebSocket();
           break;
 
@@ -74,6 +76,7 @@ const activeSubscriptions = new Map<string, {
           break;
 
         case 'session_keepalive':
+          lastKeepAliveTime = Date.now();
           logger.debug('Received keepalive');
           break;
 
@@ -88,7 +91,7 @@ const activeSubscriptions = new Map<string, {
   ws.on('close', (code, reason) => {
     logger.warn(`EventSub WebSocket disconnected. Code: ${code}, Reason: ${reason}`);
     sessionId = null;
-    clearInterval(pingInterval); // Clean up ping interval
+    clearInterval(keepAliveChecker);
 
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;

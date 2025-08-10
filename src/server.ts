@@ -266,6 +266,38 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       res.sendStatus(204);
     }
   );
+  app.get("/eventsub/status", async (req, res) => {
+    try {
+        const token = await getAppAccessToken();
+
+        const response = await axios.get(
+            "https://api.twitch.tv/helix/eventsub/subscriptions",
+            {
+                headers: {
+                    "Client-ID": process.env.TWITCH_CLIENT_ID!,
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        logger.info("📋 Current EventSub Subscriptions:", response.data);
+
+        res.status(200).json({
+            count: response.data.total,
+            subscriptions: response.data.data.map((sub: any) => ({
+                id: sub.id,
+                type: sub.type,
+                status: sub.status,
+                created_at: sub.created_at,
+                broadcaster_user_id: sub.condition?.broadcaster_user_id,
+                callback: sub.transport?.callback,
+            })),
+        });
+    } catch (err: any) {
+        logger.error("❌ Failed to fetch EventSub subscriptions:", err?.response?.data || err.message);
+        res.status(500).json({ error: "Failed to fetch EventSub subscriptions" });
+    }
+});
 
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();

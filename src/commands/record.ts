@@ -100,5 +100,5 @@ export const execute = async (
     );
   }
 };
-
+export { streamStartScores };
 export const aliases = ["record", "wl", "winloss", "session"];

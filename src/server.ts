@@ -15,7 +15,6 @@ import path from "path";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
 import * as dotenv from "dotenv";
-import bodyParser from "body-parser";
 
 // Load environment file based on NODE_ENV
 const envFile =
@@ -198,9 +197,13 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
+  // This middleware handles the raw body for the webhook and JSON for all other routes.
   app.use((req, res, next) => {
-    if (req.path === "/eventsub/webhook") return next();
-    express.json()(req, res, next);
+    if (req.path === "/eventsub/webhook") {
+      express.raw({ type: "application/json" })(req, res, next);
+    } else {
+      express.json()(req, res, next);
+    }
   });
 
   if (process.env.NODE_ENV === "production") {
@@ -215,82 +218,77 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  app.post(
-    "/eventsub/webhook",
-    bodyParser.raw({ type: "application/json" }),
-    (req, res) => {
-      logger.info(`Webhook received - headers: ${JSON.stringify(req.headers)}`);
-      logger.info(`Raw body length: ${req.body.length}`);
+  app.post("/eventsub/webhook", (req, res) => {
+    // @ts-ignore
+    const rawBody = req.body;
+    const messageType = req.get("Twitch-Eventsub-Message-Type");
 
-      const messageType = req.get("Twitch-Eventsub-Message-Type");
-      logger.info(`Message-Type: ${messageType}`);
+    // This is the verification challenge handler.
+    if (messageType === "webhook_callback_verification") {
+      const challenge = req.body.challenge;
+      if (challenge) {
+        logger.info("✅ Responding to Twitch verification challenge");
+        // The correct response is a 200 OK with the challenge string as the body.
+        return res.status(200).send(challenge);
+      } else {
+        logger.error("❌ Webhook verification challenge missing.");
+        return res.status(400).send("Bad Request: Challenge not found.");
+      }
+    }
 
-      const rawBody = req.body;
-
-      /*
+    // This is the critical security step you had commented out.
+    // It's required for all notification and revocation messages.
     if (!verifyTwitchSignature(req, rawBody)) {
       logger.warn("❌ Signature verification failed");
       return res.status(403).send("Forbidden");
     }
-    */
 
-      let notification;
-      try {
-        notification = JSON.parse(rawBody.toString("utf8"));
-      } catch {
-        logger.warn("Invalid JSON in webhook payload");
-        return res.status(400).send("Invalid JSON");
-      }
+    // Now that the message is verified, we can parse the JSON.
+    const notification = JSON.parse(rawBody.toString("utf8"));
+    
+    if (messageType === "notification") {
+      // Respond immediately to the webhook to avoid timeouts.
+      res.sendStatus(204);
 
-      if (messageType === "webhook_callback_verification") {
-        logger.info("✅ Responding to Twitch verification challenge");
-        const challenge = notification.challenge;
-        res.set({
-          "Content-Type": "text/plain",
-          "Content-Length": Buffer.byteLength(challenge, "utf8").toString(),
-        });
-        return res.status(200).send(challenge);
-      }
-
-      if (messageType === "notification") {
-        res.sendStatus(204); // Acknowledge immediately
-        process.nextTick(() => {
-          try {
-            const subType = notification.subscription.type;
-            const event = notification.event;
-            if (!event) {
-              logger.warn("Received notification with no event data");
-              return;
-            }
-            if (subType === "stream.online") {
-              logger.info(`${event.broadcaster_user_login} is now live!`);
-              // sendMessageToDiscord(`${event.broadcaster_user_login} just went live!`);
-            } else if (subType === "stream.offline") {
-              logger.info(`${event.broadcaster_user_login} has gone offline.`);
-              // sendMessageToDiscord(`${event.broadcaster_user_login} just went offline.`);
-            } else {
-              logger.info(
-                `Received notification for subscription type: ${subType}`
-              );
-            }
-          } catch (error) {
-            logger.error("Error processing EventSub notification:", error);
+      // Process the event asynchronously.
+      process.nextTick(() => {
+        try {
+          const subType = notification.subscription.type;
+          const event = notification.event;
+          if (!event) {
+            logger.warn("Received notification with no event data");
+            return;
           }
-        });
-        return;
-      }
-
-      if (messageType === "revocation") {
-        logger.warn(
-          `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
-        );
-        return res.sendStatus(204);
-      }
-
-      // Unknown message type
-      return res.sendStatus(400);
+          if (subType === "stream.online") {
+            logger.info(`${event.broadcaster_user_login} is now live!`);
+            // You can uncomment this if your sendMessageToDiscord is working.
+            // sendMessageToDiscord(`${event.broadcaster_user_login} just went live!`);
+          } else if (subType === "stream.offline") {
+            logger.info(`${event.broadcaster_user_login} has gone offline.`);
+            // You can uncomment this if your sendMessageToDiscord is working.
+            // sendMessageToDiscord(`${event.broadcaster_user_login} just went offline.`);
+          } else {
+            logger.info(
+              `Received notification for subscription type: ${subType}`
+            );
+          }
+        } catch (error) {
+          logger.error("Error processing EventSub notification:", error);
+        }
+      });
+      return;
     }
-  );
+
+    if (messageType === "revocation") {
+      logger.warn(
+        `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
+      );
+      return res.sendStatus(204);
+    }
+
+    // Unknown message type
+    return res.sendStatus(400);
+  });
 
   app.get("/eventsub/status", async (req, res) => {
     try {

@@ -1,3 +1,35 @@
+// removed duplicate imports
+
+export async function subscribeUserToEventSub(userId: string, accessToken: string) {
+  const eventTypes = ["stream.online", "stream.offline"];
+  for (const type of eventTypes) {
+    try {
+      await axios.post(
+        "https://api.twitch.tv/helix/eventsub/subscriptions",
+        {
+          type,
+          version: "1",
+          condition: { broadcaster_user_id: userId },
+          transport: {
+            method: "webhook",
+            callback: process.env.EVENTSUB_CALLBACK_URL,
+            secret: process.env.EVENTSUB_SECRET,
+          },
+        },
+        {
+          headers: {
+            "Client-ID": process.env.TWITCH_ID!,
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      logger.info(`Subscribed ${userId} to ${type}`);
+    } catch (err: any) {
+      logger.error(`Failed to subscribe ${userId} to ${type}: ${err.response?.data?.message || err.message}`);
+    }
+  }
+}
 import axios from "axios";
 import crypto from "crypto";
 import logger from "./logger";

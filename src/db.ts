@@ -28,6 +28,10 @@ Channel.init(
       allowNull: true,
       defaultValue: null,
     },
+    twitch_user_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     access_token: {
       type: DataTypes.STRING,
       allowNull: true,

@@ -3,7 +3,23 @@ import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { verifyTwitchSignature } from "./util/eventSubManager"; // keep only verify function
+import { verifyTwitchSignature, subscribeUserToEventSub } from "./util/eventSubManager";
+// Subscribe all users to EventSub on startup
+const subscribeAllUsersToEventSub = async () => {
+  const channels = await Channel.findAll();
+  for (const channel of channels) {
+    const twitch_user_id = (channel as any).twitch_user_id || channel.get && channel.get('twitch_user_id');
+    const access_token = (channel as any).access_token || channel.get && channel.get('access_token');
+    if (twitch_user_id && access_token) {
+      await subscribeUserToEventSub(twitch_user_id, access_token);
+    }
+    }
+  }
+};
+
+(async () => {
+  await subscribeAllUsersToEventSub();
+})();
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
 import path from "path";
@@ -194,14 +210,57 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  // This middleware handles the raw body for the webhook and JSON for all other routes.
+  // Middleware for raw body (needed for Twitch signature verification)
   app.use((req: any, res, next) => {
     if (req.path === "/eventsub/webhook") {
-      // Removed eventsub webhook route, just skip parsing for now
-      return res.status(404).send("Not Found");
+      let data = Buffer.alloc(0);
+      req.on("data", (chunk: Buffer) => {
+        data = Buffer.concat([data, chunk]);
+      });
+      req.on("end", () => {
+        req.rawBody = data;
+        next();
+      });
     } else {
       express.json()(req, res, next);
     }
+  });
+
+  // EventSub webhook endpoint
+  app.post("/eventsub/webhook", async (req: any, res: Response) => {
+    // Twitch signature verification
+    const isValid = verifyTwitchSignature(req, req.rawBody);
+    if (!isValid) {
+      logger.warn("Invalid Twitch EventSub signature");
+      return res.status(403).send("Forbidden");
+    }
+
+    const messageType = req.headers["twitch-eventsub-message-type"];
+    if (messageType === "webhook_callback_verification") {
+      logger.info("Twitch EventSub webhook verification");
+      return res.status(200).send(req.body.challenge);
+    }
+
+    if (messageType === "notification") {
+      const event = req.body.event;
+      logger.info(`Received EventSub notification: ${req.body.subscription.type}`);
+      // TODO: Handle event types globally (e.g., stream.online, stream.offline)
+      // Example:
+      // if (req.body.subscription.type === "stream.online") {
+      //   // Do something when a user goes online
+      // }
+      // if (req.body.subscription.type === "stream.offline") {
+      //   // Do something when a user goes offline
+      // }
+      return res.status(200).send("OK");
+    }
+
+    if (messageType === "revocation") {
+      logger.warn(`EventSub subscription revoked: ${req.body.subscription.type}`);
+      return res.status(200).send("OK");
+    }
+
+    return res.status(200).send("OK");
   });
 
   if (process.env.NODE_ENV === "production") {
@@ -251,137 +310,86 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.send("");
   });
 
-  // GET /callback: Twitch OAuth code exchange
   app.get("/callback", async (req: Request, res: Response) => {
     const { code } = req.query;
     if (!code || typeof code !== "string") {
       return res.status(400).send("Invalid code");
     }
+
     try {
       const tokenResponse = await axios.post(
         "https://id.twitch.tv/oauth2/token",
         null,
         {
           params: {
-            client_id: process.env.TWITCH_CLIENT_ID,
-            client_secret: process.env.TWITCH_CLIENT_SECRET,
+            client_id: clientId,
+            client_secret: clientSecret,
             code,
             grant_type: "authorization_code",
-            redirect_uri: process.env.BASE_CALLBACK_URL,
+            redirect_uri: redirectUri,
           },
         }
       );
+
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
+      expirationTime = new Date().getTime() + expires_in * 1000;
+      accessToken = access_token;
+      refreshToken = refresh_token;
+
       const userResponse = await axios.get(
         "https://api.twitch.tv/helix/users",
         {
           headers: {
             Authorization: `Bearer ${access_token}`,
-            "Client-ID": process.env.TWITCH_CLIENT_ID,
+            "Client-ID": clientId,
           },
         }
       );
+
       const twitchUserId = userResponse.data.data[0].id;
-      const twitchUsername = userResponse.data.data[0].login;
+      twitchUsername = userResponse.data.data[0].login;
+
       await Channel.upsert({
         username: twitchUsername,
         access_token,
         refresh_token,
-        token_expires_at: new Date().getTime() + expires_in * 1000,
+        token_expires_at: expirationTime,
         twitch_user_id: twitchUserId,
       });
-      await startChatBot(twitchUsername, commandHandler);
-      logger.info(`Chatbot started for ${twitchUsername}`);
+
+      // Subscribe user to EventSub after authentication
+  await subscribeUserToEventSub(twitchUserId, access_token);
+
+  await startChatBot(twitchUsername || '', commandHandler);
+      sendMessageToDiscord(`${twitchUsername}`);
+      logger.info("Chatbot started successfully.");
+
+      const timeLeft = expirationTime - new Date().getTime();
+      const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+      const minutesLeft = Math.floor(
+        (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
+      );
+      const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
+      logger.info(
+        `Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
+      );
+
+      const refreshTime = timeLeft - 5 * 60 * 1000;
+      setTimeout(
+        () => refreshTokenFunction(twitchUsername!, refresh_token),
+        refreshTime
+      );
+
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/logo.png",
+        logoPath: "/logo.png", // relative to your static folder
         username: twitchUsername,
         botUsername: "FinalsRR",
       });
     } catch (error) {
-      logger.error("OAuth error:", error);
+      logger.error("Error during OAuth process:", error);
       res.status(500).send("Authentication failed");
     }
-  });
-
-  // POST /callback: Twitch EventSub webhook
-  app.post("/callback", express.raw({ type: "application/json" }), (req: Request, res: Response) => {
-    const messageId = req.header("Twitch-Eventsub-Message-Id");
-    const timestamp = req.header("Twitch-Eventsub-Message-Timestamp");
-    const signature = req.header("Twitch-Eventsub-Message-Signature");
-    const secret = process.env.TWITCH_EVENTSUB_SECRET;
-    const body = req.body;
-    // Verify signature
-    const crypto = require("crypto");
-    const hmac = crypto.createHmac("sha256", secret);
-    hmac.update(messageId + timestamp + body);
-    const expectedSig = "sha256=" + hmac.digest("hex");
-    if (signature !== expectedSig) {
-      logger.warn("Invalid EventSub signature");
-      return res.status(403).send("Forbidden");
-    }
-    let payload;
-    try {
-      payload = JSON.parse(body);
-    } catch {
-      return res.status(400).send("Invalid JSON");
-    }
-    // Respond to webhook verification
-    if (payload.challenge) {
-      return res.status(200).send(payload.challenge);
-    }
-    // Handle stream.online and stream.offline
-    if (payload.subscription && payload.event) {
-      const type = payload.subscription.type;
-      if (type === "stream.online" || type === "stream.offline") {
-        logger.info(`EventSub: ${type} for user ${payload.event.broadcaster_user_id}`);
-      }
-    }
-    res.status(200).end();
-  });
-
-  // POST /subscribe: Register EventSub subscriptions for multiple users
-  app.post("/subscribe", express.json(), async (req: Request, res: Response) => {
-    const { userIds } = req.body;
-    if (!Array.isArray(userIds)) {
-      return res.status(400).send("userIds must be an array");
-    }
-    const callbackUrl = process.env.BASE_CALLBACK_URL;
-    const secret = process.env.TWITCH_EVENTSUB_SECRET;
-    const clientId = process.env.TWITCH_CLIENT_ID;
-    const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
-    const results = [];
-    for (const userId of userIds) {
-      for (const type of ["stream.online", "stream.offline"]) {
-        try {
-          const resp = await axios.post(
-            "https://api.twitch.tv/helix/eventsub/subscriptions",
-            {
-              type,
-              version: "1",
-              condition: { broadcaster_user_id: userId },
-              transport: {
-                method: "webhook",
-                callback: callbackUrl,
-                secret,
-              },
-            },
-            {
-              headers: {
-                "Client-ID": clientId,
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          results.push({ userId, type, status: "subscribed" });
-        } catch (err) {
-          logger.error(`Failed to subscribe ${userId} to ${type}:`, err);
-          results.push({ userId, type, status: "error" });
-        }
-      }
-    }
-    res.json({ results });
   });
 
   return app;

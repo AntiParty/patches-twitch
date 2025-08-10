@@ -387,9 +387,10 @@ class TwitchEventSubWSClient {
         this.sessionId = payload.session.id;
         logger.info(`Session established with ID: ${this.sessionId}`);
 
-        await this.subscribeToEvents();
+        setTimeout(() => {
+          await this.subscribeToEvents();
+        }, 1000);
         break;
-
       case "session_keepalive":
         logger.debug("Received keepalive");
         break;

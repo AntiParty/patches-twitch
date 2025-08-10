@@ -2,11 +2,13 @@ import express, { Request, Response } from "express";
 import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
-import { startChatBot } from "./util/bot";
+import { startChatBot, reconnectChatBot } from "./util/bot";
+import { verifyTwitchSignature } from "./util/eventSubManager"; // keep only verify function
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
 import path from "path";
 import rateLimit from "express-rate-limit";
+import fs from "fs";
 import * as dotenv from "dotenv";
 
 // Load environment file based on NODE_ENV
@@ -19,6 +21,19 @@ dotenv.config({ path: path.resolve(__dirname, "..", envFile) });
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 const redirectUri = process.env.TWITCH_REDIRECT_URI!;
+const cacheFilePath = path.join(
+  __dirname,
+  "src",
+  "cache",
+  "connectedAccounts.json"
+);
+
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
+let expirationTime: number | null = null;
+let twitchUsername: string | null = null;
+
+const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -33,13 +48,161 @@ const getAuthUrl = () => {
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
+const refreshTokenFunction = async (username: string, refreshToken: string) => {
+  if (!refreshToken) {
+    logger.error(`No refresh token for ${username}`);
+    return;
+  }
+
+  try {
+    logger.info(`[${username}] Refreshing access token...`);
+    const response = await axios.post(
+      "https://id.twitch.tv/oauth2/token",
+      null,
+      {
+        params: {
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: "refresh_token",
+        },
+      }
+    );
+
+    const {
+      access_token,
+      refresh_token: newRefreshToken,
+      expires_in,
+    } = response.data;
+
+    const newExpirationTime = new Date(
+      new Date().getTime() + expires_in * 1000
+    );
+    await Channel.update(
+      {
+        access_token,
+        refresh_token: newRefreshToken,
+        token_expires_at: newExpirationTime,
+      },
+      { where: { username } }
+    );
+
+    logger.info(
+      `[${username}] Token refreshed. Expires in ${expires_in / 60} minutes.`
+    );
+    scheduleTokenRefresh(
+      username,
+      newRefreshToken,
+      expires_in * 1000 - 5 * 60 * 1000
+    );
+    await reconnectChatBot(username, commandHandler);
+    logger.info(`[${username}] Bot reconnected after token refresh.`);
+  } catch (error) {
+    logger.error(`[${username}] Token refresh failed:`, error);
+    logger.info("Retrying in 1 minute...");
+    setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);
+  }
+};
+
+const scheduleTokenRefresh = (
+  username: string,
+  refreshToken: string,
+  refreshTime: number
+) => {
+  if (refreshTimers[username]) clearTimeout(refreshTimers[username]);
+
+  if (refreshTime > 0) {
+    refreshTimers[username] = setTimeout(
+      () => refreshTokenFunction(username, refreshToken),
+      refreshTime
+    );
+    logger.info(
+      `[${username}] Next token refresh scheduled in ${(
+        refreshTime /
+        1000 /
+        60
+      ).toFixed(2)} minutes.`
+    );
+  } else {
+    logger.warn(`[${username}] Refresh time invalid, retrying in 1 minute.`);
+    setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);
+  }
+};
+
+export const validateToken = async (
+  username: string,
+  accessToken: string,
+  refreshToken: string
+) => {
+  try {
+    const response = await axios.get("https://id.twitch.tv/oauth2/validate", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const expiresIn = response.data.expires_in;
+    logger.info(
+      `[${username}] Token is valid. Expires in ${expiresIn / 60} minutes.`
+    );
+    scheduleTokenRefresh(
+      username,
+      refreshToken,
+      expiresIn * 1000 - 5 * 60 * 1000
+    );
+  } catch (error) {
+    logger.error(`[${username}] Token validation failed. Refreshing now...`);
+    refreshTokenFunction(username, refreshToken);
+  }
+};
+
+const validateAllTokens = async () => {
+  logger.info("Validating tokens for all users...");
+  const channels = await Channel.findAll();
+
+  for (const channel of channels) {
+    const { username, access_token, refresh_token, token_expires_at } = channel;
+    if (access_token && refresh_token && token_expires_at) {
+      const timeLeft =
+        new Date(token_expires_at).getTime() - new Date().getTime();
+      if (timeLeft > 0) {
+        await validateToken(username, access_token, refresh_token);
+      } else {
+        logger.info(`Token for ${username} has expired. Refreshing...`);
+        await refreshTokenFunction(username, refresh_token);
+      }
+    } else {
+      logger.warn(`No tokens found for ${username}, skipping...`);
+    }
+  }
+};
+
+const startTokenValidationInterval = () => {
+  const intervalTime = 15 * 1000;
+  setInterval(validateAllTokens, intervalTime);
+  logger.info(
+    `Started periodic token validation every ${intervalTime / 1000} seconds.`
+  );
+};
+
+export const loadTokensOnStartup = async () => {
+  logger.info("Loading stored tokens...");
+  await validateAllTokens();
+  startTokenValidationInterval();
+};
+
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
   const app = express();
   app.set("trust proxy", 1);
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  app.use(express.json());
+  // This middleware handles the raw body for the webhook and JSON for all other routes.
+  app.use((req: any, res, next) => {
+    if (req.path === "/eventsub/webhook") {
+      // Removed eventsub webhook route, just skip parsing for now
+      return res.status(404).send("Not Found");
+    } else {
+      express.json()(req, res, next);
+    }
+  });
 
   if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "frontend")));
@@ -53,7 +216,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  // Remove /eventsub webhook & status routes completely
+  // Removed /eventsub/webhook and /eventsub/status routes entirely
 
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
@@ -95,7 +258,6 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     }
 
     try {
-      // Get access token from Twitch
       const tokenResponse = await axios.post(
         "https://id.twitch.tv/oauth2/token",
         null,
@@ -111,18 +273,22 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       );
 
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
-      const expirationTime = new Date().getTime() + expires_in * 1000;
+      expirationTime = new Date().getTime() + expires_in * 1000;
+      accessToken = access_token;
+      refreshToken = refresh_token;
 
-      // Get user info from Twitch
-      const userResponse = await axios.get("https://api.twitch.tv/helix/users", {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-          "Client-ID": clientId,
-        },
-      });
+      const userResponse = await axios.get(
+        "https://api.twitch.tv/helix/users",
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            "Client-ID": clientId,
+          },
+        }
+      );
 
       const twitchUserId = userResponse.data.data[0].id;
-      const twitchUsername = userResponse.data.data[0].login;
+      twitchUsername = userResponse.data.data[0].login;
 
       await Channel.upsert({
         username: twitchUsername,
@@ -132,23 +298,31 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         twitch_user_id: twitchUserId,
       });
 
-      // Start chatbot but no EventSub subscriptions here
+      // Removed EventSub subscriptions here
+
       await startChatBot(twitchUsername, commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 
-      // Log token expiration
       const timeLeft = expirationTime - new Date().getTime();
       const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const minutesLeft = Math.floor(
+        (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
+      );
       const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
       logger.info(
         `Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
       );
 
+      const refreshTime = timeLeft - 5 * 60 * 1000;
+      setTimeout(
+        () => refreshTokenFunction(twitchUsername!, refresh_token),
+        refreshTime
+      );
+
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/logo.png",
+        logoPath: "/logo.png", // relative to your static folder
         username: twitchUsername,
         botUsername: "FinalsRR",
       });

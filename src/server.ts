@@ -185,6 +185,19 @@ export const loadTokensOnStartup = async () => {
 };
 
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
+  // Start EventSub WebSocket connection
+  connectEventSubWebSocket();
+
+  // Auto-subscribe all users on startup
+  import('./db').then(async ({ Channel }) => {
+    const users = await Channel.findAll();
+    users.forEach((user: any) => {
+      if (user.twitch_user_id && user.access_token) {
+        addUserSubscription(user.twitch_user_id, user.access_token, user.twitch_user_id);
+        logger.info(`[EventSubWs] Auto-subscribed ${user.username} (${user.twitch_user_id})`);
+      }
+    });
+  });
   const app = express();
   app.set("trust proxy", 1);
   app.set("view engine", "ejs");

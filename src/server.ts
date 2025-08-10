@@ -213,7 +213,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
-  app.post('/eventsub/webhook', express.json(), handleEventSubNotification);
+  app.post('/eventsub/webhook', express.raw({ type: 'application/json' }), handleEventSubWebhook);
   app.get("/health", async (req: Request, res: Response) => {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

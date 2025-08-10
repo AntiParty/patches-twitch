@@ -3,7 +3,7 @@ import axios from "axios";
 import { Channel } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { handleEventSubNotification } from "./util/eventSubManager";
+import { handleEventSubNotification, subscribeUserToEventSub } from "./util/eventSubManager";
 
 
 (async () => {

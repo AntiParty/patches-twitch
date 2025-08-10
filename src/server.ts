@@ -220,7 +220,9 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
   app.post("/eventsub/webhook", (req, res) => {
     // @ts-ignore
+    logger.info("Raw body:", req.body);
     const rawBody = req.body;
+    
     const messageType = req.get("Twitch-Eventsub-Message-Type");
 
     let notification;

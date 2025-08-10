@@ -223,13 +223,22 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     const rawBody = req.body;
     const messageType = req.get("Twitch-Eventsub-Message-Type");
 
+    let notification;
+    try {
+      notification = JSON.parse(rawBody.toString("utf8"));
+    } catch (err) {
+      logger.warn("Invalid JSON in webhook payload");
+      return res.status(400).send("Invalid JSON");
+    }
+
     // This is the verification challenge handler.
     if (messageType === "webhook_callback_verification") {
-      const challenge = req.body.challenge;
+      const challenge = notification.challenge;
       if (challenge) {
         logger.info("✅ Responding to Twitch verification challenge");
-        // The correct response is a 200 OK with the challenge string as the body.
-        return res.status(200).send(challenge);
+        // The correct response is a 200 OK with the challenge string as the body
+        // and Content-Type: text/plain.
+        return res.status(200).set("Content-Type", "text/plain").send(challenge);
       } else {
         logger.error("❌ Webhook verification challenge missing.");
         return res.status(400).send("Bad Request: Challenge not found.");
@@ -242,9 +251,6 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       logger.warn("❌ Signature verification failed");
       return res.status(403).send("Forbidden");
     }
-
-    // Now that the message is verified, we can parse the JSON.
-    const notification = JSON.parse(rawBody.toString("utf8"));
     
     if (messageType === "notification") {
       // Respond immediately to the webhook to avoid timeouts.

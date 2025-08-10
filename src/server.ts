@@ -47,7 +47,9 @@ const authLimiter = rateLimit({
 });
 
 const getAuthUrl = () => {
-  const scope = encodeURIComponent("channel:moderate user:read:chat user:bot channel:bot");
+  const scope = encodeURIComponent(
+    "channel:moderate user:read:chat user:bot channel:bot"
+  );
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
@@ -197,15 +199,25 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-  // This middleware handles the raw body for the webhook and JSON for all other routes.
   app.use((req, res, next) => {
     if (req.path === "/eventsub/webhook") {
-      express.raw({ type: "application/json" })(req, res, next);
+      let data = Buffer.alloc(0);
+      req.on("data", (chunk) => {
+        data = Buffer.concat([data, chunk]);
+      });
+      req.on("end", () => {
+        req.rawBody = data; // Keep exact bytes
+        try {
+          req.body = JSON.parse(data.toString("utf8"));
+        } catch {
+          req.body = {};
+        }
+        next();
+      });
     } else {
       express.json()(req, res, next);
     }
   });
-
   if (process.env.NODE_ENV === "production") {
     app.use(express.static(path.join(__dirname, "frontend")));
   }
@@ -219,78 +231,43 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   });
 
   app.post("/eventsub/webhook", (req, res) => {
-    // @ts-ignore
-    logger.info("Raw body:", req.body);
-    const rawBody = req.body;
-    
-    const messageType = req.get("Twitch-Eventsub-Message-Type");
+  const messageType = req.get("Twitch-Eventsub-Message-Type");
 
-    let notification;
-    try {
-      notification = JSON.parse(rawBody.toString("utf8"));
-    } catch (err) {
-      logger.warn("Invalid JSON in webhook payload");
-      return res.status(400).send("Invalid JSON");
+  // 1. Handle verification
+  if (messageType === "webhook_callback_verification") {
+    const challenge = req.body?.challenge;
+    if (challenge) {
+      logger.info("✅ Responding to Twitch verification challenge");
+      return res.status(200).set("Content-Type", "text/plain").send(challenge);
     }
+    return res.status(400).send("Bad Request: Challenge not found.");
+  }
 
-    if (messageType === "webhook_callback_verification") {
-      const challenge = notification.challenge;
-      if (challenge) {
-        logger.info("✅ Responding to Twitch verification challenge");
-        // Return plain text challenge exactly as Twitch requires
-        return res
-          .status(200)
-          .set("Content-Type", "text/plain")
-          .send(challenge);
-      } else {
-        logger.error("❌ Webhook verification challenge missing.");
-        return res.status(400).send("Bad Request: Challenge not found.");
-      }
-    }
+  // 2. Signature check
+  if (!verifyTwitchSignature(req, req.rawBody)) {
+    logger.warn("❌ Signature verification failed");
+    return res.status(403).send("Forbidden");
+  }
 
-    // Verify signature for all other message types (notification, revocation)
-    if (!verifyTwitchSignature(req, rawBody)) {
-      logger.warn("❌ Signature verification failed");
-      return res.status(403).send("Forbidden");
-    }
+  // 3. Handle notifications
+  if (messageType === "notification") {
+    res.sendStatus(204);
+    process.nextTick(() => {
+      const subType = req.body.subscription.type;
+      const event = req.body.event;
+      // Your event logic here...
+    });
+    return;
+  }
 
-    if (messageType === "notification") {
-      res.sendStatus(204);
-      process.nextTick(() => {
-        try {
-          const subType = notification.subscription.type;
-          const event = notification.event;
-          if (!event) {
-            logger.warn("Received notification with no event data");
-            return;
-          }
-          if (subType === "stream.online") {
-            logger.info(`${event.broadcaster_user_login} is now live!`);
-            // sendMessageToDiscord(`${event.broadcaster_user_login} just went live!`);
-          } else if (subType === "stream.offline") {
-            logger.info(`${event.broadcaster_user_login} has gone offline.`);
-            // sendMessageToDiscord(`${event.broadcaster_user_login} just went offline.`);
-          } else {
-            logger.info(
-              `Received notification for subscription type: ${subType}`
-            );
-          }
-        } catch (error) {
-          logger.error("Error processing EventSub notification:", error);
-        }
-      });
-      return;
-    }
+  // 4. Handle revocations
+  if (messageType === "revocation") {
+    logger.warn(`⚠️ Subscription revoked: ${req.body.subscription.type}`);
+    return res.sendStatus(204);
+  }
 
-    if (messageType === "revocation") {
-      logger.warn(
-        `⚠️ Subscription revoked: ${notification.subscription.type} — reason: ${notification.subscription.status}`
-      );
-      return res.sendStatus(204);
-    }
-
-    return res.sendStatus(400);
-  });
+  res.sendStatus(400);
+});
 
   app.get("/eventsub/status", async (req, res) => {
     try {

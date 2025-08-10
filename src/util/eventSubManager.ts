@@ -21,14 +21,31 @@ const activeSubscriptions = new Map<string, {
   condition: any;
 }>(); function setupWebSocket() {
   if (ws) {
-    ws.close();
+    ws.terminate(); // Force close any existing connection
   }
 
-  ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
+  // Initialize WebSocket with ping/pong settings
+  ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws', {
+    perMessageDeflate: false, // Disable compression for better stability
+    handshakeTimeout: 10000, // 10 second timeout for initial connection
+  });
+
+  // Set a ping interval (15 seconds)
+  const pingInterval = setInterval(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    }
+  }, 15000);
 
   ws.on('open', () => {
     logger.info('EventSub WebSocket connected');
     reconnectAttempts = 0;
+  });
+
+  ws.on('ping', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.pong();
+    }
   });
 
   ws.on('message', async (data: WebSocket.Data) => {
@@ -48,11 +65,16 @@ const activeSubscriptions = new Map<string, {
 
         case 'session_reconnect':
           logger.info('Received reconnect message, updating connection...');
+          clearInterval(pingInterval); // Clear the ping interval before reconnecting
           setupWebSocket();
           break;
 
         case 'revocation':
           logger.warn(`Subscription revoked: ${message.payload.subscription.type}`, message.payload);
+          break;
+
+        case 'session_keepalive':
+          logger.debug('Received keepalive');
           break;
 
         default:
@@ -63,16 +85,23 @@ const activeSubscriptions = new Map<string, {
     }
   });
 
-  ws.on('close', () => {
-    logger.warn('EventSub WebSocket disconnected');
+  ws.on('close', (code, reason) => {
+    logger.warn(`EventSub WebSocket disconnected. Code: ${code}, Reason: ${reason}`);
     sessionId = null;
+    clearInterval(pingInterval); // Clean up ping interval
 
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttempts++;
-      logger.info(`Attempting to reconnect in ${RECONNECT_INTERVAL}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
-      setTimeout(setupWebSocket, RECONNECT_INTERVAL);
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff with max 30s
+      logger.info(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+      setTimeout(setupWebSocket, delay);
     } else {
       logger.error('Max reconnection attempts reached');
+      // Reset reconnect attempts after a longer delay to try again
+      setTimeout(() => {
+        reconnectAttempts = 0;
+        setupWebSocket();
+      }, 60000);
     }
   });
 

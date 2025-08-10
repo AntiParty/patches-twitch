@@ -130,3 +130,23 @@ export function verifyTwitchSignature(req: any, rawBody: Buffer): boolean {
     return false;
   }
 }
+
+export async function subscriptionExists(type: string, broadcasterUserId: string) {
+  const token = await getAppAccessToken();
+  const response = await axios.get(
+    "https://api.twitch.tv/helix/eventsub/subscriptions",
+    {
+      headers: {
+        "Client-ID": CLIENT_ID,
+        Authorization: `Bearer ${token}`,
+      },
+      params: { "type": type, "status": "enabled" },
+    }
+  );
+  return response.data.data.some(
+    (sub: any) =>
+      sub.type === type &&
+      sub.condition?.broadcaster_user_id === broadcasterUserId &&
+      sub.status === "enabled"
+  );
+}

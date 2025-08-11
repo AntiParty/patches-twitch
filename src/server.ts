@@ -58,7 +58,7 @@ const getAuthUrl = () => {
 
 // Track token refresh failures for rare Discord alerts
 const tokenRefreshFailures: { [key: string]: number } = {};
-const refreshTokenFunction = async (username: string, refreshToken: string) => {
+const refreshTokenFunction = async (username: string, refreshToken: string, commandHandler: { [key: string]: Function }) => {
   if (!refreshToken) {
     logger.error(`No refresh token for ${username}`);
     sendMessageToDiscord(`Critical: No refresh token for ${username}. Manual intervention required.`);
@@ -104,7 +104,8 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
     scheduleTokenRefresh(
       username,
       newRefreshToken,
-      expires_in * 1000 - 5 * 60 * 1000
+      expires_in * 1000 - 5 * 60 * 1000,
+      commandHandler
     );
     await reconnectChatBot(username, commandHandler);
     logger.info(`[${username}] Bot reconnected after token refresh.`);
@@ -117,53 +118,52 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
     }
     logger.error(`[${username}] Token refresh failed:`, error);
     logger.info("Retrying in 1 minute...");
-    setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);
+  setTimeout(() => refreshTokenFunction(username, refreshToken, commandHandler), 60 * 1000);
   }
 };
 
 const scheduleTokenRefresh = (
   username: string,
   refreshToken: string,
-  refreshTime: number
+  refreshTime: number,
+  commandHandler: { [key: string]: Function }
 ) => {
   if (refreshTimers[username]) clearTimeout(refreshTimers[username]);
 
   if (refreshTime > 0) {
     refreshTimers[username] = setTimeout(
-      () => refreshTokenFunction(username, refreshToken),
+      () => refreshTokenFunction(username, refreshToken, commandHandler),
       refreshTime
     );
-  //logger.info(`[${username}] Next token refresh scheduled in ${(refreshTime /1000 /60).toFixed(2)} minutes.`);
   } else {
-    //logger.warn(`[${username}] Refresh time invalid, retrying in 1 minute.`);
-    setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);
+    setTimeout(() => refreshTokenFunction(username, refreshToken, commandHandler), 60 * 1000);
   }
 };
 
 export const validateToken = async (
   username: string,
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
+  commandHandler: { [key: string]: Function }
 ) => {
   try {
     const response = await axios.get("https://id.twitch.tv/oauth2/validate", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     const expiresIn = response.data.expires_in;
-    //logger.info(`[${username}] Token is valid. Expires in ${expiresIn / 60} minutes.`);
     scheduleTokenRefresh(
       username,
       refreshToken,
-      expiresIn * 1000 - 5 * 60 * 1000
+      expiresIn * 1000 - 5 * 60 * 1000,
+      commandHandler
     );
   } catch (error) {
     logger.error(`[${username}] Token validation failed. Refreshing now...`);
-    refreshTokenFunction(username, refreshToken);
+    refreshTokenFunction(username, refreshToken, commandHandler);
   }
 };
 
-const validateAllTokens = async () => {
-  //logger.info("Validating tokens for all users...");
+const validateAllTokens = async (commandHandler: { [key: string]: Function }) => {
   const channels = await Channel.findAll();
 
   for (const channel of channels) {
@@ -172,10 +172,10 @@ const validateAllTokens = async () => {
       const timeLeft =
         new Date(token_expires_at).getTime() - new Date().getTime();
       if (timeLeft > 0) {
-        await validateToken(username, access_token, refresh_token);
+        await validateToken(username, access_token, refresh_token, commandHandler);
       } else {
         logger.info(`Token for ${username} has expired. Refreshing...`);
-        await refreshTokenFunction(username, refresh_token);
+        await refreshTokenFunction(username, refresh_token, commandHandler);
       }
     } else {
       logger.warn(`No tokens found for ${username}, skipping...`);
@@ -183,18 +183,18 @@ const validateAllTokens = async () => {
   }
 };
 
-const startTokenValidationInterval = () => {
+const startTokenValidationInterval = (commandHandler: { [key: string]: Function }) => {
   const intervalTime = 15 * 1000;
-  setInterval(validateAllTokens, intervalTime);
+  setInterval(() => validateAllTokens(commandHandler), intervalTime);
   logger.info(
     `Started periodic token validation every ${intervalTime / 1000} seconds.`
   );
 };
 
-export const loadTokensOnStartup = async () => {
+export const loadTokensOnStartup = async (commandHandler: { [key: string]: Function }) => {
   logger.info("Loading stored tokens...");
-  await validateAllTokens();
-  startTokenValidationInterval();
+  await validateAllTokens(commandHandler);
+  startTokenValidationInterval(commandHandler);
 };
 
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
@@ -335,7 +335,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       const refreshTime = timeLeft - 5 * 60 * 1000;
       setTimeout(
-        () => refreshTokenFunction(twitchUsername!, refresh_token),
+        () => refreshTokenFunction(twitchUsername!, refresh_token, commandHandler),
         refreshTime
       );
 

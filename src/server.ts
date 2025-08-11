@@ -10,7 +10,6 @@ import session from 'express-session';
 // Ensure DB is ready before starting anything that uses Channel
 (async () => {
   await dbReady;
-  // ...existing code that uses Channel...
 })();
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
@@ -25,7 +24,6 @@ const envFile =
     ? ".env.production"
     : ".env.development";
 dotenv.config({ path: path.resolve(__dirname, "..", envFile) });
-
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 const redirectUri = process.env.TWITCH_REDIRECT_URI!;

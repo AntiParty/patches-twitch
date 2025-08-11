@@ -14,7 +14,6 @@ export const execute = async (client: Client, channel: string, message: string, 
             const publicCommands = [
                 '!help',
                 '!addaccount',
-                '!part',
                 '!rank',
                 '!record',
                 '!unlink',

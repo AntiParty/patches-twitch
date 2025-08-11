@@ -1,6 +1,6 @@
 # Patches-Twitch
 
-Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player stats, account linking, and other interactive commands for streamers
+Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player stats, account linking, and interactive commands for streamers. Used to be for Spectre divide now transfered over to THE FINALS
 
 ## Table of Contents
 - [Installation](#installation)
@@ -8,6 +8,7 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
 - [Running the Bot](#running-the-bot)
 - [Commands](#commands)
 - [Creating Commands](#creating-commands)
+- [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -18,7 +19,7 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    git clone https://github.com/yourusername/patches-twitch.git
    cd patches-twitch
    ```
-2. Install [Bun](https://bun.sh/) if you haven't already.
+2. Install [Bun](https://bun.sh/) if you haven't already:
    ```bash
    curl -fsSL https://bun.sh/install | bash
    ```
@@ -26,7 +27,6 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    ```bash
    bun install
    ```
-
 
 ## Configuration
 
@@ -56,7 +56,6 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    bun run dev
    ```
 
-
 ## Commands
 
 The bot supports the following commands:
@@ -69,13 +68,16 @@ The bot supports the following commands:
 - `!record`: Show the overall record.
 - `!resetdb`: Reset the database (restricted to specific users).
 - `!unlink`: Unlink the account and make the bot leave the channel.
+- `!wipesubs`: Remove all EventSub subscriptions (admin only).
 
 ## Creating Commands
-Commands are structured as individual modules using TypeScript and `tmi.js`. Each command requires an `execute` function and can include aliases.
+
+Commands are structured as individual modules in `src/commands/` using TypeScript and `tmi.js`. Each command exports an `execute` function and can include aliases.
 
 ### Example: Help Command
 
 ```typescript
+// filepath: src/commands/help.ts
 import { Client, Userstate } from 'tmi.js';
 
 export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
@@ -97,7 +99,6 @@ export const execute = async (client: Client, channel: string, message: string, 
     }
 };
 
-// Define aliases for this command
 export const aliases = ['commands', 'info', 'h'];
 ```
 
@@ -108,6 +109,22 @@ export const aliases = ['commands', 'info', 'h'];
 - `message`: The full message text.
 - `tags`: User metadata such as `display-name` and `id`.
 - `aliases`: Alternative names for triggering the command.
+
+## Project Structure
+
+```
+src/
+  commands/         # Individual command modules
+  handlers/         # Discord, EventSub, and command handlers
+  jobs/             # Background jobs (cache updater, etc.)
+  models/           # Database models
+  util/             # Utility functions (bot, logger, Twitch helpers)
+  cache/            # Cached data files
+  frontend/         # EJS templates and static assets
+  db.ts             # Database setup
+  server.ts         # Express server and OAuth logic
+  index.ts          # Entry point
+```
 
 ## Contributing
 

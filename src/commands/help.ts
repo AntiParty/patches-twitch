@@ -10,10 +10,21 @@ export const execute = async (client: Client, channel: string, message: string, 
             return;
         }
 
-        const replyMessage = `WIP: This is a placeholder for the help command. Please check back later for more information.`;
 
-        // send a reply message
-        client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);
+            const publicCommands = [
+                '!help',
+                '!addaccount',
+                '!part',
+                '!rank',
+                '!record',
+                '!unlink',
+            ];
+
+            const discordLink = 'https://discord.gg/2UKzvzSEqA';
+            const replyMessage = `Available commands: ${publicCommands.join(', ')} | Need help or want to report an issue? Join our Discord: ${discordLink}`;
+
+            // send a reply message
+            client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);
     } catch (error) {
         console.error('Error executing help command:', error);
     }

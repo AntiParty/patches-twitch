@@ -52,7 +52,9 @@ Channel.init(
   }
 );
 
-// Sync the database
-sequelize.sync().then(() => console.log('Database synced.'));
+// Sync the database and export a promise for sync completion
+const dbReady = sequelize.sync().then(() => {
+  console.log('Database synced.');
+});
 
-export { sequelize, Channel };
+export { sequelize, Channel, dbReady };

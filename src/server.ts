@@ -1,12 +1,16 @@
 import express, { Request, Response } from "express";
 import axios from "axios";
-import { Channel } from "./db";
+import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
 import { connectEventSubWebSocket, addUserSubscription } from "./util/twitchEventSubWs";
+import session from 'express-session';
 
 
+// Ensure DB is ready before starting anything that uses Channel
 (async () => {
+  await dbReady;
+  // ...existing code that uses Channel...
 })();
 import { loadCommands } from "./handlers/commands";
 import logger from "./util/logger";
@@ -52,9 +56,12 @@ const getAuthUrl = () => {
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
+// Track token refresh failures for rare Discord alerts
+const tokenRefreshFailures: { [key: string]: number } = {};
 const refreshTokenFunction = async (username: string, refreshToken: string) => {
   if (!refreshToken) {
     logger.error(`No refresh token for ${username}`);
+    sendMessageToDiscord(`Critical: No refresh token for ${username}. Manual intervention required.`);
     return;
   }
 
@@ -101,7 +108,13 @@ const refreshTokenFunction = async (username: string, refreshToken: string) => {
     );
     await reconnectChatBot(username, commandHandler);
     logger.info(`[${username}] Bot reconnected after token refresh.`);
+    tokenRefreshFailures[username] = 0; // Reset on success
   } catch (error) {
+    tokenRefreshFailures[username] = (tokenRefreshFailures[username] || 0) + 1;
+    // Only alert on Discord if failure is rare/critical (e.g., 3 consecutive failures)
+    if (tokenRefreshFailures[username] === 3 || tokenRefreshFailures[username] % 10 === 0) {
+      sendMessageToDiscord(`Critical: Token refresh failed for ${username} ${tokenRefreshFailures[username]} times. Manual intervention may be required.`);
+    }
     logger.error(`[${username}] Token refresh failed:`, error);
     logger.info("Retrying in 1 minute...");
     setTimeout(() => refreshTokenFunction(username, refreshToken), 60 * 1000);
@@ -203,13 +216,10 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "frontend"));
 
-
   // Use JSON middleware for all routes
   app.use(express.json());
 
-  if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "frontend")));
-  }
+  app.use(express.static(path.join(__dirname, "frontend")));
 
   app.use("/callback", authLimiter);
 
@@ -232,6 +242,11 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       dbHealthy = true;
     } catch (error) {
       logger.error("DB connection failed during health check:", error);
+      // Alert only if DB is persistently down (rare case)
+      if (!globalThis.__dbDownAlerted) {
+        sendMessageToDiscord("Critical: Database connection failed during health check. Manual intervention required.");
+        globalThis.__dbDownAlerted = true;
+      }
     }
 
     res.status(dbHealthy ? 200 : 500).json({
@@ -251,8 +266,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   });
 
   app.get("/", (req: Request, res: Response) => {
-    res.send("");
-  });
+  res.sendFile(path.join(__dirname, "frontend", "index.html"));
+});
 
   app.get("/callback", async (req: Request, res: Response) => {
     const { code } = req.query;

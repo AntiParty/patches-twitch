@@ -52,9 +52,34 @@ Channel.init(
   }
 );
 
+class StreamSession extends Model {}
+StreamSession.init(
+  {
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    start_score: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    started_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'StreamSession',
+    tableName: 'StreamSessions',
+  }
+);
+
 // Sync the database and export a promise for sync completion
 const dbReady = sequelize.sync().then(() => {
   console.log('Database synced.');
 });
 
-export { sequelize, Channel, dbReady };
+export { sequelize, Channel, StreamSession ,dbReady };

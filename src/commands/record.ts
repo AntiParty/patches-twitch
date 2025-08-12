@@ -2,13 +2,13 @@ import { Client, Userstate } from "tmi.js";
 import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
-import { Channel } from "../db";
+import { Channel, StreamSession } from "../db";
 import { getStreamStatusWithAutoRefresh } from "../util/twitchutils";
 
 const CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/leaderboardCache.json");
+const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/WTrankCache.json");
 
-// In-memory tracker for stream start rankScore
-const streamStartScores: Record<string, number> = {};
+// Persistent tracker for stream start rankScore using DB
 
 async function getCachedLeaderboardData() {
   try {
@@ -17,6 +17,17 @@ async function getCachedLeaderboardData() {
     return Array.isArray(parsed) ? parsed : null;
   } catch (err) {
     logger.error("[record.ts] Failed to read leaderboard cache:", err);
+    return null;
+  }
+}
+
+async function getWorldTourData() {
+  try {
+    const raw = await fs.readFile(WT_CACHE_FILE_PATH, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (err) {
+    logger.error("[record.ts] Failed to read World Tour leaderboard cache:", err);
     return null;
   }
 }
@@ -37,8 +48,8 @@ export const execute = async (
   }
 
   try {
-    const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
-    const playerId = channelInstance?.player_id;
+  const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } }) as any;
+  const playerId = channelInstance?.player_id;
 
     if (!playerId) {
       client.raw(
@@ -54,45 +65,59 @@ export const execute = async (
     }
 
     const cachedData = await getCachedLeaderboardData();
-    if (!cachedData) {
+    const worldTourData = await getWorldTourData();
+    if (!cachedData && !worldTourData) {
       client.raw(
         `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, leaderboard data is temporarily unavailable.`
       );
       return;
     }
 
-    const finalsName = playerId.toLowerCase();
-    let player = cachedData.find((entry: any) => entry.name.toLowerCase() === finalsName);
-    if (!player) {
-      const baseName = finalsName.split("#")[0];
-      player = cachedData.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
-    }
+      const finalsName = playerId.toLowerCase();
+      // Helper to find player by exact or base name match
+      const findPlayer = (data: any[] | null, name: string) => {
+        if (!data) return null;
+        let player = data.find((entry: any) => entry.name.toLowerCase() === name);
+        if (!player && name.includes("#")) {
+          const baseName = name.split("#")[0];
+          player = data.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
+        }
+        return player;
+      };
 
-    if (!player) {
+      const player = findPlayer(cachedData, finalsName);
+      const wtPlayer = findPlayer(worldTourData, finalsName);
+
+      if (!player && !wtPlayer) {
+        client.raw(
+          `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, you aren't currently in the Top 1000 or WT leaderboard.`
+        );
+        return;
+      }
+
+      const currentScore = player?.rankScore ?? 0;
+      // Use persistent session tracking
+    let session = await StreamSession.findOne({ where: { channel: sanitizedChannel } }) as any;
+      if (!session) {
+        await StreamSession.create({ channel: sanitizedChannel, start_score: currentScore });
+        let response = `@${username}, tracking started at ${currentScore.toLocaleString()} RS`;
+        if (wtPlayer) response += ` | WT rank: #${wtPlayer.rank}`;
+        client.raw(
+          `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`
+        );
+        return;
+      }
+
+    const diff = currentScore - session.start_score;
+      const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
+      const absDiff = Math.abs(diff);
+
+      let response = `@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`;
+      if (wtPlayer) response += ` | WT rank: #${wtPlayer.rank}`;
+
       client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, you aren't currently in the Top 1000.`
+        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`
       );
-      return;
-    }
-
-    const currentScore = player.rankScore;
-    const streamKey = sanitizedChannel;
-
-    if (!(streamKey in streamStartScores)) {
-      streamStartScores[streamKey] = currentScore;
-      client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, tracking started at ${currentScore.toLocaleString()} RS`
-      );
-      return;
-    }
-
-    const diff = currentScore - streamStartScores[streamKey];
-    const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
-    const absDiff = Math.abs(diff);
-
-    client.raw(
-      `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`
-    );
   } catch (error) {
     logger.error("[record.ts] Error in record command:", error);
     client.raw(
@@ -100,5 +125,5 @@ export const execute = async (
     );
   }
 };
-export { streamStartScores };
+// Removed unused export for streamStartScores
 export const aliases = ["record", "wl", "winloss", "session"];

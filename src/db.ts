@@ -74,6 +74,7 @@ StreamSession.init(
     sequelize,
     modelName: 'StreamSession',
     tableName: 'StreamSessions',
+    timestamps: false // Disable createdAt/updatedAt columns
   }
 );
 

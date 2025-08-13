@@ -12,3 +12,4 @@ src/jobs/WTrankCache.json
 .env.development
 .env.production
 src/util/eventSubManager.ts.bak
+paidTwitchAccountService.md

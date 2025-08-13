@@ -10,11 +10,11 @@ console.log('Using SQLite: true (forced)');
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: path.resolve(__dirname, '../accounts.sqlite'), // Absolute path for safety
+  storage: path.resolve(__dirname, '../accounts.sqlite'),
   logging: false,
 });
 
-// Define the Channel model
+// Channel model
 class Channel extends Model {}
 Channel.init(
   {
@@ -74,7 +74,7 @@ StreamSession.init(
     sequelize,
     modelName: 'StreamSession',
     tableName: 'StreamSessions',
-    timestamps: false // Disable createdAt/updatedAt columns
+    timestamps: false 
   }
 );
 

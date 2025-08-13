@@ -68,8 +68,7 @@ export function connectEventSubWebSocket() {
       // Auto-start tracking when stream goes live
       if (msg.payload.subscription.type === 'stream.online') {
         const channelName = msg.payload.event.broadcaster_user_login;
-        // Find the channel instance in DB
-        const { Channel } = require('../db');
+        const { Channel, StreamSession } = require('../db');
         Channel.findOne({ where: { username: channelName } }).then(async (channelInstance: any) => {
           const playerId = channelInstance?.player_id;
           if (!playerId) {
@@ -90,7 +89,7 @@ export function connectEventSubWebSocket() {
           }
           const finalsName = playerId.toLowerCase();
           let player = cachedData.find((entry: any) => entry.name.toLowerCase() === finalsName);
-          if (!player) {
+          if (!player && finalsName.includes('#')) {
             const baseName = finalsName.split('#')[0];
             player = cachedData.find((entry: any) => entry.name.toLowerCase().startsWith(baseName));
           }
@@ -98,10 +97,14 @@ export function connectEventSubWebSocket() {
             logger.info(`[EventSubWs] ${channelName} isn't currently in the Top 1000.`);
             return;
           }
-          // Set initial score for tracking
-          const record = require('../commands/record');
-          record.streamStartScores[channelName] = player.rankScore;
-          logger.info(`[EventSubWs] Tracking started for ${channelName} at ${player.rankScore}`);
+          // Auto-start session tracking in DB
+          let session = await StreamSession.findOne({ where: { channel: channelName } });
+          if (!session) {
+            await StreamSession.create({ channel: channelName, start_score: player.rankScore });
+            logger.info(`[EventSubWs] Auto-tracking started for ${channelName} at ${player.rankScore}`);
+          } else {
+            logger.info(`[EventSubWs] Session already exists for ${channelName}`);
+          }
         });
       }
     } else if (type === 'session_keepalive') {

@@ -71,19 +71,45 @@
     <main>
       <div class="success-message">
         <img src="<%= logoPath || 'logo.png' %>" alt="Logo" class="logo">
-        <h1>Welcome <%= username %>!</h1>
-        <p>You’ve successfully authenticated with <strong>FinalsRR</strong>.</p>
-        <p>
-          You’ve successfully authenticated with Twitch.<br>
-          Please do <code>/mod <%= botUsername || 'FinalsRR' %></code>
-          to begin, then type <code>!help</code> in your chat to see available
-          commands.
-        </p>
-        <% if (username) { %>
-        <a href="https://twitch.tv/<%= username %>" target="_blank"
-          class="channel-button">
-          Go to My Twitch Channel
-        </a>
+        <% if (title === 'Dashboard Login') { %>
+          <h1>Dashboard Login</h1>
+          <form id="loginForm" style="margin-top:2em;">
+            <input type="password" id="password" placeholder="Dashboard Password" style="padding:0.5em;width:80%;font-size:1em;border-radius:6px;border:none;">
+            <br><br>
+            <button type="submit" class="channel-button">Login</button>
+          </form>
+          <div id="loginError" style="color:#ff6666;margin-top:1em;"></div>
+          <script>
+            document.getElementById('loginForm').onsubmit = async function(e) {
+              e.preventDefault();
+              const password = document.getElementById('password').value;
+              const res = await fetch('/dashboard-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+              });
+              if (res.ok) {
+                window.location = '/dashboard';
+              } else {
+                document.getElementById('loginError').innerText = 'Invalid password.';
+              }
+            };
+          </script>
+        <% } else { %>
+          <h1>Welcome <%= username %>!</h1>
+          <p>You’ve successfully authenticated with <strong>FinalsRR</strong>.</p>
+          <p>
+            You’ve successfully authenticated with Twitch.<br>
+            Please do <code>/mod <%= botUsername || 'FinalsRR' %></code>
+            to begin, then type <code>!help</code> in your chat to see available
+            commands.
+          </p>
+          <% if (username) { %>
+          <a href="https://twitch.tv/<%= username %>" target="_blank"
+            class="channel-button">
+            Go to My Twitch Channel
+          </a>
+          <% } %>
         <% } %>
       </div>
     </main>

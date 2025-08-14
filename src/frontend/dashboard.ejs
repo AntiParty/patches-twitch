@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2em;
+    }
+
+    /* Profile section */
+    .profile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 3em;
+    }
+    .profile img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid #9147ff;
+      object-fit: cover;
+      margin-bottom: 1em;
+    }
+    .profile h1 {
+      font-size: 2em;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    /* Commands container */
+    .commands-container {
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 1em;
+    }
+    .commands-container h2 {
+      margin-bottom: 0.5em;
+      color: #9147ff;
+      font-size: 1.6em;
+      border-bottom: 2px solid #9147ff33;
+      padding-bottom: 0.3em;
+    }
+
+    /* Command card style */
+    .command-card {
+      background: #1c1c24;
+      padding: 1em;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1em;
+    }
+    .command-card input {
+      background: #222;
+      border: 1px solid #9147ff;
+      color: #fff;
+      font-size: 1.05em;
+      padding: 0.4em 0.6em;
+      border-radius: 6px;
+      width: 45%;
+    }
+    .command-card input:focus {
+      outline: none;
+      border-color: #66ff99;
+    }
+    .command-output {
+      background: #222;
+      border: 1px solid #9147ff;
+      color: #fff;
+      font-size: 1.05em;
+      padding: 0.4em 0.6em;
+      border-radius: 6px;
+      width: 45%;
+    }
+
+    @media (max-width: 600px) {
+      .profile img {
+        width: 90px;
+        height: 90px;
+      }
+      .commands-container {
+        width: 95%;
+      }
+      .command-card input,
+      .command-output {
+        width: 45%;
+        font-size: 0.95em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Profile -->
+  <div class="profile">
+    <img src="<%= profileImage || logoPath %>" alt="Profile">
+    <h1>Welcome, <%= username ? username : 'Twitch User' %>!</h1>
+  </div>
+
+  <!-- Commands -->
+  <div class="commands-container">
+    <h2>Commands</h2>
+
+    <div class="command-card">
+      <input type="text" value="!hello">
+      <input class="command-output" type="text" value="Hello!">
+    </div>
+
+    <div class="command-card">
+      <input type="text" value="!uptime">
+      <input class="command-output" type="text" value="Bot has been online for 3 hours">
+    </div>
+
+    <div class="command-card">
+      <input type="text" value="!help">
+      <input class="command-output" type="text" value="Lists all available commands">
+    </div>
+
+  </div>
+
+</body>
+</html>

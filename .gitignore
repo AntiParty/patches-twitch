@@ -13,3 +13,4 @@ src/jobs/WTrankCache.json
 .env.production
 src/util/eventSubManager.ts.bak
 paidTwitchAccountService.md
+/twitch-api-playground

@@ -248,7 +248,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     }
 
     // Get version from package.json
-    const { version } = require("../../package.json");
+    const { version } = require("../package.json");
     res.status(dbHealthy ? 200 : 500).json({
       status: dbHealthy ? "ok" : "error",
       version,

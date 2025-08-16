@@ -44,15 +44,19 @@ export const startChatBot = async (
       const rawCommand = message.trim().split(" ")[0].toLowerCase();
       const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
 
-      const commandEntry = commandHandler[rawCommand];
-      if (typeof commandEntry === "function") {
-        await commandEntry(client, channel, message, tags, args);
-      }
-
-      if (rawCommand === "!test") {
-        client.say(channel, `Hello ${tags["display-name"] || tags.username}!`);
-        return;
-      }
+        const commandEntry = commandHandler[rawCommand];
+        if (!commandEntry) {
+          // Optionally notify user of unknown command
+          // client.say(channel, `Unknown command: ${rawCommand}`);
+          return;
+        }
+        if (typeof commandEntry === "function") {
+          await commandEntry(client, channel, message, tags, args);
+        }
+        if (rawCommand === "!test") {
+          client.say(channel, `Hello ${tags["display-name"] || tags.username}!`);
+          return;
+        }
     });
 
     client.on("connected", (addr, port) => {

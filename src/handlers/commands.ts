@@ -15,17 +15,19 @@ export const loadCommands = () => {
             if (command && typeof command.execute === 'function') {
                 const mainKey = `!${commandName.toLowerCase()}`;
                 if (commandHandler[mainKey]) {
-                    console.warn(`Duplicate command name detected: ${mainKey}. Overwriting.`);
+                    console.warn(`Duplicate command name detected: ${mainKey}. Skipping.`);
+                } else {
+                    commandHandler[mainKey] = command.execute;
                 }
-                commandHandler[mainKey] = command.execute;
 
                 if (Array.isArray(command.aliases)) {
                     command.aliases.forEach((alias: string) => {
                         const aliasKey = `!${alias.toLowerCase()}`;
                         if (commandHandler[aliasKey]) {
-                            console.warn(`Duplicate alias detected: ${aliasKey}. Overwriting.`);
+                            console.warn(`Duplicate alias detected: ${aliasKey}. Skipping.`);
+                        } else {
+                            commandHandler[aliasKey] = command.execute;
                         }
-                        commandHandler[aliasKey] = command.execute;
                     });
                 } else if (command.aliases) {
                     console.warn(`Aliases for command "${commandName}" are not an array.`);

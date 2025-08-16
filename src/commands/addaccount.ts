@@ -12,12 +12,11 @@ export const execute = async (
   try {
     const sanitizedChannel = channel.replace(/^#/, '');
     const username = tags['display-name'];
-    const messageId = tags['id'];
 
-    if (!username || !messageId) {
-      logger.error('Missing username or message ID.');
-      return;
-    }
+      if (!username) {
+        logger.error('Missing username.');
+        return;
+      }
 
     // Case-insensitive permission check
     const usernameLower = username.toLowerCase();
@@ -28,16 +27,12 @@ export const execute = async (
       !tags['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
-      client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, you do not have permission to run this command.`
-      );
+      client.say(channel, `@${username}, you do not have permission to run this command.`);
       return;
     }
 
     if (!args || args.length < 1) {
-      client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, please provide a valid player ID.`
-      );
+      client.say(channel, `@${username}, please provide a valid player ID.`);
       return;
     }
 
@@ -46,23 +41,27 @@ export const execute = async (
 
     let channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
 
-    if (!channelInstance) {
-      await Channel.create({ username: sanitizedChannel, player_id: playerId });
-      client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`
-      );
-    } else {
-      channelInstance.player_id = playerId;
-      await channelInstance.save();
-      client.raw(
-        `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, your account has been successfully linked with player ID: ${playerId}`
-      );
-    }
+      if (!channelInstance) {
+        try {
+          await Channel.create({ username: sanitizedChannel, player_id: playerId });
+          client.say(channel, `@${username}, your account has been successfully linked with player ID: ${playerId}`);
+        } catch (err: any) {
+          if (err.name === 'SequelizeUniqueConstraintError') {
+            client.say(channel, `@${username}, this channel is already registered.`);
+          } else {
+            logger.error('Error creating channel:', err);
+            client.say(channel, `@${username}, there was an error linking your account.`);
+          }
+        }
+      } else {
+    (channelInstance as any).player_id = playerId;
+    await channelInstance.save();
+    client.say(channel, `@${username}, your account has been successfully linked with player ID: ${playerId}`);
+      }
   } catch (error) {
     logger.error('Error executing command:', error);
-    client.raw(
-      `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, there was an error executing the command.`
-    );
+    const displayName = tags['display-name'] || 'user';
+    client.say(channel, `@${displayName}, there was an error executing the command.`);
   }
 };
 

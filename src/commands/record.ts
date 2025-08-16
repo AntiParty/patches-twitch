@@ -96,28 +96,37 @@ export const execute = async (
       }
 
       const currentScore = player?.rankScore ?? 0;
-      // Use persistent session tracking
+    // Use persistent session tracking, now with WT rank
     let session = await StreamSession.findOne({ where: { channel: sanitizedChannel } }) as any;
-      if (!session) {
-        await StreamSession.create({ channel: sanitizedChannel, start_score: currentScore });
-        let response = `@${username}, tracking started at ${currentScore.toLocaleString()} RS`;
-        if (wtPlayer) response += ` | WT rank: #${wtPlayer.rank}`;
-        client.raw(
-          `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`
-        );
-        return;
-      }
-
-    const diff = currentScore - session.start_score;
-      const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
-      const absDiff = Math.abs(diff);
-
-      let response = `@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`;
+    const currentWTRank = wtPlayer?.rank ?? null;
+    if (!session) {
+      await StreamSession.create({ channel: sanitizedChannel, start_score: currentScore, start_wt_rank: currentWTRank });
+      let response = `@${username}, tracking started at ${currentScore.toLocaleString()} RS`;
       if (wtPlayer) response += ` | WT rank: #${wtPlayer.rank}`;
-
       client.raw(
         `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`
       );
+      return;
+    }
+
+    const diff = currentScore - session.start_score;
+    const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
+    const absDiff = Math.abs(diff);
+
+    let response = `@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`;
+    // Show WT rank change if available
+    if (wtPlayer && typeof session.start_wt_rank === "number" && typeof currentWTRank === "number") {
+      const wtDiff = session.start_wt_rank - currentWTRank; // Lower rank number is better
+      const wtSign = wtDiff > 0 ? "+" : wtDiff < 0 ? "-" : "±";
+      const absWtDiff = Math.abs(wtDiff);
+      response += ` | WT rank: #${currentWTRank} (${wtSign}${absWtDiff} from start)`;
+    } else if (wtPlayer) {
+      response += ` | WT rank: #${wtPlayer.rank}`;
+    }
+
+    client.raw(
+      `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`
+    );
   } catch (error) {
     logger.error("[record.ts] Error in record command:", error);
     client.raw(

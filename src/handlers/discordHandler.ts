@@ -41,8 +41,14 @@ export const sendDiscordAlert = async (options: {
   };
   try {
     await axios.post(discordWebhookUrl, { embeds: [embed] });
-  } catch (error) {
-    console.error('Failed to send embed message to Discord webhook:', error);
+  } catch (error: any) {
+    if (error.response) {
+      console.error('Discord webhook responded with error:', error.response.status, error.response.data);
+    } else if (error.request) {
+      console.error('No response from Discord webhook:', error.request);
+    } else {
+      console.error('Failed to send embed message to Discord webhook:', error.message);
+    }
   }
 };
 

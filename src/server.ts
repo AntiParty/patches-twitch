@@ -1,4 +1,5 @@
 import express, { Request, Response } from "express";
+import client from 'prom-client';
 import axios from "axios";
 import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "./db";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
@@ -38,6 +39,23 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let expirationTime: number | null = null;
 let twitchUsername: string | null = null;
+
+// Prometheus metrics setup
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics();
+
+// Custom metrics
+const commandCounter = new client.Counter({
+  name: 'twitchbot_command_total',
+  help: 'Total number of commands received',
+  labelNames: ['command']
+});
+
+const apiErrorCounter = new client.Counter({
+  name: 'twitchbot_api_errors_total',
+  help: 'Total number of API errors',
+  labelNames: ['endpoint']
+});
 
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 
@@ -189,13 +207,39 @@ const startTokenValidationInterval = (commandHandler: { [key: string]: Function 
   );
 };
 
+/**
+ * Loads stored tokens from the database and starts validation interval.
+ * @param commandHandler - Object containing command handler functions
+ */
 export const loadTokensOnStartup = async (commandHandler: { [key: string]: Function }) => {
   logger.info("Loading stored tokens...");
   await validateAllTokens(commandHandler);
   startTokenValidationInterval(commandHandler);
 };
 
+/**
+ * Sets up the Express server, API endpoints, and EventSub WebSocket connection.
+ * @param commandHandler - Object containing command handler functions
+ * @returns Express app instance
+ */
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
+  const app = express();
+  app.set("trust proxy", 1);
+  app.set("view engine", "ejs");
+  app.set("views", path.join(__dirname, "frontend"));
+
+  // Use JSON middleware for all routes
+  app.use(express.json());
+
+  app.use(express.static(path.join(__dirname, "frontend")));
+
+  app.use("/callback", authLimiter);
+
+  // Prometheus metrics endpoint
+  app.get('/metrics', async (req: Request, res: Response) => {
+    res.set('Content-Type', client.register.contentType);
+    res.end(await client.register.metrics());
+  });
   // Start EventSub WebSocket connection
   connectEventSubWebSocket();
 
@@ -209,18 +253,11 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       }
     });
   });
-  const app = express();
-  app.set("trust proxy", 1);
-  app.set("view engine", "ejs");
-  app.set("views", path.join(__dirname, "frontend"));
 
-  // Use JSON middleware for all routes
-  app.use(express.json());
-
-  app.use(express.static(path.join(__dirname, "frontend")));
-
-  app.use("/callback", authLimiter);
-
+  /**
+   * GET /login
+   * Redirects user to Twitch authentication URL.
+   */
   app.get("/login", (req: Request, res: Response) => {
     const authUrl = getAuthUrl();
     logger.info(`Generated auth URL: ${authUrl}`);
@@ -229,7 +266,15 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
   // Start EventSub WebSocket connection
   connectEventSubWebSocket();
+  /**
+   * GET /health
+   * Returns health status of the server and database.
+   */
   app.get("/health", async (req: Request, res: Response) => {
+  // Example: increment API error counter on DB failure
+    if (!dbHealthy) {
+      apiErrorCounter.inc({ endpoint: '/health' });
+    }
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
     const uptime = process.uptime();
@@ -270,7 +315,15 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });
 
+  /**
+   * GET /callback
+   * Handles Twitch OAuth callback, stores tokens, subscribes user, and starts chatbot.
+   */
   app.get("/callback", async (req: Request, res: Response) => {
+    // Example: increment API error counter on OAuth failure
+    if (error) {
+      apiErrorCounter.inc({ endpoint: '/callback' });
+    }
     const { code } = req.query;
     if (!code || typeof code !== "string") {
       return res.status(400).send("Invalid code");

@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Loads all command modules from the commands directory and returns a handler object.
+ * Each command must export an 'execute' function and may have aliases.
+ * @returns {Object} commandHandler - Mapping of command names/aliases to execute functions
+ */
 export const loadCommands = () => {
     const commandsDir = path.resolve(__dirname, '../commands');
     console.log(`Loading commands from: ${commandsDir}`);

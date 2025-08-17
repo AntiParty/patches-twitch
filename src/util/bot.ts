@@ -41,30 +41,32 @@ export const startChatBot = async (
     client.on("message", async (channel, tags, message, self) => {
       if (self) return;
 
+      if (!commandHandler || typeof commandHandler !== "object") {
+        console.error("commandHandler is undefined or not an object.");
+        return;
+      }
+
       const rawCommand = message.trim().split(" ")[0].toLowerCase();
       const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
 
-        const commandEntry = commandHandler[rawCommand];
-        if (!commandEntry) {
-          // Optionally notify user of unknown command
-          // client.say(channel, `Unknown command: ${rawCommand}`);
-          return;
-        }
-        if (typeof commandEntry === "function") {
-          await commandEntry(client, channel, message, tags, args);
-        }
-        if (rawCommand === "!test") {
-          client.say(channel, `Hello ${tags["display-name"] || tags.username}!`);
-          return;
-        }
+      const commandEntry = commandHandler[rawCommand];
+      if (!commandEntry) {
+        // Optionally notify user of unknown command
+        // client.say(channel, `Unknown command: ${rawCommand}`);
+        return;
+      }
+      if (typeof commandEntry === "function") {
+        await commandEntry(client, channel, message, tags, args);
+      }
+      if (rawCommand === "!test") {
+        client.say(channel, `Hello ${tags["display-name"] || tags.username}!`);
+        return;
+      }
     });
 
-    client.on("connected", (addr, port) => {
+    client.on("connected", (addr: string, port: number) => {
       console.log(`Bot connected to ${addr}:${port}`);
-      console.log(
-        `[${sanitizedUsername}] Ready to receive commands:`,
-        Object.keys(commandHandler)
-      );
+      console.log(`[${sanitizedUsername}] Ready to receive commands:`, Object.keys(commandHandler));
     });
 
     console.log("Bot setup complete.");

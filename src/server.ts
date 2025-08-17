@@ -271,15 +271,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
    * Returns health status of the server and database.
    */
   app.get("/health", async (req: Request, res: Response) => {
-  // Example: increment API error counter on DB failure
-    if (!dbHealthy) {
-      apiErrorCounter.inc({ endpoint: '/health' });
-    }
-    const memoryUsage = process.memoryUsage();
-    const cpuUsage = process.cpuUsage();
-    const uptime = process.uptime();
-
     let dbHealthy = false;
+    // Check DB health first
     try {
       await Channel.sequelize.authenticate();
       dbHealthy = true;
@@ -291,6 +284,14 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         globalThis.__dbDownAlerted = true;
       }
     }
+
+    // Example: increment API error counter on DB failure
+    if (!dbHealthy) {
+      apiErrorCounter.inc({ endpoint: '/health' });
+    }
+    const memoryUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+    const uptime = process.uptime();
 
     // Get version from package.json
     const { version } = require("../package.json");

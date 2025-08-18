@@ -103,6 +103,25 @@ export const sendSuccessToDiscord = async (successMsg: string, details?: string)
   });
 };
 
+export const sendChangelogToDiscord = async (
+  title: string,
+  categories: Record<string, string[]>
+) => {
+  const description = Object.entries(categories)
+    .map(([category, items]) => {
+      const itemList = Array.isArray(items) ? items.map(i => `• ${i}`).join('\n') : `• ${items}`;
+      return `**${category}**\n${itemList}`;
+    })
+    .join('\n\n');
+
+  await sendDiscordAlert({
+    type: 'info',
+    title: `Changelog: ${title}`,
+    description,
+    color: 0x9146FF,
+  });
+};
+
 // Custom event notification
 export const sendCustomEventToDiscord = async (title: string, description: string, options?: Partial<Omit<Parameters<typeof sendDiscordAlert>[0], 'title' | 'description'>>): Promise<void> => {
   await sendDiscordAlert({

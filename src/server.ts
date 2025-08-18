@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import client from 'prom-client';
 import axios from "axios";
 import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "./db";
-import { sendMessageToDiscord } from "./handlers/discordHandler";
+import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
 import { connectEventSubWebSocket, addUserSubscription } from "./util/twitchEventSubWs";
 import session from 'express-session';
@@ -264,6 +264,36 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
     res.redirect(authUrl);
   });
 
+  /**
+   * POST /changelog
+   * requires x-api-key header
+   */
+
+  app.post("/changelog", async (req: Request, res: Response) => {
+  try {
+    const apiKey = req.headers['x-api-key'];
+    console.log('Received API Key:', apiKey);
+    if (apiKey !== process.env.API_KEY) {
+      logger.info(`ENV API Key: ${process.env.API_KEY}`);
+      logger.info(`Received API Key: ${apiKey}`);
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const { title, categories } = req.body;
+    if (!title || !categories || typeof categories !== 'object') {
+      return res.status(400).json({ error: "Title and categories are required" });
+    }
+
+    await sendChangelogToDiscord(title, categories);
+
+    logger.info("Changelog sent to Discord successfully.");
+    res.status(200).json({ message: "Changelog sent successfully" });
+  } catch (error) {
+    logger.error("Error sending changelog to Discord:", error);
+    res.status(500).json({ error: "Failed to send changelog" });
+  }
+});
+
   // Start EventSub WebSocket connection
   connectEventSubWebSocket();
   /**
@@ -321,10 +351,6 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
    * Handles Twitch OAuth callback, stores tokens, subscribes user, and starts chatbot.
    */
   app.get("/callback", async (req: Request, res: Response) => {
-    // Example: increment API error counter on OAuth failure
-    if (error) {
-      apiErrorCounter.inc({ endpoint: '/callback' });
-    }
     const { code } = req.query;
     if (!code || typeof code !== "string") {
       return res.status(400).send("Invalid code");
@@ -401,6 +427,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         botUsername: "FinalsRR",
       });
     } catch (error) {
+  apiErrorCounter.inc({ endpoint: '/callback' });
       logger.error("Error during OAuth process:", error);
       res.status(500).send("Authentication failed");
     }

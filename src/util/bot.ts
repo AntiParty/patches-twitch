@@ -66,7 +66,11 @@ export const startChatBot = async (
 
     client.on("connected", (addr: string, port: number) => {
       console.log(`Bot connected to ${addr}:${port}`);
-      console.log(`[${sanitizedUsername}] Ready to receive commands:`, Object.keys(commandHandler));
+      if (commandHandler && typeof commandHandler === "object") {
+        console.log(`[${sanitizedUsername}] Ready to receive commands:`, Object.keys(commandHandler));
+      } else {
+        console.warn(`[${sanitizedUsername}] commandHandler is undefined or not an object.`);
+      }
     });
 
     console.log("Bot setup complete.");

@@ -134,7 +134,7 @@ const refreshTokenFunction = async (username: string, refreshToken: string, comm
     }
     logger.error(`[${username}] Token refresh failed:`, error);
     logger.info("Retrying in 1 minute...");
-  setTimeout(() => refreshTokenFunction(username, refreshToken, commandHandler), 60 * 1000);
+    setTimeout(() => refreshTokenFunction(username, refreshToken, commandHandler), 60 * 1000);
   }
 };
 
@@ -270,29 +270,29 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
    */
 
   app.post("/changelog", async (req: Request, res: Response) => {
-  try {
-    const apiKey = req.headers['x-api-key'];
-    console.log('Received API Key:', apiKey);
-    if (apiKey !== process.env.API_KEY) {
-      logger.info(`ENV API Key: ${process.env.API_KEY}`);
-      logger.info(`Received API Key: ${apiKey}`);
-      return res.status(403).json({ error: "Forbidden" });
+    try {
+      const apiKey = req.headers['x-api-key'];
+      console.log('Received API Key:', apiKey);
+      if (apiKey !== process.env.API_KEY) {
+        logger.info(`ENV API Key: ${process.env.API_KEY}`);
+        logger.info(`Received API Key: ${apiKey}`);
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const { title, categories } = req.body;
+      if (!title || !categories || typeof categories !== 'object') {
+        return res.status(400).json({ error: "Title and categories are required" });
+      }
+
+      await sendChangelogToDiscord(title, categories);
+
+      logger.info("Changelog sent to Discord successfully.");
+      res.status(200).json({ message: "Changelog sent successfully" });
+    } catch (error) {
+      logger.error("Error sending changelog to Discord:", error);
+      res.status(500).json({ error: "Failed to send changelog" });
     }
-
-    const { title, categories } = req.body;
-    if (!title || !categories || typeof categories !== 'object') {
-      return res.status(400).json({ error: "Title and categories are required" });
-    }
-
-    await sendChangelogToDiscord(title, categories);
-
-    logger.info("Changelog sent to Discord successfully.");
-    res.status(200).json({ message: "Changelog sent successfully" });
-  } catch (error) {
-    logger.error("Error sending changelog to Discord:", error);
-    res.status(500).json({ error: "Failed to send changelog" });
-  }
-});
+  });
 
   // Start EventSub WebSocket connection
   connectEventSubWebSocket();
@@ -343,8 +343,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   });
 
   app.get("/", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "frontend", "index.html"));
-});
+    res.sendFile(path.join(__dirname, "frontend", "index.html"));
+  });
 
   /**
    * GET /callback
@@ -397,8 +397,8 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         twitch_user_id: twitchUserId,
       });
 
-  // Subscribe user to EventSub via WebSocket after authentication
-  addUserSubscription(twitchUserId, access_token, twitchUserId);
+      // Subscribe user to EventSub via WebSocket after authentication
+      addUserSubscription(twitchUserId, access_token, twitchUserId);
 
       await startChatBot(twitchUsername || '', commandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
@@ -427,7 +427,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
         botUsername: "FinalsRR",
       });
     } catch (error) {
-  apiErrorCounter.inc({ endpoint: '/callback' });
+      apiErrorCounter.inc({ endpoint: '/callback' });
       logger.error("Error during OAuth process:", error);
       res.status(500).send("Authentication failed");
     }

@@ -29,8 +29,8 @@ export const startChatBot = async (
       options: { debug: false },
       channels: [sanitizedUsername],
       identity: {
-        username: process.env.TWITCH_BOT_USERNAME,
-        password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
+  username: process.env.TWITCH_BOT_USERNAME,
+  password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
       },
       capabilities: ["twitch.tv/tags"],
     });

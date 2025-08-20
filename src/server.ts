@@ -343,7 +343,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   });
 
   app.get("/", (req: Request, res: Response) => {
-    res.sendFile(path.join(__dirname, "frontend", "index.html"));
+  res.sendFile(path.join(__dirname, "../../frontend", "index.html"));
   });
 
   /**
@@ -422,7 +422,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/logo.png", // relative to your static folder
+  logoPath: "/assets/logo.png", // relative to your static folder
         username: twitchUsername,
         botUsername: "FinalsRR",
       });

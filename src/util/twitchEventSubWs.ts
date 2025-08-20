@@ -78,7 +78,7 @@ export function connectEventSubWebSocket() {
           // Load leaderboard cache
           const path = require('path');
           const fs = require('fs/promises');
-          const CACHE_FILE_PATH = path.resolve(__dirname, '../jobs/leaderboardCache.json');
+          const CACHE_FILE_PATH = path.resolve(__dirname, '../../cache/leaderboardCache.json');
           let cachedData;
           try {
             const rawData = await fs.readFile(CACHE_FILE_PATH, 'utf8');

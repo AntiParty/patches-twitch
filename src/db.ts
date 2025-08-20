@@ -10,7 +10,7 @@ console.log('Using SQLite: true (forced)');
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: path.resolve(__dirname, '../accounts.sqlite'),
+  storage: path.resolve(__dirname, '../data/accounts.sqlite'),
   logging: false,
 });
 
@@ -63,6 +63,11 @@ StreamSession.init(
     start_score: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    start_wt_rank: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
     started_at: {
       type: DataTypes.DATE,

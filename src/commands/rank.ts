@@ -4,8 +4,8 @@ import path from "path";
 import fs from "fs/promises";
 import logger from "@/util/logger";
 
-const CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/leaderboardCache.json");
-const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/WTrankCache.json");
+const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
+const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/WTrankCache.json");
 
 const processedMessages = new Set<string>();
 

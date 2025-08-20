@@ -4,8 +4,8 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const CACHE_PATHS = {
-  regular: path.resolve(__dirname, 'leaderboardCache.json'),
-  worldTour: path.resolve(__dirname, 'WTrankCache.json'),
+  regular: path.resolve(__dirname, '../../cache/leaderboardCache.json'),
+  worldTour: path.resolve(__dirname, '../../cache/WTrankCache.json'),
 };
 
 const API_URLS = {

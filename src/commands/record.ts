@@ -5,8 +5,8 @@ import logger from "../util/logger";
 import { Channel, StreamSession } from "../db";
 import { getStreamStatusWithAutoRefresh } from "../util/twitchutils";
 
-const CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/leaderboardCache.json");
-const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../jobs/WTrankCache.json");
+const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
+const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/WTrankCache.json");
 
 // Persistent tracker for stream start rankScore using DB
 

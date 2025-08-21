@@ -223,15 +223,16 @@ export const loadTokensOnStartup = async (commandHandler: { [key: string]: Funct
  * @returns Express app instance
  */
 export const setupServer = (commandHandler: { [key: string]: Function }) => {
+  const frontendPath = path.join(process.cwd(), "frontend");
   const app = express();
   app.set("trust proxy", 1);
   app.set("view engine", "ejs");
-  app.set("views", path.join(__dirname, "frontend"));
+  app.set("views", frontendPath);
 
   // Use JSON middleware for all routes
   app.use(express.json());
 
-  app.use(express.static(path.join(__dirname, "frontend")));
+  app.use(express.static(frontendPath));
 
   app.use("/callback", authLimiter);
 
@@ -343,7 +344,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
   });
 
   app.get("/", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "../../frontend", "index.html"));
+    res.sendFile(path.join(frontendPath, "index.html"));
   });
 
   /**
@@ -422,7 +423,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       res.render("auth", {
         title: "Twitch Authenticated",
-  logoPath: "/assets/logo.png", // relative to your static folder
+        logoPath: "/assets/logo.png", // relative to your static folder
         username: twitchUsername,
         botUsername: "FinalsRR",
       });

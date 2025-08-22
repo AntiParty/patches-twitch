@@ -13,6 +13,9 @@ import session from 'express-session';
   await dbReady;
 })();
 import { loadCommands } from "./handlers/commands";
+
+// Initialize commandHandler at startup
+const commandHandler = loadCommands();
 import logger from "./util/logger";
 import path from "path";
 import rateLimit from "express-rate-limit";
@@ -222,7 +225,9 @@ export const loadTokensOnStartup = async (commandHandler: { [key: string]: Funct
  * @param commandHandler - Object containing command handler functions
  * @returns Express app instance
  */
-export const setupServer = (commandHandler: { [key: string]: Function }) => {
+export const setupServer = () => {
+  // Use the initialized commandHandler
+  const handler = commandHandler;
   const frontendPath = path.join(process.cwd(), "frontend");
   const app = express();
   app.set("trust proxy", 1);
@@ -401,7 +406,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
       // Subscribe user to EventSub via WebSocket after authentication
       addUserSubscription(twitchUserId, access_token, twitchUserId);
 
-      await startChatBot(twitchUsername || '', commandHandler);
+  await startChatBot(twitchUsername || '', handler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 
@@ -417,7 +422,7 @@ export const setupServer = (commandHandler: { [key: string]: Function }) => {
 
       const refreshTime = timeLeft - 5 * 60 * 1000;
       setTimeout(
-        () => refreshTokenFunction(twitchUsername!, refresh_token, commandHandler),
+        () => refreshTokenFunction(twitchUsername!, refresh_token, handler),
         refreshTime
       );
 

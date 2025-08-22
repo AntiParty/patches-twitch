@@ -22,6 +22,39 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
 function subscribeUserToEvents(userId: string, accessToken: string, broadcasterId: string, sessionId: string) {
   const eventTypes = ['stream.online', 'stream.offline'];
   eventTypes.forEach(async (type) => {
+    let validToken = accessToken;
+    // Validate token before subscribing
+    try {
+      const validateResp = await axios.get('https://id.twitch.tv/oauth2/validate', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      // If token is valid, continue
+    } catch (validateErr: any) {
+      logger.warn(`Access token for ${userId} is invalid or expired. Attempting to refresh.`);
+      // Try to refresh token (assumes you have a refreshAccessToken util)
+      try {
+        const { refreshAccessToken } = require('./twitchUtils');
+        const { Channel } = require('../db');
+        const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
+        if (channel) {
+          const newToken = await refreshAccessToken(channel);
+          if (newToken) {
+            validToken = newToken;
+            logger.info(`Refreshed access token for ${userId}`);
+          } else {
+            logger.error(`Failed to refresh token for ${userId}`);
+            return;
+          }
+        } else {
+          logger.error(`No channel found for userId ${userId} during EventSub subscribe.`);
+          return;
+        }
+      } catch (refreshErr: any) {
+        logger.error(`Error refreshing token for ${userId}:`, refreshErr.message);
+        return;
+      }
+    }
+    // Now subscribe with validToken
     try {
       await axios.post('https://api.twitch.tv/helix/eventsub/subscriptions', {
         type,
@@ -33,7 +66,7 @@ function subscribeUserToEvents(userId: string, accessToken: string, broadcasterI
         }
       }, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${validToken}`,
           'Client-Id': process.env.TWITCH_CLIENT_ID!,
           'Content-Type': 'application/json'
         }

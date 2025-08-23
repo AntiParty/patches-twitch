@@ -4,7 +4,7 @@ import axios from "axios";
 import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "./db";
 import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
-import { connectEventSubWebSocket, addUserSubscription } from "./util/twitchEventSubWs";
+import { addUserSubscription } from "./util/twitchEventSubWs";
 import session from 'express-session';
 
 
@@ -247,7 +247,7 @@ export const setupServer = () => {
     res.end(await client.register.metrics());
   });
   // Start EventSub WebSocket connection
-  connectEventSubWebSocket();
+  // connectEventSubWebSocket is obsolete; handled per-user
 
   // Auto-subscribe all users on startup
   import('./db').then(async ({ Channel }) => {
@@ -301,7 +301,7 @@ export const setupServer = () => {
   });
 
   // Start EventSub WebSocket connection
-  connectEventSubWebSocket();
+  // connectEventSubWebSocket is obsolete; handled per-user
   /**
    * GET /health
    * Returns health status of the server and database.

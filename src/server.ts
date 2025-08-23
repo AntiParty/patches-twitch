@@ -352,6 +352,23 @@ export const setupServer = () => {
     res.sendFile(path.join(frontendPath, "index.html"));
   });
 
+  app.get("/users", async (req: Request, res: Response) => {
+    try {
+      const { key } = req.query;
+
+      if (!key || key !== process.env.API_KEY) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const count = await Channel.count();
+      res.status(200).json({ userCount: count });
+    } catch (error) {
+      logger.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+  // domain to use: localhost:3000/users?key=GjYJB2Vm%2CKm%26*BSy3bFKVDRgvULgk
+
   /**
    * GET /callback
    * Handles Twitch OAuth callback, stores tokens, subscribes user, and starts chatbot.
@@ -406,7 +423,7 @@ export const setupServer = () => {
       // Subscribe user to EventSub via WebSocket after authentication
       addUserSubscription(twitchUserId, access_token, twitchUserId);
 
-  await startChatBot(twitchUsername || '', handler);
+      await startChatBot(twitchUsername || '', handler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 

@@ -17,6 +17,27 @@ document.getElementById('connect-twitch-btn').addEventListener('click', () => {
   window.location.href = '/login';
 })
 
+function updateStats() {
+  fetch('/stats.json')
+    .then(res => res.json())
+    .then(data => {
+      if (data.userCount !== undefined) {
+        document.getElementById('user-count').textContent = data.userCount;
+      }
+      if (data.commandsProcessed !== undefined) {
+        document.getElementById('commands-processed').textContent = `Commands processed: ${data.commandsProcessed}`;
+      }
+      if (data.uptime !== undefined) {
+        // Convert uptime seconds to human readable
+        const hours = Math.floor(data.uptime / 3600);
+        const minutes = Math.floor((data.uptime % 3600) / 60);
+        const seconds = data.uptime % 60;
+        document.getElementById('uptime').textContent = `Uptime: ${hours}h ${minutes}m ${seconds}s`;
+      }
+    })
+    .catch(() => {});
+}
+
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener("click", function (e) {
     const target = document.querySelector(this.getAttribute("href"));
@@ -62,4 +83,5 @@ window.addEventListener('load', checkScroll);
   
   window.addEventListener("load", updateCarousel);
   window.addEventListener("resize", updateCarousel);
+  window.addEventListener('DOMContentLoaded', updateStats);
 })();

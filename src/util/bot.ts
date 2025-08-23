@@ -1,5 +1,6 @@
 import tmi from "tmi.js";
 import { getStreamStatusWithAutoRefresh } from "../util/twitchUtils";
+import { commandCounter, incrementCommandsProcessed } from "../server";
 
 const clients: { [username: string]: tmi.Client } = {};
 
@@ -29,8 +30,8 @@ export const startChatBot = async (
       options: { debug: false },
       channels: [sanitizedUsername],
       identity: {
-  username: process.env.TWITCH_BOT_USERNAME,
-  password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
+        username: process.env.TWITCH_BOT_USERNAME,
+        password: `oauth:${process.env.TWITCH_BOT_TOKEN}`,
       },
       capabilities: ["twitch.tv/tags"],
     });
@@ -56,6 +57,13 @@ export const startChatBot = async (
         return;
       }
       if (typeof commandEntry === "function") {
+        // Increment stats
+        if (typeof commandCounter?.inc === "function") {
+          commandCounter.inc({ command: rawCommand });
+        }
+        if (typeof incrementCommandsProcessed === "function") {
+          incrementCommandsProcessed();
+        }
         await commandEntry(client, channel, message, tags, args);
       }
       if (rawCommand === "!test") {

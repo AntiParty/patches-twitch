@@ -48,11 +48,21 @@ const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();
 
 // Custom metrics
-const commandCounter = new client.Counter({
+export const commandCounter = new client.Counter({
   name: 'twitchbot_command_total',
   help: 'Total number of commands received',
   labelNames: ['command']
 });
+
+const statsFilePath = path.join(process.cwd(), "stats.json");
+let commandsProcessed = 0;
+export function incrementCommandsProcessed() {
+  commandsProcessed++;
+}
+export function getCommandsProcessed() {
+  return commandsProcessed;
+}
+const serverStartTime = Date.now();
 
 const apiErrorCounter = new client.Counter({
   name: 'twitchbot_api_errors_total',
@@ -201,6 +211,21 @@ const validateAllTokens = async (commandHandler: { [key: string]: Function }) =>
     }
   }
 };
+
+function exportStatsToJson() {
+  Channel.count().then(userCount => {
+    const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
+    const stats = {
+      userCount,
+      commandsProcessed,
+      uptime
+    };
+    fs.writeFile(statsFilePath, JSON.stringify(stats, null, 2), err => {
+      if (err) logger.error("Failed to write stats.json:", err);
+      else logger.info("Exported stats.json");
+    });
+  });
+}
 
 const startTokenValidationInterval = (commandHandler: { [key: string]: Function }) => {
   const intervalTime = 15 * 1000;
@@ -366,6 +391,14 @@ export const setupServer = () => {
       logger.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
     }
+  });
+
+  app.get("/stats.json", (req: Request, res: Response) => {
+    fs.readFile(statsFilePath, "utf8", (err, data) => {
+      if (err) return res.status(500).json({ error: "Stats not available" });
+      res.setHeader("Content-Type", "application/json");
+      res.send(data);
+    });
   });
   // domain to use: localhost:3000/users?key=GjYJB2Vm%2CKm%26*BSy3bFKVDRgvULgk
 

@@ -11,7 +11,7 @@ import logger from './util/logger';
 import fs from 'fs/promises';
 
 const commandHandler = loadCommands();
-const app = setupServer(commandHandler);
+const app = setupServer();
 
 const loadChannels = async () => {
     const channels = await Channel.findAll();
@@ -19,7 +19,7 @@ const loadChannels = async () => {
         const { username, access_token } = channel;
         logger.info(`Loading channel: ${username}`);
         await validateToken(username, access_token);
-        startChatBot(username, commandHandler);
+    startChatBot(username, commandHandler);
     }
 };
 

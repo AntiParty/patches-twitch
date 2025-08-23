@@ -1,3 +1,4 @@
+
 import express, { Request, Response } from "express";
 import client from 'prom-client';
 import axios from "axios";
@@ -390,6 +391,27 @@ export const setupServer = () => {
     } catch (error) {
       logger.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Endpoint to forcefully grab and return latest stats
+  app.get("/force-stats", async (req: Request, res: Response) => {
+    try {
+      const userCount = await Channel.count();
+      const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
+      const stats = {
+        userCount,
+        commandsProcessed: getCommandsProcessed(),
+        uptime
+      };
+      // Optionally, update stats.json immediately
+      fs.writeFile(statsFilePath, JSON.stringify(stats, null, 2), err => {
+        if (err) logger.error("Failed to write stats.json:", err);
+      });
+      res.status(200).json(stats);
+    } catch (err) {
+      logger.error("Error in /force-stats:", err);
+      res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
 

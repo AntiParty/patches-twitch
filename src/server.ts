@@ -68,18 +68,17 @@ try {
   // If file doesn't exist or is invalid, start at 0
   commandsProcessed = 0;
 }
-  commandsProcessed++;
-  // Save to stats.json for persistence
-  try {
-    const statsRaw = fs.readFileSync(statsFilePath, "utf8");
-    const stats = JSON.parse(statsRaw);
-    stats.commandsProcessed = commandsProcessed;
-    fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
-  } catch (err) {
-    // If file doesn't exist, create it
-    const stats = { userCount: 0, commandsProcessed, uptime: 0 };
-    fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
-  }
+commandsProcessed++;
+// Save to stats.json for persistence
+try {
+  const statsRaw = fs.readFileSync(statsFilePath, "utf8");
+  const stats = JSON.parse(statsRaw);
+  stats.commandsProcessed = commandsProcessed;
+  fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
+} catch (err) {
+  // If file doesn't exist, create it
+  const stats = { userCount: 0, commandsProcessed, uptime: 0 };
+  fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
 }
 export function getCommandsProcessed() {
   return commandsProcessed;

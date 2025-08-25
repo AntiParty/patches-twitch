@@ -11,6 +11,8 @@ export const loadCommands = () => {
     console.log(`Loading commands from: ${commandsDir}`);
     const commandFiles = fs.readdirSync(commandsDir).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
     const commandHandler: { [key: string]: Function } = {};
+    const seenKeys = new Set<string>();
+    const duplicateKeys: string[] = [];
 
     commandFiles.forEach(file => {
         const commandName = path.basename(file, path.extname(file));
@@ -19,19 +21,21 @@ export const loadCommands = () => {
 
             if (command && typeof command.execute === 'function') {
                 const mainKey = `!${commandName.toLowerCase()}`;
-                if (commandHandler[mainKey]) {
-                    console.warn(`Duplicate command name detected: ${mainKey}. Skipping.`);
+                if (seenKeys.has(mainKey)) {
+                    duplicateKeys.push(mainKey);
                 } else {
                     commandHandler[mainKey] = command.execute;
+                    seenKeys.add(mainKey);
                 }
 
                 if (Array.isArray(command.aliases)) {
                     command.aliases.forEach((alias: string) => {
                         const aliasKey = `!${alias.toLowerCase()}`;
-                        if (commandHandler[aliasKey]) {
-                            console.warn(`Duplicate alias detected: ${aliasKey}. Skipping.`);
+                        if (seenKeys.has(aliasKey)) {
+                            duplicateKeys.push(aliasKey);
                         } else {
                             commandHandler[aliasKey] = command.execute;
+                            seenKeys.add(aliasKey);
                         }
                     });
                 } else if (command.aliases) {
@@ -44,6 +48,10 @@ export const loadCommands = () => {
             console.error(`Error loading command "${file}":`, err);
         }
     });
+
+    if (duplicateKeys.length > 0) {
+        console.warn(`Duplicate command/alias keys detected: ${duplicateKeys.join(', ')}. Skipping all duplicates.`);
+    }
 
     return commandHandler;
 };

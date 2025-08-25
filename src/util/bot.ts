@@ -8,6 +8,10 @@ export const startChatBot = async (
   username: string,
   commandHandler: Record<string, any>
 ) => {
+  if (!username || typeof username !== "string") {
+    console.error("startChatBot called with undefined or invalid username.");
+    return;
+  }
   const sanitizedUsername = username.replace(/^#/, "");
 
   if (clients[sanitizedUsername]) {

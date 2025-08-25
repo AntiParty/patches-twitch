@@ -15,24 +15,8 @@ const sequelize = new Sequelize({
 });
 
 // Channel model
-// Removed duplicate Channel class definition. Typed version below.
-interface ChannelAttributes {
-  username: string;
-  player_id?: string;
-  twitch_user_id?: string;
-  access_token?: string;
-  refresh_token?: string;
-  token_expires_at: Date;
-}
 
-class Channel extends Model<ChannelAttributes> implements ChannelAttributes {
-  public username!: string;
-  public player_id?: string;
-  public twitch_user_id?: string;
-  public access_token?: string;
-  public refresh_token?: string;
-  public token_expires_at!: Date;
-}
+class Channel extends Model {}
 
 Channel.init(
   {

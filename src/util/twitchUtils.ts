@@ -129,8 +129,35 @@ const refreshAccessToken = async (channel: any) => {
     });
     if (!response.ok) {
       const errorDetails = await response.text();
-      console.error(`Failed to refresh access token: ${response.statusText}`);
+      console.error(`Failed to refresh access token for ${channel.username}: ${response.statusText}`);
       console.error(`Error details: ${errorDetails}`);
+      // Notify user via Discord
+      try {
+        const { sendDiscordAlert } = require('../handlers/discordHandler');
+        await sendDiscordAlert({
+          type: 'error',
+          title: 'Twitch Re-Authentication Required',
+          description: `@${channel.username}, your Twitch token could not be refreshed. Please re-authenticate your account to continue using bot features.`,
+          fields: [
+            { name: 'Reason', value: errorDetails || response.statusText },
+          ],
+        });
+      } catch (notifyErr) {
+        console.error('Failed to send Discord notification for token refresh failure:', notifyErr);
+      }
+      // Notify user in Twitch chat (one-time)
+      try {
+        const { clients } = require('./bot');
+        const client = clients[channel.username];
+        if (client && typeof client.say === 'function') {
+          if (!client._notifiedReauth) {
+            client.say(`#${channel.username}`, `Your Twitch token could not be refreshed. Please re-authenticate your account at app.antiparty.dev to continue using bot features.`);
+            client._notifiedReauth = true;
+          }
+        }
+      } catch (chatErr) {
+        console.error('Failed to send Twitch chat notification for token refresh failure:', chatErr);
+      }
       return null;
     }
     const data = await response.json();
@@ -140,7 +167,21 @@ const refreshAccessToken = async (channel: any) => {
     await channel.save();
     return data.access_token;
   } catch (error: any) {
-    console.error('Exception during Twitch token refresh:', error);
+    console.error(`Exception during Twitch token refresh for ${channel.username}:`, error);
+    // Notify user via Discord
+    try {
+      const { sendDiscordAlert } = require('../handlers/discordHandler');
+      await sendDiscordAlert({
+        type: 'error',
+        title: 'Twitch Re-Authentication Required',
+        description: `@${channel.username}, your Twitch token could not be refreshed due to an exception. Please re-authenticate your account.`,
+        fields: [
+          { name: 'Error', value: error?.message || JSON.stringify(error) },
+        ],
+      });
+    } catch (notifyErr) {
+      console.error('Failed to send Discord notification for token refresh exception:', notifyErr);
+    }
     return null;
   }
 };

@@ -1,4 +1,5 @@
-
+// Serve docs markdown for frontend
+import fs from 'fs';
 import express, { Request, Response } from "express";
 import client from 'prom-client';
 import axios from "axios";
@@ -295,6 +296,13 @@ export const setupServer = () => {
   app.get('/metrics', async (req: Request, res: Response) => {
     res.set('Content-Type', client.register.contentType);
     res.end(await client.register.metrics());
+  });
+  app.get('/docs-markdown', (req: Request, res: Response) => {
+    const docsPath = path.join(process.cwd(), 'docs', 'custom-command-editing.md');
+    fs.readFile(docsPath, 'utf8', (err, data) => {
+      if (err) return res.status(404).send('Docs not found');
+      res.type('text/plain').send(data);
+    });
   });
   // Start EventSub WebSocket connection
   // connectEventSubWebSocket is obsolete; handled per-user

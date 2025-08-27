@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { editcmd } from '../commands/editcmd';
 
 /**
  * Loads all command modules from the commands directory and returns a handler object.
  * Each command must export an 'execute' function and may have aliases.
  * @returns {Object} commandHandler - Mapping of command names/aliases to execute functions
  */
-export const loadCommands = () => {
+export function loadCommands() {
     const commandsDir = path.resolve(__dirname, '../commands');
     console.log(`Loading commands from: ${commandsDir}`);
     const commandFiles = fs.readdirSync(commandsDir).filter(file => file.endsWith('.ts') || file.endsWith('.js'));
@@ -14,11 +15,18 @@ export const loadCommands = () => {
     const seenKeys = new Set<string>();
     const duplicateKeys: string[] = [];
 
+    // Add editcmd directly
+    commandHandler['!editcmd'] = async (client, channel, message, tags) => {
+        const args = message.trim().split(' ').slice(1); // Remove !editcmd
+        const user = tags['display-name'] || tags.username;
+        const response = await editcmd(channel.replace('#', ''), user, args);
+        client.say(channel, response);
+    };
+
     commandFiles.forEach(file => {
         const commandName = path.basename(file, path.extname(file));
         try {
             const command = require(path.join(commandsDir, file));
-
             if (command && typeof command.execute === 'function') {
                 const mainKey = `!${commandName.toLowerCase()}`;
                 if (seenKeys.has(mainKey)) {
@@ -27,7 +35,6 @@ export const loadCommands = () => {
                     commandHandler[mainKey] = command.execute;
                     seenKeys.add(mainKey);
                 }
-
                 if (Array.isArray(command.aliases)) {
                     command.aliases.forEach((alias: string) => {
                         const aliasKey = `!${alias.toLowerCase()}`;
@@ -54,4 +61,4 @@ export const loadCommands = () => {
     }
 
     return commandHandler;
-};
+}

@@ -1,5 +1,17 @@
 import { Client, Userstate } from "tmi.js";
-import { Channel } from "../db";
+import { Channel, getCustomResponse } from "../db";
+
+// Helper to check and send custom response for any command
+async function maybeSendCustomResponse(command: string, client: Client, channel: string, messageId: string, username: string, vars: Record<string, any>) {
+  const normalizedChannel = channel.replace('#', '');
+  let customResponse = await getCustomResponse(normalizedChannel, command);
+  if (customResponse) {
+    let response = customResponse.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '');
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`);
+    return true;
+  }
+  return false;
+}
 import path from "path";
 import fs from "fs/promises";
 import logger from "@/util/logger";
@@ -88,22 +100,31 @@ export const execute = async (
     const player = findPlayer(regularData, finalsName);
     const wtPlayer = findPlayer(worldTourData, finalsName);
 
-    let response = `@${username}, `;
+    // Prepare variables for custom response
+    const vars = {
+      username,
+      rank: player?.rank ?? wtPlayer?.rank ?? 'N/A',
+      league: player?.league ?? '',
+      rankScore: player?.rankScore ? player.rankScore.toLocaleString() : '',
+      wtRank: wtPlayer?.rank ?? '',
+      found: player || wtPlayer ? 'true' : 'false',
+    };
 
+    // Use custom response if set, otherwise default
+    const usedCustom = await maybeSendCustomResponse('rank', client, channel, messageId, username, vars);
+    if (usedCustom) return;
+
+    // Default response logic
+    let response = `@${username}, `;
     if (player && wtPlayer) {
-      // Both leaderboards
       response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS | WT rank: #${wtPlayer.rank}`;
     } else if (player) {
-      // Only regular leaderboard
       response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS`;
     } else if (wtPlayer) {
-      // Only World Tour leaderboard
       response += `WT rank: #${wtPlayer.rank}`;
     } else {
-      // Neither leaderboard
       response += `not found on regular or World Tour leaderboards.`;
     }
-
     client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`);
   } catch (error) {
     logger.error("[rank.ts] Error in rank command execution:", error);

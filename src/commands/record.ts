@@ -2,7 +2,18 @@ import { Client, Userstate } from "tmi.js";
 import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
-import { Channel, StreamSession } from "../db";
+import { Channel, StreamSession, getCustomResponse } from "../db";
+// Helper to check and send custom response for any command
+async function maybeSendCustomResponse(command: string, client: Client, channel: string, messageId: string, username: string, vars: Record<string, any>) {
+  const normalizedChannel = channel.replace('#', '');
+  let customResponse = await getCustomResponse(normalizedChannel, command);
+  if (customResponse) {
+    let response = customResponse.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '');
+    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`);
+    return true;
+  }
+  return false;
+}
 import { getStreamStatusWithAutoRefresh } from "../util/twitchutils";
 
 const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
@@ -101,6 +112,14 @@ export const execute = async (
     const currentWTRank = wtPlayer?.rank ?? null;
     if (!session) {
       await StreamSession.create({ channel: sanitizedChannel, start_score: currentScore, start_wt_rank: currentWTRank });
+      // Prepare variables for custom response
+      const vars = {
+        username,
+        startScore: currentScore.toLocaleString(),
+        wtRank: wtPlayer?.rank ?? '',
+      };
+      const usedCustom = await maybeSendCustomResponse('record', client, channel, messageId, username, vars);
+      if (usedCustom) return;
       let response = `@${username}, tracking started at ${currentScore.toLocaleString()} RS`;
       if (wtPlayer) response += ` | WT rank: #${wtPlayer.rank}`;
       client.raw(
@@ -113,6 +132,18 @@ export const execute = async (
     const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
     const absDiff = Math.abs(diff);
 
+    // Prepare variables for custom response
+    const vars = {
+      username,
+      sessionRS: `${sign}${absDiff.toLocaleString()}`,
+      currentRS: currentScore.toLocaleString(),
+      wtRank: wtPlayer?.rank ?? '',
+      wtRankChange: wtPlayer && typeof session.start_wt_rank === "number" && typeof currentWTRank === "number"
+        ? `${currentWTRank} (${(session.start_wt_rank - currentWTRank) > 0 ? '+' : (session.start_wt_rank - currentWTRank) < 0 ? '-' : '±'}${Math.abs(session.start_wt_rank - currentWTRank)} from start)`
+        : wtPlayer ? `#${wtPlayer.rank}` : '',
+    };
+    const usedCustom = await maybeSendCustomResponse('record', client, channel, messageId, username, vars);
+    if (usedCustom) return;
     let response = `@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`;
     // Show WT rank change if available
     if (wtPlayer && typeof session.start_wt_rank === "number" && typeof currentWTRank === "number") {
@@ -123,7 +154,6 @@ export const execute = async (
     } else if (wtPlayer) {
       response += ` | WT rank: #${wtPlayer.rank}`;
     }
-
     client.raw(
       `@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`
     );

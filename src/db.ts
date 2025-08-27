@@ -15,8 +15,44 @@ const sequelize = new Sequelize({
 });
 
 // Channel model
-
 class Channel extends Model {}
+
+// Custom command response model
+class CustomResponse extends Model {}
+CustomResponse.init(
+  {
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    command: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    response: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'CustomResponse',
+    tableName: 'CustomResponses',
+    timestamps: false,
+    indexes: [
+      { unique: true, fields: ['channel', 'command'] }
+    ]
+  }
+);
+
+async function getCustomResponse(channel: string, command: string): Promise<string | null> {
+  const row = await CustomResponse.findOne({ where: { channel, command } });
+  return row ? row.get('response') as string : null;
+}
+
+async function setCustomResponse(channel: string, command: string, response: string): Promise<void> {
+  await CustomResponse.upsert({ channel, command, response });
+}
 
 Channel.init(
   {
@@ -90,4 +126,5 @@ const dbReady = sequelize.sync().then(() => {
   console.log('Database synced.');
 });
 
-export { sequelize, Channel, StreamSession ,dbReady };
+export { sequelize, Channel, StreamSession, CustomResponse, dbReady };
+export { getCustomResponse, setCustomResponse };

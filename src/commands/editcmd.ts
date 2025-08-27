@@ -25,11 +25,18 @@ export async function editcmd(channel: string, user: string, args: string[]): Pr
 }
 
 // Standard execute function for command handler
-export async function execute(client, channel, message, tags) {
-	const args = message.trim().split(' ').slice(1);
+export const execute = async (
+	client,
+	channel,
+	message,
+	tags,
+	args
+) => {
 	const user = tags['display-name'] || tags.username;
-	const response = await editcmd(channel.replace('#', ''), user, args);
+	// If args not provided, parse from message
+	const cmdArgs = args && args.length ? args : message.trim().split(' ').slice(1);
+	const response = await editcmd(channel.replace('#', ''), user, cmdArgs);
 	client.say(channel, response);
-}
+};
 
 export const aliases = ['editcmd', 'setcmd', 'commandedit'];

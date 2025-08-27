@@ -304,6 +304,9 @@ export const setupServer = () => {
       res.type('text/plain').send(data);
     });
   });
+  app.get('/docs', (req: Request, res: Response) => {
+    res.sendFile(path.join(frontendPath, 'docs.html'));
+  });
   // Start EventSub WebSocket connection
   // connectEventSubWebSocket is obsolete; handled per-user
 

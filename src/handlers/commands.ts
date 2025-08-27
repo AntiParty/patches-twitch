@@ -15,13 +15,16 @@ export function loadCommands() {
     const seenKeys = new Set<string>();
     const duplicateKeys: string[] = [];
 
-    // Add editcmd directly
-    commandHandler['!editcmd'] = async (client, channel, message, tags) => {
-        const args = message.trim().split(' ').slice(1); // Remove !editcmd
-        const user = tags['display-name'] || tags.username;
-        const response = await editcmd(channel.replace('#', ''), user, args);
-        client.say(channel, response);
-    };
+    // Add editcmd and its aliases directly
+    const editAliases = ['!editcmd', '!setcmd', '!commandedit'];
+    for (const alias of editAliases) {
+        commandHandler[alias] = async (client, channel, message, tags) => {
+            const args = message.trim().split(' ').slice(1); // Remove command
+            const user = tags['display-name'] || tags.username;
+            const response = await editcmd(channel.replace('#', ''), user, args);
+            client.say(channel, response);
+        };
+    }
 
     commandFiles.forEach(file => {
         const commandName = path.basename(file, path.extname(file));

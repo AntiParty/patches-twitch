@@ -27,44 +27,40 @@ export function loadCommands() {
         };
     }
 
-    commandFiles.forEach(file => {
-        const commandName = path.basename(file, path.extname(file));
-        try {
-            const command = require(path.join(commandsDir, file));
-            if (command && typeof command.execute === 'function') {
-                const mainKey = `!${commandName.toLowerCase()}`;
-                if (seenKeys.has(mainKey)) {
-                    duplicateKeys.push(mainKey);
+        commandFiles.forEach(file => {
+            const commandName = path.basename(file, path.extname(file));
+            try {
+                const command = require(path.join(commandsDir, file));
+                if (command && typeof command.execute === 'function') {
+                    const mainKey = `!${commandName.toLowerCase()}`;
+                    if (seenKeys.has(mainKey)) {
+                        duplicateKeys.push(mainKey);
+                    } else {
+                        logger.info(`[commandHandler] Loaded command: ${mainKey}`);
+                        commandHandler[mainKey] = command.execute;
+                        seenKeys.add(mainKey);
+                    }
+                    if (Array.isArray(command.aliases)) {
+                        command.aliases.forEach((alias: string) => {
+                            const aliasKey = `!${alias.toLowerCase()}`;
+                            if (seenKeys.has(aliasKey)) {
+                                duplicateKeys.push(aliasKey);
+                            } else {
+                                logger.info(`[commandHandler] Loaded alias: ${aliasKey} for command: ${mainKey}`);
+                                commandHandler[aliasKey] = command.execute;
+                                seenKeys.add(aliasKey);
+                            }
+                        });
+                    } else if (command.aliases) {
+                        console.warn(`Aliases for command "${commandName}" are not an array.`);
+                    }
                 } else {
-                    commandHandler[mainKey] = (...args) => {
-                        logger.info(`[commandHandler] Executing command: ${mainKey} with args: ${JSON.stringify(args)}`);
-                        return command.execute(...args);
-                    };
-                    seenKeys.add(mainKey);
+                    console.warn(`Command "${file}" does not export an 'execute' function.`);
                 }
-                if (Array.isArray(command.aliases)) {
-                    command.aliases.forEach((alias: string) => {
-                        const aliasKey = `!${alias.toLowerCase()}`;
-                        if (seenKeys.has(aliasKey)) {
-                            duplicateKeys.push(aliasKey);
-                        } else {
-                            commandHandler[aliasKey] = (...args) => {
-                                logger.info(`[commandHandler] Executing alias: ${aliasKey} with args: ${JSON.stringify(args)}`);
-                                return command.execute(...args);
-                            };
-                            seenKeys.add(aliasKey);
-                        }
-                    });
-                } else if (command.aliases) {
-                    console.warn(`Aliases for command "${commandName}" are not an array.`);
-                }
-            } else {
-                console.warn(`Command "${file}" does not export an 'execute' function.`);
+            } catch (err) {
+                console.error(`Error loading command "${file}":`, err);
             }
-        } catch (err) {
-            console.error(`Error loading command "${file}":`, err);
-        }
-    });
+        });
 
     if (duplicateKeys.length > 0) {
         console.warn(`Duplicate command/alias keys detected: ${duplicateKeys.join(', ')}. Skipping all duplicates.`);

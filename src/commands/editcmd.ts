@@ -1,42 +1,63 @@
-
 import { Client, Userstate } from 'tmi.js';
 import { getCustomResponse, setCustomResponse } from '../db';
 import logger from '../util/logger';
 
-// Usage: !editcmd <command> <response>
-//        !editcmd <command> (to view response)
-async function editcmd(channel: string, user: string, args: string[]): Promise<string> {
-	logger.info(`[editcmd] Called by user: ${user} in channel: ${channel} with args: ${JSON.stringify(args)}`);
-	if (args.length === 0) {
-		logger.info('[editcmd] No arguments provided');
-		return 'Usage: !editcmd <command> [response]';
-	}
-	const cmd = args[0];
-	if (args.length === 1) {
-		// View response
-		const resp = await getCustomResponse(channel, cmd);
-		logger.info(`[editcmd] View response for command: ${cmd} => ${resp}`);
-		return resp ? `Response for !${cmd}: ${resp}` : `No custom response set for !${cmd}`;
-	} else {
-		// Set response
-		const response = args.slice(1).join(' ');
-		await setCustomResponse(channel, cmd, response);
-		logger.info(`[editcmd] Set response for command: ${cmd} => ${response}`);
-		return `Set custom response for !${cmd}`;
-	}
-}
-
 export const execute = async (
-	client: Client,
-	channel: string,
-	message: string,
-	tags: Userstate,
-	args: string[]
+  client: Client,
+  channel: string,
+  message: string,
+  tags: Userstate,
+  args: string[]
 ) => {
-	const user = tags['display-name'] || tags.username;
-	const normalizedChannel = channel.replace('#', '');
-	const response = await editcmd(normalizedChannel, user, args);
-	client.say(channel, response);
+  try {
+    const sanitizedChannel = channel.replace(/^#/, '');
+    const username = tags['display-name'];
+
+    if (!username) {
+      logger.error('Missing username.');
+      return;
+    }
+
+    // Case-insensitive permission check
+    const usernameLower = username.toLowerCase();
+    const sanitizedChannelLower = sanitizedChannel.toLowerCase();
+
+    if (
+      usernameLower !== sanitizedChannelLower &&
+      !tags['badges']?.moderator &&
+      usernameLower !== 'antiparty'
+    ) {
+      client.say(channel, `@${username}, you do not have permission to run this command.`);
+      return;
+    }
+
+    if (!args || args.length < 1) {
+      client.say(channel, `@${username}, usage: !editcmd <command> [response]`);
+      return;
+    }
+
+    const cmd = args[0];
+
+    if (args.length === 1) {
+      // View response
+      const resp = await getCustomResponse(sanitizedChannel, cmd);
+      if (resp) {
+        client.say(channel, `Response for !${cmd}: ${resp}`);
+      } else {
+        client.say(channel, `No custom response set for !${cmd}`);
+      }
+    } else {
+      // Set response
+      const response = args.slice(1).join(' ');
+      await setCustomResponse(sanitizedChannel, cmd, response);
+      logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);
+      client.say(channel, `@${username}, custom response for !${cmd} has been set.`);
+    }
+  } catch (error) {
+    logger.error('Error executing editcmd:', error);
+    const displayName = tags['display-name'] || 'user';
+    client.say(channel, `@${displayName}, there was an error executing the command.`);
+  }
 };
 
 export const aliases = ['editcmd', 'setcmd', 'commandedit'];

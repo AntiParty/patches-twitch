@@ -23,3 +23,5 @@ export async function editcmd(channel: string, user: string, args: string[]): Pr
 		return `Set custom response for !${cmd}`;
 	}
 }
+
+export const aliases = ['editcmd', 'setcmd', 'commandedit'];

@@ -21,7 +21,7 @@ Type this in chat to see the current custom message for a command:
 Type this in chat:
 
 ```
-!editcmd rank FinalsRR: @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank}
+!editcmd rank @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank}
 ```
 
 *Now, when someone uses `!rank`, your bot will reply with that message, filling in the details for each user!*

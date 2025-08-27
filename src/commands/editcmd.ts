@@ -55,17 +55,12 @@ export const execute = async (
         client.say(channel, `@${username}, !${cmd} does not exist and cannot be edited.`);
       }
     } else {
-      // Set response
-      // Check if command exists before allowing edit
-      const resp = await getCustomResponse(sanitizedChannel, cmd);
-      if (!resp) {
-        client.say(channel, `@${username}, !${cmd} does not exist and cannot be edited.`);
-        return;
-      }
-      const response = args.slice(1).join(' ');
-      await setCustomResponse(sanitizedChannel, cmd, response);
-      logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);
-      client.say(channel, `@${username}, custom response for !${cmd} has been set.`);
+  // Set response
+  // Allow creating or editing !rank and !record
+  const response = args.slice(1).join(' ');
+  await setCustomResponse(sanitizedChannel, cmd, response);
+  logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);
+  client.say(channel, `@${username}, custom response for !${cmd} has been set.`);
     }
   } catch (error) {
     logger.error('Error executing editcmd:', error);

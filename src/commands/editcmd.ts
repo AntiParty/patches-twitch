@@ -1,9 +1,11 @@
+
+import { Client, Userstate } from 'tmi.js';
 import { getCustomResponse, setCustomResponse } from '../db';
 import logger from '../util/logger';
 
 // Usage: !editcmd <command> <response>
 //        !editcmd <command> (to view response)
-export async function editcmd(channel: string, user: string, args: string[]): Promise<string> {
+async function editcmd(channel: string, user: string, args: string[]): Promise<string> {
 	logger.info(`[editcmd] Called by user: ${user} in channel: ${channel} with args: ${JSON.stringify(args)}`);
 	if (args.length === 0) {
 		logger.info('[editcmd] No arguments provided');
@@ -24,18 +26,16 @@ export async function editcmd(channel: string, user: string, args: string[]): Pr
 	}
 }
 
-// Standard execute function for command handler
 export const execute = async (
-	client,
-	channel,
-	message,
-	tags,
-	args
+	client: Client,
+	channel: string,
+	message: string,
+	tags: Userstate,
+	args: string[]
 ) => {
 	const user = tags['display-name'] || tags.username;
-	// If args not provided, parse from message
-	const cmdArgs = args && args.length ? args : message.trim().split(' ').slice(1);
-	const response = await editcmd(channel.replace('#', ''), user, cmdArgs);
+	const normalizedChannel = channel.replace('#', '');
+	const response = await editcmd(normalizedChannel, user, args);
 	client.say(channel, response);
 };
 

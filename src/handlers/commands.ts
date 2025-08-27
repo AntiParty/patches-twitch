@@ -36,6 +36,7 @@ export const loadCommands = () => {
                         } else {
                             commandHandler[aliasKey] = command.execute;
                             seenKeys.add(aliasKey);
+                            console.log(`Registered alias: ${aliasKey} for command: ${mainKey}`);
                         }
                     });
                 } else if (command.aliases) {

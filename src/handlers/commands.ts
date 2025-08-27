@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { editcmd } from '../commands/editcmd';
+import logger from '../util/logger';
 
 /**
  * Loads all command modules from the commands directory and returns a handler object.
@@ -35,7 +36,10 @@ export function loadCommands() {
                 if (seenKeys.has(mainKey)) {
                     duplicateKeys.push(mainKey);
                 } else {
-                    commandHandler[mainKey] = command.execute;
+                    commandHandler[mainKey] = (...args) => {
+                        logger.info(`[commandHandler] Executing command: ${mainKey} with args: ${JSON.stringify(args)}`);
+                        return command.execute(...args);
+                    };
                     seenKeys.add(mainKey);
                 }
                 if (Array.isArray(command.aliases)) {
@@ -44,7 +48,10 @@ export function loadCommands() {
                         if (seenKeys.has(aliasKey)) {
                             duplicateKeys.push(aliasKey);
                         } else {
-                            commandHandler[aliasKey] = command.execute;
+                            commandHandler[aliasKey] = (...args) => {
+                                logger.info(`[commandHandler] Executing alias: ${aliasKey} with args: ${JSON.stringify(args)}`);
+                                return command.execute(...args);
+                            };
                             seenKeys.add(aliasKey);
                         }
                     });

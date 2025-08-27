@@ -36,7 +36,15 @@ export const execute = async (
       return;
     }
 
-    const cmd = args[0];
+    let cmd = args[0].toLowerCase();
+    if (cmd.startsWith('!')) {
+      cmd = cmd.slice(1);
+    }
+    const allowedCommands = ['rank', 'record'];
+    if (!allowedCommands.includes(cmd)) {
+  client.say(channel, `@${username}, you can only edit !rank and !record commands.`);
+      return;
+    }
 
     if (args.length === 1) {
       // View response
@@ -44,10 +52,16 @@ export const execute = async (
       if (resp) {
         client.say(channel, `Response for !${cmd}: ${resp}`);
       } else {
-        client.say(channel, `No custom response set for !${cmd}`);
+        client.say(channel, `@${username}, !${cmd} does not exist and cannot be edited.`);
       }
     } else {
       // Set response
+      // Check if command exists before allowing edit
+      const resp = await getCustomResponse(sanitizedChannel, cmd);
+      if (!resp) {
+        client.say(channel, `@${username}, !${cmd} does not exist and cannot be edited.`);
+        return;
+      }
       const response = args.slice(1).join(' ');
       await setCustomResponse(sanitizedChannel, cmd, response);
       logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);

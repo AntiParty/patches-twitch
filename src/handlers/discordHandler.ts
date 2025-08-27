@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;  // Discord Webhook URL
+const changelogwebhookUrl = process.env.DISCORD_CHANGELOG_WEBHOOK_URL; // Changelog Webhook URL
 
 /**
  * Send a generic alert to Discord webhook.

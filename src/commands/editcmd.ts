@@ -7,30 +7,25 @@ interface CommandContext {
   user: string;
   channel: string;
   message: string;
+  tags?: Record<string, any>; // make tags optional
 }
 
 export const execute = async (
   ctx: CommandContext,
   _channel: string,
   _message: string,
-  tags: Record<string, any>,
   args: string[]
 ) => {
   try {
     const sanitizedChannel = ctx.channel.replace(/^#/, '');
-    const username = tags['display-name'];
-
-    if (!username) {
-      logger.error('Missing username.');
-      return;
-    }
+    const username = ctx.tags?.['display-name'] || ctx.user || 'user';
 
     // Permission check
     const usernameLower = username.toLowerCase();
     const sanitizedChannelLower = sanitizedChannel.toLowerCase();
     if (
       usernameLower !== sanitizedChannelLower &&
-      !tags['badges']?.moderator &&
+      !ctx.tags?.['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
       await ctx.say(`@${username}, you do not have permission to run this command.`);
@@ -68,7 +63,7 @@ export const execute = async (
     }
   } catch (error) {
     logger.error('Error executing editcmd:', error);
-    const displayName = tags['display-name'] || 'user';
+    const displayName = ctx.tags?.['display-name'] || ctx.user || 'user';
     await ctx.say(`@${displayName}, there was an error executing the command.`);
   }
 };

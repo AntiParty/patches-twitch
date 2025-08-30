@@ -7,30 +7,26 @@ interface CommandContext {
   user: string;
   channel: string;
   message: string;
+  tags?: Record<string, any>; // optional tags
 }
 
 export const execute = async (
   ctx: CommandContext,
   _channel: string,
   _message: string,
-  tags: Record<string, any>,
   args: string[]
 ) => {
   try {
-    const username = tags['display-name'];
+    // Fallback to ctx.user if tags or display-name is missing
+    const username = ctx.tags?.['display-name'] || ctx.user || 'user';
     const sanitizedChannel = ctx.channel.replace(/^#/, '');
-
-    if (!username) {
-      logger.error('Missing username.');
-      return;
-    }
 
     // Permission check
     const usernameLower = username.toLowerCase();
     const sanitizedChannelLower = sanitizedChannel.toLowerCase();
     if (
       usernameLower !== sanitizedChannelLower &&
-      !tags['badges']?.moderator &&
+      !ctx.tags?.['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
       await ctx.say(`@${username}, you do not have permission to run this command.`);
@@ -66,7 +62,7 @@ export const execute = async (
     }
   } catch (error) {
     logger.error('Error executing command:', error);
-    const displayName = tags['display-name'] || 'user';
+    const displayName = ctx.tags?.['display-name'] || ctx.user || 'user';
     await ctx.say(`@${displayName}, there was an error executing the command.`);
   }
 };

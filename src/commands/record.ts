@@ -10,7 +10,7 @@ interface CommandContext {
   user: string;
   channel: string;
   message: string;
-  tags: Record<string, any>;
+  tags?: Record<string, any>; // tags now optional
 }
 
 const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
@@ -54,8 +54,8 @@ async function maybeSendCustomResponse(
 }
 
 export const execute = async (ctx: CommandContext) => {
-  const username = ctx.tags["display-name"] || ctx.user;
-  const messageId = ctx.tags["id"];
+  const username = ctx.tags?.["display-name"] || ctx.user || "user";
+  const messageId = ctx.tags?.["id"];
   const sanitizedChannel = ctx.channel.replace(/^#/, "");
 
   if (!username || !messageId) {

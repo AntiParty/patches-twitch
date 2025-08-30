@@ -7,26 +7,25 @@ interface CommandContext {
   user: string;
   channel: string;
   message: string;
-  tags: Record<string, any>;
+  tags?: Record<string, any>; // make tags optional
 }
 
 export const execute = async (
   ctx: CommandContext,
   _channel: string,
   _message: string,
-  tags: Record<string, any>,
   _args: string[]
 ) => {
   try {
-    const username = tags['display-name'] || 'user';
+    const username = ctx.tags?.['display-name'] || ctx.user || 'user';
     const sanitizedChannel = ctx.channel.replace(/^#/, '');
 
-    // Permission check: only broadcaster or mod can make bot leave
+    // Permission check: only broadcaster, mod, or antiparty
     const usernameLower = username.toLowerCase();
     const sanitizedChannelLower = sanitizedChannel.toLowerCase();
     if (
       usernameLower !== sanitizedChannelLower &&
-      !tags['badges']?.moderator &&
+      !ctx.tags?.['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
       await ctx.say(`@${username}, you do not have permission to run this command.`);
@@ -43,7 +42,7 @@ export const execute = async (
     }
   } catch (error) {
     logger.error('Error executing leave command:', error);
-    const displayName = tags['display-name'] || 'user';
+    const displayName = ctx.tags?.['display-name'] || ctx.user || 'user';
     await ctx.say(`@${displayName}, there was an error executing the command.`);
   }
 };

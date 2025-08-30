@@ -9,7 +9,7 @@ interface CommandContext {
   user: string;
   channel: string;
   message: string;
-  tags?: Record<string, any>; // make tags optional
+  tags?: Record<string, any>; // optional
 }
 
 const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
@@ -46,7 +46,7 @@ async function maybeSendCustomResponse(
   const normalizedChannel = ctx.channel.replace("#", "");
   const resp = await getCustomResponse(normalizedChannel, command);
   if (resp) {
-    const message = resp.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '');
+    const message = resp.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? "");
     await ctx.say(message);
     return true;
   }
@@ -54,13 +54,9 @@ async function maybeSendCustomResponse(
 }
 
 export const execute = async (ctx: CommandContext) => {
+  // Use fallback if tags are missing
   const username = ctx.tags?.["display-name"] || ctx.user || "user";
-  const messageId = ctx.tags?.["id"];
-
-  if (!username || !messageId) {
-    logger.error("[rank] Missing username or message ID");
-    return;
-  }
+  const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`; // generate unique ID if missing
 
   if (processedMessages.has(messageId)) return;
   processedMessages.add(messageId);
@@ -99,14 +95,14 @@ export const execute = async (ctx: CommandContext) => {
 
     const vars = {
       username,
-      rank: player?.rank ?? wtPlayer?.rank ?? 'N/A',
-      league: player?.league ?? '',
-      rankScore: player?.rankScore ? player.rankScore.toLocaleString() : '',
-      wtRank: wtPlayer?.rank ?? '',
-      found: player || wtPlayer ? 'true' : 'false',
+      rank: player?.rank ?? wtPlayer?.rank ?? "N/A",
+      league: player?.league ?? "",
+      rankScore: player?.rankScore ? player.rankScore.toLocaleString() : "",
+      wtRank: wtPlayer?.rank ?? "",
+      found: player || wtPlayer ? "true" : "false",
     };
 
-    const usedCustom = await maybeSendCustomResponse('rank', ctx, vars);
+    const usedCustom = await maybeSendCustomResponse("rank", ctx, vars);
     if (usedCustom) return;
 
     let response = `@${username}, `;
@@ -127,4 +123,4 @@ export const execute = async (ctx: CommandContext) => {
   }
 };
 
-export const aliases = ['rank', 'r'];
+export const aliases = ["rank", "r"];

@@ -276,7 +276,7 @@ export const loadTokensOnStartup = async (commandHandler: { [key: string]: Funct
  * @param commandHandler - Object containing command handler functions
  * @returns Express app instance
  */
-export const setupServer = (commandHandler: { [key: string]: Function }) => {
+export const setupServer = () => {
   // Use the initialized commandHandler
   const handler = commandHandler;
   const frontendPath = path.join(process.cwd(), "frontend");

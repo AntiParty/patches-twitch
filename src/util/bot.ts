@@ -25,7 +25,7 @@ async function sendChatMessage(
   const botUserId = process.env.TWITCH_BOT_USER_ID;
 
   if (!broadcasterId || !botUserId || !appAccessToken || !clientId) {
-    console.error(
+    logger.error(
       "[DEBUG] Missing broadcasterId, botUserId, App Access Token, or Client ID.",
       { broadcasterId, botUserId, appAccessToken: !!appAccessToken, clientId }
     );
@@ -57,13 +57,13 @@ async function sendChatMessage(
 
     logger.log("[DEBUG] Helix API response:", resp.data);
   } catch (err: any) {
-    console.error(
+    logger.error(
       "[ERROR] Failed to send chat message via Helix API:",
       err.response?.data || err
     );
 
     if (err.response?.data?.message) {
-      console.error("[ERROR DETAIL]", err.response.data.message);
+      logger.error("[ERROR DETAIL]", err.response.data.message);
     }
   }
 }
@@ -73,7 +73,7 @@ export const startChatBot = async (
   commandHandler: Record<string, any>
 ) => {
   if (!username || typeof username !== "string") {
-    console.error("[DEBUG] Invalid username:", username);
+    logger.error("[DEBUG] Invalid username:", username);
     return;
   }
 
@@ -87,7 +87,7 @@ export const startChatBot = async (
   const botToken = process.env.TWITCH_BOT_TOKEN;
 
   if (!botUsername || !botToken || !process.env.TWITCH_BOT_USER_ID) {
-    console.error(
+    logger.error(
       "[DEBUG] Missing environment variables:",
       {
         botUsername,
@@ -161,7 +161,7 @@ export const startChatBot = async (
           {
             say: async (msg: string) => {
               if (!broadcasterId) {
-                console.error(`[DEBUG] No broadcaster info for ${channelName}`);
+                logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
                 return;
               }
               logger.log(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
@@ -190,7 +190,7 @@ export const startChatBot = async (
   });
 
   socket.on("error", (err) =>
-    console.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err)
+    logger.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err)
   );
   socket.on("close", () => {
     logger.log(`[DEBUG] IRC closed for ${sanitizedUsername}`);
@@ -213,7 +213,7 @@ export const stopChatBot = async (username: string) => {
     client.socket.end();
     logger.log(`[DEBUG] Bot disconnected for ${username}`);
   } catch (err) {
-    console.error(`[ERROR] Stopping bot for ${username}:`, err);
+    logger.error(`[ERROR] Stopping bot for ${username}:`, err);
   } finally {
     delete clients[username];
   }

@@ -108,9 +108,9 @@ export const startChatBot = async (
                   return;
                 }
                 const broadcaster_id = channelRow.get("twitch_user_id");
-                const access_token = channelRow.get("access_token");
-                if (!broadcaster_id || !access_token || !clientId) {
-                  console.error("Missing broadcaster_id, access_token, or clientId.");
+                const appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
+                if (!broadcaster_id || !appAccessToken || !clientId) {
+                  console.error("Missing broadcaster_id, appAccessToken, or clientId.");
                   return;
                 }
                 const botUserId = process.env.TWITCH_BOT_USER_ID;
@@ -127,7 +127,7 @@ export const startChatBot = async (
                   },
                   {
                     headers: {
-                      "Authorization": `Bearer ${access_token}`,
+                      "Authorization": `Bearer ${appAccessToken}`,
                       "Client-Id": clientId,
                       "Content-Type": "application/json",
                     },

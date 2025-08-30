@@ -1,21 +1,51 @@
-import { Client, Userstate } from 'tmi.js';
+import { stopChatBot, clients } from '../util/bot';
+import logger from '../util/logger';
 
-export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
-    try {
-        const username = tags['display-name'];
-        const messageId = tags['id'];
+interface CommandContext {
+  say: (message: string) => Promise<void>;
+  raw: (line: string) => void;
+  user: string;
+  channel: string;
+  message: string;
+  tags: Record<string, any>;
+}
 
-        if (!username || !messageId) {
-            console.error('Missing username or message ID.');
-            return;
-        }
+export const execute = async (
+  ctx: CommandContext,
+  _channel: string,
+  _message: string,
+  tags: Record<string, any>,
+  _args: string[]
+) => {
+  try {
+    const username = tags['display-name'] || 'user';
+    const sanitizedChannel = ctx.channel.replace(/^#/, '');
 
-        client.part(channel);
-        console.log(`Bot left channel: ${channel}`);
-    } catch (error) {
-        console.error('Error executing help command:', error);
+    // Permission check: only broadcaster or mod can make bot leave
+    const usernameLower = username.toLowerCase();
+    const sanitizedChannelLower = sanitizedChannel.toLowerCase();
+    if (
+      usernameLower !== sanitizedChannelLower &&
+      !tags['badges']?.moderator &&
+      usernameLower !== 'antiparty'
+    ) {
+      await ctx.say(`@${username}, you do not have permission to run this command.`);
+      return;
     }
+
+    // Stop the bot for this channel
+    if (clients[sanitizedChannel]) {
+      await stopChatBot(sanitizedChannel);
+      logger.info(`Bot left channel: ${sanitizedChannel}`);
+      await ctx.say(`@${username}, the bot has left #${sanitizedChannel}.`);
+    } else {
+      await ctx.say(`@${username}, the bot is not connected to #${sanitizedChannel}.`);
+    }
+  } catch (error) {
+    logger.error('Error executing leave command:', error);
+    const displayName = tags['display-name'] || 'user';
+    await ctx.say(`@${displayName}, there was an error executing the command.`);
+  }
 };
 
-// Define aliases for this command
 export const aliases = ['leave', 'part'];

@@ -1,16 +1,23 @@
-import { Client, Userstate } from 'tmi.js';
 import { getCustomResponse, setCustomResponse } from '../db';
 import logger from '../util/logger';
 
+interface CommandContext {
+  say: (message: string) => Promise<void>;
+  raw: (line: string) => void;
+  user: string;
+  channel: string;
+  message: string;
+}
+
 export const execute = async (
-  client: Client,
-  channel: string,
-  message: string,
-  tags: Userstate,
+  ctx: CommandContext,
+  _channel: string,
+  _message: string,
+  tags: Record<string, any>,
   args: string[]
 ) => {
   try {
-    const sanitizedChannel = channel.replace(/^#/, '');
+    const sanitizedChannel = ctx.channel.replace(/^#/, '');
     const username = tags['display-name'];
 
     if (!username) {
@@ -18,31 +25,29 @@ export const execute = async (
       return;
     }
 
-    // Case-insensitive permission check
+    // Permission check
     const usernameLower = username.toLowerCase();
     const sanitizedChannelLower = sanitizedChannel.toLowerCase();
-
     if (
       usernameLower !== sanitizedChannelLower &&
       !tags['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
-      client.say(channel, `@${username}, you do not have permission to run this command.`);
+      await ctx.say(`@${username}, you do not have permission to run this command.`);
       return;
     }
 
     if (!args || args.length < 1) {
-      client.say(channel, `@${username}, usage: !editcmd <command> [response]`);
+      await ctx.say(`@${username}, usage: !editcmd <command> [response]`);
       return;
     }
 
     let cmd = args[0].toLowerCase();
-    if (cmd.startsWith('!')) {
-      cmd = cmd.slice(1);
-    }
+    if (cmd.startsWith('!')) cmd = cmd.slice(1);
     const allowedCommands = ['rank', 'record'];
+
     if (!allowedCommands.includes(cmd)) {
-  client.say(channel, `@${username}, you can only edit !rank and !record commands.`);
+      await ctx.say(`@${username}, you can only edit !rank and !record commands.`);
       return;
     }
 
@@ -50,23 +55,23 @@ export const execute = async (
       // View response
       const resp = await getCustomResponse(sanitizedChannel, cmd);
       if (resp) {
-        client.say(channel, `Response for !${cmd}: ${resp}`);
+        await ctx.say(`Response for !${cmd}: ${resp}`);
       } else {
-        client.say(channel, `@${username}, !${cmd} does not exist and cannot be edited.`);
+        await ctx.say(`@${username}, !${cmd} does not exist and cannot be edited.`);
       }
     } else {
-  // Set response
-  // Allow creating or editing !rank and !record
-  const response = args.slice(1).join(' ');
-  await setCustomResponse(sanitizedChannel, cmd, response);
-  logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);
-  client.say(channel, `@${username}, custom response for !${cmd} has been set.`);
+      // Set response
+      const response = args.slice(1).join(' ');
+      await setCustomResponse(sanitizedChannel, cmd, response);
+      logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);
+      await ctx.say(`@${username}, custom response for !${cmd} has been set.`);
     }
   } catch (error) {
     logger.error('Error executing editcmd:', error);
     const displayName = tags['display-name'] || 'user';
-    client.say(channel, `@${displayName}, there was an error executing the command.`);
+    await ctx.say(`@${displayName}, there was an error executing the command.`);
   }
 };
 
+// Command aliases
 export const aliases = ['editcmd', 'setcmd', 'commandedit'];

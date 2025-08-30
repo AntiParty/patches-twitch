@@ -1,35 +1,44 @@
-import { Client, Userstate } from 'tmi.js';
 import { Channel } from '../db';
 import { stopChatBot } from '../util/bot';
 
-export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
-    try {
-        const username = tags['display-name']?.toLowerCase(); // Ensure lowercase for consistency
+interface CommandContext {
+  say: (message: string) => Promise<void>;
+  raw: (line: string) => void;
+  user: string;
+  channel: string;
+  message: string;
+  tags: Record<string, any>;
+}
 
-        if (!username) {
-            console.error('Missing username.');
-            return;
-        }
-
-        console.log(`Attempting to unlink user: ${username}`);
-
-        // Remove the user's tokens and channel from the database
-        const deleted = await Channel.destroy({ where: { username } });
-
-        if (deleted) {
-            console.log(`User ${username} unlinked from the database.`);
-            // Part the bot from the channel
-            await stopChatBot(client, channel);
-            client.say(channel, `@${username}, your account has been unlinked and the bot has left the channel.`);
-            console.log(`Unlinked and parted from ${channel}`);
-        } else {
-            console.log(`User ${username} not found in the database.`);
-            client.say(channel, `@${username}, your account is not linked.`);
-        }
-    } catch (error) {
-        console.error('Error executing unlink command:', error);
-        client.say(channel, 'An error occurred while trying to unlink your account.');
+export const execute = async (ctx: CommandContext) => {
+  try {
+    const username = ctx.tags['display-name']?.toLowerCase();
+    if (!username) {
+      console.error('Missing username.');
+      return;
     }
+
+    console.log(`Attempting to unlink user: ${username}`);
+
+    // Remove the user's channel from the database
+    const deleted = await Channel.destroy({ where: { username } });
+
+    if (deleted) {
+      console.log(`User ${username} unlinked from the database.`);
+
+      // Part the bot from the channel
+      await stopChatBot(ctx.channel);
+
+      await ctx.say(`@${username}, your account has been unlinked and the bot has left the channel.`);
+      console.log(`Unlinked and parted from ${ctx.channel}`);
+    } else {
+      console.log(`User ${username} not found in the database.`);
+      await ctx.say(`@${username}, your account is not linked.`);
+    }
+  } catch (error) {
+    console.error('Error executing unlink command:', error);
+    await ctx.say('An error occurred while trying to unlink your account.');
+  }
 };
 
 export const aliases = ['remove', 'disconnect'];

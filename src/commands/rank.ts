@@ -1,29 +1,23 @@
-import { Client, Userstate } from "tmi.js";
 import { Channel, getCustomResponse } from "../db";
-
-// Helper to check and send custom response for any command
-async function maybeSendCustomResponse(command: string, client: Client, channel: string, messageId: string, username: string, vars: Record<string, any>) {
-  const normalizedChannel = channel.replace('#', '');
-  let customResponse = await getCustomResponse(normalizedChannel, command);
-  if (customResponse) {
-    let response = customResponse.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '');
-    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`);
-    return true;
-  }
-  return false;
-}
-import path from "path";
 import fs from "fs/promises";
-import logger from "@/util/logger";
+import path from "path";
+import logger from "../util/logger";
+
+interface CommandContext {
+  say: (message: string) => Promise<void>;
+  raw: (line: string) => void;
+  user: string;
+  channel: string;
+  message: string;
+  tags: Record<string, any>;
+}
 
 const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
 const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/WTrankCache.json");
-
 const processedMessages = new Set<string>();
 
 async function getCachedLeaderboardData() {
   try {
-    logger.info(`Trying to read leaderboard cache from: ${CACHE_FILE_PATH}`);
     const rawData = await fs.readFile(CACHE_FILE_PATH, "utf8");
     const parsed = JSON.parse(rawData);
     return Array.isArray(parsed) ? parsed : null;
@@ -35,7 +29,6 @@ async function getCachedLeaderboardData() {
 
 async function getWorldTourData() {
   try {
-    logger.info(`Trying to read World Tour cache from: ${WT_CACHE_FILE_PATH}`);
     const raw = await fs.readFile(WT_CACHE_FILE_PATH, "utf8");
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : null;
@@ -45,35 +38,40 @@ async function getWorldTourData() {
   }
 }
 
-export const execute = async (
-  client: Client,
-  channel: string,
-  message: string,
-  tags: Userstate
-) => {
-  logger.info("[rank.ts] Rank command triggered");
+async function maybeSendCustomResponse(
+  command: string,
+  ctx: CommandContext,
+  vars: Record<string, any>
+) {
+  const normalizedChannel = ctx.channel.replace("#", "");
+  const resp = await getCustomResponse(normalizedChannel, command);
+  if (resp) {
+    const message = resp.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '');
+    await ctx.say(message);
+    return true;
+  }
+  return false;
+}
 
-  const normalizedChannel = channel.replace("#", "");
-  const username = tags["display-name"] || tags.username;
-  const messageId = tags["id"];
+export const execute = async (ctx: CommandContext) => {
+  const username = ctx.tags["display-name"] || ctx.user;
+  const messageId = ctx.tags["id"];
 
   if (!username || !messageId) {
-    logger.error("[rank.ts] Missing username or message ID in tags");
+    logger.error("[rank] Missing username or message ID");
     return;
   }
 
-  if (processedMessages.has(messageId)) {
-    logger.info(`[rank.ts] Skipping duplicate response for messageId: ${messageId}`);
-    return;
-  }
+  if (processedMessages.has(messageId)) return;
   processedMessages.add(messageId);
   setTimeout(() => processedMessages.delete(messageId), 10_000);
 
+  const normalizedChannel = ctx.channel.replace("#", "");
+
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
-
     if (!channelInstance?.player_id?.trim()) {
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`);
+      await ctx.say(`@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`);
       return;
     }
 
@@ -82,17 +80,16 @@ export const execute = async (
     const worldTourData = await getWorldTourData();
 
     if (!regularData && !worldTourData) {
-      client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, leaderboard data is temporarily unavailable.`);
+      await ctx.say(`@${username}, leaderboard data is temporarily unavailable.`);
       return;
     }
 
-    // Helper to find player by exact or base name match
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
-      let player = data.find(entry => entry.name.toLowerCase() === name);
+      let player = data.find(p => p.name.toLowerCase() === name);
       if (!player && name.includes("#")) {
         const baseName = name.split("#")[0];
-        player = data.find(entry => entry.name.toLowerCase().startsWith(baseName));
+        player = data.find(p => p.name.toLowerCase().startsWith(baseName));
       }
       return player;
     };
@@ -100,7 +97,6 @@ export const execute = async (
     const player = findPlayer(regularData, finalsName);
     const wtPlayer = findPlayer(worldTourData, finalsName);
 
-    // Prepare variables for custom response
     const vars = {
       username,
       rank: player?.rank ?? wtPlayer?.rank ?? 'N/A',
@@ -110,11 +106,9 @@ export const execute = async (
       found: player || wtPlayer ? 'true' : 'false',
     };
 
-    // Use custom response if set, otherwise default
-    const usedCustom = await maybeSendCustomResponse('rank', client, channel, messageId, username, vars);
+    const usedCustom = await maybeSendCustomResponse('rank', ctx, vars);
     if (usedCustom) return;
 
-    // Default response logic
     let response = `@${username}, `;
     if (player && wtPlayer) {
       response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS | WT rank: #${wtPlayer.rank}`;
@@ -125,9 +119,12 @@ export const execute = async (
     } else {
       response += `not found on regular or World Tour leaderboards.`;
     }
-    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${response}`);
-  } catch (error) {
-    logger.error("[rank.ts] Error in rank command execution:", error);
-    client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :@${username}, something went wrong fetching your rank.`);
+
+    await ctx.say(response);
+  } catch (err) {
+    logger.error("[rank] Error executing command:", err);
+    await ctx.say(`@${username}, something went wrong fetching your rank.`);
   }
 };
+
+export const aliases = ['rank', 'r'];

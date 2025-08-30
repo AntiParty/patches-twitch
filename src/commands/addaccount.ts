@@ -65,4 +65,5 @@ export const execute = async (
   }
 };
 
+//test
 export const aliases = ['addaccount', 'linkaccount', 'link', 'add'];

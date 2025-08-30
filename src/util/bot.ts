@@ -17,11 +17,11 @@ const clients: { [username: string]: IRCClient } = {};
  */
 async function sendChatMessage(
   broadcasterId: string,
-  botUserId: string,
   message: string
 ) {
   const appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
   const clientId = process.env.TWITCH_CLIENT_ID;
+  const botUserId = process.env.TWITCH_BOT_USER_ID; // Bot account ID
 
   if (!broadcasterId || !botUserId || !appAccessToken || !clientId) {
     console.error(
@@ -46,6 +46,7 @@ async function sendChatMessage(
         },
       }
     );
+    console.log(`Sent message via Helix: ${message}`);
   } catch (err: any) {
     console.error(
       "Failed to send chat message via Helix API:",
@@ -71,9 +72,8 @@ export const startChatBot = async (
 
   const botUsername = process.env.TWITCH_BOT_USERNAME;
   const botToken = process.env.TWITCH_BOT_TOKEN;
-  const botUserId = process.env.TWITCH_BOT_USER_ID;
 
-  if (!botUsername || !botToken || !botUserId) {
+  if (!botUsername || !botToken || !process.env.TWITCH_BOT_USER_ID) {
     console.error(
       "TWITCH_BOT_USERNAME, TWITCH_BOT_TOKEN, or TWITCH_BOT_USER_ID missing."
     );
@@ -148,7 +148,7 @@ export const startChatBot = async (
               if (!broadcasterId)
                 return console.error(`No broadcaster info for ${channelName}`);
               // Send via Helix API to display Chat Bot Badge
-              await sendChatMessage(broadcasterId, botUserId, msg);
+              await sendChatMessage(broadcasterId, msg);
             },
             raw: (line: string) =>
               socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),

@@ -33,7 +33,7 @@ async function sendChatMessage(
   }
 
   try {
-    logger.log("[DEBUG] Sending chat message via Helix API:", {
+    logger.info("[DEBUG] Sending chat message via Helix API:", {
       broadcasterId,
       botUserId,
       message,
@@ -55,7 +55,7 @@ async function sendChatMessage(
       }
     );
 
-    logger.log("[DEBUG] Helix API response:", resp.data);
+    logger.info("[DEBUG] Helix API response:", resp.data);
   } catch (err: any) {
     logger.error(
       "[ERROR] Failed to send chat message via Helix API:",
@@ -79,7 +79,7 @@ export const startChatBot = async (
 
   const sanitizedUsername = username.replace(/^#/, "");
   if (clients[sanitizedUsername]) {
-    logger.log(`[DEBUG] Bot already connected for ${sanitizedUsername}`);
+    logger.info(`[DEBUG] Bot already connected for ${sanitizedUsername}`);
     return;
   }
 
@@ -102,13 +102,13 @@ export const startChatBot = async (
   let connected = false;
 
   socket.connect(6667, "irc.chat.twitch.tv", () => {
-    logger.log(`[DEBUG] Connecting to IRC as ${botUsername}`);
+    logger.info(`[DEBUG] Connecting to IRC as ${botUsername}`);
     socket.write(`CAP REQ :twitch.tv/tags\r\n`);
     socket.write(`PASS oauth:${botToken}\r\n`);
     socket.write(`NICK ${botUsername}\r\n`);
     socket.write(`JOIN #${sanitizedUsername}\r\n`);
     connected = true;
-    logger.log(`[DEBUG] Bot connected to #${sanitizedUsername}`);
+    logger.info(`[DEBUG] Bot connected to #${sanitizedUsername}`);
   });
 
   socket.on("data", async (data) => {
@@ -164,7 +164,7 @@ export const startChatBot = async (
                 logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
                 return;
               }
-              logger.log(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
+              logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
               await sendChatMessage(broadcasterId, msg);
             },
             raw: (line: string) =>
@@ -181,7 +181,7 @@ export const startChatBot = async (
       }
 
       if (rawCommand === "!test") {
-        logger.log(`[DEBUG] Received !test command from ${user}`);
+        logger.info(`[DEBUG] Received !test command from ${user}`);
         socket.write(
           `PRIVMSG #${channelName} :Hello ${tags["display-name"] || user}!\r\n`
         );
@@ -193,7 +193,7 @@ export const startChatBot = async (
     logger.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err)
   );
   socket.on("close", () => {
-    logger.log(`[DEBUG] IRC closed for ${sanitizedUsername}`);
+    logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
     connected = false;
   });
 
@@ -211,7 +211,7 @@ export const stopChatBot = async (username: string) => {
   try {
     client.socket.write(`PART #${client.channel}\r\n`);
     client.socket.end();
-    logger.log(`[DEBUG] Bot disconnected for ${username}`);
+    logger.info(`[DEBUG] Bot disconnected for ${username}`);
   } catch (err) {
     logger.error(`[ERROR] Stopping bot for ${username}:`, err);
   } finally {

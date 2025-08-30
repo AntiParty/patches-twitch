@@ -129,8 +129,10 @@ const refreshAccessToken = async (channel: any) => {
     });
     if (!response.ok) {
       const errorDetails = await response.text();
-      console.error(`Failed to refresh access token for ${channel.username}: ${response.statusText}`);
+      // Improved error logging
+      console.error(`Failed to refresh access token for ${channel.username}: ${response.status} ${response.statusText}`);
       console.error(`Error details: ${errorDetails}`);
+      console.error('Response headers:', response.headers);
       // Notify user via Discord
       try {
         const { sendDiscordAlert } = require('../handlers/discordHandler');
@@ -140,6 +142,7 @@ const refreshAccessToken = async (channel: any) => {
           description: `@${channel.username}, your Twitch token could not be refreshed. Please re-authenticate your account to continue using bot features.`,
           fields: [
             { name: 'Reason', value: errorDetails || response.statusText },
+            { name: 'Status', value: `${response.status} ${response.statusText}` },
           ],
         });
       } catch (notifyErr) {

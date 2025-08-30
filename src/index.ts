@@ -11,15 +11,15 @@ import logger from './util/logger';
 import fs from 'fs/promises';
 
 const commandHandler = loadCommands();
-const app = setupServer();
+const app = setupServer(commandHandler);
 
 const loadChannels = async () => {
     const channels = await Channel.findAll();
     for (const channel of channels) {
         const { username, access_token } = channel;
         logger.info(`Loading channel: ${username}`);
-        await validateToken(username, access_token);
-    startChatBot(username, commandHandler);
+        await validateToken(username, access_token, commandHandler);
+        startChatBot(username, commandHandler);
     }
 };
 
@@ -27,6 +27,6 @@ const loadChannels = async () => {
 http.createServer(app).listen(3000, async () => {
     logger.info('Server is running at http://localhost:3000');
     await loadChannels();
-    loadTokensOnStartup();
+    loadTokensOnStartup(commandHandler);
     startCacheUpdater();
 });

@@ -12,12 +12,16 @@ interface IRCClient {
 
 const clients: { [username: string]: IRCClient } = {};
 
-// Helper to send chat messages via Helix API for Chat Bot Badge
-async function sendChatMessage(broadcasterId: string, botUserId: string, msg: string) {
+// Helix API message sender (Chat Bot Badge)
+async function sendChatMessage(
+  broadcasterId: string,
+  botUserId: string,
+  message: string
+) {
   const appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
   const clientId = process.env.TWITCH_CLIENT_ID;
 
-  if (!appAccessToken || !clientId || !broadcasterId || !botUserId) {
+  if (!broadcasterId || !botUserId || !appAccessToken || !clientId) {
     console.error("Missing broadcasterId, botUserId, App Access Token, or Client ID.");
     return;
   }
@@ -28,7 +32,7 @@ async function sendChatMessage(broadcasterId: string, botUserId: string, msg: st
       {
         broadcaster_id: broadcasterId,
         sender_id: botUserId,
-        message: msg,
+        message,
       },
       {
         headers: {
@@ -39,7 +43,7 @@ async function sendChatMessage(broadcasterId: string, botUserId: string, msg: st
       }
     );
   } catch (err: any) {
-    console.error("Error sending chat message via Twitch API:", err.response?.data || err);
+    console.error("Failed to send chat message via Helix API:", err.response?.data || err);
   }
 }
 
@@ -48,61 +52,59 @@ export const startChatBot = async (
   commandHandler: Record<string, any>
 ) => {
   if (!username || typeof username !== "string") {
-    console.error("startChatBot called with undefined or invalid username.");
+    console.error("startChatBot called with invalid username.");
     return;
   }
 
   const sanitizedUsername = username.replace(/^#/, "");
-  if (clients[sanitizedUsername]) {
-    console.log(`Bot already connected for ${sanitizedUsername}`);
-    return;
-  }
+  if (clients[sanitizedUsername]) return console.log(`Bot already connected for ${sanitizedUsername}`);
 
   const botUsername = process.env.TWITCH_BOT_USERNAME;
   const botToken = process.env.TWITCH_BOT_TOKEN;
   const botUserId = process.env.TWITCH_BOT_USER_ID;
 
   if (!botUsername || !botToken || !botUserId) {
-    console.error("TWITCH_BOT_USERNAME, TWITCH_BOT_TOKEN, or TWITCH_BOT_USER_ID not set in env.");
+    console.error("TWITCH_BOT_USERNAME, TWITCH_BOT_TOKEN, or TWITCH_BOT_USER_ID missing.");
     return;
   }
 
-  const channel = sanitizedUsername;
   const socket = new net.Socket();
   let connected = false;
 
-  // IRC Connection (for raw/legacy commands only)
+  // IRC only for listening, not sending messages with badge
   socket.connect(6667, "irc.chat.twitch.tv", () => {
     socket.write(`CAP REQ :twitch.tv/tags\r\n`);
     socket.write(`PASS oauth:${botToken}\r\n`);
     socket.write(`NICK ${botUsername}\r\n`);
-    socket.write(`JOIN #${channel}\r\n`);
+    socket.write(`JOIN #${sanitizedUsername}\r\n`);
     connected = true;
-    console.log(`Bot connected to #${channel}`);
+    console.log(`Bot connected to #${sanitizedUsername}`);
   });
 
   socket.on("data", async (data) => {
     const lines = data.toString().split("\r\n");
+
     for (const line of lines) {
       if (!line) continue;
 
+      // Ping/Pong
       if (line.startsWith("PING")) {
         socket.write("PONG :tmi.twitch.tv\r\n");
         continue;
       }
 
-      let tagsObj: any = {};
+      // Parse tags
+      let tags: any = {};
       let rest = line;
-
       if (line.startsWith("@")) {
         const tagEnd = line.indexOf(" ");
-        const tagsStr = line.slice(1, tagEnd);
+        const tagStr = line.slice(1, tagEnd);
         rest = line.slice(tagEnd + 1);
-        tagsStr.split(";").forEach((kv) => {
+        tagStr.split(";").forEach(kv => {
           const [k, v] = kv.split("=");
-          tagsObj[k] = v;
+          tags[k] = v;
         });
-        if (tagsObj["id"]) tagsObj["message-id"] = tagsObj["id"];
+        if (tags["id"]) tags["message-id"] = tags["id"];
       }
 
       const match = rest.match(/^:(\w+)!.+ PRIVMSG #(\w+) :(.*)$/);
@@ -111,81 +113,70 @@ export const startChatBot = async (
       const user = match[1];
       const channelName = match[2];
       const message = match[3];
-
-      tagsObj.username = user;
-      if (!tagsObj["display-name"]) tagsObj["display-name"] = user;
+      tags.username = user;
+      if (!tags["display-name"]) tags["display-name"] = user;
 
       const rawCommand = message.trim().split(" ")[0].toLowerCase();
       const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
       const commandEntry = commandHandler[rawCommand];
 
       if (commandEntry && typeof commandEntry === "function") {
-        if (typeof commandCounter?.inc === "function") {
-          commandCounter.inc({ command: rawCommand });
-        }
-        if (typeof incrementCommandsProcessed === "function") {
-          incrementCommandsProcessed();
-        }
+        if (commandCounter?.inc) commandCounter.inc({ command: rawCommand });
+        if (incrementCommandsProcessed) incrementCommandsProcessed();
 
-        // Fetch broadcaster info for badge support
+        // Fetch broadcaster ID from DB
         const channelRow = await Channel.findOne({ where: { username: channelName } });
         const broadcasterId = channelRow?.get("twitch_user_id");
 
-        commandEntry({
-          say: async (msg: string) => {
-            if (!broadcasterId) {
-              console.error(`No broadcaster info found for ${channelName}`);
-              return;
-            }
-            await sendChatMessage(broadcasterId, botUserId, msg);
+        commandEntry(
+          {
+            say: async (msg: string) => {
+              if (!broadcasterId) return console.error(`No broadcaster info for ${channelName}`);
+              await sendChatMessage(broadcasterId, botUserId, msg);
+            },
+            raw: (line: string) => socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
+            user,
+            channel: channelName,
+            message,
           },
-          raw: (line: string) => {
-            socket.write(line.endsWith("\r\n") ? line : line + "\r\n");
-          },
-          user,
-          channel: channelName,
+          `#${channelName}`,
           message,
-        }, `#${channelName}`, message, tagsObj, args);
+          tags,
+          args
+        );
       }
 
-      // Legacy test command via IRC
+      // Optional legacy IRC test
       if (rawCommand === "!test") {
-        socket.write(`PRIVMSG #${channelName} :Hello ${tagsObj["display-name"] || user}!\r\n`);
+        socket.write(`PRIVMSG #${channelName} :Hello ${tags["display-name"] || user}!\r\n`);
       }
     }
   });
 
-  socket.on("error", (err) => {
-    console.error(`IRC socket error for ${channel}:`, err);
-  });
-
+  socket.on("error", (err) => console.error(`IRC error for ${sanitizedUsername}:`, err));
   socket.on("close", () => {
-    console.log(`IRC socket closed for ${channel}`);
+    console.log(`IRC closed for ${sanitizedUsername}`);
     connected = false;
   });
 
-  clients[sanitizedUsername] = { socket, username: botUsername, channel, connected };
+  clients[sanitizedUsername] = { socket, username: botUsername, channel: sanitizedUsername, connected };
 };
 
 export const stopChatBot = async (username: string) => {
   const client = clients[username];
   if (!client) return;
-
   try {
     client.socket.write(`PART #${client.channel}\r\n`);
     client.socket.end();
-    console.log(`Bot left channel and disconnected for ${username}`);
-  } catch (error) {
-    console.error(`Error stopping bot for ${username}:`, error);
+    console.log(`Bot disconnected for ${username}`);
+  } catch (err) {
+    console.error(`Error stopping bot for ${username}:`, err);
   } finally {
     delete clients[username];
   }
 };
 
-export const reconnectChatBot = async (
-  username: string,
-  commandHandler: Record<string, any>
-) => {
+export const reconnectChatBot = async (username: string, commandHandler: Record<string, any>) => {
   await stopChatBot(username);
   await startChatBot(username, commandHandler);
 };

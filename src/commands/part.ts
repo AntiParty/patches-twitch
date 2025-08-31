@@ -47,4 +47,4 @@ export const execute = async (
   }
 };
 
-export const aliases = ['leave', 'part'];
+export const aliases = ['leave',];

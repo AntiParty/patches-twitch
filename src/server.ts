@@ -1,28 +1,20 @@
-// Serve docs markdown for frontend
 import fs from 'fs';
 import express, { Request, Response } from "express";
 import client from 'prom-client';
 import axios from "axios";
-import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "./db";
+import {Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState} from "@/db"
 import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
 import session from 'express-session';
-
-
-// Ensure DB is ready before starting anything that uses Channel
-(async () => {
-  await dbReady;
-})();
-import { loadCommands } from "./handlers/commands";
-
-// Initialize commandHandler at startup
-const commandHandler = loadCommands();
 import logger from "./util/logger";
 import path from "path";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
 import * as dotenv from "dotenv";
+import { loadCommands } from "./handlers/commands";
+
+const commandHandler = loadCommands();
 
 // Load environment file based on NODE_ENV
 const envFile =
@@ -66,13 +58,11 @@ try {
     commandsProcessed = stats.commandsProcessed;
   }
 } catch (err) {
-  // If file doesn't exist or is invalid, start at 0
   commandsProcessed = 0;
 }
 
 export function incrementCommandsProcessed() {
   commandsProcessed++;
-  // Save to stats.json for persistence
   try {
     const statsRaw = fs.readFileSync(statsFilePath, "utf8");
     const stats = JSON.parse(statsRaw);

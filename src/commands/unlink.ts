@@ -12,7 +12,7 @@ interface CommandContext {
 
 export const execute = async (ctx: CommandContext) => {
   try {
-    const username = ctx.tags['display-name']?.toLowerCase();
+    const username = ctx.tags?.["display-name"] || ctx.user || "user";
     if (!username) {
       console.error('Missing username.');
       return;

@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
-import { getStreamStatusWithAutoRefresh } from "../util/twitchutils";
+import { getStreamStatusWithAutoRefresh } from "@/util/twitchUtils";
 
 interface CommandContext {
   say: (message: string) => Promise<void>;
@@ -55,7 +55,7 @@ async function maybeSendCustomResponse(
 
 export const execute = async (ctx: CommandContext) => {
   const username = ctx.tags?.["display-name"] || ctx.user || "user";
-  const messageId = ctx.tags?.["id"];
+  const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`;
   const sanitizedChannel = ctx.channel.replace(/^#/, "");
 
   if (!username || !messageId) {

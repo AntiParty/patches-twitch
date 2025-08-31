@@ -1,19 +1,37 @@
-export const execute = async (ctx, channel: string, message: string, tags: any, args: string[]) => {
+export const execute = async (
+    ctx: { say: (msg: string) => Promise<void> },
+    channel: string,
+    message: string,
+    tags: any,
+    args: string[]
+) => {
     try {
-        const username = tags['display-name'];
-        const messageId = tags['id'];
+        const username = ctx.tags?.['display-name'] || ctx.user || 'user';
+        const messageId = ctx.tags?.['id'];
 
         if (!username || !messageId) return;
 
-        const publicCommands = ['!help','!addaccount','!rank','!record','!unlink'];
-        const discordLink = 'https://discord.gg/2UKzvzSEqA';
-        const replyMessage = `Available commands: ${publicCommands.join(', ')} | Need help? Join our Discord: ${discordLink}`;
+        // Define public commands
+        const publicCommands = [
+            "!help",
+            "!addaccount",
+            "!rank",
+            "!record",
+            "!unlink",
+        ];
 
-        // Use the `say` helper from ctx (which sends via Helix API)
-        await ctx.say(replyMessage);
+        // Discord invite link
+        const discordLink = "https://discord.gg/2UKzvzSEqA";
+
+        // Reply message
+        const replyMessage = `Link your Finals account with !link | 📜 Commands: ${publicCommands.join(
+            ", "
+        )} | 💬 Help: ${discordLink}`;
+        await ctx.say(replyMessage, messageId);
     } catch (err) {
-        console.error('Error executing help command:', err);
+        console.error("Error executing help command:", err);
     }
 };
 
-export const aliases = ['commands', 'info', 'h'];
+// Aliases for this command
+export const aliases = ["commands", "info", "h"];

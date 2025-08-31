@@ -9,7 +9,7 @@ interface CommandContext {
   user: string;
   channel: string;
   message: string;
-  tags?: Record<string, any>; // optional
+  tags?: Record<string, any>;
 }
 
 const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
@@ -67,7 +67,7 @@ export const execute = async (ctx: CommandContext) => {
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
     if (!channelInstance?.player_id?.trim()) {
-      await ctx.say(`@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`);
+      await ctx.say(`@${username}, no THE FINALS player name linked. Use !link FinalsName#1234 @reply-parent-msg-id=${messageId}`);
       return;
     }
 

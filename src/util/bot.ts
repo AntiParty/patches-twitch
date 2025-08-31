@@ -18,34 +18,37 @@ const clients: { [username: string]: IRCClient } = {};
  */
 async function sendChatMessage(
   broadcasterId: string,
-  message: string
+  message: string,
+  replyParentId?: string
 ) {
   const appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
   const clientId = process.env.TWITCH_CLIENT_ID;
   const botUserId = process.env.TWITCH_BOT_USER_ID;
 
   if (!broadcasterId || !botUserId || !appAccessToken || !clientId) {
-    logger.error(
-      "[DEBUG] Missing broadcasterId, botUserId, App Access Token, or Client ID.",
-      { broadcasterId, botUserId, appAccessToken: !!appAccessToken, clientId }
-    );
+    logger.error("[DEBUG] Missing credentials", {
+      broadcasterId,
+      botUserId,
+      appAccessToken: !!appAccessToken,
+      clientId,
+    });
     return;
   }
 
-  try {
-    logger.info("[DEBUG] Sending chat message via Helix API:", {
-      broadcasterId,
-      botUserId,
-      message,
-    });
+  const body: any = {
+    broadcaster_id: broadcasterId,
+    sender_id: botUserId,
+    message,
+  };
 
+  if (replyParentId) {
+    body.reply_parent_message_id = replyParentId; // 👈 important
+  }
+
+  try {
     const resp = await axios.post(
       "https://api.twitch.tv/helix/chat/messages",
-      {
-        broadcaster_id: broadcasterId,
-        sender_id: botUserId,
-        message,
-      },
+      body,
       {
         headers: {
           Authorization: `Bearer ${appAccessToken}`,
@@ -54,17 +57,9 @@ async function sendChatMessage(
         },
       }
     );
-
     logger.info("[DEBUG] Helix API response:", resp.data);
   } catch (err: any) {
-    logger.error(
-      "[ERROR] Failed to send chat message via Helix API:",
-      err.response?.data || err
-    );
-
-    if (err.response?.data?.message) {
-      logger.error("[ERROR DETAIL]", err.response.data.message);
-    }
+    logger.error("[ERROR] Failed to send chat message:", err.response?.data || err);
   }
 }
 
@@ -172,10 +167,10 @@ export const startChatBot = async (
             user,
             channel: channelName,
             message,
+            tags,
           },
           `#${channelName}`,
           message,
-          tags,
           args
         );
       }

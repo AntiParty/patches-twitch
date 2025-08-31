@@ -2,22 +2,35 @@ import { Channel } from '../db';
 import logger from '../util/logger';
 
 interface CommandContext {
-  say: (message: string) => Promise<void>;
+  say: (message: string, replyParentId?: string) => Promise<void>; // 👈 updated
   raw: (line: string) => void;
   user: string;
   channel: string;
   message: string;
-  tags?: Record<string, any>; // optional tags
+  tags?: Record<string, any>;
+}
+
+// Helper function for threaded replies
+async function sendReply(ctx: CommandContext, message: string) {
+  const username = ctx.tags?.['display-name'] || ctx.user || 'user';
+  const messageId = ctx.tags?.['id'];
+  
+  if (messageId) {
+    // Use Twitch's reply feature properly
+    return ctx.say(`@${username}, ${message}`, messageId);
+  } else {
+    // Fallback without threading
+    return ctx.say(`@${username}, ${message}`);
+  }
 }
 
 export const execute = async (
   ctx: CommandContext,
   _channel: string,
-  _message: string,
+  message: string,
   args: string[]
 ) => {
   try {
-    // Fallback to ctx.user if tags or display-name is missing
     const username = ctx.tags?.['display-name'] || ctx.user || 'user';
     const sanitizedChannel = ctx.channel.replace(/^#/, '');
 
@@ -29,41 +42,46 @@ export const execute = async (
       !ctx.tags?.['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
-      await ctx.say(`@${username}, you do not have permission to run this command.`);
+      await sendReply(ctx, 'you do not have permission to run this command.');
       return;
     }
 
-    if (!args || args.length < 1) {
-      await ctx.say(`@${username}, please provide a valid player ID.`);
+    // Extract player ID from the full message
+    const messageParts = message.trim().split(/\s+/);
+    if (messageParts.length < 2) {
+      await sendReply(ctx, 'please provide a valid player ID. Usage: !link <playerID>');
       return;
     }
 
-    const playerId = args[0];
-    logger.info(`Linking player ID: ${playerId}`);
+    const playerId = messageParts.slice(1).join(' ').trim();
+    if (!playerId) {
+      await sendReply(ctx, 'please provide a valid player ID. Usage: !link <playerID>');
+      return;
+    }
+
+    logger.info(`Linking player ID: ${playerId} for channel: ${sanitizedChannel}`);
 
     let channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
 
     if (!channelInstance) {
       try {
         await Channel.create({ username: sanitizedChannel, player_id: playerId });
-        await ctx.say(`@${username}, your account has been successfully linked with player ID: ${playerId}`);
+        await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`);
       } catch (err: any) {
         if (err.name === 'SequelizeUniqueConstraintError') {
-          await ctx.say(`@${username}, this channel is already registered.`);
+          await sendReply(ctx, 'this channel is already registered.');
         } else {
           logger.error('Error creating channel:', err);
-          await ctx.say(`@${username}, there was an error linking your account.`);
+          await sendReply(ctx, 'there was an error linking your account.');
         }
       }
     } else {
-      (channelInstance as any).player_id = playerId;
-      await channelInstance.save();
-      await ctx.say(`@${username}, your account has been successfully linked with player ID: ${playerId}`);
+      await channelInstance.update({ player_id: playerId });
+      await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`);
     }
   } catch (error) {
     logger.error('Error executing command:', error);
-    const displayName = ctx.tags?.['display-name'] || ctx.user || 'user';
-    await ctx.say(`@${displayName}, there was an error executing the command.`);
+    await sendReply(ctx, 'there was an error executing the command.');
   }
 };
 

@@ -2,11 +2,18 @@
 import { Sequelize, DataTypes, Model } from 'sequelize';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
+import { error } from 'console';
 
 dotenv.config();
 
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('Using SQLite: true (forced)');
+
+const dataDir = path.resolve(__dirname, '../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdir(dataDir, {recursive: true});
+}
 
 const sequelize = new Sequelize({
   dialect: 'sqlite',
@@ -80,7 +87,8 @@ Channel.init(
     },
     token_expires_at: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -124,7 +132,11 @@ StreamSession.init(
 // Sync the database and export a promise for sync completion
 const dbReady = sequelize.sync().then(() => {
   console.log('Database synced.');
+}).catch(error => {
+  console.error('database failed:', error);
+  throw error;
 });
+
 
 export { sequelize, Channel, StreamSession, CustomResponse, dbReady };
 export { getCustomResponse, setCustomResponse };

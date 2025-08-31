@@ -61,7 +61,7 @@ You can do this for any command that supports custom messages, like `!record`:
 
 ## 5. Example: Full Workflow
 
-1. Type `!editcmd rank FinalsRR: @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank}` in chat.
+1. Type `!editcmd rank @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank} TEST EDIT` in chat.
 2. Use `!rank` and see your custom message in action.
 3. Change it anytime with another `!editcmd rank ...` command.
 4. Remove it with `!editcmd rank` to go back to default.

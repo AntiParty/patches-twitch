@@ -11,7 +11,7 @@ export const execute = async (
 
         if (!username || !messageId) return;
 
-        // Define public commands
+        
         const publicCommands = [
             "!help",
             "!addaccount",
@@ -20,10 +20,10 @@ export const execute = async (
             "!unlink",
         ];
 
-        // Discord invite link
+        
         const discordLink = "https://discord.gg/2UKzvzSEqA";
 
-        // Reply message
+        
         const replyMessage = `Link your Finals account with !link | 📜 Commands: ${publicCommands.join(
             ", "
         )} | 💬 Help: ${discordLink}`;

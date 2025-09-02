@@ -78,8 +78,14 @@ export const execute = async (
       return;
     }
 
-    const streamStatus = await getStreamStatusWithAutoRefresh(sanitizedChannel);
-    if (!streamStatus?.isLive) {
+    let streamStatus;
+    try {
+      streamStatus = await getStreamStatusWithAutoRefresh(sanitizedChannel);
+    } catch (err) {
+      logger.error("[record] Error fetching stream status:", err);
+      streamStatus = null;
+    }
+    if (!streamStatus || !streamStatus.isLive) {
       await ctx.say(`Stream is currently offline.`);
       return;
     }

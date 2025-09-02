@@ -138,5 +138,6 @@ export const execute = async (
     logger.error("[record] Error in record command:", error);
     await ctx.say(`@${username}, there was an error checking your session RS.`);
   }
+}
 
 export const aliases = ["wl", "winloss", "session"];

@@ -56,12 +56,13 @@ async function maybeSendCustomResponse(
 // Accepts (ctx, args, message, tags) for compatibility with command loader
 export const execute = async (
   ctx: CommandContext,
-  args?: string[],
-  message?: string,
-  tags?: Record<string, any>
+  _channel: string,
+  message: string,
+  tags: Record<string, any>,
+  args: string[]
 ) => {
-  const username = ctx.tags?.["display-name"] || ctx.user || "user";
-  const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`;
+  const username = tags?.["display-name"] || ctx.user || "user";
+  const messageId = tags?.["id"] || `msg_${Date.now()}`;
   const sanitizedChannel = ctx.channel.replace(/^#/, "");
 
   if (!username || !messageId) {

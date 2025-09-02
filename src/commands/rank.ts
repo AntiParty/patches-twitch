@@ -123,4 +123,4 @@ export const execute = async (ctx: CommandContext) => {
   }
 };
 
-export const aliases = ["rank", "r"];
+export const aliases = ["r"];

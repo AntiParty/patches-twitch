@@ -79,4 +79,4 @@ export const execute = async (client: Client, channel: string, message: string, 
   }
 };
 
-export const aliases = ['lastmatch', 'lastgame', 'last'];
+export const aliases = ['lastgame', 'last'];

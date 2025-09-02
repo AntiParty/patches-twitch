@@ -69,4 +69,4 @@ export const execute = async (
 };
 
 // Command aliases
-export const aliases = ['editcmd', 'setcmd', 'commandedit'];
+export const aliases = ['setcmd', 'commandedit'];

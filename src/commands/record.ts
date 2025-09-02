@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
-import { getStreamStatusWithAutoRefresh } from "@/util/twitchUtils";
+import { getStreamStatusWithAutoRefresh } from "../util/twitchUtils";
 
 interface CommandContext {
   say: (message: string) => Promise<void>;

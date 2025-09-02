@@ -77,4 +77,4 @@ export const execute = async (
   }
 };
 
-export const aliases = ["wipesubs"];
+export const aliases = [];

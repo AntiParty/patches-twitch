@@ -27,4 +27,4 @@ export const execute = async (client: Client, channel: string, message: string, 
   }
 };
 
-export const aliases = ['resetdb', 'cleardb', 'clear', 'reset'];
+export const aliases = ['cleardb', 'clear', 'reset'];

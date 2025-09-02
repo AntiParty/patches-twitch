@@ -86,4 +86,4 @@ export const execute = async (
 };
 
 // Command aliases
-export const aliases = ['addaccount', 'linkaccount', 'link', 'add'];
+export const aliases = ['linkaccount', 'link', 'add'];

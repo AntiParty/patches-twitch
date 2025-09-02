@@ -4,7 +4,7 @@ import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
 import { getStreamStatusWithAutoRefresh } from "../util/twitchUtils";
 
-interface CommandContext {
+export interface CommandContext {
   say: (message: string) => Promise<void>;
   raw: (line: string) => void;
   user: string;

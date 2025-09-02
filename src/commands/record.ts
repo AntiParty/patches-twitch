@@ -53,7 +53,13 @@ async function maybeSendCustomResponse(
   return false;
 }
 
-export const execute = async (ctx: CommandContext) => {
+// Accepts (ctx, args, message, tags) for compatibility with command loader
+export const execute = async (
+  ctx: CommandContext,
+  args?: string[],
+  message?: string,
+  tags?: Record<string, any>
+) => {
   const username = ctx.tags?.["display-name"] || ctx.user || "user";
   const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`;
   const sanitizedChannel = ctx.channel.replace(/^#/, "");
@@ -158,4 +164,4 @@ export const execute = async (ctx: CommandContext) => {
   }
 };
 
-export const aliases = ["record", "wl", "winloss", "session"];
+export const aliases = ["wl", "winloss", "session"];

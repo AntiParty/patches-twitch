@@ -62,35 +62,25 @@ export const execute = async (
   args: string[]
 ) => {
   const username = tags?.["display-name"] || ctx.user || "user";
-  const messageId = tags?.["id"] || `msg_${Date.now()}`;
   const sanitizedChannel = ctx.channel.replace(/^#/, "");
 
-  if (!username || !messageId) {
-    logger.error("[record] Missing username or message ID.");
-    return;
-  }
-
   try {
+    // 1. Check for linked account
     const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } }) as any;
     const playerId = channelInstance?.player_id;
-
     if (!playerId) {
       await ctx.say(`@${username}, no linked THE FINALS account. Use !link FinalsName#1234`);
       return;
     }
 
-    let streamStatus;
-    try {
-      streamStatus = await getStreamStatusWithAutoRefresh(sanitizedChannel);
-    } catch (err) {
-      logger.error("[record] Error fetching stream status:", err);
-      streamStatus = null;
-    }
-    if (!streamStatus || !streamStatus.isLive) {
+    // 2. Check stream status
+    const streamStatus = await getStreamStatusWithAutoRefresh(sanitizedChannel);
+    if (!streamStatus?.isLive) {
       await ctx.say(`Stream is currently offline.`);
       return;
     }
 
+    // 3. Get leaderboard data
     const cachedData = await getCachedLeaderboardData();
     const worldTourData = await getWorldTourData();
     if (!cachedData && !worldTourData) {
@@ -98,6 +88,7 @@ export const execute = async (
       return;
     }
 
+    // 4. Find player in leaderboard
     const finalsName = playerId.toLowerCase();
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
@@ -108,51 +99,29 @@ export const execute = async (
       }
       return player;
     };
-
     const player = findPlayer(cachedData, finalsName);
     const wtPlayer = findPlayer(worldTourData, finalsName);
-
     if (!player && !wtPlayer) {
       await ctx.say(`@${username}, you aren't currently in the Top 1000 or WT leaderboard.`);
       return;
     }
 
+    // 5. Session logic
     const currentScore = player?.rankScore ?? 0;
     const currentWTRank = wtPlayer?.rank ?? null;
-
     let session = await StreamSession.findOne({ where: { channel: sanitizedChannel } }) as any;
     if (!session) {
       await StreamSession.create({ channel: sanitizedChannel, start_score: currentScore, start_wt_rank: currentWTRank });
-
-      const vars = {
-        username,
-        startScore: currentScore.toLocaleString(),
-        wtRank: currentWTRank ?? '',
-      };
-      const usedCustom = await maybeSendCustomResponse('record', ctx, vars);
-      if (usedCustom) return;
-
       let response = `@${username}, tracking started at ${currentScore.toLocaleString()} RS`;
       if (wtPlayer) response += ` | WT rank: #${currentWTRank}`;
       await ctx.say(response);
       return;
     }
 
+    // 6. Calculate session diff
     const diff = currentScore - session.start_score;
     const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
     const absDiff = Math.abs(diff);
-
-    const vars = {
-      username,
-      sessionRS: `${sign}${absDiff.toLocaleString()}`,
-      currentRS: currentScore.toLocaleString(),
-      wtRank: currentWTRank ?? '',
-      wtRankChange: wtPlayer && typeof session.start_wt_rank === "number" && typeof currentWTRank === "number"
-        ? `${currentWTRank} (${(session.start_wt_rank - currentWTRank) > 0 ? '+' : (session.start_wt_rank - currentWTRank) < 0 ? '-' : '±'}${Math.abs(session.start_wt_rank - currentWTRank)} from start)`
-        : wtPlayer ? `#${currentWTRank}` : '',
-    };
-    const usedCustom = await maybeSendCustomResponse('record', ctx, vars);
-    if (usedCustom) return;
 
     let response = `@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`;
     if (wtPlayer && typeof session.start_wt_rank === "number" && typeof currentWTRank === "number") {
@@ -169,6 +138,5 @@ export const execute = async (
     logger.error("[record] Error in record command:", error);
     await ctx.say(`@${username}, there was an error checking your session RS.`);
   }
-};
 
 export const aliases = ["wl", "winloss", "session"];

@@ -139,9 +139,10 @@ export const startChatBot = async (
       tags.username = user;
       if (!tags["display-name"]) tags["display-name"] = user;
 
-      const rawCommand = message.trim().split(" ")[0].toLowerCase();
-      const args = message.trim().slice(rawCommand.length).trim().split(/\s+/);
-      const commandEntry = commandHandler[rawCommand];
+  const rawCommand = message.trim().split(" ")[0].toLowerCase();
+  const argsStr = message.trim().slice(rawCommand.length).trim();
+  const args = argsStr ? argsStr.split(/\s+/) : [];
+  const commandEntry = commandHandler[rawCommand];
 
       if (commandEntry && typeof commandEntry === "function") {
         if (commandCounter?.inc) commandCounter.inc({ command: rawCommand });
@@ -171,6 +172,7 @@ export const startChatBot = async (
           },
           `#${channelName}`,
           message,
+          tags,
           args
         );
       }

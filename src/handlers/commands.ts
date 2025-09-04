@@ -27,8 +27,8 @@ export const loadCommands = () => {
           tags: Record<string, any>,
           args: string[]
         ) => {
-          // normalize args handling
-          return command.execute(ctx, args, message, tags);
+          // correct argument order for all commands
+          return command.execute(ctx, _channel, message, tags, args);
         };
 
         if (seenKeys.has(mainKey)) {

@@ -84,7 +84,7 @@ function subscribeUserToEvents(userId: string, accessToken: string, broadcasterI
       logger.warn(`Access token for ${userId} is invalid or expired. Attempting to refresh.`);
       // Try to refresh token (assumes you have a refreshAccessToken util)
       try {
-        const { refreshAccessToken } = require('./twitchUtils');
+        const { refreshAccessToken } = require('../util/twitchUtils');
         const { Channel } = require('../db');
         const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
         if (channel) {

@@ -142,7 +142,9 @@ export const startChatBot = async (
   const rawCommand = message.trim().split(" ")[0].toLowerCase();
   const argsStr = message.trim().slice(rawCommand.length).trim();
   const args = argsStr ? argsStr.split(/\s+/) : [];
-      let commandEntry = commandHandler[rawCommand];
+    // Only match commands with ! prefix
+    const commandKey = rawCommand.startsWith("!") ? rawCommand : "!" + rawCommand;
+    let commandEntry = commandHandler[commandKey];
       if (!commandEntry) {
         // Try with ! prefix if not found
         commandEntry = commandHandler["!" + rawCommand];

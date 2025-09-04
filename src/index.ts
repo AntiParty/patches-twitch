@@ -51,6 +51,7 @@ dbReady.then(async () => {
         // Start server
         server.listen(3000, () => {
             logger.info('Server is running at http://localhost:3000');
+            logger.warn('Server is online!')
         });
         
     } catch (error) {

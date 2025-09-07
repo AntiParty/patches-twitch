@@ -24,7 +24,9 @@ const loadChannels = async () => {
             const { username, access_token } = channel;
             logger.info(`Loading channel: ${username}`);
             await validateToken(username, access_token);
-            startChatBot(username, commandHandler);
+            // Always reload commands before starting each bot
+            const freshCommandHandler = loadCommands();
+            startChatBot(username, freshCommandHandler);
         }
     } catch (error) {
         logger.error('Error loading channels:', error);

@@ -20,14 +20,10 @@ export const execute = async (
     const username = ctx.tags?.['display-name'] || ctx.user || 'user';
     const sanitizedChannel = ctx.channel.replace(/^#/, '');
 
-    // Permission check: only broadcaster, mod, or antiparty
+    // Permission check: only broadcaster/streamer (channel owner)
     const usernameLower = username.toLowerCase();
     const sanitizedChannelLower = sanitizedChannel.toLowerCase();
-    if (
-      usernameLower !== sanitizedChannelLower &&
-      !ctx.tags?.['badges']?.moderator &&
-      usernameLower !== 'antiparty'
-    ) {
+    if (usernameLower !== sanitizedChannelLower) {
       await ctx.say(`@${username}, you do not have permission to run this command.`);
       return;
     }

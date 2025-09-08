@@ -101,11 +101,13 @@ function subscribeUserToEvents(userId: string, accessToken: string, broadcasterI
           return;
         }
       } catch (refreshErr: any) {
-        if (refreshErr.response) {
-          logger.error(`Error refreshing token for ${userId}:`, refreshErr.response.data);
-        } else {
-          logger.error(`Error refreshing token for ${userId}:`, refreshErr.message);
-        }
+        // Always log the full error object for debugging
+        logger.error(`Error refreshing token for ${userId}:`, {
+          message: refreshErr.message,
+          data: refreshErr.response?.data,
+          stack: refreshErr.stack,
+          error: refreshErr
+        });
         return;
       }
     }

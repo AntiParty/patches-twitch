@@ -110,6 +110,7 @@ export const startChatBot = async (
     const lines = data.toString().split("\r\n");
 
     for (const line of lines) {
+
       if (!line) continue;
 
       if (line.startsWith("PING")) {
@@ -139,23 +140,26 @@ export const startChatBot = async (
       tags.username = user;
       if (!tags["display-name"]) tags["display-name"] = user;
 
+      // Only process messages that start with '!'
+      if (!message.trim().startsWith("!")) {
+        continue;
+      }
 
-  const rawCommand = message.trim().split(" ")[0].toLowerCase();
-  const argsStr = message.trim().slice(rawCommand.length).trim();
-  const args = argsStr ? argsStr.split(/\s+/) : [];
-  // Only match commands with ! prefix
-  const commandKey = rawCommand.startsWith("!") ? rawCommand : "!" + rawCommand;
+      const rawCommand = message.trim().split(" ")[0].toLowerCase();
+      const argsStr = message.trim().slice(rawCommand.length).trim();
+      const args = argsStr ? argsStr.split(/\s+/) : [];
+      const commandKey = rawCommand.startsWith("!") ? rawCommand : "!" + rawCommand;
 
-  if (!commandHandler || typeof commandHandler !== "object") {
-    logger.error("[ERROR] commandHandler is undefined or not an object. Cannot process command:", { commandKey, rawCommand, message });
-    continue;
-  }
+      if (!commandHandler || typeof commandHandler !== "object") {
+        logger.error("[ERROR] commandHandler is undefined or not an object. Cannot process command:", { commandKey, rawCommand, message });
+        continue;
+      }
 
-  let commandEntry = commandHandler[commandKey];
-  if (!commandEntry) {
-    // Try with ! prefix if not found
-    commandEntry = commandHandler["!" + rawCommand];
-  }
+      let commandEntry = commandHandler[commandKey];
+      if (!commandEntry) {
+        // Try with ! prefix if not found
+        commandEntry = commandHandler["!" + rawCommand];
+      }
 
       if (commandEntry && typeof commandEntry === "function") {
         if (commandCounter?.inc) commandCounter.inc({ command: rawCommand });

@@ -152,7 +152,7 @@ export const getStreamStatusWithAutoRefresh = async (username: string) => {
 let tokenExpiryTime: number | null = null;
 let accessToken: string | null = null; 
 // Function to refresh the access token
-const refreshAccessToken = async (channel: any) => {
+export const refreshAccessToken = async (channel: any) => {
   const clientId = process.env.TWITCH_CLIENT_ID;
   const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 

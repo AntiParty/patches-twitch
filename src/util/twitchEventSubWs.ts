@@ -28,7 +28,7 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
     subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);
   }
 }
-function createUserWebSocket(userId: string, accessToken: string): WebSocket {
+async function createUserWebSocket(userId: string, accessToken: string): WebSocket {
   const ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
   ws.on('open', () => {
     logger.info(`[EventSubWs] Connected to Twitch EventSub WebSocket for user ${userId}`);

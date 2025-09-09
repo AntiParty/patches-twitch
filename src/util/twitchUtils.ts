@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import fetch from 'node-fetch';
 import { Channel } from '../db'; // Adjust the path if necessary
 
@@ -76,6 +78,50 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
     };
   }
 };
+
+export async function refreshToken() {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
+  }
+  const url = 'https://id.twitch.tv/oauth2/token';
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'client_credentials',
+  });
+  let data;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      body: params,
+    });
+    if (!response.ok) {
+      const errorDetails = await response.text();
+      throw new Error(`Failed to refresh app access token: ${response.statusText} - ${errorDetails}`);
+    }
+    data = await response.json();
+  } catch (error) {
+    console.error('Error refreshing Twitch App Access Token:', error);
+    throw error;
+  }
+  const newToken = data.access_token;
+  if (!newToken) throw new Error('No access_token returned from Twitch');
+
+  // Update .env file
+  const envPath = path.resolve(__dirname, '../../.env');
+  let envContent = fs.readFileSync(envPath, 'utf8');
+  const tokenRegex = /^TWITCH_APP_ACCESS_TOKEN=.*$/m;
+  if (tokenRegex.test(envContent)) {
+    envContent = envContent.replace(tokenRegex, `TWITCH_APP_ACCESS_TOKEN=${newToken}`);
+  } else {
+    envContent += `\nTWITCH_APP_ACCESS_TOKEN=${newToken}`;
+  }
+  fs.writeFileSync(envPath, envContent, 'utf8');
+  console.log('TWITCH_APP_ACCESS_TOKEN updated in .env');
+  return newToken;
+}
 
 // Function to handle auto-refreshing of tokens and fetching stream status
 export const getStreamStatusWithAutoRefresh = async (username: string) => {

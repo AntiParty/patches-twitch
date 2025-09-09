@@ -67,10 +67,22 @@ function createUserWebSocket(userId: string, accessToken: string): WebSocket {
   ws.on('error', (err) => {
     logger.error(`[EventSubWs] WebSocket error for user ${userId}:`, err);
   });
+  return ws;
+}
+
+async function subscribeUserToEvents(userId: string, accessToken: string, broadcasterId: string, sessionId: string) {
+  const eventTypes = ['stream.online', 'stream.offline'];
+  for (const type of eventTypes) {
+    let validToken = accessToken;
+    // Validate token before subscribing
+    try {
+      await axios.get('https://id.twitch.tv/oauth2/validate', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      // If token is valid, continue
+    } catch (validateErr: any) {
+      logger.warn(`Access token for ${userId} is invalid or expired. Attempting to refresh.`);
       try {
-        // Use direct imports for ES modules
-        const { refreshAccessToken } = await import('../util/twitchUtils');
-        const { Channel } = await import('../db');
         const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
         if (channel) {
           const newToken = await refreshAccessToken(channel);
@@ -79,37 +91,20 @@ function createUserWebSocket(userId: string, accessToken: string): WebSocket {
             logger.info(`Refreshed access token for ${userId}`);
           } else {
             logger.error(`Failed to refresh token for ${userId}`);
-            return;
+            continue;
           }
         } else {
           logger.error(`No channel found for userId ${userId} during EventSub subscribe.`);
-          return;
+          continue;
         }
       } catch (refreshErr: any) {
-        logger.error(`Error refreshing token for ${userId}:`, refreshErr.message || refreshErr);
-        return;
-      }
-          const newToken = await refreshAccessToken(channel);
-          if (newToken) {
-            validToken = newToken;
-            logger.info(`Refreshed access token for ${userId}`);
-          } else {
-            logger.error(`Failed to refresh token for ${userId}`);
-            return;
-          }
-        } else {
-          logger.error(`No channel found for userId ${userId} during EventSub subscribe.`);
-          return;
-        }
-      } catch (refreshErr: any) {
-        // Always log the full error object for debugging
         logger.error(`Error refreshing token for ${userId}:`, {
           message: refreshErr.message,
           data: refreshErr.response?.data,
           stack: refreshErr.stack,
           error: refreshErr
         });
-        return;
+        continue;
       }
     }
     // Now subscribe with validToken
@@ -133,7 +128,7 @@ function createUserWebSocket(userId: string, accessToken: string): WebSocket {
     } catch (err: any) {
       logger.error(`Failed to subscribe ${userId} to ${type}:`, err.response?.data || err.message);
     }
-  });
+  }
 }
 
 // connectEventSubWebSocket is now obsolete, handled per-user

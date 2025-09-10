@@ -39,7 +39,7 @@ export const execute = async (
 
     let cmd = args[0].toLowerCase();
     if (cmd.startsWith('!')) cmd = cmd.slice(1);
-    const allowedCommands = ['rank', 'record'];
+  const allowedCommands = ['rank', 'record', 'peak'];
 
     if (!allowedCommands.includes(cmd)) {
       await ctx.say(`@${username}, you can only edit !rank and !record commands.`);

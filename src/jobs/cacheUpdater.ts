@@ -3,48 +3,67 @@ import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
 
-const CACHE_PATHS = {
-  regular: path.resolve(__dirname, '../../cache/leaderboardCache.json'),
-  worldTour: path.resolve(__dirname, '../../cache/WTrankCache.json'),
-};
 
-const API_URLS = {
-  regular: 'https://api.the-finals-leaderboard.com/v1/leaderboard/s7/crossplay',
-  worldTour: 'https://api.the-finals-leaderboard.com/v1/leaderboard/s7worldtour/crossplay',
-};
+const REGULAR_SEASON_START = 1;
+const WORLD_TOUR_SEASON_START = 3;
+// Update this if new seasons are added
+const REGULAR_SEASON_END = 7;
+const WORLD_TOUR_SEASON_END = 7;
 
-async function updateCache(name: 'regular' | 'worldTour') {
-  const url = API_URLS[name];
-  const cachePath = CACHE_PATHS[name];
+function getApiUrl(type: 'regular' | 'worldTour', season: number) {
+  if (type === 'regular') {
+    return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}/crossplay`;
+  } else {
+    return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}worldtour/crossplay`;
+  }
+}
+
+function getCachePath(type: 'regular' | 'worldTour', season: number) {
+  if (type === 'regular') {
+    return path.resolve(__dirname, `../../cache/regular_s${season}.json`);
+  } else {
+    return path.resolve(__dirname, `../../cache/worldTour_s${season}.json`);
+  }
+}
+
+async function updateCache(type: 'regular' | 'worldTour', season: number) {
+  const url = getApiUrl(type, season);
+  const cachePath = getCachePath(type, season);
 
   try {
-    console.log(`Fetching ${name} leaderboard data...`);
+    console.log(`Fetching ${type} leaderboard data for season ${season}...`);
     const response = await axios.get(url);
     if (response.status !== 200) {
-      throw new Error(`${name} API returned status ${response.status}`);
+      throw new Error(`${type} API (season ${season}) returned status ${response.status}`);
     }
 
     const leaderboardData = response.data.data;
     if (!Array.isArray(leaderboardData)) {
-      throw new Error(`Invalid ${name} leaderboard data format`);
+      throw new Error(`Invalid ${type} leaderboard data format for season ${season}`);
     }
 
     await fs.writeFile(cachePath, JSON.stringify(leaderboardData, null, 2), 'utf8');
-    console.log(`${name} cache updated with ${leaderboardData.length} entries.`);
+    console.log(`${type} cache for season ${season} updated with ${leaderboardData.length} entries.`);
   } catch (error) {
-    console.error(`Error updating ${name} cache:`, error);
+    console.error(`Error updating ${type} cache for season ${season}:`, error);
     try {
       const cachedData = await fs.readFile(cachePath, 'utf8');
-      console.log(`Loaded fallback ${name} cache with ${JSON.parse(cachedData).length} entries.`);
-
+      console.log(`Loaded fallback ${type} cache for season ${season} with ${JSON.parse(cachedData).length} entries.`);
     } catch {
-      console.error(`No valid fallback ${name} cache found.`);
+      console.error(`No valid fallback ${type} cache found for season ${season}.`);
     }
   }
 }
 
 export async function updateAllCaches() {
-  await Promise.all([updateCache('regular'), updateCache('worldTour')]);
+  const regularSeasons = Array.from({ length: REGULAR_SEASON_END - REGULAR_SEASON_START + 1 }, (_, i) => REGULAR_SEASON_START + i);
+  const worldTourSeasons = Array.from({ length: WORLD_TOUR_SEASON_END - WORLD_TOUR_SEASON_START + 1 }, (_, i) => WORLD_TOUR_SEASON_START + i);
+
+  const updatePromises = [
+    ...regularSeasons.map(season => updateCache('regular', season)),
+    ...worldTourSeasons.map(season => updateCache('worldTour', season)),
+  ];
+  await Promise.all(updatePromises);
 }
 
 export function startCacheUpdater(intervalMs = 45 * 60 * 1000) {

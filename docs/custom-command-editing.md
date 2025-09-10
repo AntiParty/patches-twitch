@@ -1,4 +1,5 @@
 
+
 # How to Customize Bot Commands (Easy Guide)
 
 Want your bot to say exactly what you want for commands like `!rank` or `!record`? You can! Just use the `!editcmd` command in your chat. Here’s how:
@@ -26,6 +27,7 @@ Type this in chat:
 
 *Now, when someone uses `!rank`, your bot will reply with that message, filling in the details for each user!*
 
+
 You can use these special words in curly braces, and the bot will fill them in:
 
 - `{username}` — The user’s name
@@ -34,6 +36,26 @@ You can use these special words in curly braces, and the bot will fill them in:
 - `{rankScore}` — Their rank score
 - `{wtRank}` — Their World Tour rank
 - `{found}` — 'true' if found, 'false' otherwise
+
+---
+
+## Customizing the !peak Command
+
+You can also customize the `!peak` command! For example:
+
+```
+!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season} | WT peak: #{wtRank} in {wtSeason}
+```
+
+Available variables for `!peak`:
+- `{rank}` — Peak regular season rank
+- `{league}` — Peak regular season league
+- `{rankScore}` — Peak regular season RS
+- `{season}` — Peak regular season (e.g. "Season 4")
+- `{wtRank}` — Peak World Tour rank
+- `{wtSeason}` — Peak World Tour season (e.g. "World Tour Season 6")
+
+If only one is found, the bot will fill in just that part.
 
 ---
 
@@ -51,20 +73,24 @@ Just type:
 
 ## 4. Customize Other Commands
 
-You can do this for any command that supports custom messages, like `!record`:
+
+You can do this for any command that supports custom messages, like `!record` or `!peak`:
 
 ```
 !editcmd record @{username}, your session RS is {sessionRS} ({currentRS} RS)
+!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season} | WT peak: #{wtRank} in {wtSeason}
 ```
 
 ---
 
 ## 5. Example: Full Workflow
 
+
 1. Type `!editcmd rank @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank} TEST EDIT` in chat.
-2. Use `!rank` and see your custom message in action.
-3. Change it anytime with another `!editcmd rank ...` command.
-4. Remove it with `!editcmd rank` to go back to default.
+2. Type `!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season} | WT peak: #{wtRank} in {wtSeason}` in chat.
+3. Use `!rank` or `!peak` and see your custom message in action.
+4. Change it anytime with another `!editcmd rank ...` or `!editcmd peak ...` command.
+5. Remove it with `!editcmd rank` or `!editcmd peak` to go back to default.
 
 ---
 

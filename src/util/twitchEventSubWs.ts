@@ -16,13 +16,20 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
   // If WebSocket for user doesn't exist, create it
   if (!userWebSockets[userId]) {
     userWebSockets[userId] = {
-      ws: createUserWebSocket(userId, accessToken),
+      ws: null as unknown as WebSocket,
       sessionId: null,
       subscriptions: []
     };
+
+    // initialize async without blocking
+    (async () => {
+      userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
+    })();
   }
+
   // Add subscription to user's list
-  userWebSockets[userId].subscriptions.push({ userId: userId, accessToken: accessToken, broadcasterId: broadcasterId });
+  userWebSockets[userId].subscriptions.push({ userId, accessToken, broadcasterId });
+
   // If sessionId is ready, subscribe
   if (userWebSockets[userId].sessionId) {
     subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);

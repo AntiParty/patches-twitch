@@ -152,7 +152,9 @@ const refreshTokenFunction = async (username: string, refreshToken: string, comm
       expires_in * 1000 - 5 * 60 * 1000,
       commandHandler
     );
-    await reconnectChatBot(username, commandHandler);
+  // Always reload commandHandler to avoid stale reference after refresh
+  const freshCommandHandler = loadCommands();
+  await reconnectChatBot(username, freshCommandHandler);
     logger.info(`[${username}] Bot reconnected after token refresh.`);
     tokenRefreshFailures[username] = 0; // Reset on success
   } catch (error) {
@@ -503,7 +505,9 @@ export const setupServer = () => {
       // Subscribe user to EventSub via WebSocket after authentication
       addUserSubscription(twitchUserId, access_token, twitchUserId);
 
-      await startChatBot(twitchUsername || '', handler);
+  // Always reload commandHandler to avoid stale reference after login
+  const freshCommandHandler = loadCommands();
+  await startChatBot(twitchUsername || '', freshCommandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 

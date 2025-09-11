@@ -12,14 +12,37 @@ interface CommandContext {
   tags?: Record<string, any>;
 }
 
-const CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/leaderboardCache.json");
-const WT_CACHE_FILE_PATH = path.resolve(__dirname, "../../cache/WTrankCache.json");
 const processedMessages = new Set<string>();
 
-async function getCachedLeaderboardData() {
+function getCacheDir() {
+  return path.resolve(__dirname, "../../cache");
+}
+
+async function getLatestCacheFile(prefix: string): Promise<string | null> {
   try {
-    const rawData = await fs.readFile(CACHE_FILE_PATH, "utf8");
-    const parsed = JSON.parse(rawData);
+    const files = await fs.readdir(getCacheDir());
+    const matched = files
+      .filter(f => f.startsWith(prefix) && f.endsWith(".json"))
+      .map(f => {
+        const num = parseInt(f.match(/\d+/)?.[0] ?? "0", 10);
+        return { file: f, season: num };
+      })
+      .filter(x => x.season > 0)
+      .sort((a, b) => b.season - a.season); // newest first
+
+    return matched.length > 0 ? path.join(getCacheDir(), matched[0].file) : null;
+  } catch (err) {
+    logger.error(`Failed to list cache files for ${prefix}:`, err);
+    return null;
+  }
+}
+
+async function getLatestLeaderboardData() {
+  const file = await getLatestCacheFile("regular_s");
+  if (!file) return null;
+  try {
+    const raw = await fs.readFile(file, "utf8");
+    const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : null;
   } catch (err) {
     logger.error("Failed to read leaderboard cache file:", err);
@@ -27,9 +50,11 @@ async function getCachedLeaderboardData() {
   }
 }
 
-async function getWorldTourData() {
+async function getLatestWorldTourData() {
+  const file = await getLatestCacheFile("worldTour_s");
+  if (!file) return null;
   try {
-    const raw = await fs.readFile(WT_CACHE_FILE_PATH, "utf8");
+    const raw = await fs.readFile(file, "utf8");
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : null;
   } catch (err) {
@@ -54,9 +79,8 @@ async function maybeSendCustomResponse(
 }
 
 export const execute = async (ctx: CommandContext) => {
-  // Use fallback if tags are missing
   const username = ctx.tags?.["display-name"] || ctx.user || "user";
-  const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`; // generate unique ID if missing
+  const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`;
 
   if (processedMessages.has(messageId)) return;
   processedMessages.add(messageId);
@@ -67,13 +91,15 @@ export const execute = async (ctx: CommandContext) => {
   try {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
     if (!channelInstance?.player_id?.trim()) {
-      await ctx.say(`@${username}, no THE FINALS player name linked. Use !link FinalsName#1234 @reply-parent-msg-id=${messageId}`);
+      await ctx.say(
+        `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234 @reply-parent-msg-id=${messageId}`
+      );
       return;
     }
 
     const finalsName = channelInstance.player_id.toLowerCase();
-    const regularData = await getCachedLeaderboardData();
-    const worldTourData = await getWorldTourData();
+    const regularData = await getLatestLeaderboardData();
+    const worldTourData = await getLatestWorldTourData();
 
     if (!regularData && !worldTourData) {
       await ctx.say(`@${username}, leaderboard data is temporarily unavailable.`);

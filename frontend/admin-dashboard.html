@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/admin-dashboard.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #18181b; color: #fff; margin: 0; }
+    .container { max-width: 800px; margin: 40px auto; background: #23232a; border-radius: 8px; box-shadow: 0 2px 8px #0008; padding: 32px; }
+    h1 { margin-top: 0; }
+    .logout-btn { float: right; background: #e11d48; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    .stats, .logs, .commands { margin-top: 32px; }
+    .section-title { border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { padding: 8px; border-bottom: 1px solid #333; }
+    th { background: #27272f; }
+    .command-row input { width: 100%; }
+    .add-cmd-btn { background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <form method="POST" action="/admin/logout" style="float:right;"><button class="logout-btn" type="submit">Logout</button></form>
+    <h1>Admin Dashboard</h1>
+    <div class="stats">
+      <div class="section-title">Stats</div>
+      <div id="stats-content">Loading...</div>
+    </div>
+    <div class="logs">
+      <div class="section-title">Recent Logs</div>
+      <div id="logs-content">Loading...</div>
+    </div>
+    <div class="commands">
+      <div class="section-title">Manage Commands</div>
+      <div id="commands-content">Loading...</div>
+      <button class="add-cmd-btn" onclick="addCommandRow()">Add Command</button>
+    </div>
+  </div>
+  <script>
+    async function fetchStats() {
+      const res = await fetch('/admin/api/stats');
+      const data = await res.json();
+      document.getElementById('stats-content').innerHTML = `
+        <b>Commands Processed:</b> ${data.stats.commandsProcessed}<br>
+        <b>Uptime:</b> ${data.stats.uptime} seconds
+      `;
+    }
+    async function fetchLogs() {
+      const res = await fetch('/admin/api/logs');
+      if (res.ok) {
+        const logs = await res.json();
+        document.getElementById('logs-content').innerHTML = `<pre style="max-height:200px;overflow:auto;">${logs.join('\n')}</pre>`;
+      } else {
+        document.getElementById('logs-content').innerText = 'No logs available.';
+      }
+    }
+    async function fetchCommands() {
+      const res = await fetch('/admin/api/commands');
+      if (res.ok) {
+        const cmds = await res.json();
+        let html = '<table><tr><th>Name</th><th>Response</th><th>Actions</th></tr>';
+        for (const cmd of cmds) {
+          html += `<tr class="command-row"><td><input value="${cmd.name}" /></td><td><input value="${cmd.response}" /></td><td><button onclick="deleteCommand('${cmd.name}')">Delete</button></td></tr>`;
+        }
+        html += '</table>';
+        document.getElementById('commands-content').innerHTML = html;
+      } else {
+        document.getElementById('commands-content').innerText = 'No commands found.';
+      }
+    }
+    function addCommandRow() {
+      const table = document.querySelector('#commands-content table');
+      if (table) {
+        const row = table.insertRow(-1);
+        row.className = 'command-row';
+        row.innerHTML = `<td><input /></td><td><input /></td><td><button onclick="this.closest('tr').remove()">Delete</button></td>`;
+      }
+    }
+    async function deleteCommand(name) {
+      if (!confirm('Delete command ' + name + '?')) return;
+      await fetch('/admin/api/commands/' + encodeURIComponent(name), { method: 'DELETE' });
+      fetchCommands();
+    }
+    fetchStats();
+    fetchLogs();
+    fetchCommands();
+  </script>
+</body>
+</html>

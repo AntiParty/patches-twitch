@@ -1,8 +1,19 @@
+
+import * as dotenv from "dotenv";
+// Load environment file based on NODE_ENV as early as possible
+const envFile =
+  process.env.NODE_ENV === "production"
+    ? ".env.production"
+    : ".env.development";
+dotenv.config({ path: require('path').resolve(__dirname, "..", envFile) });
+
 import fs from 'fs';
+import bcrypt from 'bcrypt';
+import csrf from 'csurf';
 import express, { Request, Response } from "express";
 import client from 'prom-client';
 import axios from "axios";
-import {Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState} from "@/db"
+import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "@/db"
 import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
 import { startChatBot, reconnectChatBot } from "./util/bot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
@@ -11,17 +22,18 @@ import logger from "./util/logger";
 import path from "path";
 import rateLimit from "express-rate-limit";
 import fs from "fs";
-import * as dotenv from "dotenv";
 import { loadCommands } from "./handlers/commands";
+
 
 const commandHandler = loadCommands();
 
-// Load environment file based on NODE_ENV
-const envFile =
-  process.env.NODE_ENV === "production"
-    ? ".env.production"
-    : ".env.development";
-dotenv.config({ path: path.resolve(__dirname, "..", envFile) });
+// --- Admin Panel Config ---
+const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase()); // comma-separated usernames
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_secret';
+
+const csrfProtection = csrf();
+
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 const redirectUri = process.env.TWITCH_REDIRECT_URI!;
@@ -152,9 +164,9 @@ const refreshTokenFunction = async (username: string, refreshToken: string, comm
       expires_in * 1000 - 5 * 60 * 1000,
       commandHandler
     );
-  // Always reload commandHandler to avoid stale reference after refresh
-  const freshCommandHandler = loadCommands();
-  await reconnectChatBot(username, freshCommandHandler);
+    // Always reload commandHandler to avoid stale reference after refresh
+    const freshCommandHandler = loadCommands();
+    await reconnectChatBot(username, freshCommandHandler);
     logger.info(`[${username}] Bot reconnected after token refresh.`);
     tokenRefreshFailures[username] = 0; // Reset on success
   } catch (error) {
@@ -281,6 +293,127 @@ export const setupServer = () => {
   app.use(express.json());
 
   app.use(express.static(frontendPath));
+
+  // Session middleware for admin panel
+  app.use(
+    session({
+      name: 'admin.sid',
+      secret: SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+      },
+    })
+  );
+  // --- Admin Auth Helpers ---
+  function isAdmin(req) {
+    return req.session && req.session.isAdmin === true && req.session.username && ADMIN_USERS.includes(req.session.username.toLowerCase());
+  }
+
+  // --- Admin Panel Routes ---
+
+  // Middleware for admin login routes: parse urlencoded and apply CSRF
+  const adminLoginMiddleware = [express.urlencoded({ extended: false }), csrfProtection];
+
+  app.get('/admin/login', ...adminLoginMiddleware, (req, res) => {
+    if (isAdmin(req)) return res.redirect('/admin');
+    res.send(`<!DOCTYPE html><html><head><title>Admin Login</title></head><body><form method="POST" action="/admin/login"><input name="username" placeholder="Username" required><br><input name="password" type="password" placeholder="Password" required><br><input type="hidden" name="_csrf" value="${req.csrfToken()}"><button type="submit">Login</button></form></body></html>`);
+  });
+
+  app.post('/admin/login', ...adminLoginMiddleware, async (req, res) => {
+    const { username, password } = req.body;
+    // Debug logging
+    console.log('--- ADMIN LOGIN DEBUG ---');
+    console.log('Submitted username:', username);
+    console.log('ADMIN_USERS env:', process.env.ADMIN_USERS);
+    console.log('Parsed ADMIN_USERS:', ADMIN_USERS);
+    console.log('ADMIN_USERS includes:', ADMIN_USERS.includes(username && username.toLowerCase()));
+    if (!username || !password) return res.status(400).send('Missing credentials');
+    if (!ADMIN_USERS.includes(username.toLowerCase())) return res.status(403).send('Not allowed');
+    console.log('ADMIN_PASSWORD_HASH:', ADMIN_PASSWORD_HASH);
+    const valid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    console.log('bcrypt.compare result:', valid);
+    if (!valid) return res.status(403).send('Invalid credentials');
+    req.session.isAdmin = true;
+    req.session.username = username;
+    res.redirect('/admin');
+    logger.info(`[Admin] ${username} logged in successfully.`);
+  });
+
+  // CSRF error handler for admin routes
+  app.use('/admin', (err, req, res, next) => {
+    if (err.code !== 'EBADCSRFTOKEN') return next(err);
+    res.status(403).send('Forbidden: invalid CSRF token');
+  });
+
+  app.post('/admin/logout', (req, res) => {
+    req.session.destroy(() => {
+      res.redirect('/admin/login');
+    });
+  });
+
+  // Protect all /admin and /admin/api routes
+  app.use(['/admin', '/admin/api'], (req, res, next) => {
+    if (req.path === '/login') return next();
+    if (!isAdmin(req)) return res.redirect('/admin/login');
+    next();
+  });
+
+  // Admin panel main page
+  app.get('/admin', csrfProtection, (req, res) => {
+    res.sendFile(path.join(frontendPath, 'admin-dashboard.html'));
+  });
+
+  // Admin API: stats
+  app.get('/admin/api/stats', (req, res) => {
+    res.json({
+      user: req.session.username,
+      stats: {
+        commandsProcessed,
+        uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+      },
+    });
+  });
+
+  // Admin API: logs (last 100 lines)
+  app.get('/admin/api/logs', (req, res) => {
+    const logPath = path.join(process.cwd(), 'logs', 'main.log');
+    fs.readFile(logPath, 'utf8', (err, data) => {
+      if (err) return res.json([]);
+      const lines = data.trim().split(/\r?\n/);
+      res.json(lines.slice(-100));
+    });
+  });
+
+  // Admin API: commands (list, add, delete)
+  app.get('/admin/api/commands', async (req, res) => {
+    // Example: get all custom commands from DB (adjust as needed)
+    try {
+      const cmds = await Channel.findAll({ attributes: ['custom_commands'] });
+      // Flatten and parse commands
+      let allCmds = [];
+      for (const row of cmds) {
+        if (row.custom_commands) {
+          try {
+            const parsed = JSON.parse(row.custom_commands);
+            allCmds = allCmds.concat(parsed);
+          } catch { }
+        }
+      }
+      res.json(allCmds);
+    } catch {
+      res.json([]);
+    }
+  });
+  app.delete('/admin/api/commands/:name', async (req, res) => {
+    // Example: delete command logic (implement as needed)
+    // This is a stub for demonstration
+    res.json({ ok: true });
+  });
 
   app.use("/callback", authLimiter);
 
@@ -505,9 +638,9 @@ export const setupServer = () => {
       // Subscribe user to EventSub via WebSocket after authentication
       addUserSubscription(twitchUserId, access_token, twitchUserId);
 
-  // Always reload commandHandler to avoid stale reference after login
-  const freshCommandHandler = loadCommands();
-  await startChatBot(twitchUsername || '', freshCommandHandler);
+      // Always reload commandHandler to avoid stale reference after login
+      const freshCommandHandler = loadCommands();
+      await startChatBot(twitchUsername || '', freshCommandHandler);
       sendMessageToDiscord(`${twitchUsername}`);
       logger.info("Chatbot started successfully.");
 

@@ -578,7 +578,9 @@ export const setupServer = () => {
   app.get("/stats.json", (req: Request, res: Response) => {
     fs.readFile(statsFilePath, "utf8", (err, data) => {
       if (err) return res.status(500).json({ error: "Stats not available" });
+
       res.setHeader("Content-Type", "application/json");
+      res.setHeader("Access-Control-Allow-Origin", "*"); // 👈 allow browsers
       res.send(data);
     });
   });

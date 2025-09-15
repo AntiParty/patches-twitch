@@ -4,40 +4,192 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="/admin-dashboard.css">
   <style>
-    body { font-family: Arial, sans-serif; background: #18181b; color: #fff; margin: 0; }
-    .container { max-width: 800px; margin: 40px auto; background: #23232a; border-radius: 8px; box-shadow: 0 2px 8px #0008; padding: 32px; }
-    h1 { margin-top: 0; }
-    .logout-btn { float: right; background: #e11d48; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-    .stats, .logs, .commands { margin-top: 32px; }
-    .section-title { border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 16px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    th, td { padding: 8px; border-bottom: 1px solid #333; }
-    th { background: #27272f; }
-    .command-row input { width: 100%; }
-    .add-cmd-btn { background: #2563eb; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+    /* Base styles */
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #1a1a1f;
+      color: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #24242d;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      padding: 40px;
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      font-size: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logout-btn {
+      background: #e11d48;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    .logout-btn:hover {
+      background: #bf1235;
+    }
+
+    .section {
+      margin-top: 32px;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      border-bottom: 1px solid #333;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #333;
+    }
+    th {
+      background: #2e2e3a;
+      text-align: left;
+    }
+    .command-row input {
+      width: 100%;
+      padding: 6px;
+      border-radius: 6px;
+      border: none;
+      background: #33333d;
+      color: #fff;
+    }
+    .command-row button {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .command-row button:hover {
+      background: #b91c1c;
+    }
+
+    .btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #1e40af;
+    }
+
+    input, select {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: none;
+      background: #33333d;
+      color: #fff;
+      margin-right: 8px;
+      flex: 1;
+    }
+
+    .message-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+      align-items: center;
+    }
+
+    #message-status {
+      margin-top: 8px;
+      font-style: italic;
+      color: #60a5fa;
+    }
+
+    /* Scrollable logs */
+    #logs-content pre {
+      max-height: 200px;
+      overflow-y: auto;
+      background: #1f1f28;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .message-row {
+        flex-direction: column;
+      }
+      input {
+        width: 100%;
+        margin-right: 0;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <form method="POST" action="/admin/logout" style="float:right;"><button class="logout-btn" type="submit">Logout</button></form>
-    <h1>Admin Dashboard</h1>
-    <div class="stats">
+    <h1>
+      Admin Dashboard
+      <form method="POST" action="/admin/logout" style="margin:0;">
+        <button class="logout-btn" type="submit">Logout</button>
+      </form>
+    </h1>
+
+    <div class="section stats">
       <div class="section-title">Stats</div>
       <div id="stats-content">Loading...</div>
     </div>
-    <div class="logs">
+
+    <div class="section logs">
       <div class="section-title">Recent Logs</div>
       <div id="logs-content">Loading...</div>
     </div>
-    <div class="commands">
+
+    <div class="section commands">
       <div class="section-title">Manage Commands</div>
       <div id="commands-content">Loading...</div>
-      <button class="add-cmd-btn" onclick="addCommandRow()">Add Command</button>
+      <button class="btn" onclick="addCommandRow()">Add Command</button>
+    </div>
+
+    <div class="section bot-message">
+      <div class="section-title">Send Bot Message</div>
+      <div class="message-row">
+        <input type="text" id="channel" placeholder="Channel (optional)" />
+        <input type="text" id="message" placeholder="Message" />
+        <input type="text" id="apiKey" placeholder="API Key" />
+        <button class="btn" onclick="sendBotMessage()">Send</button>
+      </div>
+      <div id="message-status"></div>
     </div>
   </div>
+
   <script>
+    // --- JS remains mostly the same ---
     async function fetchStats() {
       const res = await fetch('/admin/api/stats');
       const data = await res.json();
@@ -46,15 +198,17 @@
         <b>Uptime:</b> ${data.stats.uptime} seconds
       `;
     }
+
     async function fetchLogs() {
       const res = await fetch('/admin/api/logs');
       if (res.ok) {
         const logs = await res.json();
-        document.getElementById('logs-content').innerHTML = `<pre style="max-height:200px;overflow:auto;">${logs.join('\n')}</pre>`;
+        document.getElementById('logs-content').innerHTML = `<pre>${logs.join('\n')}</pre>`;
       } else {
         document.getElementById('logs-content').innerText = 'No logs available.';
       }
     }
+
     async function fetchCommands() {
       const res = await fetch('/admin/api/commands');
       if (res.ok) {
@@ -69,6 +223,7 @@
         document.getElementById('commands-content').innerText = 'No commands found.';
       }
     }
+
     function addCommandRow() {
       const table = document.querySelector('#commands-content table');
       if (table) {
@@ -77,11 +232,36 @@
         row.innerHTML = `<td><input /></td><td><input /></td><td><button onclick="this.closest('tr').remove()">Delete</button></td>`;
       }
     }
+
     async function deleteCommand(name) {
       if (!confirm('Delete command ' + name + '?')) return;
       await fetch('/admin/api/commands/' + encodeURIComponent(name), { method: 'DELETE' });
       fetchCommands();
     }
+
+    async function sendBotMessage() {
+      const channel = document.getElementById('channel').value;
+      const message = document.getElementById('message').value;
+      const key = document.getElementById('apiKey').value;
+      const statusDiv = document.getElementById('message-status');
+
+      if (!message) return statusDiv.innerText = "Message cannot be empty";
+      if (!key) return statusDiv.innerText = "API Key required";
+
+      try {
+        const res = await fetch('/admin/api/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel, message, key })
+        });
+        const data = await res.json();
+        statusDiv.innerText = data.success ? `Message sent to ${channel || 'all channels'}` : (data.error || "Failed to send message");
+      } catch (err) {
+        statusDiv.innerText = "Error sending message";
+        console.error(err);
+      }
+    }
+
     fetchStats();
     fetchLogs();
     fetchCommands();

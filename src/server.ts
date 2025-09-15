@@ -1,4 +1,3 @@
-
 import * as dotenv from "dotenv";
 // Load environment file based on NODE_ENV as early as possible
 const envFile =
@@ -13,19 +12,12 @@ import csrf from 'csurf';
 import express, { Request, Response } from "express";
 import client from 'prom-client';
 import axios from "axios";
-import { Channel, dbReady, getAllUsers, getGlobalCommands, setGlobalCommandState } from "@/db"
+import { Channel, dbReady } from "@/db"
 import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
-import { startChatBot, reconnectChatBot } from "./util/bot";
-import { addUserSubscription } from "./util/twitchEventSubWs";
 import session from 'express-session';
 import logger from "./util/logger";
 import path from "path";
 import rateLimit from "express-rate-limit";
-import fs from "fs";
-import { loadCommands } from "./handlers/commands";
-
-
-const commandHandler = loadCommands();
 
 // --- Admin Panel Config ---
 const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase()); // comma-separated usernames
@@ -43,11 +35,6 @@ const cacheFilePath = path.join(
   "cache",
   "connectedAccounts.json"
 );
-
-let accessToken: string | null = null;
-let refreshToken: string | null = null;
-let expirationTime: number | null = null;
-let twitchUsername: string | null = null;
 
 // Prometheus metrics setup
 const collectDefaultMetrics = client.collectDefaultMetrics;
@@ -98,8 +85,6 @@ const apiErrorCounter = new client.Counter({
   labelNames: ['endpoint']
 });
 
-const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
-
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -111,135 +96,6 @@ const getAuthUrl = () => {
     "channel:moderate user:read:chat user:bot channel:bot"
   );
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
-};
-
-// Track token refresh failures for rare Discord alerts
-const tokenRefreshFailures: { [key: string]: number } = {};
-const refreshTokenFunction = async (username: string, refreshToken: string, commandHandler: { [key: string]: Function }) => {
-  if (!refreshToken) {
-    logger.error(`No refresh token for ${username}`);
-    sendMessageToDiscord(`Critical: No refresh token for ${username}. Manual intervention required.`);
-    return;
-  }
-
-  try {
-    logger.info(`[${username}] Refreshing access token...`);
-    const response = await axios.post(
-      "https://id.twitch.tv/oauth2/token",
-      null,
-      {
-        params: {
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
-          grant_type: "refresh_token",
-        },
-      }
-    );
-
-    const {
-      access_token,
-      refresh_token: newRefreshToken,
-      expires_in,
-    } = response.data;
-
-    const newExpirationTime = new Date(
-      new Date().getTime() + expires_in * 1000
-    );
-    await Channel.update(
-      {
-        access_token,
-        refresh_token: newRefreshToken,
-        token_expires_at: newExpirationTime,
-      },
-      { where: { username } }
-    );
-
-    logger.info(
-      `[${username}] Token refreshed. Expires in ${expires_in / 60} minutes.`
-    );
-    scheduleTokenRefresh(
-      username,
-      newRefreshToken,
-      expires_in * 1000 - 5 * 60 * 1000,
-      commandHandler
-    );
-    // Always reload commandHandler to avoid stale reference after refresh
-    const freshCommandHandler = loadCommands();
-    await reconnectChatBot(username, freshCommandHandler);
-    logger.info(`[${username}] Bot reconnected after token refresh.`);
-    tokenRefreshFailures[username] = 0; // Reset on success
-  } catch (error) {
-    tokenRefreshFailures[username] = (tokenRefreshFailures[username] || 0) + 1;
-    // Only alert on Discord if failure is rare/critical (e.g., 3 consecutive failures)
-    if (tokenRefreshFailures[username] === 3 || tokenRefreshFailures[username] % 10 === 0) {
-      sendMessageToDiscord(`Critical: Token refresh failed for ${username} ${tokenRefreshFailures[username]} times. Manual intervention may be required.`);
-    }
-    logger.error(`[${username}] Token refresh failed:`, error);
-    logger.info("Retrying in 1 minute...");
-    setTimeout(() => refreshTokenFunction(username, refreshToken, commandHandler), 60 * 1000);
-  }
-};
-
-const scheduleTokenRefresh = (
-  username: string,
-  refreshToken: string,
-  refreshTime: number,
-  commandHandler: { [key: string]: Function }
-) => {
-  if (refreshTimers[username]) clearTimeout(refreshTimers[username]);
-
-  if (refreshTime > 0) {
-    refreshTimers[username] = setTimeout(
-      () => refreshTokenFunction(username, refreshToken, commandHandler),
-      refreshTime
-    );
-  } else {
-    setTimeout(() => refreshTokenFunction(username, refreshToken, commandHandler), 60 * 1000);
-  }
-};
-
-export const validateToken = async (
-  username: string,
-  accessToken: string,
-  refreshToken: string,
-  commandHandler: { [key: string]: Function }
-) => {
-  try {
-    const response = await axios.get("https://id.twitch.tv/oauth2/validate", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    const expiresIn = response.data.expires_in;
-    scheduleTokenRefresh(
-      username,
-      refreshToken,
-      expiresIn * 1000 - 5 * 60 * 1000,
-      commandHandler
-    );
-  } catch (error) {
-    logger.error(`[${username}] Token validation failed. Refreshing now...`);
-    refreshTokenFunction(username, refreshToken, commandHandler);
-  }
-};
-
-const validateAllTokens = async (commandHandler: { [key: string]: Function }) => {
-  const channels = await Channel.findAll();
-
-  for (const channel of channels) {
-    const { username, access_token, refresh_token, token_expires_at } = channel;
-    if (access_token && refresh_token && token_expires_at) {
-      const timeLeft =
-        new Date(token_expires_at).getTime() - new Date().getTime();
-      if (timeLeft > 0) {
-        await validateToken(username, access_token, refresh_token, commandHandler);
-      } else {
-        logger.info(`Token for ${username} has expired. Refreshing...`);
-        await refreshTokenFunction(username, refresh_token, commandHandler);
-      }
-    } else {
-      logger.warn(`No tokens found for ${username}, skipping...`);
-    }
-  }
 };
 
 function exportStatsToJson() {
@@ -257,32 +113,7 @@ function exportStatsToJson() {
   });
 }
 
-const startTokenValidationInterval = (commandHandler: { [key: string]: Function }) => {
-  const intervalTime = 15 * 1000;
-  setInterval(() => validateAllTokens(commandHandler), intervalTime);
-  logger.info(
-    `Started periodic token validation every ${intervalTime / 1000} seconds.`
-  );
-};
-
-/**
- * Loads stored tokens from the database and starts validation interval.
- * @param commandHandler - Object containing command handler functions
- */
-export const loadTokensOnStartup = async (commandHandler: { [key: string]: Function }) => {
-  logger.info("Loading stored tokens...");
-  await validateAllTokens(commandHandler);
-  startTokenValidationInterval(commandHandler);
-};
-
-/**
- * Sets up the Express server, API endpoints, and EventSub WebSocket connection.
- * @param commandHandler - Object containing command handler functions
- * @returns Express app instance
- */
 export const setupServer = () => {
-  // Use the initialized commandHandler
-  const handler = commandHandler;
   const frontendPath = path.join(process.cwd(), "frontend");
   const app = express();
   app.set("trust proxy", 1);
@@ -309,8 +140,9 @@ export const setupServer = () => {
       },
     })
   );
+
   // --- Admin Auth Helpers ---
-  function isAdmin(req) {
+  function isAdmin(req: any) {
     return req.session && req.session.isAdmin === true && req.session.username && ADMIN_USERS.includes(req.session.username.toLowerCase());
   }
 
@@ -319,12 +151,12 @@ export const setupServer = () => {
   // Middleware for admin login routes: parse urlencoded and apply CSRF
   const adminLoginMiddleware = [express.urlencoded({ extended: false }), csrfProtection];
 
-  app.get('/admin/login', ...adminLoginMiddleware, (req, res) => {
+  app.get('/admin/login', ...adminLoginMiddleware, (req: any, res: any) => {
     if (isAdmin(req)) return res.redirect('/admin');
     res.send(`<!DOCTYPE html><html><head><title>Admin Login</title></head><body><form method="POST" action="/admin/login"><input name="username" placeholder="Username" required><br><input name="password" type="password" placeholder="Password" required><br><input type="hidden" name="_csrf" value="${req.csrfToken()}"><button type="submit">Login</button></form></body></html>`);
   });
 
-  app.post('/admin/login', ...adminLoginMiddleware, async (req, res) => {
+  app.post('/admin/login', ...adminLoginMiddleware, async (req: any, res: any) => {
     const { username, password } = req.body;
     // Debug logging
     console.log('--- ADMIN LOGIN DEBUG ---');
@@ -345,31 +177,31 @@ export const setupServer = () => {
   });
 
   // CSRF error handler for admin routes
-  app.use('/admin', (err, req, res, next) => {
+  app.use('/admin', (err: any, req: any, res: any, next: any) => {
     if (err.code !== 'EBADCSRFTOKEN') return next(err);
     res.status(403).send('Forbidden: invalid CSRF token');
   });
 
-  app.post('/admin/logout', (req, res) => {
+  app.post('/admin/logout', (req: any, res: any) => {
     req.session.destroy(() => {
       res.redirect('/admin/login');
     });
   });
 
   // Protect all /admin and /admin/api routes
-  app.use(['/admin', '/admin/api'], (req, res, next) => {
+  app.use(['/admin', '/admin/api'], (req: any, res: any, next: any) => {
     if (req.path === '/login') return next();
     if (!isAdmin(req)) return res.redirect('/admin/login');
     next();
   });
 
   // Admin panel main page
-  app.get('/admin', csrfProtection, (req, res) => {
+  app.get('/admin', csrfProtection, (req: any, res: any) => {
     res.sendFile(path.join(frontendPath, 'admin-dashboard.html'));
   });
 
   // Admin API: stats
-  app.get('/admin/api/stats', (req, res) => {
+  app.get('/admin/api/stats', (req: any, res: any) => {
     res.json({
       user: req.session.username,
       stats: {
@@ -380,7 +212,7 @@ export const setupServer = () => {
   });
 
   // Admin API: logs (last 100 lines)
-  app.get('/admin/api/logs', (req, res) => {
+  app.get('/admin/api/logs', (req: any, res: any) => {
     const logPath = path.join(process.cwd(), 'logs', 'main.log');
     fs.readFile(logPath, 'utf8', (err, data) => {
       if (err) return res.json([]);
@@ -389,8 +221,36 @@ export const setupServer = () => {
     });
   });
 
+  app.post("/admin/api/message", async (req: any, res: any) => {
+    try {
+      const { channel, message, key } = req.body;
+
+      // Check API key
+      if (!key || key !== process.env.API_KEY) {
+        return res.status(403).json({ error: "Invalid API key" });
+      }
+
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Forward request to the bot
+      await axios.post("http://localhost:4000/send-message", {
+        channel, // can be undefined if sending to all
+        message,
+      });
+
+      logger.info(`[Admin] Sent message "${message}" to ${channel || "all channels"}`);
+      res.json({ success: true });
+    } catch (err) {
+      logger.error("Error sending custom message:", err);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+
   // Admin API: commands (list, add, delete)
-  app.get('/admin/api/commands', async (req, res) => {
+  app.get('/admin/api/commands', async (req: any, res: any) => {
     // Example: get all custom commands from DB (adjust as needed)
     try {
       const cmds = await Channel.findAll({ attributes: ['custom_commands'] });
@@ -409,7 +269,7 @@ export const setupServer = () => {
       res.json([]);
     }
   });
-  app.delete('/admin/api/commands/:name', async (req, res) => {
+  app.delete('/admin/api/commands/:name', async (req: any, res: any) => {
     // Example: delete command logic (implement as needed)
     // This is a stub for demonstration
     res.json({ ok: true });
@@ -432,19 +292,6 @@ export const setupServer = () => {
   app.get('/docs', (req: Request, res: Response) => {
     res.sendFile(path.join(frontendPath, 'docs.html'));
   });
-  // Start EventSub WebSocket connection
-  // connectEventSubWebSocket is obsolete; handled per-user
-
-  // Auto-subscribe all users on startup
-  import('./db').then(async ({ Channel }) => {
-    const users = await Channel.findAll();
-    users.forEach((user: any) => {
-      if (user.twitch_user_id && user.access_token) {
-        addUserSubscription(user.twitch_user_id, user.access_token, user.twitch_user_id);
-        logger.info(`[EventSubWs] Auto-subscribed ${user.username} (${user.twitch_user_id})`);
-      }
-    });
-  });
 
   /**
    * GET /login
@@ -460,7 +307,6 @@ export const setupServer = () => {
    * POST /changelog
    * requires x-api-key header
    */
-
   app.post("/changelog", async (req: Request, res: Response) => {
     try {
       const apiKey = req.headers['x-api-key'];
@@ -486,8 +332,6 @@ export const setupServer = () => {
     }
   });
 
-  // Start EventSub WebSocket connection
-  // connectEventSubWebSocket is obsolete; handled per-user
   /**
    * GET /health
    * Returns health status of the server and database.
@@ -584,7 +428,6 @@ export const setupServer = () => {
       res.send(data);
     });
   });
-  // domain to use: localhost:3000/users?key=GjYJB2Vm%2CKm%26*BSy3bFKVDRgvULgk
 
   /**
    * GET /callback
@@ -597,6 +440,7 @@ export const setupServer = () => {
     }
 
     try {
+      // Exchange code for tokens
       const tokenResponse = await axios.post(
         "https://id.twitch.tv/oauth2/token",
         null,
@@ -612,23 +456,21 @@ export const setupServer = () => {
       );
 
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
-      expirationTime = new Date().getTime() + expires_in * 1000;
-      accessToken = access_token;
-      refreshToken = refresh_token;
+      const expirationTime = new Date(Date.now() + expires_in * 1000);
 
-      const userResponse = await axios.get(
-        "https://api.twitch.tv/helix/users",
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            "Client-ID": clientId,
-          },
-        }
-      );
+      // Fetch user info from Twitch
+      const userResponse = await axios.get("https://api.twitch.tv/helix/users", {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          "Client-ID": clientId,
+        },
+      });
 
-      const twitchUserId = userResponse.data.data[0].id;
-      twitchUsername = userResponse.data.data[0].login;
+      const twitchUser = userResponse.data.data[0];
+      const twitchUserId = twitchUser.id;
+      const twitchUsername = twitchUser.login;
 
+      // Upsert user in DB
       await Channel.upsert({
         username: twitchUsername,
         access_token,
@@ -637,43 +479,39 @@ export const setupServer = () => {
         twitch_user_id: twitchUserId,
       });
 
-      // Subscribe user to EventSub via WebSocket after authentication
-      addUserSubscription(twitchUserId, access_token, twitchUserId);
+      // Notify bot process to start this user
+      try {
+        await axios.post("http://localhost:4000/add-channel", {
+          twitch_user_id: twitchUserId,
+          username: twitchUsername,
+        });
+        logger.info(`[Callback] Bot notified to add channel: ${twitchUsername} (${twitchUserId})`);
+      } catch (notifyError) {
+        logger.error(`[Callback] Failed to notify bot for ${twitchUsername}:`, notifyError);
+      }
 
-      // Always reload commandHandler to avoid stale reference after login
-      const freshCommandHandler = loadCommands();
-      await startChatBot(twitchUsername || '', freshCommandHandler);
-      sendMessageToDiscord(`${twitchUsername}`);
-      logger.info("Chatbot started successfully.");
+      // Log expiry nicely
+      const timeLeftMs = expirationTime.getTime() - Date.now();
+      const hours = Math.floor(timeLeftMs / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
 
-      const timeLeft = expirationTime - new Date().getTime();
-      const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutesLeft = Math.floor(
-        (timeLeft % (1000 * 60 * 60)) / (1000 * 60)
-      );
-      const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
-      logger.info(
-        `Token expires in ${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`
-      );
+      logger.info(`[Callback] ${twitchUsername} authenticated. Token expires in ${hours}h ${minutes}m ${seconds}s`);
 
-      const refreshTime = timeLeft - 5 * 60 * 1000;
-      setTimeout(
-        () => refreshTokenFunction(twitchUsername!, refresh_token, handler),
-        refreshTime
-      );
-
+      // Send confirmation page
       res.render("auth", {
         title: "Twitch Authenticated",
-        logoPath: "/assets/logo.png", // relative to your static folder
+        logoPath: "/assets/logo.png",
         username: twitchUsername,
         botUsername: "FinalsRR",
       });
     } catch (error) {
-      apiErrorCounter.inc({ endpoint: '/callback' });
+      apiErrorCounter.inc({ endpoint: "/callback" });
       logger.error("Error during OAuth process:", error);
       res.status(500).send("Authentication failed");
     }
   });
+
 
   return app;
 };

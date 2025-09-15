@@ -16,7 +16,7 @@ const clients: { [username: string]: IRCClient } = {};
 /**
  * Sends a message using Twitch Helix Chat API to show Chat Bot Badge
  */
-async function sendChatMessage(
+export async function sendChatMessage(
   broadcasterId: string,
   message: string,
   replyParentId?: string

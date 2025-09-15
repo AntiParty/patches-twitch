@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "NODE_ENV=development bun run src/index.ts",
-    "start": "NODE_ENV=production bun src/index.ts"
+    "dev:server": "NODE_ENV=development bun run src/index.ts",
+    "dev:bot": "NODE_ENV=development bun run src/bot.ts",
+    "dev:all": "concurrently -n server,bot -c green,blue \"bun run dev:server\" \"bun run dev:bot\"",
+    "start:server": "NODE_ENV=production bun run dist/index.js",
+    "start:bot": "NODE_ENV=production bun run dist/bot.js",
+    "start:all": "concurrently -n server,bot -c green,blue \"bun run start:server\" \"bun run start:bot\"",
+    "build": "tsc"
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -32,6 +37,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node-fetch": "^2.6.13",
+    "concurrently": "^9.2.1",
     "typescript": "^5.1.3"
   },
   "keywords": [],

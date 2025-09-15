@@ -17,14 +17,14 @@ fi
 # Pull latest changes from origin/main
 git pull origin main
 
-# Install dependencies
-npm install
+# Install dependencies (using Bun if preferred)
+bun install
 
-# Build your project if needed
-# npm run build
+# Build project (TypeScript -> dist)
+#bun run build
 
-# Restart your app with pm2 (adjust the app name accordingly)
-pm2 restart finalsrr-prod
-
+# Restart both PM2 apps (make sure these names match your ecosystem config)
+pm2 restart finalsrr-server
+pm2 restart finalsrr-bot
 
 echo "Deployment complete."

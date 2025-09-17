@@ -37,7 +37,6 @@ const getRedirectUri = () => {
     ? "https://app.antiparty.dev/callback"
     : "http://localhost:3000/callback";
 };
-
 const cacheFilePath = path.join(
   __dirname,
   "src",

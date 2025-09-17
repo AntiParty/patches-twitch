@@ -1,202 +1,401 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
   <style>
-    /* Base styles */
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #1a1a1f;
-      color: #f0f0f0;
+    /* Dark mode variables */
+    :root {
+      --background: 222.2 84% 4.9%;
+      --foreground: 210 40% 98%;
+      --card: 222.2 84% 7.9%;
+      --card-foreground: 210 40% 98%;
+      --popover: 222.2 84% 4.9%;
+      --popover-foreground: 210 40% 98%;
+      --primary: 217.2 91.2% 59.8%;
+      --primary-foreground: 222.2 84% 4.9%;
+      --secondary: 217.2 32.6% 17.5%;
+      --secondary-foreground: 210 40% 98%;
+      --muted: 217.2 32.6% 17.5%;
+      --muted-foreground: 215 20.2% 65.1%;
+      --accent: 217.2 32.6% 17.5%;
+      --accent-foreground: 210 40% 98%;
+      --destructive: 0 62.8% 30.6%;
+      --destructive-foreground: 210 40% 98%;
+      --border: 217.2 32.6% 17.5%;
+      --input: 217.2 32.6% 17.5%;
+      --ring: 224.3 76.3% 94.1%;
+      --radius: 0.5rem;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
 
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      background: #24242d;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-      padding: 40px;
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: hsl(var(--background));
+      color: hsl(var(--foreground));
+      line-height: 1.5;
+      padding: 0;
+      margin: 0;
     }
 
-    h1 {
-      margin: 0 0 24px;
-      font-size: 2rem;
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    /* Header */
+    .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid hsl(var(--border));
     }
 
-    .logout-btn {
-      background: #e11d48;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background 0.2s;
-    }
-    .logout-btn:hover {
-      background: #bf1235;
+    .header h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: hsl(var(--foreground));
     }
 
-    .section {
-      margin-top: 32px;
+    /* Cards */
+    .card {
+      background-color: hsl(var(--card));
+      border: 1px solid hsl(var(--border));
+      border-radius: calc(var(--radius) + 0.25rem);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
-    .section-title {
-      font-size: 1.2rem;
+    .card-header {
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
       font-weight: 600;
-      border-bottom: 1px solid #333;
-      padding-bottom: 8px;
-      margin-bottom: 16px;
+      color: hsl(var(--foreground));
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius);
+      font-weight: 500;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background-color: hsl(var(--primary));
+      color: hsl(var(--primary-foreground));
+    }
+
+    .btn-primary:hover {
+      background-color: hsl(var(--primary) / 0.9);
+    }
+
+    .btn-destructive {
+      background-color: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+    }
+
+    .btn-destructive:hover {
+      background-color: hsl(var(--destructive) / 0.9);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid hsl(var(--border));
+      color: hsl(var(--foreground));
+    }
+
+    .btn-outline:hover {
+      background-color: hsl(var(--accent));
+      color: hsl(var(--accent-foreground));
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
     }
 
     /* Tables */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
+      margin-top: 0.75rem;
+      font-size: 0.875rem;
     }
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #333;
-    }
+
     th {
-      background: #2e2e3a;
       text-align: left;
+      padding: 0.75rem;
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+      border-bottom: 1px solid hsl(var(--border));
     }
-    .command-row input {
+
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Inputs */
+    .input {
       width: 100%;
-      padding: 6px;
-      border-radius: 6px;
-      border: none;
-      background: #33333d;
-      color: #fff;
-    }
-    .command-row button {
-      background: #dc2626;
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .command-row button:hover {
-      background: #b91c1c;
+      border-radius: var(--radius);
+      border: 1px solid hsl(var(--border));
+      background-color: hsl(var(--input));
+      color: hsl(var(--foreground));
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      transition: border-color 0.2s;
     }
 
-    .btn {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      margin-top: 8px;
-      transition: background 0.2s;
-    }
-    .btn:hover {
-      background: #1e40af;
+    .input:focus {
+      outline: none;
+      border-color: hsl(var(--ring));
+      box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
     }
 
-    input, select {
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: none;
-      background: #33333d;
-      color: #fff;
-      margin-right: 8px;
-      flex: 1;
-    }
-
-    .message-row {
+    .input-group {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
     }
 
-    #message-status {
-      margin-top: 8px;
-      font-style: italic;
-      color: #60a5fa;
+    /* Analytics */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
     }
 
-    /* Scrollable logs */
-    #logs-content pre {
+    .metric-card {
+      background-color: hsl(var(--secondary));
+      border-radius: var(--radius);
+      padding: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .metric-title {
+      font-weight: 500;
+      color: hsl(var(--muted-foreground));
+      margin-bottom: 0.25rem;
+    }
+
+    .metric-value {
+      font-weight: 600;
+      font-size: 1.125rem;
+      color: hsl(var(--foreground));
+    }
+
+    /* Status messages */
+    .status-message {
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      border-radius: var(--radius);
+    }
+
+    .status-success {
+      background-color: hsl(142 76% 20%);
+      color: hsl(142 76% 85%);
+    }
+
+    .status-error {
+      background-color: hsl(0 84% 20%);
+      color: hsl(0 84% 85%);
+    }
+
+    .status-info {
+      background-color: hsl(221 91% 20%);
+      color: hsl(221 91% 85%);
+    }
+
+    /* Logs */
+    .logs-container {
+      background-color: hsl(var(--muted));
+      border-radius: var(--radius);
+      padding: 1rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.75rem;
       max-height: 200px;
       overflow-y: auto;
-      background: #1f1f28;
-      padding: 12px;
-      border-radius: 8px;
+      color: hsl(var(--foreground));
     }
 
-    @media (max-width: 600px) {
-      .message-row {
+    /* Responsive */
+    @media (max-width: 768px) {
+      .input-group {
         flex-direction: column;
       }
-      input {
-        width: 100%;
-        margin-right: 0;
+
+      .analytics-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .analytics-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <h1>
-      Admin Dashboard
+    <div class="header">
+      <h1>Admin Dashboard</h1>
       <form method="POST" action="/admin/logout" style="margin:0;">
-        <button class="logout-btn" type="submit">Logout</button>
+        <button class="btn btn-outline" type="submit">Logout</button>
       </form>
-    </h1>
+    </div>
 
-    <div class="section stats">
-      <div class="section-title">Stats</div>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Stats</h2>
+      </div>
       <div id="stats-content">Loading...</div>
     </div>
 
-    <div class="section logs">
-      <div class="section-title">Recent Logs</div>
-      <div id="logs-content">Loading...</div>
-    </div>
-
-    <div class="section commands">
-      <div class="section-title">Manage Commands</div>
-      <div id="commands-content">Loading...</div>
-      <button class="btn" onclick="addCommandRow()">Add Command</button>
-    </div>
-
-    <div class="section bot-message">
-      <div class="section-title">Send Bot Message</div>
-      <div class="message-row">
-        <input type="text" id="channel" placeholder="Channel (optional)" />
-        <input type="text" id="message" placeholder="Message" />
-        <input type="text" id="apiKey" placeholder="API Key" />
-        <button class="btn" onclick="sendBotMessage()">Send</button>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Web Analytics (Last 7 Days)</h2>
       </div>
-      <div id="message-status"></div>
+      <div id="analytics-content">Loading...</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Recent Logs</h2>
+      </div>
+      <div id="logs-content" class="logs-container">Loading...</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Manage Commands</h2>
+      </div>
+      <div id="commands-content">Loading...</div>
+      <button class="btn btn-outline" onclick="addCommandRow()">Add Command</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Send Bot Message</h2>
+      </div>
+      <div class="input-group">
+        <input type="text" id="channel" class="input" placeholder="Channel (optional)" />
+        <input type="text" id="message" class="input" placeholder="Message" />
+        <input type="text" id="apiKey" class="input" placeholder="API Key" />
+        <button class="btn btn-primary" onclick="sendBotMessage()">Send</button>
+      </div>
+      <div id="message-status" class="status-message"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Bot Control</h2>
+      </div>
+      <div class="input-group">
+        <input type="text" id="restartApiKey" class="input" placeholder="API Key" />
+        <button class="btn btn-primary" onclick="restartBot()">Restart Bot</button>
+      </div>
+      <div id="restart-status" class="status-message"></div>
     </div>
   </div>
 
   <script>
-    // --- JS remains mostly the same ---
     async function fetchStats() {
       const res = await fetch('/admin/api/stats');
       const data = await res.json();
       document.getElementById('stats-content').innerHTML = `
-        <b>Commands Processed:</b> ${data.stats.commandsProcessed}<br>
-        <b>Uptime:</b> ${data.stats.uptime} seconds
+        <div class="analytics-grid">
+          <div class="metric-card">
+            <div class="metric-title">Commands Processed</div>
+            <div class="metric-value">${data.stats.commandsProcessed}</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-title">Uptime</div>
+            <div class="metric-value">${formatUptime(data.stats.uptime)}</div>
+          </div>
+        </div>
       `;
+    }
+
+    function formatUptime(seconds) {
+      const days = Math.floor(seconds / (24 * 60 * 60));
+      const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+      const mins = Math.floor((seconds % (60 * 60)) / 60);
+
+      if (days > 0) return `${days}d ${hours}h ${mins}m`;
+      if (hours > 0) return `${hours}h ${mins}m`;
+      return `${mins}m`;
+    }
+
+    async function fetchAnalytics() {
+      const res = await fetch('/admin/api/web-analytics');
+      if (!res.ok) {
+        document.getElementById('analytics-content').innerText = "Failed to load analytics.";
+        return;
+      }
+
+      const data = await res.json();
+      let html = '';
+
+      const days = Object.keys(data).sort((a, b) => b.localeCompare(a)).slice(0, 7);
+
+      for (const day of days) {
+        const d = data[day];
+        html += `
+          <div style="margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">${day}</h3>
+            <div class="analytics-grid">
+              <div class="metric-card">
+                <div class="metric-title">Total Requests</div>
+                <div class="metric-value">${d.totalRequests}</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">Unique Visitors</div>
+                <div class="metric-value">${d.uniqueVisitors}</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">Avg Response</div>
+                <div class="metric-value">${d.avgResponseTimeMs}ms</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">P95 Response</div>
+                <div class="metric-value">${d.p95ResponseTimeMs}ms</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      document.getElementById('analytics-content').innerHTML = html;
     }
 
     async function fetchLogs() {
@@ -215,7 +414,7 @@
         const cmds = await res.json();
         let html = '<table><tr><th>Name</th><th>Response</th><th>Actions</th></tr>';
         for (const cmd of cmds) {
-          html += `<tr class="command-row"><td><input value="${cmd.name}" /></td><td><input value="${cmd.response}" /></td><td><button onclick="deleteCommand('${cmd.name}')">Delete</button></td></tr>`;
+          html += `<tr><td><input class="input" value="${cmd.name}" /></td><td><input class="input" value="${cmd.response}" /></td><td><button class="btn btn-destructive btn-sm" onclick="deleteCommand('${cmd.name}')">Delete</button></td></tr>`;
         }
         html += '</table>';
         document.getElementById('commands-content').innerHTML = html;
@@ -228,8 +427,7 @@
       const table = document.querySelector('#commands-content table');
       if (table) {
         const row = table.insertRow(-1);
-        row.className = 'command-row';
-        row.innerHTML = `<td><input /></td><td><input /></td><td><button onclick="this.closest('tr').remove()">Delete</button></td>`;
+        row.innerHTML = `<td><input class="input" /></td><td><input class="input" /></td><td><button class="btn btn-destructive btn-sm" onclick="this.closest('tr').remove()">Delete</button></td>`;
       }
     }
 
@@ -245,8 +443,17 @@
       const key = document.getElementById('apiKey').value;
       const statusDiv = document.getElementById('message-status');
 
-      if (!message) return statusDiv.innerText = "Message cannot be empty";
-      if (!key) return statusDiv.innerText = "API Key required";
+      if (!message) {
+        statusDiv.innerText = "Message cannot be empty";
+        statusDiv.className = 'status-message status-error';
+        return;
+      }
+
+      if (!key) {
+        statusDiv.innerText = "API Key required";
+        statusDiv.className = 'status-message status-error';
+        return;
+      }
 
       try {
         const res = await fetch('/admin/api/message', {
@@ -255,9 +462,49 @@
           body: JSON.stringify({ channel, message, key })
         });
         const data = await res.json();
-        statusDiv.innerText = data.success ? `Message sent to ${channel || 'all channels'}` : (data.error || "Failed to send message");
+
+        if (data.success) {
+          statusDiv.innerText = `Message sent to ${channel || 'all channels'}`;
+          statusDiv.className = 'status-message status-success';
+        } else {
+          statusDiv.innerText = data.error || "Failed to send message";
+          statusDiv.className = 'status-message status-error';
+        }
       } catch (err) {
         statusDiv.innerText = "Error sending message";
+        statusDiv.className = 'status-message status-error';
+        console.error(err);
+      }
+    }
+
+    async function restartBot() {
+      const key = document.getElementById('restartApiKey').value;
+      const statusDiv = document.getElementById('restart-status');
+
+      if (!key) {
+        statusDiv.innerText = "API Key required";
+        statusDiv.className = 'status-message status-error';
+        return;
+      }
+
+      try {
+        const res = await fetch('/admin/api/restart-bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          statusDiv.innerText = "Bot restarted successfully!";
+          statusDiv.className = 'status-message status-success';
+        } else {
+          statusDiv.innerText = "Failed to restart bot: " + (data.error || "Unknown error");
+          statusDiv.className = 'status-message status-error';
+        }
+      } catch (err) {
+        statusDiv.innerText = "Error restarting bot";
+        statusDiv.className = 'status-message status-error';
         console.error(err);
       }
     }
@@ -265,6 +512,8 @@
     fetchStats();
     fetchLogs();
     fetchCommands();
+    fetchAnalytics();
   </script>
 </body>
+
 </html>

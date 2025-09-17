@@ -14,10 +14,13 @@ import client from 'prom-client';
 import axios from "axios";
 import { Channel, dbReady } from "@/db"
 import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
+import { exec } from "child_process";
 import session from 'express-session';
 import logger from "./util/logger";
 import path from "path";
+import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics";
 import rateLimit from "express-rate-limit";
+
 
 // --- Admin Panel Config ---
 const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase()); // comma-separated usernames
@@ -122,6 +125,24 @@ export const setupServer = () => {
 
   // Use JSON middleware for all routes
   app.use(express.json());
+  loadAnalytics();
+  app.use((req, res, next) => {
+    const pathOnly = req.originalUrl.split("?")[0];
+    // Skip metrics and admin
+    if (pathOnly.startsWith("/metrics") || pathOnly.startsWith("/admin")) {
+      return next();
+    }
+    // Skip static assets by extension
+    if (/\.(css|js|png|jpe?g|gif|svg|ico|map|webmanifest|woff2?)$/i.test(pathOnly)) {
+      return next();
+    }
+    // Skip well-known / devtools noise
+    if (pathOnly.startsWith("/.well-known/")) {
+      return next();
+    }
+    // Otherwise track
+    return trackRequest(req, res, next);
+  });
 
   app.use(express.static(frontendPath));
 
@@ -211,6 +232,10 @@ export const setupServer = () => {
     });
   });
 
+  app.get("/admin/api/web-analytics", (req, res) => {
+    res.json(getAnalytics());
+  });
+
   // Admin API: logs (last 100 lines)
   app.get('/admin/api/logs', (req: any, res: any) => {
     const logPath = path.join(process.cwd(), 'logs', 'main.log');
@@ -248,6 +273,27 @@ export const setupServer = () => {
     }
   });
 
+  app.post("/admin/api/restart-bot", async (req: any, res: any) => {
+    try {
+      const { key } = req.body;
+
+      if (!key || key !== process.env.API_key) {
+        return res.status(403).json({ error: "Invalid API key" });
+      }
+
+      exec("pm2 restart finalsrr-bot", (err, stdout, stderr) => {
+        if (err) {
+          logger.error("Failed to restart bot via admin API:", err);
+          return res.status(500).json({ success: false, error: "Failed to restart bot" });
+        }
+
+        logger.info(`[Admin] Restarted bot via API. Output: ${stdout}`)
+      });
+    } catch (err) {
+      logger.error("Unexpected error in restart-bot endpoint:", err);
+      res.status(500).json({ error: "Internal server error" })
+    }
+  })
 
   // Admin API: commands (list, add, delete)
   app.get('/admin/api/commands', async (req: any, res: any) => {
@@ -275,12 +321,12 @@ export const setupServer = () => {
     res.json({ ok: true });
   });
 
-  app.use("/callback", authLimiter);
+  app.get("/about", (req, res) => res.send("About page"));
 
+  app.use("/callback", authLimiter);
   // Prometheus metrics endpoint
-  app.get('/metrics', async (req: Request, res: Response) => {
-    res.set('Content-Type', client.register.contentType);
-    res.end(await client.register.metrics());
+  app.get("/analytics", (req, res) => {
+    res.json(getAnalytics());
   });
   app.get('/docs-markdown', (req: Request, res: Response) => {
     const docsPath = path.join(process.cwd(), 'docs', 'custom-command-editing.md');

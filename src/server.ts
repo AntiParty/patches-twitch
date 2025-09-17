@@ -31,7 +31,13 @@ const csrfProtection = csrf();
 
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
-const redirectUri = process.env.TWITCH_REDIRECT_URI!;
+
+const getRedirectUri = () => {
+  return process.env.NODE_ENV === "production"
+    ? "https://app.antiparty.dev/callback"
+    : "http://localhost:3000/callback";
+};
+
 const cacheFilePath = path.join(
   __dirname,
   "src",
@@ -98,7 +104,7 @@ const getAuthUrl = () => {
   const scope = encodeURIComponent(
     "channel:moderate user:read:chat user:bot channel:bot"
   );
-  return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
+  return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${getRedirectUri()}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
 function exportStatsToJson() {
@@ -180,11 +186,14 @@ export const setupServer = () => {
   app.post('/admin/login', ...adminLoginMiddleware, async (req: any, res: any) => {
     const { username, password } = req.body;
     // Debug logging
+    /*
     console.log('--- ADMIN LOGIN DEBUG ---');
     console.log('Submitted username:', username);
     console.log('ADMIN_USERS env:', process.env.ADMIN_USERS);
     console.log('Parsed ADMIN_USERS:', ADMIN_USERS);
     console.log('ADMIN_USERS includes:', ADMIN_USERS.includes(username && username.toLowerCase()));
+    */
+
     if (!username || !password) return res.status(400).send('Missing credentials');
     if (!ADMIN_USERS.includes(username.toLowerCase())) return res.status(403).send('Not allowed');
     console.log('ADMIN_PASSWORD_HASH:', ADMIN_PASSWORD_HASH);
@@ -344,7 +353,7 @@ export const setupServer = () => {
    * Redirects user to Twitch authentication URL.
    */
   app.get("/login", (req: Request, res: Response) => {
-    const authUrl = getAuthUrl();
+    const authUrl = getAuthUrl(); // local variable
     logger.info(`Generated auth URL: ${authUrl}`);
     res.redirect(authUrl);
   });
@@ -496,7 +505,7 @@ export const setupServer = () => {
             client_secret: clientSecret,
             code,
             grant_type: "authorization_code",
-            redirect_uri: redirectUri,
+            redirect_uri: getRedirectUri(),
           },
         }
       );

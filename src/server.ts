@@ -33,9 +33,11 @@ const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 
 const getRedirectUri = () => {
-  return process.env.NODE_ENV === "production"
+  const uri = process.env.NODE_ENV === "production"
     ? "https://app.antiparty.dev/callback"
     : "http://localhost:3000/callback";
+  console.log(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
+  return uri;
 };
 const cacheFilePath = path.join(
   __dirname,

@@ -6,3 +6,4 @@
 + cleanup footer of landing page
 + make the uptime auto update every hour or so
 + fix !editcmd response, needs to show some way or some example how to edit command
++ Add Goal command and allow !rank command to display how far away

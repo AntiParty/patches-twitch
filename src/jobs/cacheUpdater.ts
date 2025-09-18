@@ -26,7 +26,7 @@ function getCachePath(type: 'regular' | 'worldTour', season: number) {
   }
 }
 
-fucntion DelayNode(ms: number) {
+function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 

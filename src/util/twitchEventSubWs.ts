@@ -33,11 +33,14 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
   }
 }
 
-async function handleStreamOnline(broadcasterName: string) {
+async function handleStreamOnline(broadcasterName: string, broadcasterId: string) {
   try {
-    const channel = await Channel.findOne({ where: { username: broadcasterName } });
+    let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } }); 
+    if (!channel) {
+      channel = await Channel.findOne({ where: { username: broadcasterName } });
+    }
     if (!channel?.player_id) {
-      logger.warn(`No linked THE FINALS account for ${broadcasterName}`);
+      logger.warn(`No linked THE FINALS account for ${broadcasterName} / ID: ${broadcasterId}`);
       return;
     }
 
@@ -48,8 +51,8 @@ async function handleStreamOnline(broadcasterName: string) {
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
       let player = data.find(p => p.name.toLowerCase() === name);
-      if (!player && name.includes('#')) {
-        const baseName = name.split('#')[0];
+      if (!player && name.includes("#")) {
+        const baseName = name.split("#")[0];
         player = data.find(p => p.name.toLowerCase().startsWith(baseName));
       }
       return player;

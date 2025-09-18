@@ -10,8 +10,10 @@ interface UserSubscription {
   broadcasterId: string;
 }
 
-// Map of userId -> { ws, sessionId, subscriptions }
-const userWebSockets: Record<string, { ws: WebSocket, sessionId: string | null, subscriptions: UserSubscription[] }> = {};
+const userWebSockets: Record<
+  string,
+  { ws: WebSocket; sessionId: string | null; subscriptions: UserSubscription[] }
+> = {};
 
 export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
   if (!userWebSockets[userId]) {
@@ -35,7 +37,7 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
 
 async function handleStreamOnline(broadcasterName: string, broadcasterId: string) {
   try {
-    let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } }); 
+    let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } });
     if (!channel) {
       channel = await Channel.findOne({ where: { username: broadcasterName } });
     }
@@ -76,7 +78,9 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
       started_at: new Date()
     });
 
-    logger.info(`StreamSession created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`);
+    logger.info(
+      `StreamSession created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`
+    );
   } catch (err) {
     logger.error(`Failed to handle stream.online for ${broadcasterName}:`, err);
   }
@@ -89,42 +93,46 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
     logger.info(`[EventSubWs] Connected to Twitch EventSub WebSocket for user ${userId}`);
   });
 
-  ws.on('message', async (data) => {
-    const msg = JSON.parse(data.toString());
-    const type = msg.metadata?.message_type;
+  ws.on('message', async data => {
+    try {
+      const msg = JSON.parse(data.toString());
+      const type = msg.metadata?.message_type;
 
-    if (type === 'session_welcome') {
-      const sessionId = msg.payload.session.id;
-      userWebSockets[userId].sessionId = sessionId;
-      logger.info(`[EventSubWs] WebSocket session ID for ${userId}: ${sessionId}`);
+      if (type === 'session_welcome') {
+        const sessionId = msg.payload.session.id;
+        userWebSockets[userId].sessionId = sessionId;
+        logger.info(`[EventSubWs] WebSocket session ID for ${userId}: ${sessionId}`);
 
-      userWebSockets[userId].subscriptions.forEach(sub =>
-        subscribeUserToEvents(sub.userId, sub.accessToken, sub.broadcasterId, sessionId)
-      );
+        userWebSockets[userId].subscriptions.forEach(sub =>
+          subscribeUserToEvents(sub.userId, sub.accessToken, sub.broadcasterId, sessionId)
+        );
 
-    } else if (type === 'notification') {
-      const eventType = msg.payload.subscription.type;
-      const broadcasterName = msg.payload.event.broadcaster_user_name;
+      } else if (type === 'notification') {
+        const eventType = msg.payload.subscription.type;
+        const event = msg.payload.event;
+        const broadcasterName = event.broadcaster_user_name;
+        const broadcasterId = event.broadcaster_user_id;
 
-      logger.info(`[EventSubWs] Event: ${eventType} for ${broadcasterName}`);
-      logger.debug(JSON.stringify(msg.payload.event, null, 2));
+        logger.info(`[EventSubWs] Event: ${eventType} for ${broadcasterName}`);
+        logger.debug(JSON.stringify(event, null, 2));
 
-      if (eventType === 'stream.online') {
-        await handleStreamOnline(broadcasterName);
+        if (eventType === 'stream.online') {
+          await handleStreamOnline(broadcasterName, broadcasterId);
+        }
+        // handle offline if needed
+        // else if (eventType === 'stream.offline') { ... }
+
+      } else if (type === 'session_keepalive') {
+        logger.info(`[EventSubWs] Received keepalive for user ${userId}`);
+      } else if (type === 'session_reconnect') {
+        logger.info(`[EventSubWs] Reconnect requested for user ${userId}, connecting to new URL...`);
+        ws.close();
+        userWebSockets[userId].ws = new WebSocket(msg.payload.session.reconnect_url);
+      } else if (type === 'revocation') {
+        logger.warn(`[EventSubWs] Subscription revoked for user ${userId}: ${msg.payload.subscription.type}`);
       }
-      // Optionally handle offline events here
-      // else if (eventType === 'stream.offline') { ... }
-
-    } else if (type === 'session_keepalive') {
-      logger.info(`[EventSubWs] Received keepalive for user ${userId}`);
-
-    } else if (type === 'session_reconnect') {
-      logger.info(`[EventSubWs] Received reconnect for user ${userId}, reconnecting...`);
-      ws.close();
-      userWebSockets[userId].ws = new WebSocket(msg.payload.session.reconnect_url);
-
-    } else if (type === 'revocation') {
-      logger.warn(`[EventSubWs] Subscription revoked for user ${userId}: ${msg.payload.subscription.type}`);
+    } catch (err) {
+      logger.error(`[EventSubWs] Failed processing message for user ${userId}:`, err);
     }
   });
 
@@ -135,7 +143,7 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
     }, 5000);
   });
 
-  ws.on('error', (err) => {
+  ws.on('error', err => {
     logger.error(`[EventSubWs] WebSocket error for user ${userId}:`, err);
   });
 
@@ -153,7 +161,7 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
         headers: { Authorization: `Bearer ${accessToken}` }
       });
     } catch {
-      logger.warn(`Access token for ${userId} invalid/expired. Refresh required.`);
+      logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required.`);
       continue;
     }
 

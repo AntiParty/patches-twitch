@@ -17,7 +17,7 @@ function getCacheDir() {
   return path.resolve(__dirname, "../../cache");
 }
 
-async function getLatestCacheFile(prefix: string): Promise<string | null> {
+export async function getLatestCacheFile(prefix: string): Promise<string | null> {
   try {
     const files = await fs.readdir(getCacheDir());
     const matched = files
@@ -36,7 +36,7 @@ async function getLatestCacheFile(prefix: string): Promise<string | null> {
   }
 }
 
-async function getLatestLeaderboardData() {
+export async function getLatestLeaderboardData() {
   const file = await getLatestCacheFile("regular_s");
   if (!file) return null;
   try {
@@ -49,7 +49,7 @@ async function getLatestLeaderboardData() {
   }
 }
 
-async function getLatestWorldTourData() {
+export async function getLatestWorldTourData() {
   const file = await getLatestCacheFile("worldTour_s");
   if (!file) return null;
   try {

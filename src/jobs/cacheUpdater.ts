@@ -26,6 +26,27 @@ function getCachePath(type: 'regular' | 'worldTour', season: number) {
   }
 }
 
+fucntion DelayNode(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function updateAllCachesRateLimited() {
+  const regularSeasons = Array.from({ length: REGULAR_SEASON_END - REGULAR_SEASON_START + 1 }, (_, i) => REGULAR_SEASON_START + i);
+  const worldTourSeasons = Array.from({ length: WORLD_TOUR_SEASON_END - WORLD_TOUR_SEASON_START + 1 }, (_, i) => WORLD_TOUR_SEASON_START + i);
+
+  const delayBetweenRequests = 500; // ms delay between each request (customizable)
+
+  for (const season of regularSeasons) {
+    await updateCache('regular', season);
+    await delay(delayBetweenRequests);
+  }
+
+  for (const season of worldTourSeasons) {
+    await updateCache('worldTour', season);
+    await delay(delayBetweenRequests);
+  }
+}
+
 async function updateCache(type: 'regular' | 'worldTour', season: number) {
   const url = getApiUrl(type, season);
   const cachePath = getCachePath(type, season);
@@ -67,6 +88,11 @@ export async function updateAllCaches() {
 }
 
 export function startCacheUpdater(intervalMs = 45 * 60 * 1000) {
-  updateAllCaches();
-  setInterval(updateAllCaches, intervalMs);
+  // Run immediately first
+  updateAllCachesRateLimited().catch(console.error);
+
+  // Then run every interval
+  setInterval(() => {
+    updateAllCachesRateLimited().catch(console.error);
+  }, intervalMs);
 }

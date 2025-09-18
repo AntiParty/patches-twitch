@@ -137,5 +137,3 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
     }
   }
 }
-
-// connectEventSubWebSocket is now obsolete, handled per-user

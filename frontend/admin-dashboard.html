@@ -609,16 +609,50 @@
       await fetchChannels();
     }
 
+    // Bot Status
+    async function fetchBotStatus() {
+      try {
+        const key = document.getElementById('all-apiKey').value;
+        const res = await fetch('/admin/api/stats');
+        const data = await res.json();
+        
+        const statusDiv = document.getElementById('bot-status');
+        const statsContent = document.getElementById('stats-content');
+        
+        if (data.stats) {
+          const { commandsProcessed, uptime } = data.stats;
+          statsContent.innerHTML = `
+            <div class="analytics-grid" style="margin: 0;">
+              <div class="metric-card">
+                <div class="metric-title">Commands Processed</div>
+                <div class="metric-value">${commandsProcessed.toLocaleString()}</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-title">Uptime</div>
+                <div class="metric-value">${formatUptime(uptime)}</div>
+              </div>
+            </div>
+          `;
+          statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> Bot is running`;
+          statusDiv.className = 'status-message status-success';
+        } else {
+          statsContent.innerHTML = '<div class="status-message status-error">Failed to load stats</div>';
+          statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Could not determine bot status`;
+          statusDiv.className = 'status-message status-error';
+        }
+      } catch (err) {
+        const statusDiv = document.getElementById('bot-status');
+        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Bot status check failed`;
+        statusDiv.className = 'status-message status-error';
+        document.getElementById('stats-content').innerHTML = 
+          `<div class="status-message status-error">Error: ${err.message}</div>`;
+      }
+    }
+
     // Stats
     async function fetchChannels() {
-      const key = document.getElementById('all-apiKey').value;
-      saveApiKey(key); // Save API key when used
-      if (!key) {
-        document.getElementById('channels-content').innerHTML = '<div class="status-message status-error">Enter your API key above to view channels.</div>';
-        return;
-      }
       try {
-        const res = await fetch('/admin/api/channels?key=' + encodeURIComponent(key));
+        const res = await fetch('/admin/api/channels');
         const data = await res.json();
         let html = `<div><strong>Total Channels:</strong> ${data.userCount || 0}</div>`;
         html += `<div class="channel-list">`;
@@ -781,7 +815,7 @@
     // Analytics with Chart.js
     async function fetchAnalytics() {
       try {
-        const res = await fetch('/admin/api/analytics');
+        const res = await fetch('/admin/api/web-analytics');
         const data = await res.json();
         const analyticsContent = document.getElementById('analytics-content');
         
@@ -913,6 +947,9 @@
     fetchLogs();
     fetchCommands();
     fetchAnalytics();
+    
+    // Auto-refresh bot status every 30 seconds
+    setInterval(fetchBotStatus, 30000);
   </script>
 </body>
 

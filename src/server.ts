@@ -268,9 +268,8 @@ export const setupServer = () => {
   // Admin API: list all channels
   app.get('/admin/api/channels', async (req: any, res: any) => {
     try {
-      const key = req.query.key || req.headers['x-api-key'];
-      if (!key || key !== process.env.API_KEY) {
-        return res.status(403).json({ error: "Invalid API key" });
+      if (!isAdmin(req)) {
+        return res.status(403).json({ error: "Not authorized" });
       }
       const channels = await Channel.findAll({ attributes: ['username'] });
       const usernames = channels.map((c: any) => c.username);

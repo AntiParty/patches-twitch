@@ -2,423 +2,675 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Twitch Bot Admin</title>
+  <!-- Chart.js for analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Add Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Dark mode variables */
     :root {
       --background: 222.2 84% 4.9%;
       --foreground: 210 40% 98%;
       --card: 222.2 84% 7.9%;
       --card-foreground: 210 40% 98%;
-      --popover: 222.2 84% 4.9%;
-      --popover-foreground: 210 40% 98%;
       --primary: 217.2 91.2% 59.8%;
       --primary-foreground: 222.2 84% 4.9%;
-      --secondary: 217.2 32.6% 17.5%;
-      --secondary-foreground: 210 40% 98%;
-      --muted: 217.2 32.6% 17.5%;
-      --muted-foreground: 215 20.2% 65.1%;
-      --accent: 217.2 32.6% 17.5%;
-      --accent-foreground: 210 40% 98%;
-      --destructive: 0 62.8% 30.6%;
-      --destructive-foreground: 210 40% 98%;
-      --border: 217.2 32.6% 17.5%;
-      --input: 217.2 32.6% 17.5%;
-      --ring: 224.3 76.3% 94.1%;
-      --radius: 0.5rem;
+      --sidebar-bg: #18181c;
+      --sidebar-accent: #f5a524;
+      --sidebar-fg: #fff;
+      --sidebar-muted: #888;
+      --main-bg: #23232a;
+      --main-fg: #f3f3f3;
+      --card-bg: #292933;
+      --card-radius: 1rem;
+      --card-shadow: 0 2px 12px rgba(0,0,0,0.10);
+      --input-bg: #23232a;
+      --input-fg: #f3f3f3;
+      --input-border: #444;
+      --btn-bg: #f5a524;
+      --btn-fg: #18181c;
+      --btn-radius: 0.6rem;
+      --danger-bg: #e53935;
+      --danger-fg: #fff;
+      --success-bg: #43a047;
+      --success-fg: #fff;
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: hsl(var(--background));
-      color: hsl(var(--foreground));
-      line-height: 1.5;
-      padding: 0;
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      background: var(--main-bg);
+      color: var(--main-fg);
       margin: 0;
-    }
-
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 1.5rem;
-    }
-
-    /* Header */
-    .header {
+      min-height: 100vh;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid hsl(var(--border));
     }
-
-    .header h1 {
-      font-size: 1.875rem;
+    .sidebar {
+      width: 220px;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-fg);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 2rem 1.2rem 2rem 1.2rem;
+      min-height: 100vh;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+    }
+    .sidebar-logo {
+      font-size: 1.5rem;
       font-weight: 700;
-      color: hsl(var(--foreground));
+      margin-bottom: 2.5rem;
+      color: var(--sidebar-accent);
+      letter-spacing: -0.03em;
     }
-
-    /* Cards */
-    .card {
-      background-color: hsl(var(--card));
-      border: 1px solid hsl(var(--border));
-      border-radius: calc(var(--radius) + 0.25rem);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      width: 100%;
     }
-
-    .card-header {
-      margin-bottom: 1.25rem;
-    }
-
-    .card-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: hsl(var(--foreground));
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
+    .sidebar-link {
+      display: flex;
       align-items: center;
-      justify-content: center;
-      border-radius: var(--radius);
+      gap: 0.7rem;
+      font-size: 1.05rem;
+      color: var(--sidebar-fg);
+      text-decoration: none;
+      padding: 0.5rem 0.7rem;
+      border-radius: 0.5rem;
+      transition: background 0.18s;
+    }
+    .sidebar-link.active, .sidebar-link:hover {
+      background: var(--sidebar-accent);
+      color: var(--sidebar-bg);
+    }
+    .sidebar-link .icon {
+      font-size: 1.2rem;
+      opacity: 0.8;
+    }
+    .sidebar-footer {
+      margin-top: auto;
+      font-size: 0.95rem;
+      color: var(--sidebar-muted);
+      padding-top: 2rem;
+    }
+    .main {
+      flex: 1;
+      background: var(--main-bg);
+      min-height: 100vh;
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    .card {
+      background: linear-gradient(to bottom right, #2a2a33, #222227);
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+      padding: 2rem 1.5rem;
+      margin-bottom: 0;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: transform 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+    }
+    .card-header {
+      margin-bottom: 1.2rem;
+    }
+    .card-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--main-fg);
+      letter-spacing: -0.01em;
+    }
+    .btn {
+      background: var(--btn-bg);
+      color: var(--btn-fg);
+      border: none;
+      border-radius: var(--btn-radius);
       font-weight: 500;
-      font-size: 0.875rem;
-      padding: 0.5rem 1rem;
+      font-size: 0.95rem;
+      padding: 0.7rem 1.4rem;
       cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       transition: all 0.2s ease;
-      border: 1px solid transparent;
+      margin-right: 0.5rem;
+      position: relative;
+      overflow: hidden;
     }
-
-    .btn-primary {
-      background-color: hsl(var(--primary));
-      color: hsl(var(--primary-foreground));
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(rgba(255,255,255,0.2), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
     }
-
-    .btn-primary:hover {
-      background-color: hsl(var(--primary) / 0.9);
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
-
-    .btn-destructive {
-      background-color: hsl(var(--destructive));
-      color: hsl(var(--destructive-foreground));
+    .btn:hover::after {
+      opacity: 1;
     }
-
-    .btn-destructive:hover {
-      background-color: hsl(var(--destructive) / 0.9);
-    }
-
     .btn-outline {
-      background-color: transparent;
-      border: 1px solid hsl(var(--border));
-      color: hsl(var(--foreground));
+      background: transparent;
+      color: var(--btn-bg);
+      border: 1px solid var(--btn-bg);
     }
-
-    .btn-outline:hover {
-      background-color: hsl(var(--accent));
-      color: hsl(var(--accent-foreground));
+    .btn-destructive {
+      background: var(--danger-bg);
+      color: var(--danger-fg);
     }
-
     .btn-sm {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.8rem;
     }
-
-    /* Tables */
+    .input {
+      width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid var(--input-border);
+      background: var(--input-bg);
+      color: var(--input-fg);
+      padding: 0.5rem 0.9rem;
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input:focus {
+      outline: none;
+      border-color: var(--sidebar-accent);
+      box-shadow: 0 0 0 2px var(--sidebar-accent);
+    }
+    .input-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 0.75rem;
-      font-size: 0.875rem;
+      margin-top: 1rem;
+      font-size: 0.95rem;
     }
-
-    th {
+    th, td {
+      padding: 0.7rem 0.5rem;
+      border-bottom: 1px solid #333;
       text-align: left;
-      padding: 0.75rem;
+    }
+    th {
+      color: #b3b3b3;
       font-weight: 500;
-      color: hsl(var(--muted-foreground));
-      border-bottom: 1px solid hsl(var(--border));
+      font-size: 0.95rem;
     }
-
-    td {
-      padding: 0.75rem;
-      border-bottom: 1px solid hsl(var(--border));
-    }
-
     tr:last-child td {
       border-bottom: none;
     }
-
-    /* Inputs */
-    .input {
-      width: 100%;
-      border-radius: var(--radius);
-      border: 1px solid hsl(var(--border));
-      background-color: hsl(var(--input));
-      color: hsl(var(--foreground));
-      padding: 0.5rem 0.75rem;
-      font-size: 0.875rem;
-      transition: border-color 0.2s;
-    }
-
-    .input:focus {
-      outline: none;
-      border-color: hsl(var(--ring));
-      box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-    }
-
-    .input-group {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.75rem;
-    }
-
-    /* Analytics */
-    .analytics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 0.75rem;
-      margin-top: 0.75rem;
-    }
-
-    .metric-card {
-      background-color: hsl(var(--secondary));
-      border-radius: var(--radius);
-      padding: 1rem;
-      font-size: 0.875rem;
-    }
-
-    .metric-title {
-      font-weight: 500;
-      color: hsl(var(--muted-foreground));
-      margin-bottom: 0.25rem;
-    }
-
-    .metric-value {
-      font-weight: 600;
-      font-size: 1.125rem;
-      color: hsl(var(--foreground));
-    }
-
-    /* Status messages */
-    .status-message {
-      font-size: 0.875rem;
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-      border-radius: var(--radius);
-    }
-
-    .status-success {
-      background-color: hsl(142 76% 20%);
-      color: hsl(142 76% 85%);
-    }
-
-    .status-error {
-      background-color: hsl(0 84% 20%);
-      color: hsl(0 84% 85%);
-    }
-
-    .status-info {
-      background-color: hsl(221 91% 20%);
-      color: hsl(221 91% 85%);
-    }
-
-    /* Logs */
     .logs-container {
-      background-color: hsl(var(--muted));
-      border-radius: var(--radius);
+      background: #222;
+      border-radius: 0.7rem;
       padding: 1rem;
       font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 0.75rem;
-      max-height: 200px;
+      font-size: 0.85rem;
+      max-height: 220px;
       overflow-y: auto;
-      color: hsl(var(--foreground));
+      color: #f3f3f3;
+      border: 1px solid #333;
     }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .input-group {
+    .status-message {
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      border-radius: 0.5rem;
+      background: #222;
+      color: #f3f3f3;
+      border: 1px solid #333;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+    .status-success {
+      background: var(--success-bg);
+      color: var(--success-fg);
+      border-color: #388e3c;
+    }
+    .status-error {
+      background: var(--danger-bg);
+      color: var(--danger-fg);
+      border-color: #c62828;
+    }
+    .status-info {
+      background: var(--sidebar-accent);
+      color: var(--sidebar-bg);
+      border-color: var(--sidebar-accent);
+    }
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    .metric-card {
+      background: linear-gradient(to bottom right, #2a2a33, #222227);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+    .analytics-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    .detail-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .detail-section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 1rem 0;
+      color: var(--sidebar-accent);
+    }
+    .detail-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .detail-list li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .detail-list li:last-child {
+      border-bottom: none;
+    }
+    #analytics-chart {
+      background: rgba(255,255,255,0.02);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .metric-title {
+      font-weight: 500;
+      color: #b3b3b3;
+      margin-bottom: 0.25rem;
+      font-size: 0.95rem;
+    }
+    .metric-value {
+      font-weight: 600;
+      font-size: 1.15rem;
+      color: #f3f3f3;
+    }
+    @media (max-width: 900px) {
+      .main {
+        padding: 1.2rem 0.5rem;
+      }
+      .sidebar {
+        padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+      }
+    }
+    @media (max-width: 700px) {
+      body {
         flex-direction: column;
       }
-
-      .analytics-grid {
-        grid-template-columns: 1fr 1fr;
+      .sidebar {
+        width: 100%;
+        min-height: 0;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 0.5rem;
+        box-shadow: none;
       }
-    }
-
-    @media (max-width: 640px) {
-      .analytics-grid {
-        grid-template-columns: 1fr;
+      .sidebar-logo {
+        margin-bottom: 0;
+      }
+      .sidebar-nav {
+        flex-direction: row;
+        gap: 0.7rem;
+      }
+      .main {
+        padding: 1rem 0.2rem;
       }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Admin Dashboard</h1>
+  <div class="sidebar">
+    <div class="sidebar-logo">Twitch Admin</div>
+    <nav class="sidebar-nav">
+      <a href="#stats" class="sidebar-link active"><span class="icon"><i class="fas fa-chart-bar"></i></span>Stats</a>
+      <a href="#channels" class="sidebar-link"><span class="icon"><i class="fas fa-users"></i></span>Channels</a>
+      <a href="#analytics" class="sidebar-link"><span class="icon"><i class="fas fa-chart-line"></i></span>Analytics</a>
+      <a href="#logs" class="sidebar-link"><span class="icon"><i class="fas fa-file-alt"></i></span>Logs</a>
+      <a href="#commands" class="sidebar-link"><span class="icon"><i class="fas fa-terminal"></i></span>Commands</a>
+      <a href="#bot" class="sidebar-link"><span class="icon"><i class="fas fa-robot"></i></span>Bot Controls</a>
+    </nav>
+    <div class="sidebar-footer">
       <form method="POST" action="/admin/logout" style="margin:0;">
         <button class="btn btn-outline" type="submit">Logout</button>
       </form>
     </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Stats</h2>
-      </div>
-      <div id="stats-content">Loading...</div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Web Analytics (Last 7 Days)</h2>
-      </div>
-      <div id="analytics-content">Loading...</div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Recent Logs</h2>
-      </div>
-      <div id="logs-content" class="logs-container">Loading...</div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Manage Commands</h2>
-      </div>
-      <div id="commands-content">Loading...</div>
-      <button class="btn btn-outline" onclick="addCommandRow()">Add Command</button>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Send Bot Message</h2>
-      </div>
-      <div class="input-group">
-        <input type="text" id="channel" class="input" placeholder="Channel (optional)" />
-        <input type="text" id="message" class="input" placeholder="Message" />
-        <input type="text" id="apiKey" class="input" placeholder="API Key" />
-        <button class="btn btn-primary" onclick="sendBotMessage()">Send</button>
-      </div>
-      <div id="message-status" class="status-message"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Bot Control</h2>
-      </div>
-      <div class="input-group">
-        <input type="text" id="restartApiKey" class="input" placeholder="API Key" />
-        <button class="btn btn-primary" onclick="restartBot()">Restart Bot</button>
-      </div>
-      <div id="restart-status" class="status-message"></div>
-    </div>
   </div>
-
-  <script>
-    async function fetchStats() {
-      const res = await fetch('/admin/api/stats');
-      const data = await res.json();
-      document.getElementById('stats-content').innerHTML = `
-        <div class="analytics-grid">
-          <div class="metric-card">
-            <div class="metric-title">Commands Processed</div>
-            <div class="metric-value">${data.stats.commandsProcessed}</div>
-          </div>
-          <div class="metric-card">
-            <div class="metric-title">Uptime</div>
-            <div class="metric-value">${formatUptime(data.stats.uptime)}</div>
+  <main class="main">
+    <section id="stats">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Stats & Bot Status</h2>
+        </div>
+        <div id="stats-content">Loading...</div>
+        <div id="bot-status" class="status-message status-info" style="margin-top:1rem;">Checking bot status...</div>
+      </div>
+    </section>
+    <section id="channels">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Channels</h2>
+          <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
+            <div style="position: relative; flex: 1;">
+              <input type="text" id="all-apiKey" class="input" placeholder="API Key" onchange="saveApiKey(this.value)" style="margin: 0;" />
+              <button class="btn btn-sm" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%);" 
+                onclick="document.getElementById('all-apiKey').value=''; saveApiKey('');" title="Clear saved API key">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <button class="btn btn-sm" onclick="refreshChannels()">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
           </div>
         </div>
-      `;
+        <div id="channels-content">Loading channels...</div>
+        <div class="broadcast-controls">
+          <h3 class="subsection-title">Broadcast Message</h3>
+          <div class="input-group">
+            <div style="flex: 1;">
+              <input type="text" id="all-message" class="input" placeholder="Message to all channels" style="margin: 0;" />
+              <div class="selected-channels" id="selected-channels"></div>
+            </div>
+            <button class="btn" onclick="sendMessageToSelectedChannels()">
+              <i class="fas fa-paper-plane"></i> Send Message
+            </button>
+          </div>
+          <div id="all-message-status" class="status-message"></div>
+        </div>
+      </div>
+      <style>
+        .broadcast-controls {
+          margin-top: 2rem;
+          padding-top: 1rem;
+          border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .subsection-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: var(--sidebar-accent);
+          margin-bottom: 1rem;
+        }
+        .channel-list {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 1rem;
+          margin: 1rem 0;
+        }
+        .channel-item {
+          background: rgba(255,255,255,0.05);
+          border-radius: 0.5rem;
+          padding: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+        }
+        .channel-name {
+          font-weight: 500;
+        }
+        .selected-channels {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+        .channel-tag {
+          background: rgba(255,255,255,0.1);
+          border-radius: 1rem;
+          padding: 0.25rem 0.75rem;
+          font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .channel-tag button {
+          background: none;
+          border: none;
+          color: inherit;
+          padding: 0;
+          cursor: pointer;
+          opacity: 0.7;
+        }
+        .channel-tag button:hover {
+          opacity: 1;
+        }
+        .channel-select {
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 0.25rem;
+          color: var(--sidebar-accent);
+          opacity: 0.8;
+          transition: opacity 0.2s;
+        }
+        .channel-select:hover {
+          opacity: 1;
+        }
+        .channel-select.selected {
+          color: var(--success-bg);
+        }
+      </style>
+    </section>
+    <section id="analytics">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Enhanced Analytics</h2>
+        </div>
+        <canvas id="analytics-chart" style="width:100%;max-width:600px;height:300px;background:#222;border-radius:8px;margin-bottom:1rem;"></canvas>
+        <div id="analytics-content">Loading...</div>
+      </div>
+    </section>
+    <section id="logs">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Recent Logs</h2>
+        </div>
+        <div id="logs-content" class="logs-container">Loading...</div>
+      </div>
+    </section>
+    <section id="commands">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Manage Commands</h2>
+        </div>
+        <div id="commands-content">Loading...</div>
+        <button class="btn btn-outline" onclick="addCommandRow()">Add Command</button>
+      </div>
+    </section>
+    <section id="bot">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Bot Controls</h2>
+        </div>
+        <div class="input-group">
+          <div style="position: relative; flex: 1;">
+            <input type="text" id="restartApiKey" class="input" placeholder="API Key" onchange="saveApiKey(this.value)" />
+            <button class="btn btn-sm" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%);" 
+              onclick="document.getElementById('restartApiKey').value=''; saveApiKey('');" title="Clear saved API key">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <button class="btn" onclick="restartBot()"><i class="fas fa-sync-alt"></i> Restart Bot</button>
+          <button class="btn btn-outline" onclick="pauseBot()"><i class="fas fa-pause"></i> Pause Bot</button>
+          <button class="btn btn-outline" onclick="resumeBot()"><i class="fas fa-play"></i> Resume Bot</button>
+        </div>
+        <div id="restart-status" class="status-message"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // API Key Management
+    const API_KEY_STORAGE = 'twitch_bot_api_key';
+    
+    function saveApiKey(key) {
+      localStorage.setItem(API_KEY_STORAGE, key);
+    }
+    
+    function getStoredApiKey() {
+      return localStorage.getItem(API_KEY_STORAGE) || '';
     }
 
+    // Load saved API key on startup
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedKey = getStoredApiKey();
+      if (savedKey) {
+        document.getElementById('all-apiKey').value = savedKey;
+        document.getElementById('restartApiKey').value = savedKey;
+      }
+    });
+
+    // Helper function to format uptime
     function formatUptime(seconds) {
       const days = Math.floor(seconds / (24 * 60 * 60));
       const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
-      const mins = Math.floor((seconds % (60 * 60)) / 60);
-
-      if (days > 0) return `${days}d ${hours}h ${mins}m`;
-      if (hours > 0) return `${hours}h ${mins}m`;
-      return `${mins}m`;
+      const minutes = Math.floor((seconds % (60 * 60)) / 60);
+      return `${days}d ${hours}h ${minutes}m`;
     }
 
-    async function fetchAnalytics() {
-      const res = await fetch('/admin/api/web-analytics');
-      if (!res.ok) {
-        document.getElementById('analytics-content').innerText = "Failed to load analytics.";
+    // Channel Management
+    let selectedChannels = new Set();
+
+    function toggleChannel(channel) {
+      if (selectedChannels.has(channel)) {
+        selectedChannels.delete(channel);
+      } else {
+        selectedChannels.add(channel);
+      }
+      updateSelectedChannelsDisplay();
+      updateChannelSelections();
+    }
+
+    function updateSelectedChannelsDisplay() {
+      const container = document.getElementById('selected-channels');
+      if (selectedChannels.size === 0) {
+        container.innerHTML = '';
         return;
       }
-
-      const data = await res.json();
-      let html = '';
-
-      const days = Object.keys(data).sort((a, b) => b.localeCompare(a)).slice(0, 7);
-
-      for (const day of days) {
-        const d = data[day];
-        html += `
-          <div style="margin-bottom: 1.5rem;">
-            <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">${day}</h3>
-            <div class="analytics-grid">
-              <div class="metric-card">
-                <div class="metric-title">Total Requests</div>
-                <div class="metric-value">${d.totalRequests}</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-title">Unique Visitors</div>
-                <div class="metric-value">${d.uniqueVisitors}</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-title">Avg Response</div>
-                <div class="metric-value">${d.avgResponseTimeMs}ms</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-title">P95 Response</div>
-                <div class="metric-value">${d.p95ResponseTimeMs}ms</div>
-              </div>
-            </div>
+      
+      container.innerHTML = Array.from(selectedChannels)
+        .map(ch => `
+          <div class="channel-tag">
+            ${ch}
+            <button onclick="toggleChannel('${ch}')">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
-        `;
-      }
-
-      document.getElementById('analytics-content').innerHTML = html;
+        `).join('');
     }
 
+    function updateChannelSelections() {
+      document.querySelectorAll('.channel-select').forEach(el => {
+        const channel = el.dataset.channel;
+        if (selectedChannels.has(channel)) {
+          el.classList.add('selected');
+          el.innerHTML = '<i class="fas fa-check-circle"></i>';
+        } else {
+          el.classList.remove('selected');
+          el.innerHTML = '<i class="fas fa-plus-circle"></i>';
+        }
+      });
+    }
+
+    async function refreshChannels() {
+      await fetchChannels();
+    }
+
+    // Stats
+    async function fetchChannels() {
+      const key = document.getElementById('all-apiKey').value;
+      saveApiKey(key); // Save API key when used
+      if (!key) {
+        document.getElementById('channels-content').innerHTML = '<div class="status-message status-error">Enter your API key above to view channels.</div>';
+        return;
+      }
+      try {
+        const res = await fetch('/admin/api/channels?key=' + encodeURIComponent(key));
+        const data = await res.json();
+        let html = `<div><strong>Total Channels:</strong> ${data.userCount || 0}</div>`;
+        html += `<div class="channel-list">`;
+        if (data.channels) {
+          for (const ch of data.channels) {
+            html += `
+              <div class="channel-item">
+                <span class="channel-name">${ch}</span>
+                <button class="channel-select" 
+                  data-channel="${ch}" 
+                  onclick="toggleChannel('${ch}')"
+                  title="Select channel for message">
+                  <i class="fas fa-plus-circle"></i>
+                </button>
+              </div>`;
+          }
+        }
+        html += `</div>`;
+        document.getElementById('channels-content').innerHTML = html;
+        updateChannelSelections();
+      } catch {
+        document.getElementById('channels-content').innerText = 'Failed to load channels.';
+      }
+    }
+
+    // Logs
     async function fetchLogs() {
-      const res = await fetch('/admin/api/logs');
-      if (res.ok) {
+      try {
+        const res = await fetch('/admin/api/logs');
         const logs = await res.json();
         document.getElementById('logs-content').innerHTML = `<pre>${logs.join('\n')}</pre>`;
-      } else {
+      } catch {
         document.getElementById('logs-content').innerText = 'No logs available.';
       }
     }
 
+    // Commands
     async function fetchCommands() {
-      const res = await fetch('/admin/api/commands');
-      if (res.ok) {
+      try {
+        const res = await fetch('/admin/api/commands');
         const cmds = await res.json();
         let html = '<table><tr><th>Name</th><th>Response</th><th>Actions</th></tr>';
         for (const cmd of cmds) {
-          html += `<tr><td><input class="input" value="${cmd.name}" /></td><td><input class="input" value="${cmd.response}" /></td><td><button class="btn btn-destructive btn-sm" onclick="deleteCommand('${cmd.name}')">Delete</button></td></tr>`;
+          html += `<tr>
+            <td><input class="input" value="${cmd.name}" /></td>
+            <td><input class="input" value="${cmd.response}" /></td>
+            <td><button class="btn btn-destructive btn-sm" onclick="deleteCommand('${cmd.name}')">Delete</button></td>
+          </tr>`;
         }
         html += '</table>';
         document.getElementById('commands-content').innerHTML = html;
-      } else {
+      } catch {
         document.getElementById('commands-content').innerText = 'No commands found.';
       }
     }
@@ -427,66 +679,216 @@
       const table = document.querySelector('#commands-content table');
       if (table) {
         const row = table.insertRow(-1);
-        row.innerHTML = `<td><input class="input" /></td><td><input class="input" /></td><td><button class="btn btn-destructive btn-sm" onclick="this.closest('tr').remove()">Delete</button></td>`;
+        row.innerHTML = `<td><input class="input" /></td>
+          <td><input class="input" /></td>
+          <td><button class="btn btn-destructive btn-sm" onclick="this.closest('tr').remove()">Delete</button></td>`;
       }
     }
 
     async function deleteCommand(name) {
-      if (!confirm('Delete command ' + name + '?')) return;
+      if (!confirm(`Delete command ${name}?`)) return;
       await fetch('/admin/api/commands/' + encodeURIComponent(name), { method: 'DELETE' });
       fetchCommands();
     }
 
-    async function sendBotMessage() {
-      const channel = document.getElementById('channel').value;
-      const message = document.getElementById('message').value;
-      const key = document.getElementById('apiKey').value;
-      const statusDiv = document.getElementById('message-status');
+    // Channels
+    async function fetchChannels() {
+      try {
+        const key = document.getElementById('all-apiKey').value;
+        const res = await fetch('/admin/api/channels?key=' + encodeURIComponent(key));
+        const data = await res.json();
+        let html = `<div><strong>Total Channels:</strong> ${data.userCount || 0}</div>`;
+        html += `<table><tr><th>Channel</th><th>Send Message</th></tr>`;
+        if (data.channels) {
+          for (const ch of data.channels) {
+            html += `<tr><td>${ch}</td>
+              <td><input type="text" id="msg-${ch}" class="input" placeholder="Message" />
+              <button class="btn btn-sm" onclick="sendMessageToChannel('${ch}')">Send</button></td></tr>`;
+          }
+        }
+        html += `</table>`;
+        document.getElementById('channels-content').innerHTML = html;
+      } catch {
+        document.getElementById('channels-content').innerText = 'Failed to load channels.';
+      }
+    }
 
-      if (!message) {
-        statusDiv.innerText = "Message cannot be empty";
+    async function sendMessageToChannel(channel) {
+      const msgInput = document.getElementById('msg-' + channel);
+      const message = msgInput.value;
+      const key = document.getElementById('all-apiKey').value;
+      try {
+        await fetch('/admin/api/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel, message, key })
+        });
+        msgInput.value = '';
+      } catch {
+        msgInput.classList.add('status-error');
+      }
+    }
+
+    async function sendMessageToSelectedChannels() {
+      const message = document.getElementById('all-message').value;
+      const key = document.getElementById('all-apiKey').value;
+      const statusDiv = document.getElementById('all-message-status');
+      
+      if (!message || !key) {
+        statusDiv.innerText = "Message & API key required";
         statusDiv.className = 'status-message status-error';
         return;
       }
 
-      if (!key) {
-        statusDiv.innerText = "API Key required";
+      if (selectedChannels.size === 0) {
+        statusDiv.innerText = "Select at least one channel";
         statusDiv.className = 'status-message status-error';
         return;
       }
 
       try {
+        const channels = Array.from(selectedChannels);
+        statusDiv.innerText = "Sending message...";
+        statusDiv.className = 'status-message status-info';
+
         const res = await fetch('/admin/api/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel, message, key })
+          body: JSON.stringify({ 
+            message, 
+            key,
+            channels: channels.length === 0 ? null : channels // null means broadcast to all
+          })
         });
+        
         const data = await res.json();
-
         if (data.success) {
-          statusDiv.innerText = `Message sent to ${channel || 'all channels'}`;
+          document.getElementById('all-message').value = ''; // Clear message input
+          statusDiv.innerText = channels.length === 0 
+            ? "Message sent to all channels"
+            : `Message sent to ${channels.length} channel${channels.length > 1 ? 's' : ''}`;
           statusDiv.className = 'status-message status-success';
         } else {
-          statusDiv.innerText = data.error || "Failed to send message";
+          statusDiv.innerText = data.error || "Failed";
           statusDiv.className = 'status-message status-error';
         }
-      } catch (err) {
+      } catch {
         statusDiv.innerText = "Error sending message";
         statusDiv.className = 'status-message status-error';
-        console.error(err);
       }
     }
 
+    // Analytics with Chart.js
+    async function fetchAnalytics() {
+      try {
+        const res = await fetch('/admin/api/analytics');
+        const data = await res.json();
+        const analyticsContent = document.getElementById('analytics-content');
+        
+        // Get the most recent 7 days of data
+        const recentDays = Object.entries(data)
+          .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+          .slice(0, 7)
+          .reverse();
+
+        // Prepare data for charts
+        const dates = recentDays.map(([date]) => date);
+        const requests = recentDays.map(([_, stats]) => stats.totalRequests);
+        const visitors = recentDays.map(([_, stats]) => stats.uniqueVisitors);
+        const responseTimes = recentDays.map(([_, stats]) => stats.avgResponseTimeMs);
+
+        // Update request trend chart
+        const ctx = document.getElementById('analytics-chart').getContext('2d');
+        if (window.requestChart) window.requestChart.destroy();
+        window.requestChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: dates,
+            datasets: [{
+              label: 'Total Requests',
+              data: requests,
+              borderColor: '#f5a524',
+              tension: 0.4,
+              fill: false
+            }, {
+              label: 'Unique Visitors',
+              data: visitors,
+              borderColor: '#4CAF50',
+              tension: 0.4,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: { display: true, text: 'Traffic Overview' },
+              legend: { position: 'bottom' }
+            },
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+
+        // Create metrics grid
+        const latestStats = recentDays[recentDays.length - 1][1];
+        let html = `
+          <div class="analytics-grid">
+            <div class="metric-card">
+              <div class="metric-title">Today's Requests</div>
+              <div class="metric-value">${latestStats.totalRequests.toLocaleString()}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Unique Visitors</div>
+              <div class="metric-value">${latestStats.uniqueVisitors.toLocaleString()}</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">Avg Response Time</div>
+              <div class="metric-value">${latestStats.avgResponseTimeMs}ms</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-title">P95 Response Time</div>
+              <div class="metric-value">${latestStats.p95ResponseTimeMs}ms</div>
+            </div>
+          </div>
+          <div class="analytics-details">
+            <div class="detail-section">
+              <h3>Top Routes</h3>
+              <ul class="detail-list">
+                ${Object.entries(latestStats.perRoute)
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 5)
+                  .map(([route, count]) => `<li><span>${route}</span><span>${count}</span></li>`)
+                  .join('')}
+              </ul>
+            </div>
+            <div class="detail-section">
+              <h3>Status Codes</h3>
+              <ul class="detail-list">
+                ${Object.entries(latestStats.statusCodes)
+                  .sort((a, b) => a[0].localeCompare(b[0]))
+                  .map(([code, count]) => `<li><span>${code}</span><span>${count}</span></li>`)
+                  .join('')}
+              </ul>
+            </div>
+          </div>`;
+        
+        analyticsContent.innerHTML = html;
+      } catch (err) {
+        document.getElementById('analytics-content').innerHTML = 
+          `<div class="status-message status-error">Failed to load analytics: ${err.message}</div>`;
+      }
+    }
+
+    // Bot controls
     async function restartBot() {
       const key = document.getElementById('restartApiKey').value;
       const statusDiv = document.getElementById('restart-status');
-
       if (!key) {
         statusDiv.innerText = "API Key required";
         statusDiv.className = 'status-message status-error';
         return;
       }
-
       try {
         const res = await fetch('/admin/api/restart-bot', {
           method: 'POST',
@@ -494,22 +896,20 @@
           body: JSON.stringify({ key })
         });
         const data = await res.json();
-
-        if (data.success) {
-          statusDiv.innerText = "Bot restarted successfully!";
-          statusDiv.className = 'status-message status-success';
-        } else {
-          statusDiv.innerText = "Failed to restart bot: " + (data.error || "Unknown error");
-          statusDiv.className = 'status-message status-error';
-        }
-      } catch (err) {
+        statusDiv.innerText = data.success ? "Bot restarted" : "Failed: " + (data.error || "Unknown");
+        statusDiv.className = data.success ? 'status-message status-success' : 'status-message status-error';
+      } catch {
         statusDiv.innerText = "Error restarting bot";
         statusDiv.className = 'status-message status-error';
-        console.error(err);
       }
     }
 
-    fetchStats();
+    function pauseBot() { alert('Pause bot feature coming soon'); }
+    function resumeBot() { alert('Resume bot feature coming soon'); }
+
+    // Init
+    fetchBotStatus();
+    fetchChannels();
     fetchLogs();
     fetchCommands();
     fetchAnalytics();

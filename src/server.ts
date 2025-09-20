@@ -1,37 +1,45 @@
+
+// --- Environment Setup ---
 import * as dotenv from "dotenv";
 // Load environment file based on NODE_ENV as early as possible
-const envFile =
-  process.env.NODE_ENV === "production"
-    ? ".env"
-    : ".env";
+const envFile = process.env.NODE_ENV === "production" ? ".env" : ".env";
 dotenv.config({ path: require('path').resolve(__dirname, "..", envFile) });
 
-import fs from 'fs';
-import bcrypt from 'bcrypt';
-import csrf from 'csurf';
-import express, { Request, Response } from "express";
-import client from 'prom-client';
-import axios from "axios";
-import { Channel, dbReady } from "@/db"
-import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler";
-import { exec } from "child_process";
-import session from 'express-session';
-import logger from "./util/logger";
-import path from "path";
-import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics";
-import rateLimit from "express-rate-limit";
+
+// --- Core Imports ---
+import fs from 'fs'; // File system operations
+import bcrypt from 'bcrypt'; // Password hashing for admin login
+import csrf from 'csurf'; // CSRF protection for admin panel
+import express, { Request, Response } from "express"; // Web server
+import client from 'prom-client'; // Prometheus metrics
+import axios from "axios"; // HTTP requests
+import { Channel, dbReady } from "@/db"; // Database model
+import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler"; // Discord integration
+import { exec } from "child_process"; // For restarting bot process
+import session from 'express-session'; // Session management
+import logger from "./util/logger"; // Logging utility
+import path from "path"; // Path utilities
+import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics"; // Analytics
+import rateLimit from "express-rate-limit"; // Rate limiting
+
 
 
 // --- Admin Panel Config ---
-const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase()); // comma-separated usernames
+// List of admin usernames (comma-separated, lowercased)
+const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase());
+// Hashed admin password (bcrypt)
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
+// Session secret for admin panel
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_secret';
 
+// CSRF protection middleware for admin routes
 const csrfProtection = csrf();
 
+// Twitch API credentials
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 
+// Helper to get correct redirect URI based on environment
 const getRedirectUri = () => {
   const uri = process.env.NODE_ENV === "production"
     ? "https://app.antiparty.dev/callback"
@@ -39,24 +47,25 @@ const getRedirectUri = () => {
   console.log(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
   return uri;
 };
-const cacheFilePath = path.join(
-  __dirname,
-  "src",
-  "cache",
-  "connectedAccounts.json"
-);
 
-// Prometheus metrics setup
+// Path to cache file for connected accounts (not used in this file)
+const cacheFilePath = path.join(__dirname, "src", "cache", "connectedAccounts.json");
+
+
+// --- Metrics Setup ---
+// Collect default Prometheus metrics
 const collectDefaultMetrics = client.collectDefaultMetrics;
 collectDefaultMetrics();
 
-// Custom metrics
+// Custom metric: count Twitch bot commands
 export const commandCounter = new client.Counter({
   name: 'twitchbot_command_total',
   help: 'Total number of commands received',
   labelNames: ['command']
 });
 
+
+// --- Stats Tracking ---
 const statsFilePath = path.join(process.cwd(), "stats.json");
 let commandsProcessed = 0;
 // Load commandsProcessed from stats.json on startup
@@ -70,6 +79,7 @@ try {
   commandsProcessed = 0;
 }
 
+// Increment commandsProcessed and persist to stats.json
 export function incrementCommandsProcessed() {
   commandsProcessed++;
   try {
@@ -84,23 +94,34 @@ export function incrementCommandsProcessed() {
   }
 }
 
+// Get current commandsProcessed value
 export function getCommandsProcessed() {
   return commandsProcessed;
 }
+
+// Track server start time for uptime calculation
 const serverStartTime = Date.now();
 
+
+// Custom metric: count API errors by endpoint
 const apiErrorCounter = new client.Counter({
   name: 'twitchbot_api_errors_total',
   help: 'Total number of API errors',
   labelNames: ['endpoint']
 });
 
+
+// --- Rate Limiting ---
+// Limit requests to /callback for security
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: "Too many requests, please try again later.",
 });
 
+
+// --- Twitch OAuth Helper ---
+// Generates Twitch OAuth URL for user login
 const getAuthUrl = () => {
   const scope = encodeURIComponent(
     "channel:moderate user:read:chat user:bot channel:bot"
@@ -108,6 +129,9 @@ const getAuthUrl = () => {
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${getRedirectUri()}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
+
+// --- Stats Export Helper ---
+// Writes current stats to stats.json
 function exportStatsToJson() {
   Channel.count().then(userCount => {
     const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
@@ -123,19 +147,24 @@ function exportStatsToJson() {
   });
 }
 
+
+// --- Express Server Setup ---
 export const setupServer = () => {
+  // Path to frontend assets and templates
   const frontendPath = path.join(process.cwd(), "frontend");
   const app = express();
-  app.set("trust proxy", 1);
-  app.set("view engine", "ejs");
+  app.set("trust proxy", 1); // Trust reverse proxy headers
+  app.set("view engine", "ejs"); // Use EJS for rendering views
   app.set("views", frontendPath);
 
-  // Use JSON middleware for all routes
+  // Parse JSON bodies for all routes
   app.use(express.json());
-  loadAnalytics();
+  loadAnalytics(); // Load analytics data into memory
+
+  // --- Request Tracking Middleware ---
   app.use((req, res, next) => {
     const pathOnly = req.originalUrl.split("?")[0];
-    // Skip metrics and admin
+    // Skip metrics and admin routes
     if (pathOnly.startsWith("/metrics") || pathOnly.startsWith("/admin")) {
       return next();
     }
@@ -143,17 +172,18 @@ export const setupServer = () => {
     if (/\.(css|js|png|jpe?g|gif|svg|ico|map|webmanifest|woff2?)$/i.test(pathOnly)) {
       return next();
     }
-    // Skip well-known / devtools noise
+    // Skip well-known/devtools noise
     if (pathOnly.startsWith("/.well-known/")) {
       return next();
     }
-    // Otherwise track
+    // Track all other requests
     return trackRequest(req, res, next);
   });
 
+  // Serve static files from frontend directory
   app.use(express.static(frontendPath));
 
-  // Session middleware for admin panel
+  // --- Session Middleware for Admin Panel ---
   app.use(
     session({
       name: 'admin.sid',
@@ -170,6 +200,7 @@ export const setupServer = () => {
   );
 
   // --- Admin Auth Helpers ---
+  // Checks if current session is an authenticated admin
   function isAdmin(req: any) {
     return req.session && req.session.isAdmin === true && req.session.username && ADMIN_USERS.includes(req.session.username.toLowerCase());
   }
@@ -179,27 +210,18 @@ export const setupServer = () => {
   // Middleware for admin login routes: parse urlencoded and apply CSRF
   const adminLoginMiddleware = [express.urlencoded({ extended: false }), csrfProtection];
 
+  // Admin login page
   app.get('/admin/login', ...adminLoginMiddleware, (req: any, res: any) => {
     if (isAdmin(req)) return res.redirect('/admin');
     res.send(`<!DOCTYPE html><html><head><title>Admin Login</title></head><body><form method="POST" action="/admin/login"><input name="username" placeholder="Username" required><br><input name="password" type="password" placeholder="Password" required><br><input type="hidden" name="_csrf" value="${req.csrfToken()}"><button type="submit">Login</button></form></body></html>`);
   });
 
+  // Admin login POST handler
   app.post('/admin/login', ...adminLoginMiddleware, async (req: any, res: any) => {
     const { username, password } = req.body;
-    // Debug logging
-    /*
-    console.log('--- ADMIN LOGIN DEBUG ---');
-    console.log('Submitted username:', username);
-    console.log('ADMIN_USERS env:', process.env.ADMIN_USERS);
-    console.log('Parsed ADMIN_USERS:', ADMIN_USERS);
-    console.log('ADMIN_USERS includes:', ADMIN_USERS.includes(username && username.toLowerCase()));
-    */
-
     if (!username || !password) return res.status(400).send('Missing credentials');
     if (!ADMIN_USERS.includes(username.toLowerCase())) return res.status(403).send('Not allowed');
-    console.log('ADMIN_PASSWORD_HASH:', ADMIN_PASSWORD_HASH);
     const valid = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
-    console.log('bcrypt.compare result:', valid);
     if (!valid) return res.status(403).send('Invalid credentials');
     req.session.isAdmin = true;
     req.session.username = username;
@@ -213,25 +235,26 @@ export const setupServer = () => {
     res.status(403).send('Forbidden: invalid CSRF token');
   });
 
+  // Admin logout
   app.post('/admin/logout', (req: any, res: any) => {
     req.session.destroy(() => {
       res.redirect('/admin/login');
     });
   });
 
-  // Protect all /admin and /admin/api routes
+  // Protect all /admin and /admin/api routes (except login)
   app.use(['/admin', '/admin/api'], (req: any, res: any, next: any) => {
     if (req.path === '/login') return next();
     if (!isAdmin(req)) return res.redirect('/admin/login');
     next();
   });
 
-  // Admin panel main page
+  // Admin dashboard page
   app.get('/admin', csrfProtection, (req: any, res: any) => {
     res.sendFile(path.join(frontendPath, 'admin-dashboard.html'));
   });
 
-  // Admin API: stats
+  // Admin API: stats summary
   app.get('/admin/api/stats', (req: any, res: any) => {
     res.json({
       user: req.session.username,
@@ -242,11 +265,28 @@ export const setupServer = () => {
     });
   });
 
+  // Admin API: list all channels
+  app.get('/admin/api/channels', async (req: any, res: any) => {
+    try {
+      const key = req.query.key || req.headers['x-api-key'];
+      if (!key || key !== process.env.API_KEY) {
+        return res.status(403).json({ error: "Invalid API key" });
+      }
+      const channels = await Channel.findAll({ attributes: ['username'] });
+      const usernames = channels.map((c: any) => c.username);
+      res.status(200).json({ userCount: usernames.length, channels: usernames });
+    } catch (err) {
+      logger.error("Error fetching channels list:", err);
+      res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  // Admin API: web analytics
   app.get("/admin/api/web-analytics", (req, res) => {
     res.json(getAnalytics());
   });
 
-  // Admin API: logs (last 100 lines)
+  // Admin API: last 100 lines of main log
   app.get('/admin/api/logs', (req: any, res: any) => {
     const logPath = path.join(process.cwd(), 'logs', 'main.log');
     fs.readFile(logPath, 'utf8', (err, data) => {
@@ -256,25 +296,21 @@ export const setupServer = () => {
     });
   });
 
+  // Admin API: send custom message to bot
   app.post("/admin/api/message", async (req: any, res: any) => {
     try {
       const { channel, message, key } = req.body;
-
-      // Check API key
       if (!key || key !== process.env.API_KEY) {
         return res.status(403).json({ error: "Invalid API key" });
       }
-
       if (!message || typeof message !== "string") {
         return res.status(400).json({ error: "Message is required" });
       }
-
-      // Forward request to the bot
+      // Forward request to bot process
       await axios.post("http://localhost:4000/send-message", {
-        channel, // can be undefined if sending to all
+        channel,
         message,
       });
-
       logger.info(`[Admin] Sent message "${message}" to ${channel || "all channels"}`);
       res.json({ success: true });
     } catch (err) {
@@ -283,20 +319,18 @@ export const setupServer = () => {
     }
   });
 
+  // Admin API: restart bot process via PM2
   app.post("/admin/api/restart-bot", async (req: any, res: any) => {
     try {
       const { key } = req.body;
-
       if (!key || key !== process.env.API_key) {
         return res.status(403).json({ error: "Invalid API key" });
       }
-
       exec("pm2 restart finalsrr-bot", (err, stdout, stderr) => {
         if (err) {
           logger.error("Failed to restart bot via admin API:", err);
           return res.status(500).json({ success: false, error: "Failed to restart bot" });
         }
-
         logger.info(`[Admin] Restarted bot via API. Output: ${stdout}`)
       });
     } catch (err) {
@@ -305,12 +339,10 @@ export const setupServer = () => {
     }
   })
 
-  // Admin API: commands (list, add, delete)
+  // Admin API: list all custom commands
   app.get('/admin/api/commands', async (req: any, res: any) => {
-    // Example: get all custom commands from DB (adjust as needed)
     try {
       const cmds = await Channel.findAll({ attributes: ['custom_commands'] });
-      // Flatten and parse commands
       let allCmds = [];
       for (const row of cmds) {
         if (row.custom_commands) {
@@ -325,19 +357,23 @@ export const setupServer = () => {
       res.json([]);
     }
   });
+  // Admin API: delete a custom command (stub)
   app.delete('/admin/api/commands/:name', async (req: any, res: any) => {
-    // Example: delete command logic (implement as needed)
-    // This is a stub for demonstration
     res.json({ ok: true });
   });
 
+  // About page
   app.get("/about", (req, res) => res.send("About page"));
 
+  // Apply rate limiting to /callback
   app.use("/callback", authLimiter);
+
   // Prometheus metrics endpoint
   app.get("/analytics", (req, res) => {
     res.json(getAnalytics());
   });
+
+  // Markdown docs endpoint
   app.get('/docs-markdown', (req: Request, res: Response) => {
     const docsPath = path.join(process.cwd(), 'docs', 'custom-command-editing.md');
     fs.readFile(docsPath, 'utf8', (err, data) => {
@@ -345,6 +381,7 @@ export const setupServer = () => {
       res.type('text/plain').send(data);
     });
   });
+  // HTML docs endpoint
   app.get('/docs', (req: Request, res: Response) => {
     res.sendFile(path.join(frontendPath, 'docs.html'));
   });
@@ -354,32 +391,28 @@ export const setupServer = () => {
    * Redirects user to Twitch authentication URL.
    */
   app.get("/login", (req: Request, res: Response) => {
-    const authUrl = getAuthUrl(); // local variable
+    const authUrl = getAuthUrl();
     logger.info(`Generated auth URL: ${authUrl}`);
     res.redirect(authUrl);
   });
 
   /**
    * POST /changelog
-   * requires x-api-key header
+   * Requires x-api-key header. Sends changelog to Discord.
    */
   app.post("/changelog", async (req: Request, res: Response) => {
     try {
       const apiKey = req.headers['x-api-key'];
-      console.log('Received API Key:', apiKey);
       if (apiKey !== process.env.API_KEY) {
         logger.info(`ENV API Key: ${process.env.API_KEY}`);
         logger.info(`Received API Key: ${apiKey}`);
         return res.status(403).json({ error: "Forbidden" });
       }
-
       const { title, categories } = req.body;
       if (!title || !categories || typeof categories !== 'object') {
         return res.status(400).json({ error: "Title and categories are required" });
       }
-
       await sendChangelogToDiscord(title, categories);
-
       logger.info("Changelog sent to Discord successfully.");
       res.status(200).json({ message: "Changelog sent successfully" });
     } catch (error) {
@@ -400,21 +433,19 @@ export const setupServer = () => {
       dbHealthy = true;
     } catch (error) {
       logger.error("DB connection failed during health check:", error);
-      // Alert only if DB is persistently down (rare case)
+      // Alert only if DB is persistently down
       if (!globalThis.__dbDownAlerted) {
         sendMessageToDiscord("Critical: Database connection failed during health check. Manual intervention required.");
         globalThis.__dbDownAlerted = true;
       }
     }
-
-    // Example: increment API error counter on DB failure
+    // Increment API error counter on DB failure
     if (!dbHealthy) {
       apiErrorCounter.inc({ endpoint: '/health' });
     }
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
     const uptime = process.uptime();
-
     // Get version from package.json
     const { version } = require("../package.json");
     res.status(dbHealthy ? 200 : 500).json({
@@ -434,24 +465,46 @@ export const setupServer = () => {
     });
   });
 
+  // Main landing page
   app.get("/", (req: Request, res: Response) => {
     res.sendFile(path.join(frontendPath, "index.html"));
   });
 
+  // API: list all users/channels
   app.get("/users", async (req: Request, res: Response) => {
     try {
       const { key } = req.query;
-
       if (!key || key !== process.env.API_KEY) {
         return res.status(403).json({ error: "Forbidden" });
       }
-
-      const count = await Channel.count();
-      res.status(200).json({ userCount: count });
+      const channels = await Channel.findAll({ attributes: ['username'] });
+      const usernames = channels.map((c: any) => c.username);
+      res.status(200).json({ userCount: usernames.length, channels: usernames });
     } catch (error) {
       logger.error("Error fetching users:", error);
       res.status(500).json({ error: "Failed to fetch users" });
     }
+  });
+
+  // --- Bot Pause/Resume Controls (stub endpoints) ---
+  app.post('/admin/api/pause-bot', (req: any, res: any) => {
+    // TODO: Implement actual pause logic
+    const { key } = req.body;
+    if (!key || key !== process.env.API_KEY) {
+      return res.status(403).json({ error: "Invalid API key" });
+    }
+    logger.info("[Admin] Bot pause requested.");
+    res.json({ success: true, message: "Bot pause requested (not yet implemented)." });
+  });
+
+  app.post('/admin/api/resume-bot', (req: any, res: any) => {
+    // TODO: Implement actual resume logic
+    const { key } = req.body;
+    if (!key || key !== process.env.API_KEY) {
+      return res.status(403).json({ error: "Invalid API key" });
+    }
+    logger.info("[Admin] Bot resume requested.");
+    res.json({ success: true, message: "Bot resume requested (not yet implemented)." });
   });
 
   // Endpoint to forcefully grab and return latest stats
@@ -475,12 +528,12 @@ export const setupServer = () => {
     }
   });
 
+  // Serve stats.json file
   app.get("/stats.json", (req: Request, res: Response) => {
     fs.readFile(statsFilePath, "utf8", (err, data) => {
       if (err) return res.status(500).json({ error: "Stats not available" });
-
       res.setHeader("Content-Type", "application/json");
-      res.setHeader("Access-Control-Allow-Origin", "*"); // 👈 allow browsers
+      res.setHeader("Access-Control-Allow-Origin", "*"); // Allow browsers
       res.send(data);
     });
   });
@@ -494,7 +547,6 @@ export const setupServer = () => {
     if (!code || typeof code !== "string") {
       return res.status(400).send("Invalid code");
     }
-
     try {
       // Exchange code for tokens
       const tokenResponse = await axios.post(
@@ -510,10 +562,8 @@ export const setupServer = () => {
           },
         }
       );
-
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
       const expirationTime = new Date(Date.now() + expires_in * 1000);
-
       // Fetch user info from Twitch
       const userResponse = await axios.get("https://api.twitch.tv/helix/users", {
         headers: {
@@ -521,11 +571,9 @@ export const setupServer = () => {
           "Client-ID": clientId,
         },
       });
-
       const twitchUser = userResponse.data.data[0];
       const twitchUserId = twitchUser.id;
       const twitchUsername = twitchUser.login;
-
       // Upsert user in DB
       await Channel.upsert({
         username: twitchUsername,
@@ -534,7 +582,6 @@ export const setupServer = () => {
         token_expires_at: expirationTime,
         twitch_user_id: twitchUserId,
       });
-
       // Notify bot process to start this user
       try {
         await axios.post("http://localhost:4000/add-channel", {
@@ -545,15 +592,12 @@ export const setupServer = () => {
       } catch (notifyError) {
         logger.error(`[Callback] Failed to notify bot for ${twitchUsername}:`, notifyError);
       }
-
       // Log expiry nicely
       const timeLeftMs = expirationTime.getTime() - Date.now();
       const hours = Math.floor(timeLeftMs / (1000 * 60 * 60));
       const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
-
       logger.info(`[Callback] ${twitchUsername} authenticated. Token expires in ${hours}h ${minutes}m ${seconds}s`);
-
       // Send confirmation page
       res.render("auth", {
         title: "Twitch Authenticated",
@@ -568,6 +612,6 @@ export const setupServer = () => {
     }
   });
 
-
+  // Return configured Express app
   return app;
 };

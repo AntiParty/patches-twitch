@@ -1,6 +1,12 @@
 # Patches-Twitch
 
-Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player stats, account linking, and interactive commands for streamers. Used to be for Spectre divide now transfered over to THE FINALS
+Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player stats, account linking, and interactive commands for streamers. Used to be for Spectre divide, now transferred over to THE FINALS.
+
+---
+
+## Overview
+
+Patches-Twitch is designed for streamers who want to display live stats, manage player accounts, and interact with their audience using Twitch chat commands. It supports account linking, Discord notifications, and custom commands. The bot is modular, easy to extend, and runs on Bun for fast performance.
 
 ## Table of Contents
 - [Installation](#installation)
@@ -28,6 +34,10 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    bun install
    ```
 
+**Troubleshooting:**
+- If you encounter issues with Bun, ensure your Node.js version is compatible and your PATH is set correctly.
+- For Windows users, restart your terminal after installing Bun.
+
 ## Configuration
 
 1. Copy the `.env.example` file to `.env`:
@@ -49,6 +59,11 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    TWITCH_BOT_REFRESH_TOKEN=  # Your current refresh token :3
    ```
 
+**Tips:**
+- Make sure your Twitch app is set up correctly in the Twitch Developer Console.
+- The Discord webhook is optional but recommended for notifications.
+- Keep your `.env` file private and never commit it to version control.
+
 ## Running the Bot
 
 1. Start the development server:
@@ -56,19 +71,28 @@ Patches-Twitch is a TypeScript-powered Twitch bot that provides real-time player
    bun run dev
    ```
 
+2. For production, use:
+   ```bash
+   bun run start
+   ```
+
+**Deployment:**
+- You can deploy on any server that supports Bun and Node.js.
+- Use a process manager like PM2 or systemd for reliability.
+- Ensure your environment variables are set on the server.
+
 ## Commands
 
 The bot supports the following commands:
 
-- `!addaccount <playerID>`: Link a player ID to the Twitch channel.
-- `!help`: Display available commands.
-- `!lastmatch`: Show the last match stats.
-- `!part`: Make the bot leave the channel.
-- `!rank`: Display the current rank.
-- `!record`: Show the overall record.
-- `!resetdb`: Reset the database (restricted to specific users).
-- `!unlink`: Unlink the account and make the bot leave the channel.
-- `!wipesubs`: Remove all EventSub subscriptions (admin only).
+
+**Usage Examples:**
+- `!addaccount 123456789` — Links the player ID `123456789` to your channel.
+- `!rank` — Shows your current rank in THE FINALS.
+- `!resetdb` — Only available to bot admins; resets the database.
+
+**Permissions:**
+- Some commands (e.g., `!resetdb`, `!wipesubs`) are restricted to admins or specific users. See `src/commands/` for details.
 
 ## Creating Commands
 
@@ -102,6 +126,12 @@ export const execute = async (client: Client, channel: string, message: string, 
 export const aliases = ['commands', 'info', 'h'];
 ```
 
+### Creating a New Command
+1. Create a new file in `src/commands/`, e.g., `mycommand.ts`.
+2. Export an `execute` function with the required parameters.
+3. Optionally, export an `aliases` array for alternative triggers.
+4. Add your command to the command handler in `src/handlers/commands.ts` if needed.
+
 ### Required Components
 - `execute`: The main function to handle command logic.
 - `client`: The `tmi.js` client instance for Twitch chat.
@@ -126,12 +156,48 @@ src/
   index.ts          # Entry point
 ```
 
+**Descriptions:**
+- `commands/`: Each file is a Twitch command module.
+- `handlers/`: Logic for Discord integration, Twitch EventSub, and command routing.
+- `jobs/`: Scheduled/background tasks (e.g., updating leaderboards).
+- `models/`: Database schema and ORM (if used).
+- `util/`: Shared utilities for logging, Twitch API, analytics, etc.
+- `cache/`: JSON files for fast access to stats and leaderboards.
+- `frontend/`: Static assets and EJS templates for web UI.
+- `db.ts`: Database connection and setup.
+- `server.ts`: Express server, OAuth, and API endpoints.
+- `index.ts`: Main entry point for the bot.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.
 
+**Guidelines:**
+- Follow the existing code style (TypeScript, consistent formatting).
+- Write clear commit messages and PR descriptions.
+- Add tests or usage examples for new features.
+- For major changes, discuss in an issue first.
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
+
+## FAQ
+
+**Q: Can I run this bot on Windows/Linux/macOS?**
+A: Yes, as long as Bun and Node.js are installed.
+
+**Q: How do I update dependencies?**
+A: Run `bun install` to update packages.
+
+**Q: Where do I get Twitch tokens?**
+A: Use https://twitchtokengenerator.com/ and update your `.env` file.
+
+## Troubleshooting
+
+- **Bot not joining channel:** Check your Twitch tokens and ensure the bot is not banned.
+- **Database errors:** Verify your `DATABASE_URL` and database server status.
+- **EventSub issues:** Make sure your Twitch app is configured for EventSub and your redirect URI matches.
+- **General errors:** Check logs in the `logs/` and `cache/error.log` files for details.
 
 

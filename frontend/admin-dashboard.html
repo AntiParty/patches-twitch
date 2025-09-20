@@ -488,11 +488,76 @@
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Enhanced Analytics</h2>
+          <div class="card-actions">
+            <button class="btn btn-sm" onclick="fetchAnalytics()" title="Refresh Analytics">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
         </div>
-        <canvas id="analytics-chart" style="width:100%;max-width:600px;height:300px;background:#222;border-radius:8px;margin-bottom:1rem;"></canvas>
+        <div class="chart-container">
+          <canvas id="analytics-chart"></canvas>
+        </div>
         <div id="analytics-content">Loading...</div>
       </div>
     </section>
+    <style>
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .chart-container {
+        position: relative;
+        width: 100%;
+        height: 400px;
+        background: rgba(255,255,255,0.02);
+        border-radius: 1rem;
+        padding: 1rem;
+        margin: 1rem 0;
+        border: 1px solid rgba(255,255,255,0.06);
+      }
+      .metric-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1.5rem;
+      }
+      .metric-card .metric-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .metric-card .metric-title {
+        font-size: 0.9rem;
+        color: var(--sidebar-accent);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .metric-card .metric-change {
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      .metric-change.positive {
+        color: var(--success-bg);
+      }
+      .metric-change.negative {
+        color: var(--danger-bg);
+      }
+      .detail-section {
+        background: rgba(255,255,255,0.02);
+      }
+      .detail-list li {
+        padding: 0.75rem 0;
+      }
+      .detail-list li span:first-child {
+        color: var(--sidebar-accent);
+      }
+    </style>
     <section id="logs">
       <div class="card">
         <div class="card-header">
@@ -826,12 +891,19 @@
           .reverse();
 
         // Prepare data for charts
-        const dates = recentDays.map(([date]) => date);
+        const dates = recentDays.map(([date]) => {
+          const d = new Date(date);
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
         const requests = recentDays.map(([_, stats]) => stats.totalRequests);
         const visitors = recentDays.map(([_, stats]) => stats.uniqueVisitors);
         const responseTimes = recentDays.map(([_, stats]) => stats.avgResponseTimeMs);
 
-        // Update request trend chart
+        // Chart Theme
+        Chart.defaults.color = '#b3b3b3';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+
+        // Traffic Chart
         const ctx = document.getElementById('analytics-chart').getContext('2d');
         if (window.requestChart) window.requestChart.destroy();
         window.requestChart = new Chart(ctx, {
@@ -842,43 +914,155 @@
               label: 'Total Requests',
               data: requests,
               borderColor: '#f5a524',
+              backgroundColor: 'rgba(245, 165, 36, 0.1)',
               tension: 0.4,
-              fill: false
+              fill: true,
+              pointBackgroundColor: '#f5a524',
+              pointBorderColor: '#f5a524',
+              pointHoverRadius: 6,
+              pointHoverBorderWidth: 2,
+              borderWidth: 3
             }, {
               label: 'Unique Visitors',
               data: visitors,
               borderColor: '#4CAF50',
+              backgroundColor: 'rgba(76, 175, 80, 0.1)',
               tension: 0.4,
-              fill: false
+              fill: true,
+              pointBackgroundColor: '#4CAF50',
+              pointBorderColor: '#4CAF50',
+              pointHoverRadius: 6,
+              pointHoverBorderWidth: 2,
+              borderWidth: 3
             }]
           },
           options: {
             responsive: true,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
             plugins: {
-              title: { display: true, text: 'Traffic Overview' },
-              legend: { position: 'bottom' }
+              title: { 
+                display: true, 
+                text: 'Traffic Overview',
+                color: '#f3f3f3',
+                font: {
+                  size: 16,
+                  family: "'Inter', sans-serif",
+                  weight: '600'
+                },
+                padding: 20
+              },
+              legend: { 
+                position: 'bottom',
+                labels: {
+                  usePointStyle: true,
+                  padding: 20,
+                  font: {
+                    family: "'Inter', sans-serif"
+                  }
+                }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleFont: {
+                  family: "'Inter', sans-serif",
+                  size: 13
+                },
+                bodyFont: {
+                  family: "'Inter', sans-serif",
+                  size: 12
+                },
+                padding: 12,
+                cornerRadius: 8,
+                displayColors: true
+              }
             },
             scales: {
-              y: { beginAtZero: true }
+              y: { 
+                beginAtZero: true,
+                grid: {
+                  color: 'rgba(255,255,255,0.05)'
+                },
+                ticks: {
+                  font: {
+                    family: "'Inter', sans-serif"
+                  },
+                  callback: function(value) {
+                    return value.toLocaleString();
+                  }
+                }
+              },
+              x: {
+                grid: {
+                  color: 'rgba(255,255,255,0.05)'
+                },
+                ticks: {
+                  font: {
+                    family: "'Inter', sans-serif"
+                  }
+                }
+              }
+            },
+            elements: {
+              point: {
+                radius: 4,
+                borderWidth: 2
+              }
             }
           }
         });
 
         // Create metrics grid
         const latestStats = recentDays[recentDays.length - 1][1];
+        const previousStats = recentDays[recentDays.length - 2]?.[1];
+
+        // Calculate changes
+        const calculateChange = (current, previous) => {
+          if (!previous) return null;
+          const change = ((current - previous) / previous) * 100;
+          return {
+            value: Math.abs(change).toFixed(1),
+            direction: change >= 0 ? 'up' : 'down'
+          };
+        };
+
+        const requestsChange = calculateChange(latestStats.totalRequests, previousStats?.totalRequests);
+        const visitorsChange = calculateChange(latestStats.uniqueVisitors, previousStats?.uniqueVisitors);
+        const responseChange = calculateChange(latestStats.avgResponseTimeMs, previousStats?.avgResponseTimeMs);
+
         let html = `
           <div class="analytics-grid">
             <div class="metric-card">
               <div class="metric-title">Today's Requests</div>
               <div class="metric-value">${latestStats.totalRequests.toLocaleString()}</div>
+              ${requestsChange ? `
+                <div class="metric-change ${requestsChange.direction === 'up' ? 'positive' : 'negative'}">
+                  <i class="fas fa-${requestsChange.direction === 'up' ? 'arrow-up' : 'arrow-down'}"></i>
+                  ${requestsChange.value}% from yesterday
+                </div>
+              ` : ''}
             </div>
             <div class="metric-card">
               <div class="metric-title">Unique Visitors</div>
               <div class="metric-value">${latestStats.uniqueVisitors.toLocaleString()}</div>
+              ${visitorsChange ? `
+                <div class="metric-change ${visitorsChange.direction === 'up' ? 'positive' : 'negative'}">
+                  <i class="fas fa-${visitorsChange.direction === 'up' ? 'arrow-up' : 'arrow-down'}"></i>
+                  ${visitorsChange.value}% from yesterday
+                </div>
+              ` : ''}
             </div>
             <div class="metric-card">
               <div class="metric-title">Avg Response Time</div>
               <div class="metric-value">${latestStats.avgResponseTimeMs}ms</div>
+              ${responseChange ? `
+                <div class="metric-change ${responseChange.direction === 'down' ? 'positive' : 'negative'}">
+                  <i class="fas fa-${responseChange.direction === 'up' ? 'arrow-up' : 'arrow-down'}"></i>
+                  ${responseChange.value}% from yesterday
+                </div>
+              ` : ''}
             </div>
             <div class="metric-card">
               <div class="metric-title">P95 Response Time</div>

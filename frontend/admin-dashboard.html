@@ -1451,42 +1451,9 @@
         const responseChange = calculateChange(latestStats.avgResponseTimeMs, previousStats?.avgResponseTimeMs);
 
         let html = `
-          <div class="performance-grid">
-            <div class="performance-row">
-              <div class="perf-metric-card">
-                <div class="metric-title">CPU Usage</div>
-                <div class="metric-value" id="cpu-usage">-</div>
-                <div class="perf-chart-wrapper">
-                  <canvas id="cpu-chart"></canvas>
-                </div>
-              </div>
-              <div class="perf-metric-card">
-                <div class="metric-title">Memory Usage</div>
-                <div class="metric-value" id="memory-usage">-</div>
-                <div class="perf-chart-wrapper">
-                  <canvas id="memory-chart"></canvas>
-                </div>
-              </div>
-            </div>
-            <div class="performance-row">
-              <div class="perf-metric-card">
-                <div class="metric-title">Bot Latency</div>
-                <div class="metric-value" id="bot-latency">-</div>
-                <div class="perf-chart-wrapper">
-                  <canvas id="latency-chart"></canvas>
-                </div>
-              </div>
-              <div class="perf-metric-card perf-nochart" style="justify-content:center;">
-                <div class="metric-title">Connected Channels</div>
-                <div class="metric-value" id="connected-channels" style="font-size:2rem;margin:1rem 0;">-</div>
-                <div class="metric-subtitle" style="color:var(--sidebar-muted);text-align:center;">Active Bot Connections</div>
-              </div>
-            </div>
-          </div>
-            <div class="metric-card">
-              <div class="metric-title">P95 Response Time</div>
-              <div class="metric-value">${latestStats.p95ResponseTimeMs}ms</div>
-            </div>
+          <div class="metric-card">
+            <div class="metric-title">P95 Response Time</div>
+            <div class="metric-value">${latestStats.p95ResponseTimeMs}ms</div>
           </div>
           <div class="analytics-details">
             <div class="detail-section">

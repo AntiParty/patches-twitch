@@ -193,7 +193,7 @@
       box-shadow: 0 0 0 2px var(--sidebar-accent);
     }
 
-    /* Performance monitoring styles */
+    /* Performance monitoring styles (scoped) */
     #performance .card {
       height: 400px;
       overflow: hidden;
@@ -209,10 +209,70 @@
       transition: padding 0.3s ease;
     }
 
+    .perf-metric-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .perf-nochart { justify-content: center; }
+
+    .perf-metric-card .metric-title {
+      color: var(--sidebar-accent);
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .perf-metric-card .metric-value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #f3f3f3;
+      flex-shrink: 0;
+      margin: 0.5rem 0;
+      text-align: center;
+    }
+
+    .perf-chart-wrapper {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      width: 100%;
+    }
+
+    .perf-chart-wrapper canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* High specificity overrides to prevent global metric-card rules from
+       affecting performance cards and causing overlap */
+    #performance .metric-card,
+    #performance .perf-metric-card {
+      box-sizing: border-box !important;
+      margin: 0 !important;
+      position: relative !important;
+      min-height: 0 !important;
+    }
+
     @media (max-width: 768px) {
-      #performance {
-        margin-bottom: 1rem;
-      }
+      #performance { margin-bottom: 1rem; }
+      .performance-row { grid-template-columns: 1fr; height: auto; }
+      .perf-metric-card { height: 180px; }
+      .perf-nochart { height: auto; min-height: 120px; }
+      #performance .card { height: auto; min-height: 200px; padding: 1rem; }
+      .chart-wrapper { min-height: 100px; }
     }
 
     .performance-row {
@@ -321,9 +381,8 @@
       .performance-grid {
         padding: 0;
       }
-    }
-    }
-    .input-group {
+  }
+  .input-group {
       display: flex;
       gap: 0.75rem;
       margin-bottom: 1rem;
@@ -871,23 +930,45 @@
 
     async function refreshPerformance() {
       try {
-        const res = await fetch('/admin/api/performance');
-        const metrics = await res.json();
+        // Fetch performance and channel data in parallel. Channels endpoint is the
+        // authoritative source for connected channel count.
+        const perfPromise = fetch('/admin/api/performance');
+        const channelsPromise = fetch('/admin/api/channels');
 
-        // Update values with better formatting
-        document.getElementById('cpu-usage').textContent = `${metrics.cpu.usage.toFixed(1)}%`;
-        document.getElementById('memory-usage').textContent = 
-          `${(metrics.memory.used / 1024 / 1024).toFixed(0)}MB`;
-        document.getElementById('bot-latency').textContent = `${metrics.botLatency.toFixed(1)}ms`;
-        document.getElementById('connected-channels').textContent = 
-          metrics.connectedChannels?.toString() || '0';
+        const [perfRes, chRes] = await Promise.all([perfPromise.catch(e=>null), channelsPromise.catch(e=>null)]);
 
-        // Update charts
-        updateChart(performanceCharts.cpu, metrics.cpu.usage);
-        updateChart(performanceCharts.memory, metrics.memory.used / metrics.memory.total * 100);
-        updateChart(performanceCharts.latency, metrics.botLatency);
+        const metrics = perfRes ? await perfRes.json() : null;
+        const chData = chRes ? await chRes.json() : null;
+
+        // Determine connected channels count from channels API (userCount) or fallback
+        let connected = 0;
+        if (chData) {
+          if (typeof chData.userCount === 'number') connected = chData.userCount;
+          else if (Array.isArray(chData.channels)) connected = chData.channels.length;
+        } else if (metrics && typeof metrics.connectedChannels === 'number') {
+          connected = metrics.connectedChannels;
+        }
+
+        // Update values (guard for missing metrics)
+        if (metrics && metrics.cpu) {
+          document.getElementById('cpu-usage').textContent = `${metrics.cpu.usage.toFixed(1)}%`;
+          updateChart(performanceCharts.cpu, metrics.cpu.usage);
+        }
+
+        if (metrics && metrics.memory) {
+          document.getElementById('memory-usage').textContent = `${(metrics.memory.used / 1024 / 1024).toFixed(0)}MB`;
+          updateChart(performanceCharts.memory, metrics.memory.used / metrics.memory.total * 100);
+        }
+
+        if (metrics && typeof metrics.botLatency === 'number') {
+          document.getElementById('bot-latency').textContent = `${metrics.botLatency.toFixed(1)}ms`;
+          updateChart(performanceCharts.latency, metrics.botLatency);
+        }
+
+        document.getElementById('connected-channels').textContent = connected.toString();
+
       } catch (err) {
-        console.error('Failed to fetch performance metrics:', err);
+        console.error('Failed to fetch performance metrics or channels:', err);
       }
     }
 
@@ -1051,6 +1132,12 @@
         const res = await fetch('/admin/api/channels');
         const data = await res.json();
         let html = `<div><strong>Total Channels:</strong> ${data.userCount || 0}</div>`;
+        // Update connected channels display if present
+        const connectedEl = document.getElementById('connected-channels');
+        if (connectedEl) {
+          const count = typeof data.userCount === 'number' ? data.userCount : (Array.isArray(data.channels) ? data.channels.length : 0);
+          connectedEl.textContent = count.toString();
+        }
         html += `<div class="channel-list">`;
         if (data.channels) {
           for (const ch of data.channels) {
@@ -1364,37 +1451,38 @@
         const responseChange = calculateChange(latestStats.avgResponseTimeMs, previousStats?.avgResponseTimeMs);
 
         let html = `
-          <div class="analytics-grid">
-            <div class="metric-card">
-              <div class="metric-title">Today's Requests</div>
-              <div class="metric-value">${latestStats.totalRequests.toLocaleString()}</div>
-              ${requestsChange ? `
-                <div class="metric-change ${requestsChange.direction === 'up' ? 'positive' : 'negative'}">
-                  <i class="fas fa-${requestsChange.direction === 'up' ? 'arrow-up' : 'arrow-down'}"></i>
-                  ${requestsChange.value}% from yesterday
+          <div class="performance-grid">
+            <div class="performance-row">
+              <div class="perf-metric-card">
+                <div class="metric-title">CPU Usage</div>
+                <div class="metric-value" id="cpu-usage">-</div>
+                <div class="perf-chart-wrapper">
+                  <canvas id="cpu-chart"></canvas>
                 </div>
-              ` : ''}
-            </div>
-            <div class="metric-card">
-              <div class="metric-title">Unique Visitors</div>
-              <div class="metric-value">${latestStats.uniqueVisitors.toLocaleString()}</div>
-              ${visitorsChange ? `
-                <div class="metric-change ${visitorsChange.direction === 'up' ? 'positive' : 'negative'}">
-                  <i class="fas fa-${visitorsChange.direction === 'up' ? 'arrow-up' : 'arrow-down'}"></i>
-                  ${visitorsChange.value}% from yesterday
+              </div>
+              <div class="perf-metric-card">
+                <div class="metric-title">Memory Usage</div>
+                <div class="metric-value" id="memory-usage">-</div>
+                <div class="perf-chart-wrapper">
+                  <canvas id="memory-chart"></canvas>
                 </div>
-              ` : ''}
+              </div>
             </div>
-            <div class="metric-card">
-              <div class="metric-title">Avg Response Time</div>
-              <div class="metric-value">${latestStats.avgResponseTimeMs}ms</div>
-              ${responseChange ? `
-                <div class="metric-change ${responseChange.direction === 'down' ? 'positive' : 'negative'}">
-                  <i class="fas fa-${responseChange.direction === 'up' ? 'arrow-up' : 'arrow-down'}"></i>
-                  ${responseChange.value}% from yesterday
+            <div class="performance-row">
+              <div class="perf-metric-card">
+                <div class="metric-title">Bot Latency</div>
+                <div class="metric-value" id="bot-latency">-</div>
+                <div class="perf-chart-wrapper">
+                  <canvas id="latency-chart"></canvas>
                 </div>
-              ` : ''}
+              </div>
+              <div class="perf-metric-card perf-nochart" style="justify-content:center;">
+                <div class="metric-title">Connected Channels</div>
+                <div class="metric-value" id="connected-channels" style="font-size:2rem;margin:1rem 0;">-</div>
+                <div class="metric-subtitle" style="color:var(--sidebar-muted);text-align:center;">Active Bot Connections</div>
+              </div>
             </div>
+          </div>
             <div class="metric-card">
               <div class="metric-title">P95 Response Time</div>
               <div class="metric-value">${latestStats.p95ResponseTimeMs}ms</div>

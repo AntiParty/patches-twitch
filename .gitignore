@@ -21,3 +21,5 @@ stats.json
 data/analytics.json
 TODO.md
 TODO.md
+data/metrics.sqlite
+*.sqlite

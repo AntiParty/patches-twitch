@@ -197,6 +197,7 @@
     #performance .card {
       height: 400px;
       overflow: hidden;
+      transition: height 0.3s ease;
     }
 
     .performance-grid {
@@ -205,6 +206,13 @@
       gap: 1rem;
       height: calc(100% - 60px); /* Subtract header height */
       padding: 1rem;
+      transition: padding 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      #performance {
+        margin-bottom: 1rem;
+      }
     }
 
     .performance-row {
@@ -261,14 +269,57 @@
       .performance-row {
         grid-template-columns: 1fr;
         height: auto;
+        gap: 1rem;
+      }
+      
+      .performance-grid {
+        gap: 1rem;
+        padding: 0.5rem;
       }
       
       .metric-card {
-        height: 150px;
+        height: 180px;
+      }
+      
+      .metric-card.no-chart {
+        height: auto;
+        min-height: 120px;
       }
       
       #performance .card {
         height: auto;
+        min-height: 200px;
+        padding: 1rem;
+      }
+
+      .card-header {
+        margin-bottom: 0.5rem;
+      }
+
+      .chart-wrapper {
+        min-height: 100px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main {
+        padding: 1rem 0.5rem;
+      }
+
+      .card {
+        padding: 1rem;
+      }
+
+      .metric-card {
+        padding: 1rem;
+      }
+
+      .metric-card .metric-value {
+        font-size: 1.25rem;
+      }
+
+      .performance-grid {
+        padding: 0;
       }
     }
     }
@@ -491,9 +542,10 @@
                 <canvas id="latency-chart"></canvas>
               </div>
             </div>
-            <div class="metric-card">
+            <div class="metric-card" style="justify-content: center;">
               <div class="metric-title">Connected Channels</div>
-              <div class="metric-value" id="connected-channels">-</div>
+              <div class="metric-value" id="connected-channels" style="font-size: 2rem; margin: 1rem 0;">-</div>
+              <div class="metric-subtitle" style="color: var(--sidebar-muted); text-align: center;">Active Bot Connections</div>
             </div>
           </div>
         </div>
@@ -822,12 +874,13 @@
         const res = await fetch('/admin/api/performance');
         const metrics = await res.json();
 
-        // Update values
+        // Update values with better formatting
         document.getElementById('cpu-usage').textContent = `${metrics.cpu.usage.toFixed(1)}%`;
         document.getElementById('memory-usage').textContent = 
           `${(metrics.memory.used / 1024 / 1024).toFixed(0)}MB`;
         document.getElementById('bot-latency').textContent = `${metrics.botLatency.toFixed(1)}ms`;
-        document.getElementById('connected-channels').textContent = metrics.connectedChannels;
+        document.getElementById('connected-channels').textContent = 
+          metrics.connectedChannels?.toString() || '0';
 
         // Update charts
         updateChart(performanceCharts.cpu, metrics.cpu.usage);

@@ -18,6 +18,7 @@ import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discord
 import { exec } from "child_process"; // For restarting bot process
 import session from 'express-session'; // Session management
 import logger from "./util/logger"; // Logging utility
+import { performanceMonitor } from "./util/performanceMonitor"; // Performance monitoring
 import path from "path"; // Path utilities
 import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics"; // Analytics
 import rateLimit from "express-rate-limit"; // Rate limiting
@@ -609,6 +610,15 @@ export const setupServer = () => {
       logger.error("Error during OAuth process:", error);
       res.status(500).send("Authentication failed");
     }
+  });
+
+  // Performance monitoring endpoint
+  app.get('/admin/api/performance', (req: Request, res: Response) => {
+    if (!isAdmin(req)) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+    const metrics = performanceMonitor.getMetrics();
+    res.json(metrics);
   });
 
   // Return configured Express app

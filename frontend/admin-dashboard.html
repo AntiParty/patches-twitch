@@ -100,11 +100,14 @@
     .main {
       flex: 1;
       background: var(--main-bg);
-      min-height: 100vh;
+      height: 100vh;
       padding: 2.5rem 2rem;
       display: flex;
       flex-direction: column;
       gap: 2rem;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-behavior: smooth;
     }
     .card {
       background: linear-gradient(to bottom right, #2a2a33, #222227);
@@ -677,6 +680,10 @@
       latency: null
     };
 
+    // Prevent too frequent chart updates
+    let lastUpdate = 0;
+    const UPDATE_THROTTLE = 2000; // 2 seconds minimum between updates
+
     const chartConfig = {
       type: 'line',
       options: {
@@ -698,7 +705,9 @@
             radius: 0
           }
         },
-        animation: false
+        animation: false,
+        resizeDelay: 100,
+        devicePixelRatio: 1
       }
     };
 
@@ -722,10 +731,20 @@
     }
 
     function updateChart(chart, value) {
+      if (!chart) return;
+      const now = Date.now();
+      if (now - lastUpdate < UPDATE_THROTTLE) return;
+      
       const data = chart.data.datasets[0].data;
       data.push(value);
       if (data.length > 20) data.shift();
-      chart.update('none');
+      
+      // Use requestAnimationFrame for smoother updates
+      requestAnimationFrame(() => {
+        chart.update('none');
+      });
+      
+      lastUpdate = now;
     }
 
     async function refreshPerformance() {
@@ -750,9 +769,42 @@
     }
 
     // Initialize performance monitoring
-    initPerformanceCharts();
-    setInterval(refreshPerformance, 5000);
-    refreshPerformance();
+    let performanceInterval;
+    
+    function startPerformanceMonitoring() {
+      if (document.hidden) return;
+      initPerformanceCharts();
+      performanceInterval = setInterval(refreshPerformance, 5000);
+      refreshPerformance();
+    }
+
+    function stopPerformanceMonitoring() {
+      if (performanceInterval) {
+        clearInterval(performanceInterval);
+        performanceInterval = null;
+      }
+      // Cleanup charts to free memory
+      Object.values(performanceCharts).forEach(chart => {
+        if (chart) {
+          chart.destroy();
+        }
+      });
+      performanceCharts = { cpu: null, memory: null, latency: null };
+    }
+
+    // Start/stop monitoring based on visibility
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopPerformanceMonitoring();
+      } else {
+        startPerformanceMonitoring();
+      }
+    });
+
+    // Start monitoring initially if page is visible
+    if (!document.hidden) {
+      startPerformanceMonitoring();
+    }
 
     // API Key Management
     const API_KEY_STORAGE = 'twitch_bot_api_key';

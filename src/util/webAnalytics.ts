@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
+import { AnalyticsDay, metricsDbReady } from '@/dbMetrics';
 
 type DailyStats = {
   totalRequests: number;
@@ -23,17 +24,17 @@ function getDayKey(date = new Date()): string {
   return date.toISOString().slice(0, 10);
 }
 
-function reviveHistory(raw: any): Record<string, DailyStats> {
+function reviveHistory(raw: Record<string, any>): Record<string, DailyStats> {
   const revived: Record<string, DailyStats> = {};
-  for (const [day, data] of Object.entries(raw)) {
+  for (const [day, data] of Object.entries(raw) as [string, any][]) {
     revived[day] = {
-      totalRequests: data.totalRequests,
-      perRoute: data.perRoute,
-      uniqueIps: new Set(data.uniqueIps), // restore Set
-      responseTimes: data.responseTimes?.slice(-1000) || [], // trim to last 1k
-      statusCodes: data.statusCodes,
-      userAgents: data.userAgents,
-      referrers: data.referrers,
+      totalRequests: data.totalRequests || 0,
+      perRoute: (data.perRoute as Record<string, number>) || {},
+      uniqueIps: new Set<string>(Array.isArray(data.uniqueIps) ? data.uniqueIps : []), // restore Set
+      responseTimes: Array.isArray(data.responseTimes) ? data.responseTimes.slice(-1000) : [], // trim to last 1k
+      statusCodes: (data.statusCodes as Record<number, number>) || {},
+      userAgents: (data.userAgents as Record<string, number>) || {},
+      referrers: (data.referrers as Record<string, number>) || {},
     };
   }
   return revived;
@@ -82,6 +83,30 @@ export function loadAnalytics() {
       console.error("[analytics] Failed to load:", e);
     }
   }
+
+  // Also load from DB and merge (DB wins for same day)
+  metricsDbReady.then(async () => {
+    try {
+      const rows = await AnalyticsDay.findAll();
+      for (const row of rows) {
+        const day = row.get('day') as string;
+        const stats: DailyStats = {
+          totalRequests: (row.get('totalRequests') as number) || 0,
+          perRoute: JSON.parse((row.get('perRoute') as string) || '{}'),
+          uniqueIps: new Set<string>(JSON.parse((row.get('rawUniqueIps') as string) || '[]')),
+          responseTimes: [], // raw responseTimes are not persisted
+          statusCodes: JSON.parse((row.get('statusCodes') as string) || '{}'),
+          userAgents: JSON.parse((row.get('userAgents') as string) || '{}'),
+          referrers: JSON.parse((row.get('referrers') as string) || '{}'),
+        };
+        // Prefer DB value over disk file
+        history[day] = stats;
+      }
+      console.log('[analytics] Merged analytics from DB');
+    } catch (err) {
+      console.error('[analytics] Failed to load analytics from DB:', err);
+    }
+  }).catch(()=>{/* ignore ready err */});
 }
 
 export function saveAnalytics(force = false) {
@@ -99,6 +124,31 @@ export function saveAnalytics(force = false) {
   } catch (e) {
     console.error("[analytics] Failed to save:", e);
   }
+
+  // Persist per-day summaries into DB (non-blocking)
+  metricsDbReady.then(async () => {
+    try {
+      const upserts = [];
+      for (const [day, stats] of Object.entries(history)) {
+        const summary = summarizeDay(stats);
+        upserts.push(AnalyticsDay.upsert({
+          day,
+          totalRequests: summary.totalRequests,
+          perRoute: JSON.stringify(summary.perRoute || {}),
+          uniqueVisitors: summary.uniqueVisitors,
+          avgResponseTimeMs: summary.avgResponseTimeMs,
+          p95ResponseTimeMs: summary.p95ResponseTimeMs,
+          statusCodes: JSON.stringify(summary.statusCodes || {}),
+          userAgents: JSON.stringify(summary.topUserAgents || {}),
+          referrers: JSON.stringify(summary.topReferrers || {}),
+          rawUniqueIps: JSON.stringify(Array.from(stats.uniqueIps || []))
+        }));
+      }
+      await Promise.all(upserts);
+    } catch (err) {
+      console.error('[analytics] Failed to persist analytics to DB:', err);
+    }
+  }).catch(()=>{/* ignore ready err */});
 }
 
 // Auto-save every minute

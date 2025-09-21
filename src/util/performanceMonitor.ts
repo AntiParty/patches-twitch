@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import os from 'os';
+import { PerformanceMetric, metricsDbReady } from '@/dbMetrics';
 
 export interface PerformanceMetrics {
   cpu: {
@@ -73,6 +74,27 @@ class PerformanceMonitor extends EventEmitter {
     };
 
     this.emit('metrics', this.metrics);
+    // Persist a simplified metric row to the metrics DB (fire-and-forget)
+    metricsDbReady.then(() => {
+      try {
+        PerformanceMetric.create({
+          timestamp: new Date(this.metrics.lastUpdate),
+          cpuUsage: this.metrics.cpu.usage,
+          loadAvg: JSON.stringify(this.metrics.cpu.loadAvg || []),
+          memoryTotal: this.metrics.memory.total,
+          memoryUsed: this.metrics.memory.used,
+          heapUsed: this.metrics.memory.heapUsed,
+          heapTotal: this.metrics.memory.heapTotal,
+          botLatencyMs: this.metrics.botLatency,
+          connectedChannels: this.metrics.connectedChannels || 0,
+          extra: null
+        }).catch(err => {
+          console.error('[metrics-db] Failed to save performance metric:', err);
+        });
+      } catch (err) {
+        console.error('[metrics-db] Unexpected error saving metric:', err);
+      }
+    }).catch(()=>{/* ignore ready error */});
   }
 
   public getMetrics(): PerformanceMetrics {

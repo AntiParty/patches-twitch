@@ -566,6 +566,18 @@
     </div>
   </div>
   <main class="main">
+    <section id="user-dashboard-toggle">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">User Dashboard Access</h2>
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label for="user-dashboard-switch" style="font-weight:500;">Enable user dashboard for all users:</label>
+          <input type="checkbox" id="user-dashboard-switch" style="margin-left:1rem;transform:scale(1.3);vertical-align:middle;">
+          <span id="user-dashboard-status" style="margin-left:1rem;font-weight:500;"></span>
+        </div>
+      </div>
+    </section>
     <section id="performance">
       <div class="card">
         <div class="card-header">
@@ -837,6 +849,38 @@
   </main>
 
   <script>
+    // User dashboard access toggle
+    async function fetchUserDashboardAccess() {
+      try {
+        const res = await fetch('/admin/api/user-dashboard-access');
+        const data = await res.json();
+        const checkbox = document.getElementById('user-dashboard-switch');
+        const status = document.getElementById('user-dashboard-status');
+        checkbox.checked = !!data.enabled;
+        status.textContent = data.enabled ? "Enabled" : "Disabled";
+        status.style.color = data.enabled ? "#43a047" : "#e53935";
+      } catch {
+        document.getElementById('user-dashboard-status').textContent = "Error";
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchUserDashboardAccess();
+      document.getElementById('user-dashboard-switch').addEventListener('change', async function() {
+        const enabled = this.checked;
+        try {
+          const res = await fetch('/admin/api/user-dashboard-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+          });
+          const data = await res.json();
+          fetchUserDashboardAccess();
+        } catch {
+          document.getElementById('user-dashboard-status').textContent = "Error updating";
+        }
+      });
+    });
     // Performance monitoring
     let performanceCharts = {
       cpu: null,

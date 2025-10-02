@@ -12,7 +12,7 @@ console.log('Using SQLite: true (forced)');
 
 const dataDir = path.resolve(__dirname, '../data');
 if (!fs.existsSync(dataDir)) {
-  fs.mkdir(dataDir, {recursive: true});
+  fs.mkdirSync(dataDir, { recursive: true });
 }
 
 const sequelize = new Sequelize({
@@ -25,6 +25,15 @@ const sequelize = new Sequelize({
 class Channel extends Model {}
 
 // Custom command response model
+// Utility functions for custom responses
+async function getCustomResponse(channel: string, command: string): Promise<string | null> {
+  const row = await CustomResponse.findOne({ where: { channel, command } });
+  return row ? row.get('response') as string : null;
+}
+
+async function setCustomResponse(channel: string, command: string, response: string): Promise<void> {
+  await CustomResponse.upsert({ channel, command, response });
+}
 class CustomResponse extends Model {}
 CustomResponse.init(
   {
@@ -52,15 +61,8 @@ CustomResponse.init(
   }
 );
 
-async function getCustomResponse(channel: string, command: string): Promise<string | null> {
-  const row = await CustomResponse.findOne({ where: { channel, command } });
-  return row ? row.get('response') as string : null;
-}
-
-async function setCustomResponse(channel: string, command: string, response: string): Promise<void> {
-  await CustomResponse.upsert({ channel, command, response });
-}
-
+// StreamSession model
+class StreamSession extends Model {}
 Channel.init(
   {
     username: {
@@ -95,10 +97,21 @@ Channel.init(
     sequelize,
     modelName: 'Channel',
     tableName: 'Channels',
+    hooks: {
+      afterCreate: async (channel: Channel) => {
+        const allowed = ['rank', 'record', 'peak'];
+        const username = channel.get('username');
+        for (const cmd of allowed) {
+          await CustomResponse.findOrCreate({
+            where: { channel: username, command: cmd },
+            defaults: { response: '' }
+          });
+        }
+      }
+    }
   }
 );
-
-class StreamSession extends Model {}
+// ...existing code...
 StreamSession.init(
   {
     channel: {

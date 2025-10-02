@@ -92,7 +92,7 @@ export const execute = async (ctx: CommandContext) => {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
     if (!channelInstance?.player_id?.trim()) {
       await ctx.say(
-        `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234 @reply-parent-msg-id=${messageId}`
+        `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`
       );
       return;
     }

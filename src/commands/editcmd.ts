@@ -14,35 +14,36 @@ export const execute = async (
   ctx: CommandContext,
   _channel: string,
   _message: string,
+  tags: Record<string, any>,
   args: string[]
 ) => {
   try {
     const sanitizedChannel = ctx.channel.replace(/^#/, '');
-    const username = ctx.tags?.['display-name'] || ctx.user || 'user';
+  const username = tags?.['display-name'] || ctx.user || 'user';
 
     // Permission check
     const usernameLower = username.toLowerCase();
     const sanitizedChannelLower = sanitizedChannel.toLowerCase();
     if (
       usernameLower !== sanitizedChannelLower &&
-      !ctx.tags?.['badges']?.moderator &&
+      !tags?.['badges']?.moderator &&
       usernameLower !== 'antiparty'
     ) {
       await ctx.say(`@${username}, you do not have permission to run this command.`);
       return;
     }
 
-    if (!args || args.length < 1) {
+    if (!Array.isArray(args) || args.length < 1 || args[0] == null) {
       await ctx.say(`@${username}, usage: !editcmd <command> [response]`);
       return;
     }
 
-    let cmd = args[0].toLowerCase();
+    let cmd = String(args[0]).toLowerCase();
     if (cmd.startsWith('!')) cmd = cmd.slice(1);
-  const allowedCommands = ['rank', 'record', 'peak'];
+    const allowedCommands = ['rank', 'record', 'peak'];
 
     if (!allowedCommands.includes(cmd)) {
-      await ctx.say(`@${username}, you can only edit !rank and !record commands.`);
+      await ctx.say(`@${username}, you can only edit !rank, !record, and !peak commands.`);
       return;
     }
 
@@ -63,7 +64,7 @@ export const execute = async (
     }
   } catch (error) {
     logger.error('Error executing editcmd:', error);
-    const displayName = ctx.tags?.['display-name'] || ctx.user || 'user';
+  const displayName = tags?.['display-name'] || ctx.user || 'user';
     await ctx.say(`@${displayName}, there was an error executing the command.`);
   }
 };

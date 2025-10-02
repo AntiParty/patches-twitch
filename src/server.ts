@@ -1,10 +1,8 @@
-
 // --- Environment Setup ---
 import * as dotenv from "dotenv";
 // Load environment file based on NODE_ENV as early as possible
 const envFile = process.env.NODE_ENV === "production" ? ".env" : ".env";
 dotenv.config({ path: require('path').resolve(__dirname, "..", envFile) });
-
 
 // --- Core Imports ---
 import fs from 'fs'; // File system operations
@@ -32,6 +30,9 @@ const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim()
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
 // Session secret for admin panel
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_secret';
+
+// --- Global User Dashboard Access Toggle ---
+let userDashboardEnabled = true; // Default: enabled
 
 // CSRF protection middleware for admin routes
 const csrfProtection = csrf();
@@ -319,6 +320,102 @@ export const setupServer = () => {
     }
   });
 
+  // User API: disconnect/un-auth bot/service and delete from DB
+  app.post('/api/disconnect-bot', async (req: any, res: any) => {
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const username = req.session.twitchUsername;
+    try {
+      // Cache user object before deletion
+      const user = await Channel.findOne({ where: { username } });
+
+      // Notify bot process to remove channel and disconnect EventSub WebSocket FIRST
+      try {
+        const twitchUserId = (user as any)?.twitch_user_id;
+        if (twitchUserId) {
+          await axios.post('http://localhost:4000/remove-channel', {
+            twitch_user_id: twitchUserId,
+            username,
+          });
+          logger.info(`[dashboard] Bot notified to remove channel: ${username} (${twitchUserId})`);
+        } else {
+          logger.warn(`[dashboard] No twitch_user_id found for ${username}, skipping bot removal.`);
+        }
+      } catch (botErr) {
+        logger.error(`[dashboard] Error notifying bot to remove channel for ${username}:`, botErr);
+      }
+
+      // NOW Remove channel from DB
+      await Channel.destroy({ where: { username } });
+
+      // Remove all custom responses for this user
+      try {
+        const { CustomResponse } = await import('./db');
+        await CustomResponse.destroy({ where: { channel: username } });
+        logger.info(`[dashboard] Deleted custom responses for ${username}`);
+      } catch (customErr) {
+        logger.error(`[dashboard] Error deleting custom responses for ${username}:`, customErr);
+      }
+
+      // Delete all EventSub subscriptions for this user
+      try {
+        const accessToken = (user as any)?.access_token;
+        if (accessToken) {
+          const subsResp = await axios.get('https://api.twitch.tv/helix/eventsub/subscriptions', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Client-ID': clientId,
+            }
+          });
+          const subs = subsResp.data.data || [];
+          for (const sub of subs) {
+            await axios.delete(`https://api.twitch.tv/helix/eventsub/subscriptions?id=${sub.id}`, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Client-ID': clientId,
+              }
+            });
+          }
+          logger.info(`[dashboard] Deleted ${subs.length} EventSub subscriptions for ${username}`);
+        } else {
+          logger.warn(`[dashboard] No access token found for ${username}, skipping EventSub deletion.`);
+        }
+      } catch (eventsubErr) {
+        logger.error(`[dashboard] Error deleting EventSub subscriptions for ${username}:`, eventsubErr);
+      }
+
+      // Optionally: destroy session
+      req.session.destroy(() => {});
+      logger.info(`[dashboard] ${username} disconnected and deleted their bot/service.`);
+      res.json({ success: true });
+    } catch (err) {
+      logger.error('Error disconnecting bot/service:', err);
+      res.status(500).json({ error: 'Failed to disconnect.' });
+    }
+  });
+
+  // User API: get custom commands for dashboard
+  app.get('/api/my-commands', async (req: any, res: any) => {
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    try {
+      const username = req.session.twitchUsername;
+      // Fetch all custom responses for this user
+      const commands = await (await import('./db')).CustomResponse.findAll({
+        where: { channel: username },
+        attributes: ['command', 'response']
+      });
+      // Format for dashboard
+      const formatted = commands.map((c: any) => ({ name: c.command, response: c.response }));
+      res.json({ commands: formatted });
+    } catch (err) {
+      logger.error('Error fetching custom commands:', err);
+      res.status(500).json({ error: 'Failed to fetch commands.' });
+    }
+  });
+
   // Admin API: restart bot process via PM2
   app.post("/admin/api/restart-bot", async (req: any, res: any) => {
     try {
@@ -343,28 +440,27 @@ export const setupServer = () => {
   app.get('/admin/api/commands', async (req: any, res: any) => {
     try {
       const cmds = await Channel.findAll({ attributes: ['custom_commands'] });
-      let allCmds = [];
-      for (const row of cmds) {
-        if (row.custom_commands) {
+      let allCmds: string[] = [];
+      for (const c of cmds) {
+        if (Array.isArray(c.custom_commands)) {
+          allCmds.push(...c.custom_commands);
+        } else if (typeof c.custom_commands === 'string') {
           try {
-            const parsed = JSON.parse(row.custom_commands);
-            allCmds = allCmds.concat(parsed);
-          } catch { }
+            const parsed = JSON.parse(c.custom_commands);
+            if (Array.isArray(parsed)) {
+              allCmds.push(...parsed);
+            }
+          } catch (e) {
+            // ignore parse errors
+          }
         }
       }
-      res.json(allCmds);
-    } catch {
-      res.json([]);
+      res.json({ commands: allCmds });
+    } catch (err) {
+      logger.error('Error fetching custom commands:', err);
+      res.status(500).json({ error: 'Failed to fetch commands.' });
     }
   });
-  // Admin API: delete a custom command (stub)
-  app.delete('/admin/api/commands/:name', async (req: any, res: any) => {
-    res.json({ ok: true });
-  });
-
-  // About page
-  app.get("/about", (req, res) => res.send("About page"));
-
   // Apply rate limiting to /callback
   app.use("/callback", authLimiter);
 
@@ -466,8 +562,19 @@ export const setupServer = () => {
   });
 
   // Main landing page
-  app.get("/", (req: Request, res: Response) => {
-    res.sendFile(path.join(frontendPath, "index.html"));
+  app.get("/", (req: any, res: any) => {
+    // Check if user is authed and session is recent (within 7 days)
+    let isAuthed = false;
+    if (
+      req.session &&
+      req.session.isUser &&
+      req.session.twitchUsername &&
+      req.session.loginTime &&
+      (Date.now() - req.session.loginTime < 7 * 24 * 60 * 60 * 1000)
+    ) {
+      isAuthed = true;
+    }
+    res.render("index", { isAuthed });
   });
 
   // API: list all users/channels
@@ -582,6 +689,12 @@ export const setupServer = () => {
         token_expires_at: expirationTime,
         twitch_user_id: twitchUserId,
       });
+      // Store user info in session
+      if (req.session) {
+        req.session.isUser = true;
+        req.session.twitchUserId = twitchUserId;
+        req.session.twitchUsername = twitchUsername;
+      }
       // Notify bot process to start this user
       try {
         await axios.post("http://localhost:4000/add-channel", {
@@ -598,18 +711,63 @@ export const setupServer = () => {
       const minutes = Math.floor((timeLeftMs % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((timeLeftMs % (1000 * 60)) / 1000);
       logger.info(`[Callback] ${twitchUsername} authenticated. Token expires in ${hours}h ${minutes}m ${seconds}s`);
-      // Send confirmation page
-      res.render("auth", {
-        title: "Twitch Authenticated",
-        logoPath: "/assets/logo.png",
-        username: twitchUsername,
-        botUsername: "FinalsRR",
-      });
+      // Redirect to user dashboard after successful authentication
+      res.redirect("/dashboard");
     } catch (error) {
       apiErrorCounter.inc({ endpoint: "/callback" });
       logger.error("Error during OAuth process:", error);
       res.status(500).send("Authentication failed");
     }
+  });
+  // User dashboard route
+  app.get("/dashboard", async (req: any, res: any) => {
+    if (!userDashboardEnabled) {
+      // Render auth.ejs with a message about dashboard being disabled
+      return res.render("auth", {
+        title: "Dashboard Disabled",
+        logoPath: "/assets/logo.png",
+        username: req.session?.twitchUsername || "",
+        botUsername: "FinalsRR",
+        message: "User dashboard is currently disabled by admin."
+      });
+    }
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.redirect("/login");
+    }
+    // Fetch personalized data (example: user stats)
+    let userStats = {};
+    try {
+      const user = await Channel.findOne({ where: { username: req.session.twitchUsername } });
+      if (user) {
+        userStats = {
+          username: user.username,
+          twitchUserId: user.twitch_user_id,
+          playerId: user.player_id || null,
+        };
+      }
+    } catch (err) {
+      logger.error("Error fetching user stats for dashboard:", err);
+    }
+    res.render("user-dashboard", {
+      title: "Your Dashboard",
+      logoPath: "/assets/logo.png",
+      username: req.session.twitchUsername,
+      userStats,
+    });
+  });
+  // Admin API: get/set user dashboard access
+  app.get('/admin/api/user-dashboard-access', (req: any, res: any) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Not authorized" });
+    res.json({ enabled: userDashboardEnabled });
+  });
+
+  app.post('/admin/api/user-dashboard-access', (req: any, res: any) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: "Not authorized" });
+    const { enabled } = req.body;
+    if (typeof enabled !== "boolean") return res.status(400).json({ error: "Missing or invalid 'enabled' field" });
+    userDashboardEnabled = enabled;
+    logger.info(`[Admin] Set user dashboard access to: ${enabled}`);
+    res.json({ success: true, enabled });
   });
 
   // Performance monitoring endpoint
@@ -623,4 +781,4 @@ export const setupServer = () => {
 
   // Return configured Express app
   return app;
-};
+}

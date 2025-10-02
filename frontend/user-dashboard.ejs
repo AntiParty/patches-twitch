@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>
+    <%= title %>
+  </title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --panel: #18181b;
+      --panel-light: #1f1f23;
+      --accent: #9146ff;
+      --accent-hover: #b884ff;
+      --text: #efeff1;
+      --muted: #a0a0aa;
+      --border: #2a2a2e;
+      --error: #f44336;
+      --success: #4caf50;
+      --radius: 0.75rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel);
+      padding: 0.8rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar strong {
+      color: var(--accent);
+      font-size: 1.1rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.2rem;
+    }
+
+    .nav-links a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent);
+    }
+
+    /* HEADER */
+    header {
+      max-width: 900px;
+      width: 100%;
+      margin: 2rem auto 1.5rem;
+      padding: 1.5rem;
+      background: var(--panel);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    /* MAIN */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    section {
+      background: var(--panel);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      border: 1px solid var(--border);
+    }
+
+    section h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--accent);
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    ul li {
+      padding: 0.4rem 0;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    /* COMMANDS TABLE */
+    .commands-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+    }
+
+    .commands-table th,
+    .commands-table td {
+      font-size: 0.9rem;
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .commands-table th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    .commands-table input {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      border-radius: 0.4rem;
+      border: 1px solid var(--border);
+      background: var(--panel-light);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+
+    .commands-table input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .commands-table button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.4rem;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .commands-table button:hover {
+      background: var(--accent-hover);
+    }
+
+    #command-status {
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    /* CTA BUTTONS */
+    .cta-row {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .cta-button {
+      flex: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.6rem 1.2rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+      border: none;
+      cursor: pointer;
+    }
+
+    .cta-button:hover {
+      background: var(--accent-hover);
+    }
+
+    .cta-button.danger {
+      background: var(--error);
+    }
+
+    .cta-button.danger:hover {
+      background: #e64545;
+    }
+
+    /* FOOTER */
+    .site-footer {
+      padding: 1rem 1.5rem;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .footer-nav {
+      margin-top: 0.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .footer-nav a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
+
+    .footer-nav a:hover {
+      color: var(--accent-hover);
+    }
+
+    @media (max-width: 600px) {
+
+      header,
+      main {
+        padding: 0 1rem;
+      }
+
+      section {
+        padding: 1rem;
+      }
+
+      .cta-row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <strong>FinalsRR Bot</strong>
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="https://twitter.com/AntipartyVAL" target="_blank">Twitter</a>
+      <a href="https://discord.gg/2UKzvzSEqA" target="_blank">Discord</a>
+    </nav>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <img src="<%= logoPath %>" alt="Logo" style="height:42px; border-radius:50%;">
+    <h1>Welcome, <%= username %>
+    </h1>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <!-- Stats -->
+    <section>
+      <h2>Your Info</h2>
+      <ul>
+        <li><strong>Twitch Username:</strong>
+          <%= userStats.username %>
+        </li>
+        <li><strong>Twitch User ID:</strong>
+          <%= userStats.twitchUserId %>
+        </li>
+        <li><strong>Linked Account:</strong>
+          <% if (userStats.playerId) { %>
+            <%= userStats.playerId %>
+          <% } else { %>
+            <span style="color:var(--muted)">Not linked</span>
+          <% } %>
+        </li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Edit Commands</h2>
+      <div id="commands-section">
+        <p>Loading...</p>
+      </div>
+      <div id="command-status"></div>
+
+      <ul>
+        <li>
+          To learn how to customize your commands, visit
+          <a href="https://app.antiparty.dev/docs" target="_blank">the documentation</a>.
+        </li>
+      </ul>
+    </section>
+
+    <!-- Features -->
+    <section>
+      <h2>Coming Soon</h2>
+      <ul>
+        <li>⚡ Target rank Goal (Calculates how far away)</li>
+      </ul>
+    </section>
+
+    <!-- CTA -->
+    <div class="cta-row">
+      <a href="/" class="cta-button">Back to Home</a>
+      <button class="cta-button danger" id="disconnect-btn">Disconnect Bot</button>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <p>© 2025 FinalsRR. Third-party project, not affiliated with Embark Studios.</p>
+    <nav class="footer-nav">
+      <a href="/">Home</a>
+      <a href="https://twitter.com/AntipartyVAL">Twitter</a>
+      <a href="https://discord.gg/2UKzvzSEqA">Discord</a>
+    </nav>
+  </footer>
+
+  <!-- JS -->
+  <script>
+    async function fetchCommands() {
+      const section = document.getElementById('commands-section');
+      section.innerHTML = '<p>Loading...</p>';
+      try {
+        const res = await fetch('/api/my-commands');
+        const data = await res.json();
+        if (!data.commands) {
+          section.innerHTML = '<p>No custom commands found.</p>';
+          return;
+        }
+        const allowed = ['rank', 'record', 'peak'];
+        let html = '<table class="commands-table"><tr><th>Command</th><th>Response</th><th></th></tr>';
+        for (const cmd of allowed) {
+          const found = data.commands.find(c => c.name === cmd);
+          html += `<tr>
+            <td>!${cmd}</td>
+            <td><input type="text" id="cmd-${cmd}" value="${found ? found.response : ''}" /></td>
+            <td><button onclick="saveCommand('${cmd}')">Save</button></td>
+          </tr>`;
+        }
+        html += '</table>';
+        section.innerHTML = html;
+      } catch {
+        section.innerHTML = '<p style="color:var(--error)">Error loading commands.</p>';
+      }
+    }
+
+    async function saveCommand(cmd) {
+      const input = document.getElementById('cmd-' + cmd);
+      const status = document.getElementById('command-status');
+      status.textContent = '';
+      try {
+        const res = await fetch('/api/my-commands', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: cmd, response: input.value })
+        });
+        const data = await res.json();
+        if (data.success) {
+          status.style.color = 'var(--success)';
+          status.textContent = `Saved !${cmd}`;
+        } else {
+          status.style.color = 'var(--error)';
+          status.textContent = data.error || 'Failed to save.';
+        }
+      } catch {
+        status.style.color = 'var(--error)';
+        status.textContent = 'Error saving command.';
+      }
+    }
+
+    // Disconnect logic
+    document.getElementById('disconnect-btn').addEventListener('click', function () {
+      if (window.confirm('Are you sure you want to disconnect and remove your bot/service? This cannot be undone.')) {
+        disconnectBot();
+      }
+    });
+
+    async function disconnectBot() {
+      const status = document.getElementById('command-status');
+      status.textContent = '';
+      try {
+        const res = await fetch('/api/disconnect-bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          status.style.color = 'var(--success)';
+          status.textContent = 'Bot/service disconnected and removed.';
+          setTimeout(() => { window.location.href = '/'; }, 1500);
+        } else {
+          status.style.color = 'var(--error)';
+          status.textContent = data.error || 'Failed to disconnect.';
+        }
+      } catch {
+        status.style.color = 'var(--error)';
+        status.textContent = 'Error disconnecting.';
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', fetchCommands);
+  </script>
+</body>
+
+</html>

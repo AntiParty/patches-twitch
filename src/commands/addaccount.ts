@@ -66,22 +66,22 @@ export const execute = async (
     if (!channelInstance) {
       try {
         await Channel.create({ username: sanitizedChannel, player_id: playerId });
-        await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`);
+        await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`, ctx.tags?.["id"]);
       } catch (err: any) {
         if (err.name === 'SequelizeUniqueConstraintError') {
-          await sendReply(ctx, 'this channel is already registered.');
+          await sendReply(ctx, 'this channel is already registered.',  ctx.tags?.["id"]);
         } else {
           logger.error('Error creating channel:', err);
-          await sendReply(ctx, 'there was an error linking your account.');
+          await sendReply(ctx, 'there was an error linking your account.',  ctx.tags?.["id"]);
         }
       }
     } else {
       await channelInstance.update({ player_id: playerId });
-      await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`);
+      await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`,  ctx.tags?.["id"]);
     }
   } catch (error) {
     logger.error('Error executing command:', error);
-    await sendReply(ctx, 'there was an error executing the command.');
+    await sendReply(ctx, 'there was an error executing the command.',  ctx.tags?.["id"]);
   }
 };
 

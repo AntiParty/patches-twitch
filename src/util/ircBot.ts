@@ -172,13 +172,13 @@ export const startChatBot = async (
 
         commandEntry(
           {
-            say: async (msg: string) => {
+            say: async (msg: string, replyToId: string) => {
               if (!broadcasterId) {
                 logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
                 return;
               }
               logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
-              await sendChatMessage(broadcasterId, msg);
+              await sendChatMessage(broadcasterId, msg, replyToId);
             },
             raw: (line: string) =>
               socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),

@@ -28,6 +28,11 @@ Type this in chat:
 *Now, when someone uses `!rank`, your bot will reply with that message, filling in the details for each user!*
 
 
+
+## Replies to Messages
+
+When your bot responds to a command (including custom messages), it will reply directly to the user's message in chat (if supported by the platform). This keeps conversations organized and makes it clear who the bot is responding to.
+
 You can use these special words in curly braces, and the bot will fill them in:
 
 - `{username}` — The user’s name

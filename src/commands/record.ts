@@ -5,7 +5,7 @@ import { Channel, StreamSession, getCustomResponse } from "../db";
 import { getStreamStatusWithAutoRefresh } from "../util/twitchUtils";
 
 export interface CommandContext {
-  say: (message: string) => Promise<void>;
+  say: (message: string, replyToId?: string) => Promise<void>;
   raw: (line: string) => void;
   user: string;
   channel: string;
@@ -95,7 +95,8 @@ export const execute = async (
     const playerId = channelInstance?.player_id;
     if (!playerId) {
       await ctx.say(
-        `@${username}, no linked THE FINALS account. Use !link FinalsName#1234`
+        `@${username}, no linked THE FINALS account. Use !link FinalsName#1234`,
+        ctx.tags?.["id"]
       );
       return;
     }
@@ -103,7 +104,7 @@ export const execute = async (
     // 2. Check stream status
     const streamStatus = await getStreamStatusWithAutoRefresh(sanitizedChannel);
     if (!streamStatus?.isLive) {
-      await ctx.say(`Stream is currently offline.`);
+      await ctx.say(`Stream is currently offline.`, ctx.tags?.["id"]);
       return;
     }
 
@@ -112,7 +113,8 @@ export const execute = async (
     const worldTourData = await getLatestWorldTourData();
     if (!cachedData && !worldTourData) {
       await ctx.say(
-        `@${username}, leaderboard data is temporarily unavailable.`
+        `@${username}, leaderboard data is temporarily unavailable.`,
+        ctx.tags?.["id"]
       );
       return;
     }
@@ -133,7 +135,8 @@ export const execute = async (
 
     if (!player && !wtPlayer) {
       await ctx.say(
-        `@${username}, you aren't currently in the Top 1000 or WT leaderboard.`
+        `@${username}, you aren't currently in the Top 1000 or WT leaderboard.`,
+        ctx.tags?.["id"]
       );
       return;
     }
@@ -146,14 +149,10 @@ export const execute = async (
     })) as any;
 
     if (!session) {
-      await StreamSession.create({
-        channel: sanitizedChannel,
-        start_score: currentScore,
-        start_wt_rank: currentWTRank,
-      });
-      let response = `@${username}, tracking started at ${currentScore.toLocaleString()} RS`;
-      if (wtPlayer) response += ` | WT rank: #${currentWTRank}`;
-      await ctx.say(response);
+      await ctx.say(
+        `@${username}, no active session found. Tracking will begin automatically when you go live and your stream is detected.`,
+        ctx.tags?.["id"]
+      );
       return;
     }
 
@@ -176,11 +175,12 @@ export const execute = async (
       response += ` | WT rank: #${currentWTRank}`;
     }
 
-    await ctx.say(response);
+  await ctx.say(response, ctx.tags?.["id"]);
   } catch (error) {
     logger.error("[record] Error in record command:", error);
     await ctx.say(
-      `@${username}, there was an error checking your session RS.`
+      `@${username}, there was an error checking your session RS.`,
+      ctx.tags?.["id"]
     );
   }
 };

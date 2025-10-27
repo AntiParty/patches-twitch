@@ -12,7 +12,7 @@ interface UserSubscription {
 
 const userWebSockets: Record<
   string,
-  { ws: WebSocket; sessionId: string | null; subscriptions: UserSubscription[] }
+  { ws: WebSocket; sessionId: string | null; subscriptions: UserSubscription[]; shouldReconnect?: boolean }
 > = {};
 
 export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
@@ -20,7 +20,8 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
     userWebSockets[userId] = {
       ws: null as unknown as WebSocket,
       sessionId: null,
-      subscriptions: []
+      subscriptions: [],
+      shouldReconnect: true
     };
 
     (async () => {
@@ -34,6 +35,7 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
     subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);
   }
 }
+
 
 async function handleStreamOnline(broadcasterName: string, broadcasterId: string) {
   try {
@@ -138,9 +140,13 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
 
   ws.on('close', () => {
     logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, reconnecting in 5s...`);
-    setTimeout(() => {
-      userWebSockets[userId].ws = createUserWebSocket(userId, accessToken);
-    }, 5000);
+    if (userWebSockets[userId]?.shouldReconnect !== false) {
+      setTimeout(() => {
+        if (userWebSockets[userId]) {
+          userWebSockets[userId].ws = createUserWebSocket(userId, accessToken);
+        }
+      }, 5000);
+    }
   });
 
   ws.on('error', err => {
@@ -182,5 +188,20 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
     } catch (err: any) {
       logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${type}:`, err.response?.data || err.message);
     }
+  }
+}
+
+
+export function removeUserWebSocket(userId: string) {
+  const wsObj = userWebSockets[userId];
+  if (wsObj) {
+    wsObj.shouldReconnect = false;
+    if (wsObj.ws && typeof wsObj.ws.close === "function") {
+      wsObj.ws.close();
+      logger.info(`[EventSubWs] Removed all subscriptions and closed WebSocket for user ${userId}`);
+    } else {
+      logger.warn(`[EventSubWs] Tried to close WebSocket for user ${userId}, but ws was not initialized or not a function`);
+    }
+    delete userWebSockets[userId];
   }
 }

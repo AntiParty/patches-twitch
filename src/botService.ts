@@ -1,7 +1,7 @@
 import { dbReady, Channel } from "./db";
 import { botManager } from "./botManager";
 import { startCacheUpdater } from "./jobs/cacheUpdater";
-import { addUserSubscription } from "./util/twitchEventSubWs";
+import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubWs";
 import logger from "./util/logger";
 import express from "express";
 
@@ -75,7 +75,9 @@ dbReady.then(async () => {
         const uname = user?.username || username;
         if (uname) {
           await botManager.stopBotForUser(uname);
+          
           // Optionally: disconnect EventSub WebSocket here if needed
+          removeUserWebSocket(user?.twitch_user_id || twitch_user_id);
           logger.info(`[ControlAPI] Removed channel and disconnected bot/EventSub for ${uname}`);
           return res.json({ success: true });
         } else {

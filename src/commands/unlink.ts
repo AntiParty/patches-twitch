@@ -1,5 +1,5 @@
 import { Channel } from '../db';
-import { stopChatBot } from '../util/bot';
+import { stopChatBot } from '../util/ircBot';
 
 interface CommandContext {
   say: (message: string) => Promise<void>;
@@ -12,12 +12,13 @@ interface CommandContext {
 
 export const execute = async (ctx: CommandContext) => {
   try {
-    const username = ctx.tags?.["display-name"] || ctx.user || "user";
+    // make username lowercase for consistency
+    const username = ctx.user.toLowerCase();
     if (!username) {
       console.error('Missing username.');
       return;
     }
-
+    // make username lowercase for consistency
     console.log(`Attempting to unlink user: ${username}`);
 
     // Remove the user's channel from the database

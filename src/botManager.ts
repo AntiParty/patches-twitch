@@ -1,8 +1,8 @@
 import { Channel } from "./db";
-import { startChatBot, stopChatBot, reconnectChatBot } from "./util/bot";
+import { startChatBot, stopChatBot, reconnectChatBot } from "./util/ircBot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
-import { sendChatMessage  } from "./util/bot"
+import { sendChatMessage  } from "./util/ircBot"
 import logger from "./util/logger";
 import axios from "axios";
 

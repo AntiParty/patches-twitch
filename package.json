@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev:server": "NODE_ENV=development bun run src/index.ts",
-    "dev:bot": "NODE_ENV=development bun run src/bot.ts",
+    "dev:bot": "NODE_ENV=development bun run src/botService.ts",
     "dev:all": "concurrently -n server,bot -c green,blue \"bun run dev:server\" \"bun run dev:bot\"",
     "start:server": "NODE_ENV=production bun run dist/index.js",
     "start:bot": "NODE_ENV=production bun run dist/bot.js",

@@ -4,7 +4,7 @@ import path from "path";
 import logger from "../util/logger";
 
 interface CommandContext {
-  say: (message: string) => Promise<void>;
+  say: (message: string, replyToId?: string) => Promise<void>;
   raw: (line: string) => void;
   user: string;
   channel: string;
@@ -92,7 +92,8 @@ export const execute = async (ctx: CommandContext) => {
     const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
     if (!channelInstance?.player_id?.trim()) {
       await ctx.say(
-        `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`
+        `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`,
+        ctx.tags?.["id"]
       );
       return;
     }
@@ -102,7 +103,7 @@ export const execute = async (ctx: CommandContext) => {
     const worldTourData = await getLatestWorldTourData();
 
     if (!regularData && !worldTourData) {
-      await ctx.say(`@${username}, leaderboard data is temporarily unavailable.`);
+      await ctx.say(`@${username}, leaderboard data is temporarily unavailable.`, ctx.tags?.["id"]);
       return;
     }
 
@@ -142,10 +143,10 @@ export const execute = async (ctx: CommandContext) => {
       response += `not found on regular or World Tour leaderboards.`;
     }
 
-    await ctx.say(response);
+  await ctx.say(response, ctx.tags?.["id"]);
   } catch (err) {
     logger.error("[rank] Error executing command:", err);
-    await ctx.say(`@${username}, something went wrong fetching your rank.`);
+  await ctx.say(`@${username}, something went wrong fetching your rank.`, ctx.tags?.["id"]);
   }
 };
 

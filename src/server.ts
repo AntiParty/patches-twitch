@@ -12,7 +12,7 @@ import express, { Request, Response } from "express"; // Web server
 import client from 'prom-client'; // Prometheus metrics
 import axios from "axios"; // HTTP requests
 import { Channel, dbReady } from "@/db"; // Database model
-import { sendMessageToDiscord, sendChangelogToDiscord } from "./handlers/discordHandler"; // Discord integration
+import { sendMessageToDiscord, sendChangelogToDiscord, sendInfoToDiscord } from "./handlers/discordHandler"; // Discord integration
 import { exec } from "child_process"; // For restarting bot process
 import session from 'express-session'; // Session management
 import logger from "./util/logger"; // Logging utility
@@ -117,10 +117,9 @@ const apiErrorCounter = new client.Counter({
 // Limit requests to /callback for security
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 10,
   message: "Too many requests, please try again later.",
 });
-
 
 // --- Twitch OAuth Helper ---
 // Generates Twitch OAuth URL for user login
@@ -130,7 +129,6 @@ const getAuthUrl = () => {
   );
   return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${getRedirectUri()}&response_type=code&scope=${scope}&force_verify=true`;
 };
-
 
 // --- Stats Export Helper ---
 // Writes current stats to stats.json
@@ -416,6 +414,41 @@ export const setupServer = () => {
     }
   });
 
+  // User API: update or create a custom command for dashboard
+  app.post('/api/my-commands', async (req: any, res: any) => {
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    try {
+      const username = req.session.twitchUsername;
+      const { name, response } = req.body;
+      // Basic validation
+      if (!name || typeof name !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+        return res.status(400).json({ error: 'Invalid command name.' });
+      }
+      if (typeof response !== 'string' || response.length > 500) {
+        return res.status(400).json({ error: 'Invalid or too long response.' });
+      }
+      // Only allow certain commands to be customized
+      const allowed = ['rank', 'record', 'peak'];
+      if (!allowed.includes(name)) {
+        return res.status(403).json({ error: 'Not allowed to edit this command.' });
+      }
+      const { CustomResponse } = await import('./db');
+      // Upsert (update or create) the custom response
+      const [cmd, created] = await CustomResponse.upsert({
+        channel: username,
+        command: name,
+        response
+      });
+      logger.info(`[dashboard] ${username} ${created ? 'created' : 'updated'} custom command: ${name}`);
+      res.json({ success: true });
+    } catch (err) {
+      logger.error('Error saving custom command:', err);
+      res.status(500).json({ error: 'Failed to save command.' });
+    }
+  });
+
   // Admin API: restart bot process via PM2
   app.post("/admin/api/restart-bot", async (req: any, res: any) => {
     try {
@@ -439,25 +472,17 @@ export const setupServer = () => {
   // Admin API: list all custom commands
   app.get('/admin/api/commands', async (req: any, res: any) => {
     try {
-      const cmds = await Channel.findAll({ attributes: ['custom_commands'] });
-      let allCmds: string[] = [];
-      for (const c of cmds) {
-        if (Array.isArray(c.custom_commands)) {
-          allCmds.push(...c.custom_commands);
-        } else if (typeof c.custom_commands === 'string') {
-          try {
-            const parsed = JSON.parse(c.custom_commands);
-            if (Array.isArray(parsed)) {
-              allCmds.push(...parsed);
-            }
-          } catch (e) {
-            // ignore parse errors
-          }
-        }
-      }
-      res.json({ commands: allCmds });
+      const { CustomResponse } = await import ('./db');
+      const commands = await CustomResponse.findAll({ attributes: ['channel', 'command', 'response']});
+
+      const formatted = commands.map((c: any) => ({
+        channel: c.channel,
+        command: c.command,
+        response: c.response
+      }));
+      res.json({ commands: formatted});
     } catch (err) {
-      logger.error('Error fetching custom commands:', err);
+      logger.error('Error fetching all custom commands:', err);
       res.status(500).json({ error: 'Failed to fetch commands.' });
     }
   });
@@ -702,6 +727,7 @@ export const setupServer = () => {
           username: twitchUsername,
         });
         logger.info(`[Callback] Bot notified to add channel: ${twitchUsername} (${twitchUserId})`);
+        sendInfoToDiscord(`User authenticated: ${twitchUsername} (${twitchUserId})`);
       } catch (notifyError) {
         logger.error(`[Callback] Failed to notify bot for ${twitchUsername}:`, notifyError);
       }

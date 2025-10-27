@@ -1,4 +1,4 @@
-import { stopChatBot, clients } from '../util/bot';
+import { stopChatBot, clients } from '../util/ircBot';
 import logger from '../util/logger';
 
 interface CommandContext {

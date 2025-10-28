@@ -48,62 +48,38 @@ export class BotManager {
       logger.error(`No refresh token for ${username}`);
       return;
     }
-
     try {
-      logger.info(`[${username}] Refreshing access token...`);
-      const response = await axios.post(
-        "https://id.twitch.tv/oauth2/token",
-        null,
-        {
-          params: {
-            client_id: clientId,
-            client_secret: clientSecret,
-            refresh_token: refreshToken,
-            grant_type: "refresh_token",
-          },
-        }
-      );
-
-      const {
-        access_token,
-        refresh_token: newRefreshToken,
-        expires_in,
-      } = response.data;
-
-      const newExpirationTime = new Date(
-        new Date().getTime() + expires_in * 1000
-      );
-      
-      await Channel.update(
-        {
-          access_token,
-          refresh_token: newRefreshToken,
-          token_expires_at: newExpirationTime,
-        },
-        { where: { username } }
-      );
-
-      logger.info(
-        `[${username}] Token refreshed. Expires in ${expires_in / 60} minutes.`
-      );
-      
+      logger.info(`[${username}] Refreshing access token (via twitchUtils)...`);
+      const channel = await Channel.findOne({ where: { username } });
+      if (!channel) {
+        logger.error(`No channel found for ${username}`);
+        return;
+      }
+      channel.refresh_token = refreshToken;
+      const newAccessToken = await require("./util/twitchUtils").refreshAccessToken(channel);
+      if (!newAccessToken) {
+        logger.error(`[${username}] Token refresh failed (via twitchUtils)`);
+        // Retry handled by twitchUtils, so no need to retry here
+        return;
+      }
+      // Update token refresh timer
+      const expiresIn = channel.token_expires_at
+        ? new Date(channel.token_expires_at).getTime() - new Date().getTime()
+        : 3600 * 1000;
       this.scheduleTokenRefresh(
         username,
-        newRefreshToken,
-        expires_in * 1000 - 5 * 60 * 1000
+        channel.refresh_token,
+        expiresIn - 5 * 60 * 1000
       );
-      
       // Reconnect bot with fresh token
       const freshCommandHandler = loadCommands();
       await reconnectChatBot(username, freshCommandHandler);
       logger.info(`[${username}] Bot reconnected after token refresh.`);
-      
-      tokenRefreshFailures[username] = 0; // Reset on success
+      tokenRefreshFailures[username] = 0;
     } catch (error) {
       tokenRefreshFailures[username] = (tokenRefreshFailures[username] || 0) + 1;
-      logger.error(`[${username}] Token refresh failed:`, error);
-      logger.info("Retrying in 1 minute...");
-      setTimeout(() => this.refreshTokenFunction(username, refreshToken), 60 * 1000);
+      logger.error(`[${username}] Token refresh failed (exception):`, error);
+      // Retry handled by twitchUtils, so no need to retry here
     }
   }
 

@@ -489,7 +489,7 @@ export const setupServer = () => {
     }
   });
   // Apply rate limiting to /callback
-  app.use("/callback", authLimiter);
+  app.use("/callback",);
 
   // Prometheus metrics endpoint
   app.get("/analytics", (req, res) => {

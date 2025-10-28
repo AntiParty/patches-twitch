@@ -171,8 +171,11 @@ export const refreshAccessToken = async (channel: any) => {
     return null;
   }
   if (refreshRetries[username] && refreshRetries[username] >= MAX_REFRESH_RETRIES) {
-    console.error(`[${username}] Max token refresh retries reached, will not retry again.`);
-    return null;
+     console.error(`[${username}] Max token refresh retries reached, will not retry again for 10 minutes.`);
+     setTimeout(() => {
+      refreshRetries[username] = 0;
+     }, 10 * 60 * 1000); // 10 minute cooldown
+     return null;
   }
   refreshLocks[username] = true;
   refreshRetries[username] = (refreshRetries[username] || 0) + 1;
@@ -194,6 +197,13 @@ export const refreshAccessToken = async (channel: any) => {
       const errorDetails = await response.text();
       console.error(`[${username}] Token refresh failed: ${response.statusText}`);
       console.error(`[${username}] Error details: ${errorDetails}`);
+      // If error is unrecoverable (400), disable further retries
+      if (response.status === 400) {
+        console.error(`[${username}] Received 400 (invalid grant). Disabling further retries until manual re-authentication.`);
+        refreshLocks[username] = false;
+        refreshRetries[username] = MAX_REFRESH_RETRIES;
+        return null;
+      }
       // Notify user via Discord
       try {
         const { sendDiscordAlert } = require('../handlers/discordHandler');

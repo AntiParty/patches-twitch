@@ -169,10 +169,18 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
       });
     } catch {
       if (!warnedInvalidToken) {
-        logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required.`);
+        logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required. Disabling reconnect.`);
         warnedInvalidToken = true;
+        // Disable reconnect for this user
+        if (userWebSockets[userId]) {
+          userWebSockets[userId].shouldReconnect = false;
+          if (userWebSockets[userId].ws && typeof userWebSockets[userId].ws.close === 'function') {
+            userWebSockets[userId].ws.close();
+          }
+        }
+        // Optionally, notify user to re-authenticate here
       }
-      continue;
+      break; // Stop further attempts for this user
     }
 
     try {

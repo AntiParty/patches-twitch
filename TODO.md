@@ -1,5 +1,3 @@
-+ test going live to see if it auto-tracks RS 
-+ setup replying to users instead of just mentioning them
 + maybe !account or !connected to display what player_id is connected
 + cleanup bot.ts
 + fix landing page uptime formatting 

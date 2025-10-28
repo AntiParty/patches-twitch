@@ -155,6 +155,7 @@ let accessToken: string | null = null;
 // Per-user refresh lock and retry count
 const refreshLocks: Record<string, boolean> = {};
 const refreshRetries: Record<string, number> = {};
+const refreshDisabled: Record<string, boolean> = {};
 const MAX_REFRESH_RETRIES = 3;
 
 export const refreshAccessToken = async (channel: any) => {
@@ -166,12 +167,24 @@ export const refreshAccessToken = async (channel: any) => {
     throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
   }
 
+  if (refreshDisabled[username]) {
+    console.error(`[${username}] Token refresh permanently disabled due to repeated failures.`);
+    return null;
+  }
   if (refreshLocks[username]) {
     console.warn(`[${username}] Token refresh already in progress, skipping duplicate attempt.`);
     return null;
   }
   if (refreshRetries[username] && refreshRetries[username] >= MAX_REFRESH_RETRIES) {
-    console.error(`[${username}] Max token refresh retries reached, will not retry again.`);
+    console.error(`[${username}] Max token refresh retries reached, disabling further attempts.`);
+    refreshDisabled[username] = true;
+    // Optionally, clean up user from active bot/session lists here
+    try {
+      const { removeUserWebSocket } = require('./twitchEventSubWs');
+      removeUserWebSocket(channel.twitch_user_id || username);
+    } catch (err) {
+      console.error(`[${username}] Failed to clean up user WebSocket after max retries:`, err);
+    }
     return null;
   }
   refreshLocks[username] = true;
@@ -230,6 +243,14 @@ export const refreshAccessToken = async (channel: any) => {
         }, 60000);
       } else {
         refreshLocks[username] = false;
+        refreshDisabled[username] = true;
+        // Clean up user from active bot/session lists here
+        try {
+          const { removeUserWebSocket } = require('./twitchEventSubWs');
+          removeUserWebSocket(channel.twitch_user_id || username);
+        } catch (err) {
+          console.error(`[${username}] Failed to clean up user WebSocket after max retries:`, err);
+        }
       }
       return null;
     }
@@ -266,6 +287,14 @@ export const refreshAccessToken = async (channel: any) => {
       }, 60000);
     } else {
       refreshLocks[username] = false;
+      refreshDisabled[username] = true;
+      // Clean up user from active bot/session lists here
+      try {
+        const { removeUserWebSocket } = require('./twitchEventSubWs');
+        removeUserWebSocket(channel.twitch_user_id || username);
+      } catch (err) {
+        console.error(`[${username}] Failed to clean up user WebSocket after max retries:`, err);
+      }
     }
     return null;
   }

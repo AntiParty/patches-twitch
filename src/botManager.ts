@@ -4,7 +4,13 @@ import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
 import { sendChatMessage  } from "./util/ircBot"
 import logger from "./util/logger";
-import { refreshAccessToken } from "./util/twitchUtils";
+import axios from "axios";
+
+const clientId = process.env.TWITCH_CLIENT_ID!;
+const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
+
+const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
+const tokenRefreshFailures: { [key: string]: number } = {};
 
 export class BotManager {
   private commandHandler: any;
@@ -37,9 +43,86 @@ export class BotManager {
     }
   }
 
-  // REMOVED: refreshTokenFunction. Use refreshAccessToken from twitchUtils.ts everywhere.
+  public async refreshTokenFunction(username: string, refreshToken: string) {
+    if (!refreshToken) {
+      logger.error(`No refresh token for ${username}`);
+      return;
+    }
 
-  // REMOVED: scheduleTokenRefresh. Use centralized refresh logic and rely on token expiry checks.
+    try {
+      logger.info(`[${username}] Refreshing access token...`);
+      const response = await axios.post(
+        "https://id.twitch.tv/oauth2/token",
+        null,
+        {
+          params: {
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+            grant_type: "refresh_token",
+          },
+        }
+      );
+
+      const {
+        access_token,
+        refresh_token: newRefreshToken,
+        expires_in,
+      } = response.data;
+
+      const newExpirationTime = new Date(
+        new Date().getTime() + expires_in * 1000
+      );
+      
+      await Channel.update(
+        {
+          access_token,
+          refresh_token: newRefreshToken,
+          token_expires_at: newExpirationTime,
+        },
+        { where: { username } }
+      );
+
+      logger.info(
+        `[${username}] Token refreshed. Expires in ${expires_in / 60} minutes.`
+      );
+      
+      this.scheduleTokenRefresh(
+        username,
+        newRefreshToken,
+        expires_in * 1000 - 5 * 60 * 1000
+      );
+      
+      // Reconnect bot with fresh token
+      const freshCommandHandler = loadCommands();
+      await reconnectChatBot(username, freshCommandHandler);
+      logger.info(`[${username}] Bot reconnected after token refresh.`);
+      
+      tokenRefreshFailures[username] = 0; // Reset on success
+    } catch (error) {
+      tokenRefreshFailures[username] = (tokenRefreshFailures[username] || 0) + 1;
+      logger.error(`[${username}] Token refresh failed:`, error);
+      logger.info("Retrying in 1 minute...");
+      setTimeout(() => this.refreshTokenFunction(username, refreshToken), 60 * 1000);
+    }
+  }
+
+  private scheduleTokenRefresh(
+    username: string,
+    refreshToken: string,
+    refreshTime: number
+  ) {
+    if (refreshTimers[username]) clearTimeout(refreshTimers[username]);
+
+    if (refreshTime > 0) {
+      refreshTimers[username] = setTimeout(
+        () => this.refreshTokenFunction(username, refreshToken),
+        refreshTime
+      );
+    } else {
+      setTimeout(() => this.refreshTokenFunction(username, refreshToken), 60 * 1000);
+    }
+  }
 
   public async validateToken(
     username: string,
@@ -50,28 +133,31 @@ export class BotManager {
       const response = await axios.get("https://id.twitch.tv/oauth2/validate", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      // If token is valid, do nothing. If you want to schedule a refresh, do it via token expiry checks elsewhere.
+      const expiresIn = response.data.expires_in;
+      this.scheduleTokenRefresh(
+        username,
+        refreshToken,
+        expiresIn * 1000 - 5 * 60 * 1000
+      );
     } catch (error) {
       logger.error(`[${username}] Token validation failed. Refreshing now...`);
-      // Use centralized refresh logic
-      const channel = await Channel.findOne({ where: { username } });
-      if (channel) {
-        await refreshAccessToken(channel);
-      }
+      this.refreshTokenFunction(username, refreshToken);
     }
   }
 
   public async validateAllTokens() {
     const channels = await Channel.findAll();
+
     for (const channel of channels) {
       const { username, access_token, refresh_token, token_expires_at } = channel;
       if (access_token && refresh_token && token_expires_at) {
-        const timeLeft = new Date(token_expires_at).getTime() - new Date().getTime();
+        const timeLeft =
+          new Date(token_expires_at).getTime() - new Date().getTime();
         if (timeLeft > 0) {
           await this.validateToken(username, access_token, refresh_token);
         } else {
           logger.info(`Token for ${username} has expired. Refreshing...`);
-          await refreshAccessToken(channel);
+          await this.refreshTokenFunction(username, refresh_token);
         }
       } else {
         logger.warn(`No tokens found for ${username}, skipping...`);

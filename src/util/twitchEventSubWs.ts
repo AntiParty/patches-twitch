@@ -159,6 +159,7 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
 async function subscribeUserToEvents(userId: string, accessToken: string, broadcasterId: string, sessionId: string) {
   const eventTypes = ['stream.online', 'stream.offline'];
 
+  let warnedInvalidToken = false;
   for (const type of eventTypes) {
     let validToken = accessToken;
 
@@ -167,7 +168,10 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
         headers: { Authorization: `Bearer ${accessToken}` }
       });
     } catch {
-      logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required.`);
+      if (!warnedInvalidToken) {
+        logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required.`);
+        warnedInvalidToken = true;
+      }
       continue;
     }
 

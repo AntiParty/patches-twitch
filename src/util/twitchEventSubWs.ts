@@ -139,14 +139,16 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
   });
 
   ws.on('close', () => {
-    logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, reconnecting in 5s...`);
-    if (userWebSockets[userId]?.shouldReconnect !== false) {
-      setTimeout(() => {
-        if (userWebSockets[userId]) {
-          userWebSockets[userId].ws = createUserWebSocket(userId, accessToken);
-        }
-      }, 5000);
+    if (userWebSockets[userId]?.shouldReconnect === false) {
+      logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, NOT reconnecting (shouldReconnect=false).`);
+      return;
     }
+    logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, reconnecting in 5s...`);
+    setTimeout(() => {
+      if (userWebSockets[userId]?.shouldReconnect !== false) {
+        userWebSockets[userId].ws = createUserWebSocket(userId, accessToken);
+      }
+    }, 5000);
   });
 
   ws.on('error', err => {

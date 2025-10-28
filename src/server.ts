@@ -115,11 +115,13 @@ const apiErrorCounter = new client.Counter({
 
 // --- Rate Limiting ---
 // Limit requests to /callback for security
+/*
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: "Too many requests, please try again later.",
 });
+*/ // Disabled for now due to issues with legitimate users
 
 // --- Twitch OAuth Helper ---
 // Generates Twitch OAuth URL for user login

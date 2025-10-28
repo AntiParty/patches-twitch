@@ -109,17 +109,11 @@ export async function refreshToken() {
   const newToken = data.access_token;
   if (!newToken) throw new Error('No access_token returned from Twitch');
 
-  // Update .env file
-  const envPath = path.resolve(__dirname, '../../.env');
-  let envContent = fs.readFileSync(envPath, 'utf8');
-  const tokenRegex = /^TWITCH_APP_ACCESS_TOKEN=.*$/m;
-  if (tokenRegex.test(envContent)) {
-    envContent = envContent.replace(tokenRegex, `TWITCH_APP_ACCESS_TOKEN=${newToken}`);
-  } else {
-    envContent += `\nTWITCH_APP_ACCESS_TOKEN=${newToken}`;
-  }
-  fs.writeFileSync(envPath, envContent, 'utf8');
-  console.log('TWITCH_APP_ACCESS_TOKEN updated in .env');
+  // Avoid writing secrets to disk at runtime. Update process.env so the running
+  // process can use the token immediately. Persisting to disk creates race
+  // conditions and is not reliable in multi-process deployments.
+  process.env.TWITCH_APP_ACCESS_TOKEN = newToken;
+  console.log('TWITCH_APP_ACCESS_TOKEN updated in process.env');
   return newToken;
 }
 
@@ -127,15 +121,16 @@ export async function refreshToken() {
 export const getStreamStatusWithAutoRefresh = async (username: string) => {
   try {
     const channel = await Channel.findOne({ where: { username } });
-    if (!channel || !channel.access_token) {
+    const chanAny: any = channel as any;
+    if (!channel || !chanAny.access_token) {
       console.error(`No access token found for user: ${username}`);
       return { isLive: false, streamStartTime: null, liveDuration: null, error: 'No access token found.' };
     }
-    let result = await getStreamStatusForUser(username, channel.access_token);
+    let result = await getStreamStatusForUser(username, chanAny.access_token);
     if (result?.error && result.error.includes('401')) {
       // Token expired, refresh it
       console.warn(`Access token expired for user: ${username}, attempting to refresh.`);
-      const newAccessToken = await refreshAccessToken(channel);
+  const newAccessToken = await refreshAccessToken(channel);
       if (!newAccessToken) {
         console.error(`Failed to refresh token for user: ${username}`);
         return { isLive: false, streamStartTime: null, liveDuration: null, error: 'Failed to refresh token.' };
@@ -152,33 +147,35 @@ export const getStreamStatusWithAutoRefresh = async (username: string) => {
 let tokenExpiryTime: number | null = null;
 let accessToken: string | null = null;
 
-// Per-user refresh lock and retry count
+// Per-user refresh lock and retry count. Use normalized (lowercased) keys to
+// avoid duplicate refreshes due to casing differences.
 const refreshLocks: Record<string, boolean> = {};
 const refreshRetries: Record<string, number> = {};
-const MAX_REFRESH_RETRIES = 3;
+const MAX_REFRESH_RETRIES = 5;
 
 export const refreshAccessToken = async (channel: any) => {
   const clientId = process.env.TWITCH_CLIENT_ID;
   const clientSecret = process.env.TWITCH_CLIENT_SECRET;
   const username = channel.username;
+  const key = String(username || '').toLowerCase();
 
   if (!clientId || !clientSecret) {
     throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
   }
 
-  if (refreshLocks[username]) {
+  if (refreshLocks[key]) {
     console.warn(`[${username}] Token refresh already in progress, skipping duplicate attempt.`);
     return null;
   }
-  if (refreshRetries[username] && refreshRetries[username] >= MAX_REFRESH_RETRIES) {
-     console.error(`[${username}] Max token refresh retries reached, will not retry again for 10 minutes.`);
-     setTimeout(() => {
-      refreshRetries[username] = 0;
-     }, 10 * 60 * 1000); // 10 minute cooldown
-     return null;
+  if (refreshRetries[key] && refreshRetries[key] >= MAX_REFRESH_RETRIES) {
+    console.error(`[${username}] Max token refresh retries reached, will not retry again for 10 minutes.`);
+    setTimeout(() => {
+      refreshRetries[key] = 0;
+    }, 10 * 60 * 1000); // 10 minute cooldown
+    return null;
   }
-  refreshLocks[username] = true;
-  refreshRetries[username] = (refreshRetries[username] || 0) + 1;
+  refreshLocks[key] = true;
+  refreshRetries[key] = (refreshRetries[key] || 0) + 1;
 
   const url = 'https://id.twitch.tv/oauth2/token';
   const params = new URLSearchParams({
@@ -200,8 +197,8 @@ export const refreshAccessToken = async (channel: any) => {
       // If error is unrecoverable (400), disable further retries
       if (response.status === 400) {
         console.error(`[${username}] Received 400 (invalid grant). Disabling further retries until manual re-authentication.`);
-        refreshLocks[username] = false;
-        refreshRetries[username] = MAX_REFRESH_RETRIES;
+        refreshLocks[key] = false;
+        refreshRetries[key] = MAX_REFRESH_RETRIES;
         return null;
       }
       // Notify user via Discord
@@ -231,25 +228,32 @@ export const refreshAccessToken = async (channel: any) => {
       } catch (chatErr) {
         console.error(`[${username}] Failed to send Twitch chat notification for token refresh failure:`, chatErr);
       }
-      // Schedule retry if not maxed out
-      if (refreshRetries[username] < MAX_REFRESH_RETRIES) {
-        console.info(`[${username}] Retrying in 1 minute...`);
+      // Schedule retry using exponential backoff if not maxed out
+      if (refreshRetries[key] < MAX_REFRESH_RETRIES) {
+        const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, refreshRetries[key] - 1) * 60000); // cap at 10 minutes
+        console.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
         setTimeout(() => {
-          refreshLocks[username] = false;
+          refreshLocks[key] = false;
           refreshAccessToken(channel);
-        }, 60000);
+        }, retryDelay);
       } else {
-        refreshLocks[username] = false;
+        refreshLocks[key] = false;
       }
       return null;
     }
     const data = await response.json();
-    tokenExpiryTime = new Date().getTime() + (data.expires_in * 1000);
+    tokenExpiryTime = Date.now() + (data.expires_in * 1000);
     channel.access_token = data.access_token;
     channel.refresh_token = data.refresh_token;
+    // Persist the expiry in the DB so other processes/instances can rely on it
+    try {
+      channel.token_expires_at = new Date(Date.now() + data.expires_in * 1000);
+    } catch (err) {
+      // ignore if model doesn't allow assignment
+    }
     await channel.save();
-    refreshLocks[username] = false;
-    refreshRetries[username] = 0;
+    refreshLocks[key] = false;
+    refreshRetries[key] = 0;
     return data.access_token;
   } catch (error: any) {
     console.error(`[${username}] Exception during Twitch token refresh:`, error);
@@ -267,15 +271,16 @@ export const refreshAccessToken = async (channel: any) => {
     } catch (notifyErr) {
       console.error(`[${username}] Failed to send Discord notification for token refresh exception:`, notifyErr);
     }
-    // Schedule retry if not maxed out
-    if (refreshRetries[username] < MAX_REFRESH_RETRIES) {
-      console.info(`[${username}] Retrying in 1 minute...`);
+    // Schedule retry with exponential backoff
+    if (refreshRetries[key] < MAX_REFRESH_RETRIES) {
+      const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, refreshRetries[key] - 1) * 60000);
+      console.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
       setTimeout(() => {
-        refreshLocks[username] = false;
+        refreshLocks[key] = false;
         refreshAccessToken(channel);
-      }, 60000);
+      }, retryDelay);
     } else {
-      refreshLocks[username] = false;
+      refreshLocks[key] = false;
     }
     return null;
   }

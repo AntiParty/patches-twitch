@@ -55,7 +55,7 @@ export class BotManager {
         logger.error(`No channel found for ${username}`);
         return;
       }
-      channel.refresh_token = refreshToken;
+  (channel as any).refresh_token = refreshToken;
       const newAccessToken = await require("./util/twitchUtils").refreshAccessToken(channel);
       if (!newAccessToken) {
         logger.error(`[${username}] Token refresh failed (via twitchUtils)`);
@@ -63,12 +63,12 @@ export class BotManager {
         return;
       }
       // Update token refresh timer
-      const expiresIn = channel.token_expires_at
-        ? new Date(channel.token_expires_at).getTime() - new Date().getTime()
+      const expiresIn = (channel as any).token_expires_at
+        ? new Date((channel as any).token_expires_at).getTime() - Date.now()
         : 3600 * 1000;
       this.scheduleTokenRefresh(
         username,
-        channel.refresh_token,
+        (channel as any).refresh_token,
         expiresIn - 5 * 60 * 1000
       );
       // Reconnect bot with fresh token
@@ -123,30 +123,46 @@ export class BotManager {
 
   public async validateAllTokens() {
     const channels = await Channel.findAll();
+    const validationWindow = 30 * 60 * 1000; // 30 minutes
 
     for (const channel of channels) {
-      const { username, access_token, refresh_token, token_expires_at } = channel;
-      if (access_token && refresh_token && token_expires_at) {
-        const timeLeft =
-          new Date(token_expires_at).getTime() - new Date().getTime();
-        if (timeLeft > 0) {
-          await this.validateToken(username, access_token, refresh_token);
-        } else {
-          logger.info(`Token for ${username} has expired. Refreshing...`);
-          await this.refreshTokenFunction(username, refresh_token);
-        }
-      } else {
+      const chanAny: any = channel as any;
+      const username = chanAny.username;
+      const access_token = chanAny.access_token;
+      const refresh_token = chanAny.refresh_token;
+      const token_expires_at = chanAny.token_expires_at;
+
+      if (!access_token || !refresh_token) {
         logger.warn(`No tokens found for ${username}, skipping...`);
+        continue;
+      }
+
+      if (!token_expires_at) {
+        // Unknown expiry -> validate once to learn TTL and schedule refresh
+        logger.info(`No expiry stored for ${username}, validating token to schedule refresh.`);
+        await this.validateToken(username, access_token, refresh_token);
+        continue;
+      }
+
+      const timeLeft = new Date(token_expires_at).getTime() - Date.now();
+      if (timeLeft <= 0) {
+        logger.info(`Token for ${username} has expired. Refreshing...`);
+        await this.refreshTokenFunction(username, refresh_token);
+      } else if (timeLeft <= validationWindow) {
+        // If token will expire within the validation window, call validate to update schedule
+        logger.info(`Token for ${username} expires soon (in ${Math.round(timeLeft/1000)}s). Validating.`);
+        await this.validateToken(username, access_token, refresh_token);
+      } else {
+        // Token healthy and not near expiry; skip to avoid unnecessary API calls
+        logger.debug?.(`Token for ${username} healthy, skipping validation.`);
       }
     }
   }
 
   public startTokenValidationInterval() {
-    const intervalTime = 15 * 1000;
+    const intervalTime = 60 * 1000; // run every 60s; actual validations are skipped for healthy tokens
     setInterval(() => this.validateAllTokens(), intervalTime);
-    logger.info(
-      `Started periodic token validation every ${intervalTime / 1000} seconds.`
-    );
+    logger.info(`Started periodic token validation every ${intervalTime / 1000} seconds.`);
   }
 
   public async loadTokensOnStartup() {
@@ -161,7 +177,11 @@ export class BotManager {
       logger.info(`Found ${channels.length} channels to load`);
       
       for (const channel of channels) {
-        const { username, access_token, refresh_token, twitch_user_id } = channel;
+        const chanAny: any = channel as any;
+        const username = chanAny.username;
+        const access_token = chanAny.access_token;
+        const refresh_token = chanAny.refresh_token;
+        const twitch_user_id = chanAny.twitch_user_id;
         if (username && access_token && twitch_user_id) {
           logger.info(`Loading channel: ${username}`);
           await this.validateToken(username, access_token, refresh_token);
@@ -183,18 +203,21 @@ export class BotManager {
       const user = await Channel.findOne({
         where: { username: channelName },
       });
-      if (!user?.twitch_user_id) {
+      const userAny: any = user as any;
+      if (!userAny?.twitch_user_id) {
         throw new Error(`Channel ${channelName} not found or missing twitch_user_id`);
       }
 
       logger.info(`[Admin] Sending message to ${channelName}: ${message}`);
-      await sendChatMessage(user.twitch_user_id, message);
+      await sendChatMessage(userAny.twitch_user_id, message);
     } else {
       const channels = await Channel.findAll({
         attributes: ["username", "twitch_user_id"],
       });
 
-      for (const { username, twitch_user_id } of channels) {
+      for (const ch of channels) {
+        const username = (ch as any).username;
+        const twitch_user_id = (ch as any).twitch_user_id;
         if (!twitch_user_id) continue;
         try {
           logger.info(`[Admin] Sending message to ${username}: ${message}`);

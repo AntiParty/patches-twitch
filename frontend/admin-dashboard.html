@@ -13,32 +13,33 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="icon" href="./assets/logo.png">
   <style>
+    /* Darker theme + lightweight visuals for better perf on Pi */
     :root {
-      --background: 222.2 84% 4.9%;
-      --foreground: 210 40% 98%;
-      --card: 222.2 84% 7.9%;
-      --card-foreground: 210 40% 98%;
-      --primary: 217.2 91.2% 59.8%;
-      --primary-foreground: 222.2 84% 4.9%;
-      --sidebar-bg: #18181c;
-      --sidebar-accent: #f5a524;
-      --sidebar-fg: #fff;
-      --sidebar-muted: #888;
-      --main-bg: #23232a;
-      --main-fg: #f3f3f3;
-      --card-bg: #292933;
-      --card-radius: 1rem;
-      --card-shadow: 0 2px 12px rgba(0,0,0,0.10);
-      --input-bg: #23232a;
-      --input-fg: #f3f3f3;
-      --input-border: #444;
-      --btn-bg: #f5a524;
-      --btn-fg: #18181c;
-      --btn-radius: 0.6rem;
-      --danger-bg: #e53935;
-      --danger-fg: #fff;
-      --success-bg: #43a047;
-      --success-fg: #fff;
+      --background: #080a0f;
+      --foreground: #e6edf3;
+      --sidebar-bg: #0a0d12;
+      --sidebar-accent: #6b8ff7;
+      --sidebar-fg: #c9d1d9;
+      --sidebar-muted: #9aa3ad;
+      --main-bg: #080a0f;
+      --main-fg: #e6edf3;
+      --card-bg: #0b0e14;
+      --card-radius: 10px;
+      --card-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      --border: rgba(255,255,255,0.05);
+      --input-bg: #0a0d13;
+      --input-fg: #c9d1d9;
+      --input-border: #141922;
+      --btn-bg: #6b8ff7;
+      --btn-fg: #0b0e14;
+      --btn-radius: 8px;
+      --danger-bg: #ef4444;
+      --danger-fg: #0b0e14;
+      --success-bg: #22c55e;
+      --success-fg: #0b0e14;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
     }
     body {
       font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
@@ -49,22 +50,36 @@
       display: flex;
     }
     .sidebar {
-      width: 220px;
+      width: 240px;
       background: var(--sidebar-bg);
       color: var(--sidebar-fg);
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      padding: 2rem 1.2rem 2rem 1.2rem;
+      padding: 24px 16px;
       min-height: 100vh;
-      box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
     }
     .sidebar-logo {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 2.5rem;
-      color: var(--sidebar-accent);
-      letter-spacing: -0.03em;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--sidebar-fg);
+      letter-spacing: -0.02em;
+      opacity: 0.95;
+    }
+    .sidebar-logo .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--sidebar-accent);
     }
     .sidebar-nav {
       display: flex;
@@ -100,26 +115,23 @@
     .main {
       flex: 1;
       background: var(--main-bg);
-      height: 100vh;
-      padding: 2.5rem 2rem;
+      min-height: 100vh;
+      padding: 28px 24px;
       display: flex;
       flex-direction: column;
-      gap: 2rem;
+      gap: 24px;
       overflow-y: auto;
-      overscroll-behavior: contain;
-      scroll-behavior: smooth;
     }
     .card {
-      background: linear-gradient(to bottom right, #2a2a33, #222227);
+      background: var(--card-bg);
       border-radius: var(--card-radius);
       box-shadow: var(--card-shadow);
-      padding: 2rem 1.5rem;
-      margin-bottom: 0;
-      border: 1px solid rgba(255,255,255,0.06);
-      transition: transform 0.2s ease;
+      padding: 18px 16px;
+      border: 1px solid var(--border);
+      transition: border-color 0.15s ease;
     }
     .card:hover {
-      transform: translateY(-2px);
+      border-color: rgba(107,143,247,0.25);
     }
     .card-header {
       margin-bottom: 1.2rem;
@@ -133,14 +145,14 @@
     .btn {
       background: var(--btn-bg);
       color: var(--btn-fg);
-      border: none;
+      border: 1px solid rgba(136,176,255,0.5);
       border-radius: var(--btn-radius);
-      font-weight: 500;
-      font-size: 0.95rem;
-      padding: 0.7rem 1.4rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+      padding: 10px 14px;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: background-color 0.15s ease, box-shadow 0.15s ease;
       margin-right: 0.5rem;
       position: relative;
       overflow: hidden;
@@ -157,20 +169,19 @@
       transition: opacity 0.2s;
     }
     .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.35);
     }
     .btn:hover::after {
       opacity: 1;
     }
     .btn-outline {
       background: transparent;
-      color: var(--btn-bg);
-      border: 1px solid var(--btn-bg);
+      color: #9fb8ff;
+      border: 1px solid rgba(136,176,255,0.5);
     }
     .btn-destructive {
       background: var(--danger-bg);
-      color: var(--danger-fg);
+      color: #fff;
     }
     .btn-sm {
       font-size: 0.8rem;
@@ -182,15 +193,14 @@
       border: 1px solid var(--input-border);
       background: var(--input-bg);
       color: var(--input-fg);
-      padding: 0.5rem 0.9rem;
+      padding: 10px 12px;
       font-size: 0.95rem;
       margin-bottom: 0.5rem;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color 0.15s;
     }
     .input:focus {
       outline: none;
-      border-color: var(--sidebar-accent);
-      box-shadow: 0 0 0 2px var(--sidebar-accent);
+      border-color: rgba(107,143,247,0.6);
     }
 
     /* Performance monitoring styles (scoped) */
@@ -423,9 +433,9 @@
       margin-top: 0.5rem;
       padding: 0.5rem 0.9rem;
       border-radius: 0.5rem;
-      background: #222;
-      color: #f3f3f3;
-      border: 1px solid #333;
+      background: #0d1117;
+      color: #d0d6dd;
+      border: 1px solid var(--border);
       box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
     .status-success {
@@ -450,12 +460,12 @@
       margin: 2rem 0;
     }
     .metric-card {
-      background: linear-gradient(to bottom right, #2a2a33, #222227);
+      background: var(--card-bg);
       border-radius: 1rem;
       padding: 1.5rem;
       font-size: 0.95rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border);
       transition: transform 0.2s, box-shadow 0.2s;
     }
     .metric-card:hover {
@@ -548,8 +558,8 @@
 </head>
 
 <body>
-  <div class="sidebar">
-    <div class="sidebar-logo">Twitch Admin</div>
+    <div class="sidebar">
+    <div class="sidebar-logo"><span class="dot"></span> Twitch Admin</div>
     <nav class="sidebar-nav">
       <a href="#stats" class="sidebar-link active"><span class="icon"><i class="fas fa-chart-bar"></i></span>Stats</a>
       <a href="#channels" class="sidebar-link"><span class="icon"><i class="fas fa-users"></i></span>Channels</a>
@@ -845,10 +855,34 @@
         </div>
         <div id="restart-status" class="status-message"></div>
       </div>
+
+      <div class="card" style="margin-top: 1rem;">
+        <div class="card-header" style="justify-content: space-between; align-items: center;">
+          <h2 class="card-title">Bot Auth</h2>
+          <div class="card-actions">
+            <button class="btn btn-sm" onclick="refreshBotToken()" title="Refresh Bot Token">
+              <i class="fas fa-key"></i> Refresh Bot Token
+            </button>
+          </div>
+        </div>
+        <div id="bot-auth-status" class="status-message">Refresh the bot token to rotate credentials and reconnect IRC.</div>
+        <div id="bot-auth-preview" class="status-message" style="margin-top: 0.5rem; display:none;"></div>
+      </div>
     </section>
   </main>
 
   <script>
+    // CSRF token handling for admin API POSTs
+    let CSRF_TOKEN = null;
+    async function ensureCsrfToken() {
+      if (CSRF_TOKEN) return CSRF_TOKEN;
+      try {
+        const res = await fetch('/admin/api/csrf');
+        const data = await res.json();
+        CSRF_TOKEN = data?.csrfToken || null;
+      } catch {}
+      return CSRF_TOKEN;
+    }
     // User dashboard access toggle
     async function fetchUserDashboardAccess() {
       try {
@@ -865,13 +899,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      ensureCsrfToken();
       fetchUserDashboardAccess();
       document.getElementById('user-dashboard-switch').addEventListener('change', async function() {
         const enabled = this.checked;
         try {
+          await ensureCsrfToken();
           const res = await fetch('/admin/api/user-dashboard-access', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify({ enabled })
           });
           const data = await res.json();
@@ -890,7 +926,7 @@
 
     // Prevent too frequent chart updates
     let lastUpdate = 0;
-    const UPDATE_THROTTLE = 2000; // 2 seconds minimum between updates
+    const UPDATE_THROTTLE = 4000; // 4 seconds minimum between updates (Pi-friendly)
 
     const chartConfig = {
       type: 'line',
@@ -936,9 +972,9 @@
         performanceCharts[type] = new Chart(ctx, {
           ...chartConfig,
           data: {
-            labels: Array(20).fill(''),
+            labels: Array(12).fill(''),
             datasets: [{
-              data: Array(20).fill(0),
+              data: Array(12).fill(0),
               borderColor: '#f5a524',
               backgroundColor: 'rgba(245, 165, 36, 0.1)',
               fill: true
@@ -962,7 +998,7 @@
       
       const data = chart.data.datasets[0].data;
       data.push(value);
-      if (data.length > 20) data.shift();
+      if (data.length > 12) data.shift();
       
       // Use requestAnimationFrame for smoother updates
       requestAnimationFrame(() => {
@@ -1022,7 +1058,7 @@
     function startPerformanceMonitoring() {
       if (document.hidden) return;
       initPerformanceCharts();
-      performanceInterval = setInterval(refreshPerformance, 5000);
+      performanceInterval = setInterval(refreshPerformance, 10000); // 10s updates
       refreshPerformance();
     }
 
@@ -1366,7 +1402,9 @@
         Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
 
         // Traffic Chart
-        const ctx = document.getElementById('analytics-chart').getContext('2d');
+        const canvasEl = document.getElementById('analytics-chart');
+        if (!canvasEl) return;
+        const ctx = canvasEl.getContext('2d');
         if (window.requestChart) window.requestChart.destroy();
         window.requestChart = new Chart(ctx, {
           type: 'line',
@@ -1538,9 +1576,10 @@
         return;
       }
       try {
+        await ensureCsrfToken();
         const res = await fetch('/admin/api/restart-bot', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
           body: JSON.stringify({ key })
         });
         const data = await res.json();
@@ -1554,6 +1593,35 @@
 
     function pauseBot() { alert('Pause bot feature coming soon'); }
     function resumeBot() { alert('Resume bot feature coming soon'); }
+
+    // Bot Auth: Refresh bot token via admin API
+    async function refreshBotToken() {
+      const status = document.getElementById('bot-auth-status');
+      const preview = document.getElementById('bot-auth-preview');
+      status.className = 'status-message status-info';
+      status.innerText = 'Refreshing bot token...';
+      preview.style.display = 'none';
+      try {
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/refresh-bot-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data?.error || 'Failed to refresh bot token');
+        }
+        status.className = 'status-message status-success';
+        status.innerText = 'Bot token refreshed. Reconnecting IRC clients...';
+        preview.className = 'status-message';
+        preview.style.display = '';
+        preview.innerText = `Access: ${data.accessTokenPreview}…, Refresh: ${data.refreshTokenPreview}…, Expires In: ${data.expiresIn}s`;
+      } catch (e) {
+        status.className = 'status-message status-error';
+        status.innerText = 'Error: ' + (e?.message || 'Failed');
+      }
+    }
 
     // Init
     fetchBotStatus();

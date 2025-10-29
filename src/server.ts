@@ -20,6 +20,9 @@ import { performanceMonitor } from "./util/performanceMonitor"; // Performance m
 import path from "path"; // Path utilities
 import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics"; // Analytics
 import rateLimit from "express-rate-limit"; // Rate limiting
+import { refreshBotToken } from "./util/botAuth"; // Bot token refresher
+import { reconnectChatBot, clients } from "./util/ircBot"; // IRC reconnect
+import { loadCommands } from "./handlers/commands"; // Command handler
 
 
 
@@ -254,6 +257,36 @@ export const setupServer = () => {
   // Admin dashboard page
   app.get('/admin', csrfProtection, (req: any, res: any) => {
     res.sendFile(path.join(frontendPath, 'admin-dashboard.html'));
+  });
+
+  // Provide CSRF token for AJAX clients (GET is ignored by csurf by default)
+  app.get('/admin/api/csrf', csrfProtection, (req: any, res: any) => {
+    res.json({ csrfToken: req.csrfToken() });
+  });
+
+  // Refresh bot token via admin API
+  app.post('/admin/api/refresh-bot-token', csrfProtection, async (req: any, res: any) => {
+    try {
+      const result = await refreshBotToken();
+      // Auto-reconnect IRC bot for all connected channels so new token is used
+      const commandHandler = loadCommands();
+      const usernames = Object.keys(clients);
+      for (const uname of usernames) {
+        try {
+          await reconnectChatBot(uname, commandHandler);
+        } catch (e) {
+          logger.warn(`Failed to reconnect IRC bot for ${uname}:`, e);
+        }
+      }
+      res.json({
+        ok: true,
+        accessTokenPreview: result.accessToken.slice(0, 6) + "…",
+        refreshTokenPreview: result.refreshToken.slice(0, 6) + "…",
+        expiresIn: result.expiresIn,
+      });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err?.message || 'Failed to refresh bot token' });
+    }
   });
 
   // Admin API: stats summary

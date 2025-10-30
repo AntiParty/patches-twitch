@@ -193,13 +193,6 @@ export const startChatBot = async (
           args
         );
       }
-
-      if (rawCommand === "!test") {
-        logger.info(`[DEBUG] Received !test command from ${user}`);
-        socket.write(
-          `PRIVMSG #${channelName} :Hello ${tags["display-name"] || user}!\r\n`
-        );
-      }
     }
   });
 

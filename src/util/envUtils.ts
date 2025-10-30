@@ -64,5 +64,3 @@ export function updateEnvVariables(updates: Record<string, string>): { wroteFile
   fs.writeFileSync(envPath, serialized, "utf8");
   return { wroteFile: true, filePath: envPath };
 }
-
-

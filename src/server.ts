@@ -23,6 +23,7 @@ import rateLimit from "express-rate-limit"; // Rate limiting
 import { refreshBotToken } from "./util/botAuth"; // Bot token refresher
 import { reconnectChatBot, clients } from "./util/ircBot"; // IRC reconnect
 import { loadCommands } from "./handlers/commands"; // Command handler
+import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 
 
 
@@ -762,7 +763,6 @@ export const setupServer = () => {
           username: twitchUsername,
         });
         logger.info(`[Callback] Bot notified to add channel: ${twitchUsername} (${twitchUserId})`);
-        sendInfoToDiscord(`User authenticated: ${twitchUsername} (${twitchUserId})`);
       } catch (notifyError) {
         logger.error(`[Callback] Failed to notify bot for ${twitchUsername}:`, notifyError);
       }
@@ -839,6 +839,13 @@ export const setupServer = () => {
     const metrics = performanceMonitor.getMetrics();
     res.json(metrics);
   });
+
+  // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
+  try {
+    startBotTokenAutoRefresher();
+  } catch (e) {
+    logger.warn("Failed to start BotTokenAutoRefresher:", e);
+  }
 
   // Return configured Express app
   return app;

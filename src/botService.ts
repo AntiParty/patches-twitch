@@ -4,6 +4,7 @@ import { startCacheUpdater } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubWs";
 import logger from "./util/logger";
 import express from "express";
+import { sendMessageToDiscord } from "./handlers/discordHandler";
 
 dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
@@ -47,6 +48,7 @@ dbReady.then(async () => {
 
         res.send(`Channel ${user.username} added to bot`);
         logger.info(`[ControlAPI] Added channel: ${user.username}`);
+        sendMessageToDiscord(user.username)
       } catch (err) {
         logger.error("Failed to add channel via control API:", err);
         res.status(500).send("Internal error");

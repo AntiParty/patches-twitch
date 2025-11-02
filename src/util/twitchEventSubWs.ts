@@ -37,6 +37,25 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
 }
 
 
+async function handleStreamOffline(broadcasterName: string, broadcasterId: string) {
+  try {
+    let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } });
+    if (!channel) {
+      channel = await Channel.findOne({ where: { username: broadcasterName } });
+    }
+
+    if (!channel?.player_id) {
+      logger.warn(`No linked THE FINALS account for ${broadcasterName} / ID: ${broadcasterId}`);
+      return;
+    }
+
+    await StreamSession.destroy({ where: { channel: broadcasterName.toLowerCase() } });
+    logger.info(`StreamSession destroyed for ${broadcasterName}`);
+  } catch (err) {
+    logger.error(`Failed to handle stream.offline for ${broadcasterName}:`, err);
+  }
+}
+
 async function handleStreamOnline(broadcasterName: string, broadcasterId: string) {
   try {
     let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } });
@@ -74,7 +93,7 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
     const startWTRank = wtPlayer?.rank ?? null;
 
     await StreamSession.upsert({
-      channel: broadcasterName,
+      channel: broadcasterName.toLowerCase(),
       start_score: startScore,
       start_wt_rank: startWTRank,
       started_at: new Date()
@@ -122,7 +141,9 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
           await handleStreamOnline(broadcasterName, broadcasterId);
         }
         // handle offline if needed
-        // else if (eventType === 'stream.offline') { ... }
+        if (eventType === 'stream.offline') {
+          await handleStreamOffline(broadcasterName, broadcasterId);
+        }
 
       } else if (type === 'session_keepalive') {
         logger.info(`[EventSubWs] Received keepalive for user ${userId}`);

@@ -3,6 +3,8 @@ import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
 
+const lastUpdate = Date.now();
+const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
 
 const REGULAR_SEASON_START = 1;
 const WORLD_TOUR_SEASON_START = 3;
@@ -95,4 +97,11 @@ export function startCacheUpdater(intervalMs = 45 * 60 * 1000) {
   setInterval(() => {
     updateAllCachesRateLimited().catch(console.error);
   }, intervalMs);
+}
+
+export function getNextCacheUpdateInfo(intervalMs = 45 * 60 * 1000) {
+  const now = Date.now();
+  const nextUpdateAt = Math.max(0, lastUpdate + intervalMs);
+  const msLeft = Math.max(0, nextUpdateAt - now);
+  return { nextUpdateAt, msLeft };
 }

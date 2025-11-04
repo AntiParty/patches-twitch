@@ -148,5 +148,3 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
   }, backoffMs);
   logger.info(`[BotTokenRefresher] Started auto refresher (interval: ${DEFAULT_INTERVAL_MS / 60000}m, window: ${REFRESH_WINDOW_SEC / 60}m)`);
 }
-
-

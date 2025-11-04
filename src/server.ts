@@ -25,8 +25,6 @@ import { reconnectChatBot, clients } from "./util/ircBot"; // IRC reconnect
 import { loadCommands } from "./handlers/commands"; // Command handler
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 
-
-
 // --- Admin Panel Config ---
 // List of admin usernames (comma-separated, lowercased)
 const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase());
@@ -53,10 +51,6 @@ const getRedirectUri = () => {
   console.log(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
   return uri;
 };
-
-// Path to cache file for connected accounts (not used in this file)
-const cacheFilePath = path.join(__dirname, "src", "cache", "connectedAccounts.json");
-
 
 // --- Metrics Setup ---
 // Collect default Prometheus metrics

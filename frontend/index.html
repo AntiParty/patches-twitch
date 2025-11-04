@@ -1,209 +1,625 @@
 <!DOCTYPE html>
 <html lang="en">
 
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FinalsRR - The Ultimate THE FINALS Twitch Bot for Player Stats</title>
+  <link rel="icon" href="./assets/logo.png">
+  <meta name="description"
+    content="FinalsRR is the premier Twitch bot for THE FINALS, giving you real-time stats, leaderboards, and rank tracking for your Twitch channel." />
+  <meta name="keywords"
+    content="THE FINALS, Twitch bot, Twitch stats bot, FinalsRR, game stats, Twitch commands, THE FINALS leaderboard, Twitch integration" />
+  <meta name="author" content="Antiparty" />
+  <script defer src="https://umami.antiparty.dev/script.js" data-website-id="a20a6812-3d58-4592-9406-30f629ff62b5"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a1a;
+      --border: #2e2e2e;
+      --text: #e5e5e5;
+      --text-muted: #9ca3af;
+      --accent: #f63b4b;
+      --bot-color: #a970ff;
+      --streamer-color: #ffffff;
+    }
 
-    <title>FinalsRR - The Ultimate THE FINALS Twitch Bot for Player Stats</title>
+    html {
+      scroll-behavior: smooth;
+    }
 
-    <link rel="icon" href="./assets/logo.png"
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
 
-    <meta name="description"
-      content="FinalsRR is the premier Twitch bot for THE FINALS, giving you real-time stats, leaderboards, and rank tracking for your Twitch channel." />
-    <meta name="keywords"
-      content="THE FINALS, Twitch bot, Twitch stats bot, FinalsRR, game stats, Twitch commands, THE FINALS leaderboard, Twitch integration" />
-    <meta name="author" content="Antiparty" />
+    }
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title"
-      content="FinalsRR - The Ultimate THE FINALS Twitch Bot for Player Stats" />
-    <meta property="og:description"
-      content="FinalsRR provides Twitch streamers real-time statistics, rank tracking, and leaderboard data for THE FINALS." />
-    <meta property="og:image"
-      content="https://app.antiparty.dev/assets/finalsrr-social-preview.png" />
-    <meta property="og:url" content="https://app.antiparty.dev/" />
-    <meta property="og:site_name" content="FinalsRR" />
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 60% 40%,
+          rgba(80, 80, 255, 0.05),
+          rgba(255, 0, 200, 0.03),
+          transparent 70%);
+      background-size: 200% 200%;
+      animation: ambientGlow 30s ease-in-out infinite;
+      z-index: -1;
+      will-change: background-position, opacity;
+      opacity: 0.4;
+      pointer-events: none;
+    }
 
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="FinalsRR - THE FINALS Twitch Bot" />
-    <meta name="twitter:description"
-      content="Get live stats and leaderboards for THE FINALS with FinalsRR Twitch bot." />
-    <meta name="twitter:image"
-      content="https://app.antiparty.dev/finalsrr-chat-preview.png" />
-    <meta name="twitter:site" content="@AntipartyVAL" />
+    /* Extra slow, smooth breathing effect */
+    @keyframes ambientGlow {
+      0% {
+        background-position: 40% 30%;
+        opacity: 0.35;
+      }
 
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap"
-      rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
+      50% {
+        background-position: 65% 65%;
+        opacity: 0.5;
+      }
 
-  <body>
-    <nav class="navbar" role="navigation" aria-label="Primary Navigation">
-      <!-- Left Edge -->
-      <img src="./assets/RadialShape_075.png" alt class="edge-icon" />
+      100% {
+        background-position: 40% 30%;
+        opacity: 0.35;
+      }
+    }
 
-      <!-- Nav Links -->
-      <div class="nav-links">
-        <a href="#" aria-current="page">Home</a>
-        <a href="#faq">Faq</a>
-        <a href="https://app.antiparty.dev/docs">docs</a>
-        <a href="#testimonials">Testimonials</a>
-        <a href="https://discord.gg/2UKzvzSEqA" target="_blank"
-          rel="noopener noreferrer">Discord</a>
+    /* Sticky Navbar */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      backdrop-filter: blur(10px);
+      background: rgba(17, 17, 17, 0.6);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    nav.scrolled {
+      background: rgba(10, 10, 10, 0.9);
+      border-color: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    nav .logo {
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      transition: color 0.3s ease;
+    }
+
+    nav .logo:hover {
+      color: #60a5fa;
+    }
+
+    nav .logo-img {
+      height: 32px;
+      width: 32px;
+      border-radius: 50%;
+      margin-right: 1rem;
+    }
+
+    nav .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 500;
+      position: relative;
+      transition: color 0.25s ease;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    nav a:hover::after {
+      width: 100%;
+    }
+
+    nav a:focus,
+    nav a:active {
+      color: var(--accent);
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      padding: 6rem 1rem 4rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    @keyframes pulseBg {
+      from {
+        opacity: 0.3;
+      }
+
+      to {
+        opacity: 0.6;
+      }
+    }
+
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+    }
+
+    .hero button {
+      background-color: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .hero button:hover {
+      background-color: #2563eb;
+      transform: translateY(-2px);
+      transition: background-color 0.3s ease, transform 0.3s ease;
+      box-shadow: 0 4px 8px rgba(37, 99, 235, 0.3);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    /* Stats */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      padding: 2rem 1rem;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stat {
+      text-align: center;
+      flex: 1 1 150px;
+    }
+
+    .stat h2 {
+      margin: 0;
+      font-size: 1.75rem;
+      color: var(--accent);
+    }
+
+    .stat p {
+      color: var(--text-muted);
+      margin: 0.5rem 0 0;
+    }
+
+    /* Twitch Chat Example */
+    .chat-example {
+      background: #111;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 3rem 1.5rem;
+    }
+
+    .chat-example h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .chat-box {
+      max-width: 700px;
+      margin: 0 auto;
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      font-family: 'Consolas', monospace;
+      font-size: 0.95rem;
+      color: var(--text);
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .chat-box.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .message {
+      margin: 0.25rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .username {
+      font-weight: 600;
+    }
+
+    .streamer {
+      color: var(--streamer-color);
+    }
+
+    .bot {
+      color: var(--bot-color);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+    }
+
+    .badge svg {
+      width: 100%;
+      height: 100%;
+      vertical-align: middle;
+    }
+
+    .why-developed {
+      background: linear-gradient(180deg, #0d0d0d 0%, #111 100%);
+      text-align: center;
+      padding: 4rem 1.5rem;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .why-developed.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .why-developed h2 {
+      font-size: 2rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .why-developed p {
+      max-width: 800px;
+      color: var(--text-muted);
+      margin: 0.5rem 0 0;
+      line-height: 1.6;
+      font-size: 1.1rem;
+      text-align: center;
+      ;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      flex: 1 1 280px;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .card.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 0.5rem;
+      font-size: 1.25rem;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* FAQ */
+    .faq {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    .faq h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .faq-item {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .faq-item.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+
+    .faq-item h4 {
+      margin: 0 0 0.5rem;
+    }
+
+    .faq-item p {
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* Testimonials */
+    .testimonials {
+      background-color: #111;
+      border-top: 1px solid var(--border);
+      padding: 3rem 1.5rem;
+    }
+
+    .testimonials h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .testimonial {
+      max-width: 700px;
+      margin: 0 auto 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .testimonial.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .testimonial strong {
+      display: block;
+      margin-top: 0.75rem;
+      color: var(--text);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      border-top: 1px solid var(--border);
+      background: #0b0b0b;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .footer-disclaimer {
+      font-size: 0.8rem;
+      margin-top: 1rem;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 768px) {
+      nav {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+      }
+
+      .hero h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <div class="logo">Finalsrr</div>
+    <div class="links">
+      <a href="#faq" data-umami-event="check faq">FAQ</a>
+      <a href="https://discord.com/invite/2UKzvzSEqA"data-umami-event="Join Discord link">Discord</a>
+      <a href="https://app.antiparty.dev/docs"data-umami-event="Docs Page">Docs</a>
+      <a href="#testimonials">testimonials</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1>All your THE FINALS statistics in one place.</h1>
+    <p>Connect your Twitch account to get started</p>
+    <button id="inviteBtn" data-umami-event="Auth Twitch bot">Invite to Channel</button>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <h2 id="uptime">0d 00h 00m 00s</h2>
+      <p>Uptime</p>
+    </div>
+    <div class="stat">
+      <h2 id="commands">158,294</h2>
+      <p>Commands Processed</p>
+    </div>
+    <div class="stat">
+      <h2 id="users">11</h2>
+      <p>Active Users</p>
+    </div>
+  </section>
+
+  <!-- Twitch Chat Example -->
+  <section class="chat-example">
+    <h2>See It in Action</h2>
+    <div class="chat-box">
+      <div class="message">
+        <span class="badge">
+          <!-- Streamer badge -->
+          <svg viewBox="0 0 20 20" fill="#f91316">
+            <path d="M10 0L1 5v10l9 5 9-5V5l-9-5zM9 14l-3-3h2V7h2v4h2l-3 3z" />
+          </svg>
+        </span>
+        <span class="username streamer">Antiparty:</span> !link TTV.Antiparty#9758
       </div>
-
-      <!-- Right Edge -->
-      <img src="./assets/RadialShape_075.png" alt class="edge-icon"
-        style="transform: rotate(180deg);" />
-    </nav>
-
-    <header class="header-text" role="banner">
-      <h1>FinalsRR</h1>
-      <p>All your THE FINALS statistics in one place.</p>
-      <p>Connect your Twitch account to get started.</p>
-      <p class="user-count">Trusted by <strong id="user-count">...</strong> streamers and counting!</p>
-    </header>
-
-    <div class="stats-bar" role="status" aria-label="Bot statistics">
-      <div class="stats-item">
-        <span class="stats-label">Commands processed</span>
-        <span class="stats-value" id="commands-processed">...</span>
+      <div class="message">
+        <span class="badge">
+          <!-- Mod shield -->
+          <svg viewBox="0 0 20 20" fill="#a970ff">
+            <path d="M10 0l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V4l8-4zM9 14l5-5-1.4-1.4L9 11.2 7.4 9.6 6 11l3 3z" />
+          </svg>
+        </span>
+        <span class="username bot">FinalsRR:</span> Successfully linked with player
       </div>
-      <div class="stats-item">
-        <span class="stats-label">Uptime</span>
-        <span class="stats-value" id="uptime">...</span>
+      <div class="message">
+        <span class="badge">
+          <svg viewBox="0 0 20 20" fill="#f91316">
+            <path d="M10 0L1 5v10l9 5 9-5V5l-9-5zM9 14l-3-3h2V7h2v4h2l-3 3z" />
+          </svg>
+        </span>
+        <span class="username streamer">Antiparty:</span> !rank
+      </div>
+      <div class="message">
+        <span class="badge">
+          <svg viewBox="0 0 20 20" fill="#a970ff">
+            <path d="M10 0l8 4v6c0 5-3.4 9.4-8 10-4.6-.6-8-5-8-10V4l8-4zM9 14l5-5-1.4-1.4L9 11.2 7.4 9.6 6 11l3 3z" />
+          </svg>
+        </span>
+        <span class="username bot">FinalsRR:</span> #948 Diamond 3 - 43,331 RS | WT rank: #470
       </div>
     </div>
-      <button class="cta-button" id="connect-twitch-btn"aria-label="Connect Twitch Account">Connect Twitch</button>
-    </header>
+  </section>
 
-    <main class="responsive-padding">
-      <section class="image-wrapper"
-        aria-label="FinalsRR Twitch style chat preview">
-        <img src="assets/finalsrr-chat-preview.png"
-          alt="FinalsRR Twitch style chat preview showing bot commands and responses"
-          loading="lazy"
-          decoding="async" />
-      </section>
-      <!-- FAQ Section -->
-      <section id="faq" class="faq-section"
-        aria-label="Frequently Asked Questions">
-        <h2>Frequently Asked Questions</h2>
-        <div class="faq-container">
-          <details>
-            <summary>Do I need to be a Twitch Affiliate to use
-              FinalsRR?</summary>
-            <p>Nope! Anyone can use FinalsRR — whether you’re a beginner or
-              partnered streamer.</p>
-          </details>
-          <details>
-            <summary>Does the bot need moderator access?</summary>
-            <p>Yes — the bot needs to be a moderator in your Twitch chat to
-              respond to commands like <code>!rank</code> or <code>!kd</code>.
-              Without mod access, it won’t be able to reply in chat.</p>
-          </details>
-          <details>
-            <summary>How often does the rank update?</summary>
-            <p>Updates are fetched every 40-45 minutes. Leaderboard is cached
-              then stored for use</p>
-          </details>
-          <details>
-            <summary>Pricing</summary>
-            <p>FinalsRR is currently <strong>completely free to use</strong>. In
-              the future, we may introduce optional premium tools to help
-              support the bot's upkeep and continued development — but the core
-              features will always remain free.</p>
-          </details>
+  <section class="why-developed">
+    <h2>Why this was developed</h2>
+    <p>
+      As a huge fan and streamer of <strong>THE FINALS</strong>, I’ve really
+      wanted the developers to provide more official APIs. With better
+      access to game data, creators like me could build tools that make
+      streams more engaging — real-time player stats, live leaderboards,
+      interactive Twitch commands, and beyond.
+      scratches the surface. That’s why I built <strong>FinalsRR</strong> —
+      to bring that leaderboard data together with live stats and rank
+      tracking, creating a Twitch bot that streamers and viewers can rely
+      on.
+    </p>
+    <p>
+      I’m excited about what’s possible if the devs expand their API
+      offerings. More open APIs would empower the community to create
+      innovative projects that elevate the whole <strong>THE FINALS</strong>
+      experience. I hope this encourages the developers to continue
+      supporting creators by unlocking even more data.
+    </p>
+  </section>
 
-        </div>
-      </section>
+  <section id="faq" class="faq">
+    <h2>Frequently Asked Questions</h2>
 
-      <!-- New Why This Was Developed Section -->
-      <section id="why-developed" aria-label="Why This Was Developed">
-        <h2>Why This Was Developed</h2>
-        <p>
-          As a huge fan and streamer of <strong>THE FINALS</strong>, I’ve really
-          wanted the developers to provide more official APIs. With better
-          access to game data, creators like me could build tools that make
-          streams more engaging — real-time player stats, live leaderboards,
-          interactive Twitch commands, and beyond.
-          scratches the surface. That’s why I built <strong>FinalsRR</strong> —
-          to bring that leaderboard data together with live stats and rank
-          tracking, creating a Twitch bot that streamers and viewers can rely
-          on.
-        </p>
-        <p>
-          I’m excited about what’s possible if the devs expand their API
-          offerings. More open APIs would empower the community to create
-          innovative projects that elevate the whole <strong>THE FINALS</strong>
-          experience. I hope this encourages the developers to continue
-          supporting creators by unlocking even more data.
-        </p>
-      </section>
+    <div class="faq-item">
+      <h4>How often does the rank update?</h4>
+      <p>Updates are fetched every 40–45 minutes. Leaderboard data is cached and stored for reliable use.</p>
+    </div>
 
-      <!-- Testimonials Carousel -->
-      <section id="testimonials" class="carousel-container"
-        aria-label="User testimonials carousel">
-        <h2>What Our Users Say</h2>
-        <div class="carousel-wrapper">
-          <button class="carousel-nav prev"
-            aria-label="Previous testimonial">&#8249;</button>
-          <div class="slides" role="list">
-            <article class="slide" role="listitem">
-              <img
-                src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
-                alt="Antiparty profile picture"
-                class="pfp" />
-              <p>"Crafted with 99.9% bug-free code (the other 0.1% keeps things spicy). Totally not biased, but 10/10 bot — tested on friends, family, and even my cat. Powered by caffeine and questionable coding decisions."</p>
-              <a href="https://twitch.tv/antiparty" target="_blank"
-                rel="noopener noreferrer" class="username">- ⚙️Antiparty</a>
-            </article>
-            <article class="slide" role="listitem">
-              <img
-                src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png"
-                alt="its_gdawg profile picture"
-                class="pfp" />
-              <p>"Connecting my Twitch was seamless. Love the clean UI and fast updates."</p>
-              <a href="https://twitch.tv/its_gdawg" target="_blank"
-                rel="noopener noreferrer" class="username">- its_gdawg</a>
-            </article>
-            <article class="slide" role="listitem">
-              <img
-                src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png"
-                alt="leftclicksnipe profile picture"
-                class="pfp" />
-              <p>"Makes it super convenient for me and my viewers to update ourselves on rank status. Impressed on how efficient it works."</p>
-              <a href="https://twitch.tv/LeftClickSnipe" target="_blank"
-                rel="noopener noreferrer" class="username">- LeftClickSnipe</a>
-            </article>
-          </div>
-          <button class="carousel-nav next"
-            aria-label="Next testimonial">&#8250;</button>
-        </div>
-      </section>
-    </main>
+    <div class="faq-item">
+      <h4>Pricing</h4>
+      <p>FinalsRR is currently <strong>completely free to use</strong>. In the future, optional premium tools may be
+        introduced to help support the bot’s upkeep and continued development — but the core features will always remain
+        free.</p>
+    </div>
 
-    <footer class="navbar site-footer" role="contentinfo">
-      <div class="footer-content">
-        <p>© 2025 FinalsRR. All rights reserved.</p>
-        <nav class="footer-nav" aria-label="Footer navigation">
-          <a href="#">Home</a>
-          <a href="https://twitter.com/AntipartyVAL" target="_blank"
-            rel="noopener noreferrer">Twitter</a>
-          <a href="https://discord.gg/2UKzvzSEqA" target="_blank"
-            rel="noopener noreferrer">Discord</a>
-        </nav>
-      </div>
-      <div class="footer-disclaimer">
-        This tool is a <strong>third-party project</strong> and is <span style="color:#ff4545;font-weight:600;">not affiliated</span> with Embark Studios or any official Embark properties.<br>
-        Embark Studios and all associated trademarks are property of Embark Studios AB.<br>
-        This service is independently developed and does not reflect the views or opinions of Embark Studios or its partners.
-      </div>
-    </footer>
-    <script src="script.js" defer></script>
-  </body>
+    <div class="faq-item">
+      <h4>Does it require setup?</h4>
+      <p>No installation required. Authorize it once with your Twitch account and you’re ready to go.</p>
+    </div>
+  </section>
+
+  <section id="testimonials" class="testimonials">
+    <h2>What Our Users Say</h2>
+    <div class="testimonial">
+      <p>“It just works. Never had downtime once.”</p><strong>— LeftClickSnipe</strong>
+    </div>
+    <div class="testimonial">
+      <p>“Super easy to set up and customize. Love it.”</p><strong>— Its_GDawg</strong>
+    </div>
+    <div class="testimonial">
+      <p>“Finally a Twitch bot that isn’t bloated.”</p><strong>— Liqiors</strong>
+    </div>
+  </section>
+
+  <footer>
+    © 2025 FinalsRR — Made for streamers, by streamers.
+    <div class="footer-disclaimer">
+      This tool is a <strong>third-party project</strong> and is
+      <span style="color:#ff4545;font-weight:600;">not affiliated</span> with Embark Studios or any official Embark
+      properties.<br>
+      Embark Studios and all associated trademarks are property of Embark Studios AB.<br>
+      This service is independently developed and does not reflect the views or opinions of Embark Studios or its
+      partners.
+    </div>
+  </footer>
+  <script>
+    // On-scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('show');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.card, .faq-item, .testimonial, .chat-box').forEach(el => observer.observe(el));
+    async function fetchStats() {
+      const response = await fetch('/stats.json');
+      const data = await response.json();
+      if (!data) return;
+
+      const uptimeSeconds = data.uptime || 0;
+      const days = Math.floor(uptimeSeconds / 86400);
+      const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+      const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+      const seconds = uptimeSeconds % 60;
+      const uptimeString = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      document.getElementById('uptime').textContent = uptimeString;
+      document.getElementById('commands').textContent = data.commandsProcessed.toLocaleString();
+      document.getElementById('users').textContent = data.userCount.toLocaleString();
+    }
+
+    const nav = document.querySelector("nav");
+    window.addEventListener("scroll", () => {
+      if (window.scrollY > 20) {
+        nav.classList.add("scrolled");
+      } else {
+        nav.classList.remove("scrolled");
+      }
+    });
+
+    fetchStats();
+    document.getElementById('inviteBtn').addEventListener('click', () => {
+      window.location.href = '/login';
+    });
+  </script>
+</body>
 </html>

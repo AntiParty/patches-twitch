@@ -111,7 +111,7 @@ Channel.init(
     }
   }
 );
-// ...existing code...
+
 StreamSession.init(
   {
     channel: {

@@ -1,4 +1,6 @@
-import { dbReady, Channel } from "./db";
+import { dbReady, Channel, StreamSession } from "./db";
+// In-memory map to track active stream sessions
+const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubWs";
@@ -24,6 +26,24 @@ dbReady.then(async () => {
 
     logger.info("Bot is up and running!");
 
+    // Restore and continue tracking active stream sessions from DB
+    const activeSessions = await StreamSession.findAll();
+    activeSessions.forEach(session => {
+      const channel = session.get('channel');
+      const start_score = session.get('start_score');
+      const start_wt_rank = session.get('start_wt_rank');
+      const started_at = session.get('started_at');
+      activeStreamSessions.set(String(channel), {
+        start_score,
+        start_wt_rank,
+        started_at
+      });
+      // If you need to resume timers, stats, etc., do it here
+      logger.info(
+        `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}, start_wt_rank: ${start_wt_rank}`
+      );
+    });
+
     // --- Control API ---
     const controlApp = express();
     controlApp.use(express.json());
@@ -45,7 +65,6 @@ dbReady.then(async () => {
           user.refresh_token,
           user.twitch_user_id
         );
-
         res.send(`Channel ${user.username} added to bot`);
         logger.info(`[ControlAPI] Added channel: ${user.username}`);
         sendMessageToDiscord(user.username)
@@ -77,7 +96,7 @@ dbReady.then(async () => {
         const uname = user?.username || username;
         if (uname) {
           await botManager.stopBotForUser(uname);
-          
+
           // Optionally: disconnect EventSub WebSocket here if needed
           removeUserWebSocket(user?.twitch_user_id || twitch_user_id);
           logger.info(`[ControlAPI] Removed channel and disconnected bot/EventSub for ${uname}`);

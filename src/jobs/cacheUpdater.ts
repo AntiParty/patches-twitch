@@ -3,7 +3,7 @@ import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
 
-const lastUpdate = Date.now();
+let lastUpdate = Date.now();
 const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
 
 const REGULAR_SEASON_START = 1;
@@ -47,6 +47,8 @@ async function updateAllCachesRateLimited() {
     await updateCache('worldTour', season);
     await delay(delayBetweenRequests);
   }
+
+  lastUpdate = Date.now(); // Update lastUpdate after all caches are updated
 }
 
 async function updateCache(type: 'regular' | 'worldTour', season: number) {
@@ -87,6 +89,7 @@ export async function updateAllCaches() {
     ...worldTourSeasons.map(season => updateCache('worldTour', season)),
   ];
   await Promise.all(updatePromises);
+  lastUpdate = Date.now(); // Update lastUpdate after all caches are updated
 }
 
 export function startCacheUpdater(intervalMs = 45 * 60 * 1000) {

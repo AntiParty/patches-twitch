@@ -84,6 +84,5 @@ export const execute = async (
     await sendReply(ctx, 'there was an error executing the command.',  ctx.tags?.["id"]);
   }
 };
-
 // Command aliases
 export const aliases = ['linkaccount', 'link', 'add'];

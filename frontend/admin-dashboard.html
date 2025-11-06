@@ -2,874 +2,901 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Twitch Bot Admin</title>
-  <!-- Chart.js for analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Add Inter font -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Font Awesome for icons -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twitch Bot Dashboard</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="icon" href="./assets/logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* Darker theme + lightweight visuals for better perf on Pi */
     :root {
-      --background: #080a0f;
-      --foreground: #e6edf3;
-      --sidebar-bg: #0a0d12;
-      --sidebar-accent: #6b8ff7;
-      --sidebar-fg: #c9d1d9;
-      --sidebar-muted: #9aa3ad;
-      --main-bg: #080a0f;
-      --main-fg: #e6edf3;
-      --card-bg: #0b0e14;
-      --card-radius: 10px;
-      --card-shadow: 0 2px 10px rgba(0,0,0,0.3);
-      --border: rgba(255,255,255,0.05);
-      --input-bg: #0a0d13;
-      --input-fg: #c9d1d9;
-      --input-border: #141922;
-      --btn-bg: #6b8ff7;
-      --btn-fg: #0b0e14;
-      --btn-radius: 8px;
-      --danger-bg: #ef4444;
-      --danger-fg: #0b0e14;
-      --success-bg: #22c55e;
-      --success-fg: #0b0e14;
+      --primary: #9147ff;
+      --primary-dark: #772ce8;
+      --dark: #0e0e10;
+      --dark-light: #1f1f23;
+      --dark-lighter: #2d2d35;
+      --text: #efeff1;
+      --text-secondary: #adadb8;
+      --danger: #e91916;
+      --success: #00b35f;
+      --warning: #ffd400;
     }
-    @media (prefers-reduced-motion: reduce) {
-      * { animation: none !important; transition: none !important; }
-    }
-    body {
-      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-      background: var(--main-bg);
-      color: var(--main-fg);
+
+    * {
       margin: 0;
-      min-height: 100vh;
-      display: flex;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    .sidebar {
-      width: 240px;
-      background: var(--sidebar-bg);
-      color: var(--sidebar-fg);
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 24px 16px;
-      min-height: 100vh;
-      border-right: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      height: 100vh;
+
+    body {
+      background-color: var(--dark);
+      color: var(--text);
+      line-height: 1.6;
     }
-    .sidebar-logo {
-      width: 100%;
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    /* Header Styles */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--dark-lighter);
+      margin-bottom: 30px;
+    }
+
+    .logo {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 20px;
-      color: var(--sidebar-fg);
-      letter-spacing: -0.02em;
-      opacity: 0.95;
     }
-    .sidebar-logo .dot {
+
+    .logo i {
+      font-size: 32px;
+      color: var(--primary);
+      margin-right: 12px;
+    }
+
+    .logo h1 {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-info img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
+      border: 2px solid var(--primary);
+    }
+
+    /* Dashboard Sections */
+    .dashboard-section {
+      background-color: var(--dark-light);
+      border-radius: 10px;
+      padding: 25px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--dark-lighter);
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+    }
+
+    .section-title i {
+      margin-right: 12px;
+      color: var(--primary);
+      font-size: 24px;
+    }
+
+    /* Performance Metrics */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+
+    .metric-card {
+      background-color: var(--dark-lighter);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .metric-name {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      border-radius: 4px;
+    }
+
+    .cpu-progress {
+      background-color: var(--primary);
+    }
+
+    .memory-progress {
+      background-color: var(--success);
+    }
+
+    .latency-progress {
+      background-color: var(--warning);
+    }
+
+    .chart-container {
+      height: 120px;
+      margin-top: 15px;
+    }
+
+    /* Connected Channels */
+    .channels-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 15px;
+    }
+
+    .channel-card {
+      background-color: var(--dark-lighter);
+      border-radius: 8px;
+      padding: 15px;
+      transition: transform 0.2s;
+    }
+
+    .channel-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .channel-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .channel-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin-right: 15px;
+    }
+
+    .channel-info {
+      flex: 1;
+    }
+
+    .channel-name {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .channel-status {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .status-indicator {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: var(--sidebar-accent);
+      margin-right: 8px;
     }
-    .sidebar-nav {
+
+    .online {
+      background-color: var(--success);
+    }
+
+    .offline {
+      background-color: var(--text-secondary);
+    }
+
+    .channel-message-form {
       display: flex;
-      flex-direction: column;
-      gap: 1.2rem;
-      width: 100%;
+      gap: 10px;
     }
-    .sidebar-link {
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      font-size: 1.05rem;
-      color: var(--sidebar-fg);
-      text-decoration: none;
-      padding: 0.5rem 0.7rem;
-      border-radius: 0.5rem;
-      transition: background 0.18s;
-    }
-    .sidebar-link.active, .sidebar-link:hover {
-      background: var(--sidebar-accent);
-      color: var(--sidebar-bg);
-    }
-    .sidebar-link .icon {
-      font-size: 1.2rem;
-      opacity: 0.8;
-    }
-    .sidebar-footer {
-      margin-top: auto;
-      font-size: 0.95rem;
-      color: var(--sidebar-muted);
-      padding-top: 2rem;
-    }
-    .main {
+
+    .channel-message-input {
       flex: 1;
-      background: var(--main-bg);
-      min-height: 100vh;
-      padding: 28px 24px;
+      background-color: var(--dark);
+      border: 1px solid var(--dark-lighter);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .channel-message-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .channel-message-btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 15px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .channel-message-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    /* Broadcast Message */
+    .broadcast-form {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+    }
+
+    .broadcast-form textarea {
+      width: 100%;
+      background-color: var(--dark-lighter);
+      border: 1px solid var(--dark-lighter);
+      border-radius: 6px;
+      padding: 15px;
+      color: var(--text);
+      resize: vertical;
+      min-height: 120px;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    .broadcast-form textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .api-key-input {
+      width: 100%;
+      background-color: var(--dark-lighter);
+      border: 1px solid var(--dark-lighter);
+      border-radius: 6px;
+      padding: 12px 15px;
+      color: var(--text);
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    .api-key-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 24px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: background-color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn i {
+      margin-right: 8px;
+    }
+
+    .btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .btn-danger {
+      background-color: var(--danger);
+    }
+
+    .btn-danger:hover {
+      background-color: #c41614;
+    }
+
+    .btn-success {
+      background-color: var(--success);
+    }
+
+    .btn-success:hover {
+      background-color: #009950;
+    }
+
+    /* Bot Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .stat-card {
+      background-color: var(--dark-lighter);
+      border-radius: 8px;
+      padding: 25px;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+
+    /* Custom Commands */
+    .commands-list {
+      max-height: 400px;
       overflow-y: auto;
     }
-    .card {
-      background: var(--card-bg);
-      border-radius: var(--card-radius);
-      box-shadow: var(--card-shadow);
-      padding: 18px 16px;
-      border: 1px solid var(--border);
-      transition: border-color 0.15s ease;
+
+    .command-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid var(--dark-lighter);
+      transition: background-color 0.2s;
     }
-    .card:hover {
-      border-color: rgba(107,143,247,0.25);
+
+    .command-item:hover {
+      background-color: rgba(255, 255, 255, 0.05);
     }
-    .card-header {
-      margin-bottom: 1.2rem;
+
+    .command-item:last-child {
+      border-bottom: none;
     }
-    .card-title {
-      font-size: 1.2rem;
+
+    .command-trigger {
       font-weight: 600;
-      color: var(--main-fg);
-      letter-spacing: -0.01em;
+      width: 150px;
     }
-    .btn {
-      background: var(--btn-bg);
-      color: var(--btn-fg);
-      border: 1px solid rgba(136,176,255,0.5);
-      border-radius: var(--btn-radius);
-      font-weight: 600;
-      font-size: 0.92rem;
-      padding: 10px 14px;
+
+    .command-response {
+      color: var(--text-secondary);
+      flex: 1;
+      margin: 0 20px;
+    }
+
+    .command-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .command-actions button {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      transition: background-color 0.15s ease, box-shadow 0.15s ease;
-      margin-right: 0.5rem;
-      position: relative;
-      overflow: hidden;
+      font-size: 16px;
+      transition: color 0.2s;
     }
-    .btn::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(rgba(255,255,255,0.2), transparent);
-      opacity: 0;
-      transition: opacity 0.2s;
+
+    .command-actions button:hover {
+      color: var(--text);
     }
-    .btn:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+
+    .add-command-form {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
     }
-    .btn:hover::after {
-      opacity: 1;
+
+    .add-command-form input {
+      flex: 1;
+      background-color: var(--dark-lighter);
+      border: 1px solid var(--dark-lighter);
+      border-radius: 6px;
+      padding: 12px 15px;
+      color: var(--text);
+      font-size: 16px;
     }
-    .btn-outline {
-      background: transparent;
-      color: #9fb8ff;
-      border: 1px solid rgba(136,176,255,0.5);
-    }
-    .btn-destructive {
-      background: var(--danger-bg);
-      color: #fff;
-    }
-    .btn-sm {
-      font-size: 0.8rem;
-      padding: 0.35rem 0.8rem;
-    }
-    .input {
-      width: 100%;
-      border-radius: 0.5rem;
-      border: 1px solid var(--input-border);
-      background: var(--input-bg);
-      color: var(--input-fg);
-      padding: 10px 12px;
-      font-size: 0.95rem;
-      margin-bottom: 0.5rem;
-      transition: border-color 0.15s;
-    }
-    .input:focus {
+
+    .add-command-form input:focus {
       outline: none;
-      border-color: rgba(107,143,247,0.6);
+      border-color: var(--primary);
     }
 
-    /* Performance monitoring styles (scoped) */
-    #performance .card {
-      height: 400px;
-      overflow: hidden;
-      transition: height 0.3s ease;
+    /* System Logs */
+    .logs-container {
+      background-color: var(--dark-lighter);
+      border-radius: 6px;
+      padding: 20px;
+      height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
     }
 
-    .performance-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      height: calc(100% - 60px); /* Subtract header height */
-      padding: 1rem;
-      transition: padding 0.3s ease;
+    .log-entry {
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .perf-metric-card {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
+    .log-time {
+      color: var(--text-secondary);
+      margin-right: 10px;
+    }
+
+    .log-info {
+      color: var(--success);
+    }
+
+    .log-warning {
+      color: var(--warning);
+    }
+
+    .log-error {
+      color: var(--danger);
+    }
+
+    /* Token Refresh */
+    .token-card {
+      background-color: var(--dark-lighter);
       border-radius: 8px;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-
-    .perf-nochart { justify-content: center; }
-
-    .perf-metric-card .metric-title {
-      color: var(--sidebar-accent);
-      font-size: 0.875rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      flex-shrink: 0;
-    }
-
-    .perf-metric-card .metric-value {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #f3f3f3;
-      flex-shrink: 0;
-      margin: 0.5rem 0;
+      padding: 25px;
       text-align: center;
     }
 
-    .perf-chart-wrapper {
-      flex: 1;
-      min-height: 0;
-      position: relative;
-      width: 100%;
-    }
-
-    .perf-chart-wrapper canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    /* High specificity overrides to prevent global metric-card rules from
-       affecting performance cards and causing overlap */
-    #performance .metric-card,
-    #performance .perf-metric-card {
-      box-sizing: border-box !important;
-      margin: 0 !important;
-      position: relative !important;
-      min-height: 0 !important;
-    }
-
-    @media (max-width: 768px) {
-      #performance { margin-bottom: 1rem; }
-      .performance-row { grid-template-columns: 1fr; height: auto; }
-      .perf-metric-card { height: 180px; }
-      .perf-nochart { height: auto; min-height: 120px; }
-      #performance .card { height: auto; min-height: 200px; padding: 1rem; }
-      .chart-wrapper { min-height: 100px; }
-    }
-
-    .performance-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      height: calc(50% - 0.5rem); /* Half of container minus half of gap */
-    }
-
-    .metric-card {
-      background: rgba(255,255,255,0.02);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 8px;
-      padding: 1rem;
+    .token-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background-color: rgba(145, 71, 255, 0.2);
       display: flex;
-      flex-direction: column;
-      height: 100%;
-      overflow: hidden;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
     }
 
-    .metric-card .metric-title {
-      color: var(--sidebar-accent);
-      font-size: 0.875rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      flex-shrink: 0;
+    .token-icon i {
+      font-size: 32px;
+      color: var(--primary);
     }
 
-    .metric-card .metric-value {
-      font-size: 1.5rem;
+    .token-status {
+      margin: 15px 0;
+      padding: 10px 20px;
+      background-color: var(--success);
+      border-radius: 20px;
+      font-size: 16px;
       font-weight: 600;
-      color: #f3f3f3;
-      flex-shrink: 0;
-      margin: 0.5rem 0;
+      display: inline-block;
     }
 
-    .chart-wrapper {
-      flex: 1;
-      min-height: 0;
-      position: relative;
+    .token-info {
+      color: var(--text-secondary);
+      margin-bottom: 25px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
-    .chart-wrapper canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100% !important;
-      height: 100% !important;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-      .performance-row {
-        grid-template-columns: 1fr;
-        height: auto;
-        gap: 1rem;
-      }
-      
-      .performance-grid {
-        gap: 1rem;
-        padding: 0.5rem;
-      }
-      
-      .metric-card {
-        height: 180px;
-      }
-      
-      .metric-card.no-chart {
-        height: auto;
-        min-height: 120px;
-      }
-      
-      #performance .card {
-        height: auto;
-        min-height: 200px;
-        padding: 1rem;
-      }
-
-      .card-header {
-        margin-bottom: 0.5rem;
-      }
-
-      .chart-wrapper {
-        min-height: 100px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .main {
-        padding: 1rem 0.5rem;
-      }
-
-      .card {
-        padding: 1rem;
-      }
-
-      .metric-card {
-        padding: 1rem;
-      }
-
-      .metric-card .metric-value {
-        font-size: 1.25rem;
-      }
-
-      .performance-grid {
-        padding: 0;
-      }
-  }
-  .input-group {
-      display: flex;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      font-size: 0.95rem;
-    }
-    th, td {
-      padding: 0.7rem 0.5rem;
-      border-bottom: 1px solid #333;
-      text-align: left;
-    }
-    th {
-      color: #b3b3b3;
-      font-weight: 500;
-      font-size: 0.95rem;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    .logs-container {
-      background: #222;
-      border-radius: 0.7rem;
-      padding: 1rem;
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 0.85rem;
-      max-height: 220px;
-      overflow-y: auto;
-      color: #f3f3f3;
-      border: 1px solid #333;
-    }
+    /* Status Messages */
     .status-message {
-      font-size: 0.95rem;
-      margin-top: 0.5rem;
-      padding: 0.5rem 0.9rem;
-      border-radius: 0.5rem;
-      background: #0d1117;
-      color: #d0d6dd;
-      border: 1px solid var(--border);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-    }
-    .status-success {
-      background: var(--success-bg);
-      color: var(--success-fg);
-      border-color: #388e3c;
-    }
-    .status-error {
-      background: var(--danger-bg);
-      color: var(--danger-fg);
-      border-color: #c62828;
-    }
-    .status-info {
-      background: var(--sidebar-accent);
-      color: var(--sidebar-bg);
-      border-color: var(--sidebar-accent);
-    }
-    .analytics-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
-      margin: 2rem 0;
-    }
-    .metric-card {
-      background: var(--card-bg);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      font-size: 0.95rem;
-      box-shadow: var(--card-shadow);
-      border: 1px solid var(--border);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .metric-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
-    }
-    .analytics-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 2rem;
-      margin-top: 2rem;
-    }
-    .detail-section {
-      background: rgba(255,255,255,0.03);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .detail-section h3 {
-      font-size: 1.1rem;
+      padding: 12px 15px;
+      border-radius: 6px;
+      margin: 15px 0;
       font-weight: 600;
-      margin: 0 0 1rem 0;
-      color: var(--sidebar-accent);
-    }
-    .detail-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .detail-list li {
       display: flex;
-      justify-content: space-between;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      align-items: center;
     }
-    .detail-list li:last-child {
-      border-bottom: none;
+
+    .status-message i {
+      margin-right: 10px;
     }
-    #analytics-chart {
-      background: rgba(255,255,255,0.02);
-      border-radius: 1rem;
-      padding: 1rem;
-      margin-top: 1rem;
-      border: 1px solid rgba(255,255,255,0.06);
+
+    .status-success {
+      background-color: rgba(0, 179, 95, 0.2);
+      color: var(--success);
     }
-    .metric-title {
-      font-weight: 500;
-      color: #b3b3b3;
-      margin-bottom: 0.25rem;
-      font-size: 0.95rem;
+
+    .status-error {
+      background-color: rgba(233, 25, 22, 0.2);
+      color: var(--danger);
     }
-    .metric-value {
-      font-weight: 600;
-      font-size: 1.15rem;
-      color: #f3f3f3;
+
+    .status-info {
+      background-color: rgba(145, 71, 255, 0.2);
+      color: var(--primary);
     }
-    @media (max-width: 900px) {
-      .main {
-        padding: 1.2rem 0.5rem;
+
+    /* Channel Tags */
+    .channel-tag {
+      display: inline-flex;
+      align-items: center;
+      background-color: var(--primary);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 20px;
+      margin: 5px;
+      font-size: 14px;
+    }
+
+    .channel-tag button {
+      background: none;
+      border: none;
+      color: white;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+
+    /* Bot Controls */
+    .bot-controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    /* Individual Message Status */
+    .message-status {
+      font-size: 12px;
+      margin-top: 5px;
+      padding: 3px 6px;
+      border-radius: 3px;
+      display: none;
+    }
+
+    .message-success {
+      background-color: rgba(0, 179, 95, 0.2);
+      color: var(--success);
+    }
+
+    .message-error {
+      background-color: rgba(233, 25, 22, 0.2);
+      color: var(--danger);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+
+      .metrics-grid,
+      .channels-container,
+      .stats-grid {
+        grid-template-columns: 1fr;
       }
-      .sidebar {
-        padding: 1.2rem 0.5rem 1.2rem 0.5rem;
-      }
-    }
-    @media (max-width: 700px) {
-      body {
+
+      .add-command-form {
         flex-direction: column;
       }
-      .sidebar {
+
+      .command-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .command-trigger,
+      .command-response {
         width: 100%;
-        min-height: 0;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 0.5rem;
-        box-shadow: none;
+        margin: 5px 0;
       }
-      .sidebar-logo {
-        margin-bottom: 0;
+
+      .command-actions {
+        align-self: flex-end;
+        margin-top: 10px;
       }
-      .sidebar-nav {
-        flex-direction: row;
-        gap: 0.7rem;
+
+      .bot-controls {
+        flex-direction: column;
       }
-      .main {
-        padding: 1rem 0.2rem;
+
+      .channel-message-form {
+        flex-direction: column;
       }
     }
   </style>
 </head>
 
 <body>
-    <div class="sidebar">
-    <div class="sidebar-logo"><span class="dot"></span> Twitch Admin</div>
-    <nav class="sidebar-nav">
-      <a href="#stats" class="sidebar-link active"><span class="icon"><i class="fas fa-chart-bar"></i></span>Stats</a>
-      <a href="#channels" class="sidebar-link"><span class="icon"><i class="fas fa-users"></i></span>Channels</a>
-      <a href="#analytics" class="sidebar-link"><span class="icon"><i class="fas fa-chart-line"></i></span>Analytics</a>
-      <a href="#performance" class="sidebar-link"><span class="icon"><i class="fas fa-microchip"></i></span>Performance</a>
-      <a href="#logs" class="sidebar-link"><span class="icon"><i class="fas fa-file-alt"></i></span>Logs</a>
-      <a href="#commands" class="sidebar-link"><span class="icon"><i class="fas fa-terminal"></i></span>Commands</a>
-      <a href="#bot" class="sidebar-link"><span class="icon"><i class="fas fa-robot"></i></span>Bot Controls</a>
-    </nav>
-    <div class="sidebar-footer">
-      <form method="POST" action="/admin/logout" style="margin:0;">
-        <button class="btn btn-outline" type="submit">Logout</button>
-      </form>
-    </div>
-  </div>
-  <main class="main">
-    <section id="user-dashboard-toggle">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">User Dashboard Access</h2>
-        </div>
-        <div style="margin-bottom:1rem;">
-          <label for="user-dashboard-switch" style="font-weight:500;">Enable user dashboard for all users:</label>
-          <input type="checkbox" id="user-dashboard-switch" style="margin-left:1rem;transform:scale(1.3);vertical-align:middle;">
-          <span id="user-dashboard-status" style="margin-left:1rem;font-weight:500;"></span>
-        </div>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <i class="fab fa-twitch"></i>
+        <h1>Twitch Bot Dashboard</h1>
       </div>
-    </section>
-    <section id="performance">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Performance Monitoring</h2>
-          <div class="card-actions">
-            <button class="btn btn-sm" onclick="refreshPerformance()" title="Refresh Performance">
-              <i class="fas fa-sync-alt"></i>
-            </button>
-          </div>
-        </div>
-        <div class="performance-grid">
-          <div class="performance-row">
-            <div class="metric-card">
-              <div class="metric-title">CPU Usage</div>
-              <div class="metric-value" id="cpu-usage">-</div>
-              <div class="chart-wrapper">
-                <canvas id="cpu-chart"></canvas>
-              </div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-title">Memory Usage</div>
-              <div class="metric-value" id="memory-usage">-</div>
-              <div class="chart-wrapper">
-                <canvas id="memory-chart"></canvas>
-              </div>
-            </div>
-          </div>
-          <div class="performance-row">
-            <div class="metric-card">
-              <div class="metric-title">Bot Latency</div>
-              <div class="metric-value" id="bot-latency">-</div>
-              <div class="chart-wrapper">
-                <canvas id="latency-chart"></canvas>
-              </div>
-            </div>
-            <div class="metric-card" style="justify-content: center;">
-              <div class="metric-title">Connected Channels</div>
-              <div class="metric-value" id="connected-channels" style="font-size: 2rem; margin: 1rem 0;">-</div>
-              <div class="metric-subtitle" style="color: var(--sidebar-muted); text-align: center;">Active Bot Connections</div>
-            </div>
-          </div>
-        </div>
+      <div class="user-info">
+        <img src="https://i.pravatar.cc/150?img=12" alt="User Avatar">
+        <span>Admin</span>
       </div>
-    </section>
-    <section id="stats">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Stats & Bot Status</h2>
-        </div>
-        <div id="stats-content">Loading...</div>
-        <div id="bot-status" class="status-message status-info" style="margin-top:1rem;">Checking bot status...</div>
-      </div>
-    </section>
-    <section id="channels">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Channels</h2>
-          <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
-            <div style="position: relative; flex: 1;">
-              <input type="text" id="all-apiKey" class="input" placeholder="API Key" onchange="saveApiKey(this.value)" style="margin: 0;" />
-              <button class="btn btn-sm" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%);" 
-                onclick="document.getElementById('all-apiKey').value=''; saveApiKey('');" title="Clear saved API key">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <button class="btn btn-sm" onclick="refreshChannels()">
-              <i class="fas fa-sync-alt"></i> Refresh
-            </button>
-          </div>
-        </div>
-        <div id="channels-content">Loading channels...</div>
-        <div class="broadcast-controls">
-          <h3 class="subsection-title">Broadcast Message</h3>
-          <div class="input-group">
-            <div style="flex: 1;">
-              <input type="text" id="all-message" class="input" placeholder="Message to all channels" style="margin: 0;" />
-              <div class="selected-channels" id="selected-channels"></div>
-            </div>
-            <button class="btn" onclick="sendMessageToSelectedChannels()">
-              <i class="fas fa-paper-plane"></i> Send Message
-            </button>
-          </div>
-          <div id="all-message-status" class="status-message"></div>
-        </div>
-      </div>
-      <style>
-        .broadcast-controls {
-          margin-top: 2rem;
-          padding-top: 1rem;
-          border-top: 1px solid rgba(255,255,255,0.1);
-        }
-        .subsection-title {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: var(--sidebar-accent);
-          margin-bottom: 1rem;
-        }
-        .channel-list {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 1rem;
-          margin: 1rem 0;
-        }
-        .channel-item {
-          background: rgba(255,255,255,0.05);
-          border-radius: 0.5rem;
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-        }
-        .channel-name {
-          font-weight: 500;
-        }
-        .selected-channels {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-top: 0.5rem;
-        }
-        .channel-tag {
-          background: rgba(255,255,255,0.1);
-          border-radius: 1rem;
-          padding: 0.25rem 0.75rem;
-          font-size: 0.9rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        .channel-tag button {
-          background: none;
-          border: none;
-          color: inherit;
-          padding: 0;
-          cursor: pointer;
-          opacity: 0.7;
-        }
-        .channel-tag button:hover {
-          opacity: 1;
-        }
-        .channel-select {
-          cursor: pointer;
-          padding: 0.25rem;
-          border-radius: 0.25rem;
-          color: var(--sidebar-accent);
-          opacity: 0.8;
-          transition: opacity 0.2s;
-        }
-        .channel-select:hover {
-          opacity: 1;
-        }
-        .channel-select.selected {
-          color: var(--success-bg);
-        }
-      </style>
-    </section>
-    <section id="analytics">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Enhanced Analytics</h2>
-          <div class="card-actions">
-            <button class="btn btn-sm" onclick="fetchAnalytics()" title="Refresh Analytics">
-              <i class="fas fa-sync-alt"></i>
-            </button>
-          </div>
-        </div>
-        <div class="chart-container">
-          <canvas id="analytics-chart"></canvas>
-        </div>
-        <div id="analytics-content">Loading...</div>
-      </div>
-    </section>
-    <style>
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .card-actions {
-        display: flex;
-        gap: 0.5rem;
-      }
-      .chart-container {
-        position: relative;
-        width: 100%;
-        height: 400px;
-        background: rgba(255,255,255,0.02);
-        border-radius: 1rem;
-        padding: 1rem;
-        margin: 1rem 0;
-        border: 1px solid rgba(255,255,255,0.06);
-      }
-      .metric-card {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 1.5rem;
-      }
-      .metric-card .metric-value {
-        font-size: 1.5rem;
-        font-weight: 600;
-      }
-      .metric-card .metric-title {
-        font-size: 0.9rem;
-        color: var(--sidebar-accent);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      .metric-card .metric-change {
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-      }
-      .metric-change.positive {
-        color: var(--success-bg);
-      }
-      .metric-change.negative {
-        color: var(--danger-bg);
-      }
-      .detail-section {
-        background: rgba(255,255,255,0.02);
-      }
-      .detail-list li {
-        padding: 0.75rem 0;
-      }
-      .detail-list li span:first-child {
-        color: var(--sidebar-accent);
-      }
-    </style>
-    <section id="logs">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Recent Logs</h2>
-        </div>
-        <div id="logs-content" class="logs-container">Loading...</div>
-      </div>
-    </section>
-    <section id="commands">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Manage Commands</h2>
-        </div>
-        <div id="commands-content">Loading...</div>
-        <button class="btn btn-outline" onclick="addCommandRow()">Add Command</button>
-      </div>
-    </section>
-    <section id="bot">
-      <div class="card">
-        <div class="card-header">
-          <h2 class="card-title">Bot Controls</h2>
-        </div>
-        <div class="input-group">
-          <div style="position: relative; flex: 1;">
-            <input type="text" id="restartApiKey" class="input" placeholder="API Key" onchange="saveApiKey(this.value)" />
-            <button class="btn btn-sm" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%);" 
-              onclick="document.getElementById('restartApiKey').value=''; saveApiKey('');" title="Clear saved API key">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          <button class="btn" onclick="restartBot()"><i class="fas fa-sync-alt"></i> Restart Bot</button>
-          <button class="btn btn-outline" onclick="pauseBot()"><i class="fas fa-pause"></i> Pause Bot</button>
-          <button class="btn btn-outline" onclick="resumeBot()"><i class="fas fa-play"></i> Resume Bot</button>
-        </div>
-        <div id="restart-status" class="status-message"></div>
+    </header>
+
+    <!-- Performance Metrics Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-server"></i>
+          Performance Metrics
+        </h2>
       </div>
 
-      <div class="card" style="margin-top: 1rem;">
-        <div class="card-header" style="justify-content: space-between; align-items: center;">
-          <h2 class="card-title">Bot Auth</h2>
-          <div class="card-actions">
-            <button class="btn btn-sm" onclick="refreshBotToken()" title="Refresh Bot Token">
-              <i class="fas fa-key"></i> Refresh Bot Token
-            </button>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-name">CPU Usage</div>
+            <div class="metric-value" id="cpu-usage">0%</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress cpu-progress" style="width: 0%"></div>
+          </div>
+          <div class="chart-container">
+            <canvas id="cpu-chart"></canvas>
           </div>
         </div>
-        <div id="bot-auth-status" class="status-message">Refresh the bot token to rotate credentials and reconnect IRC.</div>
-        <div id="bot-auth-preview" class="status-message" style="margin-top: 0.5rem; display:none;"></div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-name">Memory Usage</div>
+            <div class="metric-value" id="memory-usage">0MB</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress memory-progress" style="width: 0%"></div>
+          </div>
+          <div class="chart-container">
+            <canvas id="memory-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-name">Bot Latency</div>
+            <div class="metric-value" id="bot-latency">0ms</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress latency-progress" style="width: 0%"></div>
+          </div>
+          <div class="chart-container">
+            <canvas id="latency-chart"></canvas>
+          </div>
+        </div>
       </div>
     </section>
-  </main>
+
+    <!-- Connected Channels Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-users"></i>
+          Connected Channels
+        </h2>
+        <div class="metric-value" id="connected-channels">0</div>
+      </div>
+
+      <div id="selected-channels"></div>
+
+      <div id="channels-content" class="channels-container">
+        <div class="status-message status-info">
+          <i class="fas fa-spinner fa-spin"></i> Loading channels...
+        </div>
+      </div>
+    </section>
+
+    <!-- Broadcast Message Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-broadcast-tower"></i>
+          Broadcast Message
+        </h2>
+      </div>
+
+      <input type="text" class="api-key-input" id="all-apiKey" placeholder="API Key">
+
+      <form class="broadcast-form">
+        <textarea id="all-message" placeholder="Type your message to send to all connected channels..."></textarea>
+        <button type="button" class="btn" onclick="sendMessageToSelectedChannels()">
+          <i class="fas fa-paper-plane"></i>
+          Send Broadcast
+        </button>
+      </form>
+
+      <div id="all-message-status"></div>
+    </section>
+
+    <!-- Bot Stats Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-robot"></i>
+          Bot Stats & Uptime
+        </h2>
+      </div>
+
+      <div id="bot-status" class="status-message status-info">
+        <i class="fas fa-spinner fa-spin"></i> Loading bot status...
+      </div>
+
+      <div id="stats-content" class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">-</div>
+          <div class="stat-label">Commands Processed</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-value">-</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bot Controls Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-cogs"></i>
+          Bot Controls
+        </h2>
+      </div>
+
+      <input type="text" class="api-key-input" id="restartApiKey" placeholder="API Key for restart">
+
+      <div class="bot-controls">
+        <button class="btn" onclick="restartBot()" style="flex: 1;">
+          <i class="fas fa-power-off"></i>
+          Restart Bot
+        </button>
+        <button class="btn btn-danger" onclick="pauseBot()" style="flex: 1;">
+          <i class="fas fa-pause"></i>
+          Pause Bot
+        </button>
+      </div>
+
+      <button class="btn" onclick="resumeBot()" style="width: 100%; margin-bottom: 15px;">
+        <i class="fas fa-play"></i>
+        Resume Bot
+      </button>
+
+      <div id="restart-status"></div>
+    </section>
+
+    <!-- Custom Commands Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-terminal"></i>
+          Custom Bot Commands
+        </h2>
+      </div>
+
+      <div id="commands-content" class="commands-list">
+        <div class="status-message status-info">
+          <i class="fas fa-spinner fa-spin"></i> Loading commands...
+        </div>
+      </div>
+
+      <div class="add-command-form">
+        <input type="text" id="new-command-name" placeholder="New command (e.g., !mycommand)">
+        <input type="text" id="new-command-response" placeholder="Response text">
+        <button class="btn btn-success" onclick="addNewCommand()">
+          <i class="fas fa-plus"></i>
+          Add Command
+        </button>
+      </div>
+    </section>
+
+    <!-- System Logs Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-file-alt"></i>
+          System Logs
+        </h2>
+      </div>
+
+      <div id="logs-content" class="logs-container">
+        <div class="status-message status-info">
+          <i class="fas fa-spinner fa-spin"></i> Loading logs...
+        </div>
+      </div>
+    </section>
+
+    <!-- Token Refresh Section -->
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-key"></i>
+          Authentication Token Management
+        </h2>
+      </div>
+
+      <div class="token-card">
+        <div class="token-icon">
+          <i class="fas fa-key"></i>
+        </div>
+
+        <h3>Twitch Bot Token</h3>
+
+        <div id="bot-auth-status" class="status-message status-info">
+          <i class="fas fa-spinner fa-spin"></i> Checking token status...
+        </div>
+        <div id="bot-auth-preview" style="display: none;"></div>
+
+        <p class="token-info">
+          Your authentication token is currently valid. Refresh it if you're experiencing connection issues with Twitch
+          services.
+        </p>
+
+        <button class="btn" onclick="refreshBotToken()">
+          <i class="fas fa-sync-alt"></i>
+          Refresh Token
+        </button>
+      </div>
+    </section>
+
+    <section class="dashboard-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-database"></i>
+          Database Editor
+        </h2>
+      </div>
+      <div style="margin-bottom: 15px;">
+        <label for="db-table-select">Select Table:</label>
+        <select id="db-table-select" style="margin-left: 10px;">
+          <option value="StreamSessions">StreamSessions</option>
+          <option value="Channels">Channels</option>
+          <option value="CustomResponse">CustomResponse</option>
+        </select>
+      </div>
+      <div id="db-table-editor">
+        <div class="status-message status-info"><i class="fas fa-spinner fa-spin"></i> Loading table...</div>
+      </div>
+    </section>
+  </div>
 
   <script>
     // CSRF token handling for admin API POSTs
@@ -880,43 +907,10 @@
         const res = await fetch('/admin/api/csrf');
         const data = await res.json();
         CSRF_TOKEN = data?.csrfToken || null;
-      } catch {}
+      } catch { }
       return CSRF_TOKEN;
     }
-    // User dashboard access toggle
-    async function fetchUserDashboardAccess() {
-      try {
-        const res = await fetch('/admin/api/user-dashboard-access');
-        const data = await res.json();
-        const checkbox = document.getElementById('user-dashboard-switch');
-        const status = document.getElementById('user-dashboard-status');
-        checkbox.checked = !!data.enabled;
-        status.textContent = data.enabled ? "Enabled" : "Disabled";
-        status.style.color = data.enabled ? "#43a047" : "#e53935";
-      } catch {
-        document.getElementById('user-dashboard-status').textContent = "Error";
-      }
-    }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      ensureCsrfToken();
-      fetchUserDashboardAccess();
-      document.getElementById('user-dashboard-switch').addEventListener('change', async function() {
-        const enabled = this.checked;
-        try {
-          await ensureCsrfToken();
-          const res = await fetch('/admin/api/user-dashboard-access', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ enabled })
-          });
-          const data = await res.json();
-          fetchUserDashboardAccess();
-        } catch {
-          document.getElementById('user-dashboard-status').textContent = "Error updating";
-        }
-      });
-    });
     // Performance monitoring
     let performanceCharts = {
       cpu: null,
@@ -960,7 +954,7 @@
       charts.forEach(type => {
         const canvas = document.getElementById(`${type}-chart`);
         if (!canvas) return;
-        
+
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
@@ -995,16 +989,16 @@
       if (!chart) return;
       const now = Date.now();
       if (now - lastUpdate < UPDATE_THROTTLE) return;
-      
+
       const data = chart.data.datasets[0].data;
       data.push(value);
       if (data.length > 12) data.shift();
-      
+
       // Use requestAnimationFrame for smoother updates
       requestAnimationFrame(() => {
         chart.update('none');
       });
-      
+
       lastUpdate = now;
     }
 
@@ -1015,7 +1009,7 @@
         const perfPromise = fetch('/admin/api/performance');
         const channelsPromise = fetch('/admin/api/channels');
 
-        const [perfRes, chRes] = await Promise.all([perfPromise.catch(e=>null), channelsPromise.catch(e=>null)]);
+        const [perfRes, chRes] = await Promise.all([perfPromise.catch(e => null), channelsPromise.catch(e => null)]);
 
         const metrics = perfRes ? await perfRes.json() : null;
         const chData = chRes ? await chRes.json() : null;
@@ -1032,16 +1026,21 @@
         // Update values (guard for missing metrics)
         if (metrics && metrics.cpu) {
           document.getElementById('cpu-usage').textContent = `${metrics.cpu.usage.toFixed(1)}%`;
+          document.querySelector('.cpu-progress').style.width = `${metrics.cpu.usage}%`;
           updateChart(performanceCharts.cpu, metrics.cpu.usage);
         }
 
         if (metrics && metrics.memory) {
-          document.getElementById('memory-usage').textContent = `${(metrics.memory.used / 1024 / 1024).toFixed(0)}MB`;
-          updateChart(performanceCharts.memory, metrics.memory.used / metrics.memory.total * 100);
+          const memoryMB = (metrics.memory.used / 1024 / 1024).toFixed(0);
+          const memoryPercent = (metrics.memory.used / metrics.memory.total * 100).toFixed(1);
+          document.getElementById('memory-usage').textContent = `${memoryMB}MB`;
+          document.querySelector('.memory-progress').style.width = `${memoryPercent}%`;
+          updateChart(performanceCharts.memory, memoryPercent);
         }
 
         if (metrics && typeof metrics.botLatency === 'number') {
           document.getElementById('bot-latency').textContent = `${metrics.botLatency.toFixed(1)}ms`;
+          document.querySelector('.latency-progress').style.width = `${Math.min(metrics.botLatency, 100)}%`;
           updateChart(performanceCharts.latency, metrics.botLatency);
         }
 
@@ -1054,7 +1053,7 @@
 
     // Initialize performance monitoring
     let performanceInterval;
-    
+
     function startPerformanceMonitoring() {
       if (document.hidden) return;
       initPerformanceCharts();
@@ -1085,30 +1084,16 @@
       }
     });
 
-    // Start monitoring initially if page is visible
-    if (!document.hidden) {
-      startPerformanceMonitoring();
-    }
-
     // API Key Management
     const API_KEY_STORAGE = 'twitch_bot_api_key';
-    
+
     function saveApiKey(key) {
       localStorage.setItem(API_KEY_STORAGE, key);
     }
-    
+
     function getStoredApiKey() {
       return localStorage.getItem(API_KEY_STORAGE) || '';
     }
-
-    // Load saved API key on startup
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedKey = getStoredApiKey();
-      if (savedKey) {
-        document.getElementById('all-apiKey').value = savedKey;
-        document.getElementById('restartApiKey').value = savedKey;
-      }
-    });
 
     // Helper function to format uptime
     function formatUptime(seconds) {
@@ -1137,16 +1122,16 @@
         container.innerHTML = '';
         return;
       }
-      
+
       container.innerHTML = Array.from(selectedChannels)
         .map(ch => `
-          <div class="channel-tag">
-            ${ch}
-            <button onclick="toggleChannel('${ch}')">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-        `).join('');
+              <div class="channel-tag">
+                ${ch}
+                <button onclick="toggleChannel('${ch}')">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            `).join('');
     }
 
     function updateChannelSelections() {
@@ -1172,24 +1157,22 @@
         const key = document.getElementById('all-apiKey').value;
         const res = await fetch('/admin/api/stats');
         const data = await res.json();
-        
+
         const statusDiv = document.getElementById('bot-status');
         const statsContent = document.getElementById('stats-content');
-        
+
         if (data.stats) {
           const { commandsProcessed, uptime } = data.stats;
           statsContent.innerHTML = `
-            <div class="analytics-grid" style="margin: 0;">
-              <div class="metric-card">
-                <div class="metric-title">Commands Processed</div>
-                <div class="metric-value">${commandsProcessed.toLocaleString()}</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-title">Uptime</div>
-                <div class="metric-value">${formatUptime(uptime)}</div>
-              </div>
-            </div>
-          `;
+                <div class="stat-card">
+                  <div class="stat-value">${commandsProcessed.toLocaleString()}</div>
+                  <div class="stat-label">Commands Processed</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">${formatUptime(uptime)}</div>
+                  <div class="stat-label">Uptime</div>
+                </div>
+              `;
           statusDiv.innerHTML = `<i class="fas fa-check-circle"></i> Bot is running`;
           statusDiv.className = 'status-message status-success';
         } else {
@@ -1201,43 +1184,120 @@
         const statusDiv = document.getElementById('bot-status');
         statusDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> Bot status check failed`;
         statusDiv.className = 'status-message status-error';
-        document.getElementById('stats-content').innerHTML = 
+        document.getElementById('stats-content').innerHTML =
           `<div class="status-message status-error">Error: ${err.message}</div>`;
       }
     }
 
-    // Stats
+    // Send message to individual channel
+    async function sendMessageToChannel(channel) {
+      const messageInput = document.getElementById(`message-${channel}`);
+      const statusDiv = document.getElementById(`status-${channel}`);
+      const message = messageInput.value.trim();
+      const key = document.getElementById('all-apiKey').value;
+
+      if (!message) {
+        statusDiv.textContent = "Message required";
+        statusDiv.className = 'message-status message-error';
+        statusDiv.style.display = 'block';
+        return;
+      }
+
+      if (!key) {
+        statusDiv.textContent = "API key required";
+        statusDiv.className = 'message-status message-error';
+        statusDiv.style.display = 'block';
+        return;
+      }
+
+      try {
+        statusDiv.textContent = "Sending...";
+        statusDiv.className = 'message-status message-info';
+        statusDiv.style.display = 'block';
+
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({
+            channel,
+            message,
+            key
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          messageInput.value = ''; // Clear message input
+          statusDiv.textContent = "Message sent!";
+          statusDiv.className = 'message-status message-success';
+          setTimeout(() => {
+            statusDiv.style.display = 'none';
+          }, 3000);
+          fetchLogs(); // Refresh logs to show the message
+        } else {
+          statusDiv.textContent = data.error || "Failed to send";
+          statusDiv.className = 'message-status message-error';
+        }
+      } catch (err) {
+        statusDiv.textContent = "Error sending message";
+        statusDiv.className = 'message-status message-error';
+      }
+    }
+
+    // Stats - Fetch and display channels with individual message inputs
     async function fetchChannels() {
       try {
         const res = await fetch('/admin/api/channels');
         const data = await res.json();
-        let html = `<div><strong>Total Channels:</strong> ${data.userCount || 0}</div>`;
+
         // Update connected channels display if present
         const connectedEl = document.getElementById('connected-channels');
         if (connectedEl) {
           const count = typeof data.userCount === 'number' ? data.userCount : (Array.isArray(data.channels) ? data.channels.length : 0);
           connectedEl.textContent = count.toString();
         }
-        html += `<div class="channel-list">`;
-        if (data.channels) {
+
+        let html = '';
+        if (data.channels && data.channels.length > 0) {
           for (const ch of data.channels) {
             html += `
-              <div class="channel-item">
-                <span class="channel-name">${ch}</span>
-                <button class="channel-select" 
-                  data-channel="${ch}" 
-                  onclick="toggleChannel('${ch}')"
-                  title="Select channel for message">
-                  <i class="fas fa-plus-circle"></i>
-                </button>
-              </div>`;
+                  <div class="channel-card">
+                    <div class="channel-header">
+                      <div class="channel-info">
+                        <div class="channel-name">${ch}</div>
+                        <div class="channel-status">
+                          <div class="status-indicator online"></div>
+                          <span>Online</span>
+                        </div>
+                      </div>
+                      <button class="channel-select" 
+                        data-channel="${ch}" 
+                        onclick="toggleChannel('${ch}')"
+                        title="Select channel for broadcast">
+                        <i class="fas fa-plus-circle"></i>
+                      </button>
+                    </div>
+                    <div class="channel-message-form">
+                      <input type="text" 
+                             id="message-${ch}" 
+                             class="channel-message-input" 
+                             placeholder="Type message for ${ch}...">
+                      <button class="channel-message-btn" onclick="sendMessageToChannel('${ch}')">
+                        <i class="fas fa-paper-plane"></i>
+                      </button>
+                    </div>
+                    <div id="status-${ch}" class="message-status"></div>
+                  </div>`;
           }
+        } else {
+          html = '<div class="status-message status-info">No channels connected</div>';
         }
-        html += `</div>`;
+
         document.getElementById('channels-content').innerHTML = html;
         updateChannelSelections();
       } catch {
-        document.getElementById('channels-content').innerText = 'Failed to load channels.';
+        document.getElementById('channels-content').innerHTML = '<div class="status-message status-error">Failed to load channels.</div>';
       }
     }
 
@@ -1246,9 +1306,28 @@
       try {
         const res = await fetch('/admin/api/logs');
         const logs = await res.json();
-        document.getElementById('logs-content').innerHTML = `<pre>${logs.join('\n')}</pre>`;
+
+        let logsHTML = '';
+        if (Array.isArray(logs)) {
+          logs.forEach(log => {
+            const logTime = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '[Unknown]';
+            let logLevel = 'log-info';
+            if (log.level === 'WARNING') logLevel = 'log-warning';
+            if (log.level === 'ERROR') logLevel = 'log-error';
+
+            logsHTML += `
+                  <div class="log-entry">
+                    <span class="log-time">[${logTime}]</span>
+                    <span class="${logLevel}">${log.level}:</span> ${log.message}
+                  </div>`;
+          });
+        } else {
+          logsHTML = '<div class="status-message status-info">No logs available</div>';
+        }
+
+        document.getElementById('logs-content').innerHTML = logsHTML;
       } catch {
-        document.getElementById('logs-content').innerText = 'No logs available.';
+        document.getElementById('logs-content').innerHTML = '<div class="status-message status-error">No logs available.</div>';
       }
     }
 
@@ -1257,72 +1336,95 @@
       try {
         const res = await fetch('/admin/api/commands');
         const cmds = await res.json();
-        let html = '<table><tr><th>Name</th><th>Response</th><th>Actions</th></tr>';
-        for (const cmd of cmds) {
-          html += `<tr>
-            <td><input class="input" value="${cmd.name}" /></td>
-            <td><input class="input" value="${cmd.response}" /></td>
-            <td><button class="btn btn-destructive btn-sm" onclick="deleteCommand('${cmd.name}')">Delete</button></td>
-          </tr>`;
+
+        let html = '';
+        if (Array.isArray(cmds) && cmds.length > 0) {
+          for (const cmd of cmds) {
+            html += `<div class="command-item">
+                  <div class="command-trigger">${cmd.name}</div>
+                  <div class="command-response">${cmd.response}</div>
+                  <div class="command-actions">
+                    <button title="Edit Command" onclick="editCommand('${cmd.name}')"><i class="fas fa-edit"></i></button>
+                    <button title="Delete Command" onclick="deleteCommand('${cmd.name}')"><i class="fas fa-trash"></i></button>
+                  </div>
+                </div>`;
+          }
+        } else {
+          html = '<div class="status-message status-info">No commands found</div>';
         }
-        html += '</table>';
+
         document.getElementById('commands-content').innerHTML = html;
       } catch {
-        document.getElementById('commands-content').innerText = 'No commands found.';
+        document.getElementById('commands-content').innerHTML = '<div class="status-message status-error">No commands found.</div>';
       }
     }
 
-    function addCommandRow() {
-      const table = document.querySelector('#commands-content table');
-      if (table) {
-        const row = table.insertRow(-1);
-        row.innerHTML = `<td><input class="input" /></td>
-          <td><input class="input" /></td>
-          <td><button class="btn btn-destructive btn-sm" onclick="this.closest('tr').remove()">Delete</button></td>`;
+    async function addNewCommand() {
+      const name = document.getElementById('new-command-name').value.trim();
+      const response = document.getElementById('new-command-response').value.trim();
+
+      if (!name || !response) {
+        alert('Please enter both command name and response');
+        return;
+      }
+
+      try {
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/commands', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ name, response })
+        });
+
+        if (res.ok) {
+          document.getElementById('new-command-name').value = '';
+          document.getElementById('new-command-response').value = '';
+          fetchCommands(); // Refresh the commands list
+        } else {
+          alert('Failed to add command');
+        }
+      } catch {
+        alert('Error adding command');
+      }
+    }
+
+    async function editCommand(name) {
+      const newResponse = prompt(`Edit response for command ${name}:`);
+      if (newResponse === null) return;
+
+      try {
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/commands/' + encodeURIComponent(name), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ response: newResponse })
+        });
+
+        if (res.ok) {
+          fetchCommands(); // Refresh the commands list
+        } else {
+          alert('Failed to update command');
+        }
+      } catch {
+        alert('Error updating command');
       }
     }
 
     async function deleteCommand(name) {
       if (!confirm(`Delete command ${name}?`)) return;
-      await fetch('/admin/api/commands/' + encodeURIComponent(name), { method: 'DELETE' });
-      fetchCommands();
-    }
-
-    // Channels
-    async function fetchChannels() {
       try {
-        const key = document.getElementById('all-apiKey').value;
-        const res = await fetch('/admin/api/channels?key=' + encodeURIComponent(key));
-        const data = await res.json();
-        let html = `<div><strong>Total Channels:</strong> ${data.userCount || 0}</div>`;
-        html += `<table><tr><th>Channel</th><th>Send Message</th></tr>`;
-        if (data.channels) {
-          for (const ch of data.channels) {
-            html += `<tr><td>${ch}</td>
-              <td><input type="text" id="msg-${ch}" class="input" placeholder="Message" />
-              <button class="btn btn-sm" onclick="sendMessageToChannel('${ch}')">Send</button></td></tr>`;
-          }
-        }
-        html += `</table>`;
-        document.getElementById('channels-content').innerHTML = html;
-      } catch {
-        document.getElementById('channels-content').innerText = 'Failed to load channels.';
-      }
-    }
-
-    async function sendMessageToChannel(channel) {
-      const msgInput = document.getElementById('msg-' + channel);
-      const message = msgInput.value;
-      const key = document.getElementById('all-apiKey').value;
-      try {
-        await fetch('/admin/api/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ channel, message, key })
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/commands/' + encodeURIComponent(name), {
+          method: 'DELETE',
+          headers: { 'CSRF-Token': CSRF_TOKEN }
         });
-        msgInput.value = '';
+        if (res.ok) {
+          fetchCommands();
+        } else {
+          alert('Failed to delete command');
+        }
       } catch {
-        msgInput.classList.add('status-error');
+        alert('Error deleting command');
       }
     }
 
@@ -1330,7 +1432,7 @@
       const message = document.getElementById('all-message').value;
       const key = document.getElementById('all-apiKey').value;
       const statusDiv = document.getElementById('all-message-status');
-      
+
       if (!message || !key) {
         statusDiv.innerText = "Message & API key required";
         statusDiv.className = 'status-message status-error';
@@ -1348,23 +1450,23 @@
         statusDiv.innerText = "Sending message...";
         statusDiv.className = 'status-message status-info';
 
+        await ensureCsrfToken();
         const res = await fetch('/admin/api/message', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            message, 
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({
+            message,
             key,
-            channels: channels.length === 0 ? null : channels // null means broadcast to all
+            channels: channels
           })
         });
-        
+
         const data = await res.json();
         if (data.success) {
           document.getElementById('all-message').value = ''; // Clear message input
-          statusDiv.innerText = channels.length === 0 
-            ? "Message sent to all channels"
-            : `Message sent to ${channels.length} channel${channels.length > 1 ? 's' : ''}`;
+          statusDiv.innerText = `Message sent to ${channels.length} channel${channels.length > 1 ? 's' : ''}`;
           statusDiv.className = 'status-message status-success';
+          fetchLogs(); // Refresh logs to show the broadcast
         } else {
           statusDiv.innerText = data.error || "Failed";
           statusDiv.className = 'status-message status-error';
@@ -1372,197 +1474,6 @@
       } catch {
         statusDiv.innerText = "Error sending message";
         statusDiv.className = 'status-message status-error';
-      }
-    }
-
-    // Analytics with Chart.js
-    async function fetchAnalytics() {
-      try {
-        const res = await fetch('/admin/api/web-analytics');
-        const data = await res.json();
-        const analyticsContent = document.getElementById('analytics-content');
-        
-        // Get the most recent 7 days of data
-        const recentDays = Object.entries(data)
-          .sort((a, b) => new Date(b[0]) - new Date(a[0]))
-          .slice(0, 7)
-          .reverse();
-
-        // Prepare data for charts
-        const dates = recentDays.map(([date]) => {
-          const d = new Date(date);
-          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        });
-        const requests = recentDays.map(([_, stats]) => stats.totalRequests);
-        const visitors = recentDays.map(([_, stats]) => stats.uniqueVisitors);
-        const responseTimes = recentDays.map(([_, stats]) => stats.avgResponseTimeMs);
-
-        // Chart Theme
-        Chart.defaults.color = '#b3b3b3';
-        Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
-
-        // Traffic Chart
-        const canvasEl = document.getElementById('analytics-chart');
-        if (!canvasEl) return;
-        const ctx = canvasEl.getContext('2d');
-        if (window.requestChart) window.requestChart.destroy();
-        window.requestChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: dates,
-            datasets: [{
-              label: 'Total Requests',
-              data: requests,
-              borderColor: '#f5a524',
-              backgroundColor: 'rgba(245, 165, 36, 0.1)',
-              tension: 0.4,
-              fill: true,
-              pointBackgroundColor: '#f5a524',
-              pointBorderColor: '#f5a524',
-              pointHoverRadius: 6,
-              pointHoverBorderWidth: 2,
-              borderWidth: 3
-            }, {
-              label: 'Unique Visitors',
-              data: visitors,
-              borderColor: '#4CAF50',
-              backgroundColor: 'rgba(76, 175, 80, 0.1)',
-              tension: 0.4,
-              fill: true,
-              pointBackgroundColor: '#4CAF50',
-              pointBorderColor: '#4CAF50',
-              pointHoverRadius: 6,
-              pointHoverBorderWidth: 2,
-              borderWidth: 3
-            }]
-          },
-          options: {
-            responsive: true,
-            interaction: {
-              mode: 'index',
-              intersect: false,
-            },
-            plugins: {
-              title: { 
-                display: true, 
-                text: 'Traffic Overview',
-                color: '#f3f3f3',
-                font: {
-                  size: 16,
-                  family: "'Inter', sans-serif",
-                  weight: '600'
-                },
-                padding: 20
-              },
-              legend: { 
-                position: 'bottom',
-                labels: {
-                  usePointStyle: true,
-                  padding: 20,
-                  font: {
-                    family: "'Inter', sans-serif"
-                  }
-                }
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                titleFont: {
-                  family: "'Inter', sans-serif",
-                  size: 13
-                },
-                bodyFont: {
-                  family: "'Inter', sans-serif",
-                  size: 12
-                },
-                padding: 12,
-                cornerRadius: 8,
-                displayColors: true
-              }
-            },
-            scales: {
-              y: { 
-                beginAtZero: true,
-                grid: {
-                  color: 'rgba(255,255,255,0.05)'
-                },
-                ticks: {
-                  font: {
-                    family: "'Inter', sans-serif"
-                  },
-                  callback: function(value) {
-                    return value.toLocaleString();
-                  }
-                }
-              },
-              x: {
-                grid: {
-                  color: 'rgba(255,255,255,0.05)'
-                },
-                ticks: {
-                  font: {
-                    family: "'Inter', sans-serif"
-                  }
-                }
-              }
-            },
-            elements: {
-              point: {
-                radius: 4,
-                borderWidth: 2
-              }
-            }
-          }
-        });
-
-        // Create metrics grid
-        const latestStats = recentDays[recentDays.length - 1][1];
-        const previousStats = recentDays[recentDays.length - 2]?.[1];
-
-        // Calculate changes
-        const calculateChange = (current, previous) => {
-          if (!previous) return null;
-          const change = ((current - previous) / previous) * 100;
-          return {
-            value: Math.abs(change).toFixed(1),
-            direction: change >= 0 ? 'up' : 'down'
-          };
-        };
-
-        const requestsChange = calculateChange(latestStats.totalRequests, previousStats?.totalRequests);
-        const visitorsChange = calculateChange(latestStats.uniqueVisitors, previousStats?.uniqueVisitors);
-        const responseChange = calculateChange(latestStats.avgResponseTimeMs, previousStats?.avgResponseTimeMs);
-
-        let html = `
-          <div class="metric-card">
-            <div class="metric-title">P95 Response Time</div>
-            <div class="metric-value">${latestStats.p95ResponseTimeMs}ms</div>
-          </div>
-          <div class="analytics-details">
-            <div class="detail-section">
-              <h3>Top Routes</h3>
-              <ul class="detail-list">
-                ${Object.entries(latestStats.perRoute)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5)
-                  .map(([route, count]) => `<li><span>${route}</span><span>${count}</span></li>`)
-                  .join('')}
-              </ul>
-            </div>
-            <div class="detail-section">
-              <h3>Status Codes</h3>
-              <ul class="detail-list">
-                ${Object.entries(latestStats.statusCodes)
-                  .sort((a, b) => a[0].localeCompare(b[0]))
-                  .map(([code, count]) => `<li><span>${code}</span><span>${count}</span></li>`)
-                  .join('')}
-              </ul>
-            </div>
-          </div>`;
-        
-        analyticsContent.innerHTML = html;
-      } catch (err) {
-        document.getElementById('analytics-content').innerHTML = 
-          `<div class="status-message status-error">Failed to load analytics: ${err.message}</div>`;
       }
     }
 
@@ -1585,14 +1496,20 @@
         const data = await res.json();
         statusDiv.innerText = data.success ? "Bot restarted" : "Failed: " + (data.error || "Unknown");
         statusDiv.className = data.success ? 'status-message status-success' : 'status-message status-error';
+        fetchLogs(); // Refresh logs
       } catch {
         statusDiv.innerText = "Error restarting bot";
         statusDiv.className = 'status-message status-error';
       }
     }
 
-    function pauseBot() { alert('Pause bot feature coming soon'); }
-    function resumeBot() { alert('Resume bot feature coming soon'); }
+    function pauseBot() {
+      alert('Pause bot feature coming soon');
+    }
+
+    function resumeBot() {
+      alert('Resume bot feature coming soon');
+    }
 
     // Bot Auth: Refresh bot token via admin API
     async function refreshBotToken() {
@@ -1617,21 +1534,164 @@
         preview.className = 'status-message';
         preview.style.display = '';
         preview.innerText = `Access: ${data.accessTokenPreview}…, Refresh: ${data.refreshTokenPreview}…, Expires In: ${data.expiresIn}s`;
+        fetchLogs(); // Refresh logs
       } catch (e) {
         status.className = 'status-message status-error';
         status.innerText = 'Error: ' + (e?.message || 'Failed');
       }
     }
 
-    // Init
-    fetchBotStatus();
-    fetchChannels();
-    fetchLogs();
-    fetchCommands();
-    fetchAnalytics();
-    
-    // Auto-refresh bot status every 30 seconds
+    async function fetchTableRows(table) {
+      const res = await fetch(`/admin/api/db/${table}`);
+      const data = await res.json();
+      return data.rows || [];
+    }
+
+    function renderTableEditor(table, rows) {
+      const editor = document.getElementById('db-table-editor');
+      if (!Array.isArray(rows) || rows.length === 0) {
+        editor.innerHTML = `<div class='status-message status-info'>No rows found for ${table}</div>`;
+        return;
+      }
+      // Get all unique keys from all rows
+      const keys = Array.from(new Set(rows.flatMap(row => Object.keys(row))));
+      let html = `<div style='overflow-x:auto;'>`;
+      html += `<table class='db-table' style='width:100%;border-collapse:collapse;margin-bottom:15px;'>`;
+      html += `<thead><tr>${keys.map(k => `<th style='border-bottom:1px solid #333;padding:6px;'>${k}</th>`).join('')}<th>Actions</th></tr></thead>`;
+      html += `<tbody>`;
+      for (const row of rows) {
+        html += `<tr>${keys.map(k => {
+          let value = row[k] ?? '';
+          if (table === 'Channels' && (k === 'access_token' || k === 'refresh_token')) {
+            value = value ? `<span style='filter: blur(6px); user-select:none;'>${value}</span>` : '';
+          }
+          return `<td style='padding:6px;word-break:break-all;'>${value}</td>`;
+        }).join('')}
+            <td style='white-space:nowrap;'>
+                <button class='btn btn-success' style='padding:4px 10px;font-size:13px;' onclick='editDbRow("${table}", ${JSON.stringify(row).replace(/'/g, "&#39;")})'>Edit</button>
+                <button class='btn btn-danger' style='padding:4px 10px;font-size:13px;' onclick='deleteDbRow("${table}", ${JSON.stringify(row).replace(/'/g, "&#39;")})'>Delete</button>
+            </td>
+        </tr>`;
+      }
+      html += `</tbody></table>`;
+      html += `</div>`;
+      // Add form for new row
+      html += `<div style='margin-bottom:10px;font-weight:600;'>Add New Row:</div><form id='db-add-row-form' style='display:flex;flex-wrap:wrap;gap:8px;'>`;
+      for (const k of keys) {
+        html += `<input type='text' name='${k}' placeholder='${k}' style='margin-bottom:8px;flex:1 1 120px;' />`;
+      }
+      html += `<button type='submit' class='btn btn-success' style='padding:4px 12px;'>Add</button></form>`;
+      editor.innerHTML = html;
+      document.getElementById('db-add-row-form').onsubmit = async function (e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = {};
+        for (const el of form.elements) {
+          if (el.name) data[el.name] = el.value;
+        }
+        await fetch(`/admin/api/db/${table}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        loadDbTable();
+      };
+    }
+
+    async function loadDbTable() {
+      const table = document.getElementById('db-table-select').value;
+      document.getElementById('db-table-editor').innerHTML = `<div class='status-message status-info'><i class='fas fa-spinner fa-spin'></i> Loading table...</div>`;
+      const rows = await fetchTableRows(table);
+      renderTableEditor(table, rows);
+    }
+
+    // Initialize everything when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      ensureCsrfToken();
+      document.getElementById('db-table-select').addEventListener('change', loadDbTable);
+      loadDbTable();
+
+      // Load saved API key on startup
+      const savedKey = getStoredApiKey();
+      if (savedKey) {
+        document.getElementById('all-apiKey').value = savedKey;
+        document.getElementById('restartApiKey').value = savedKey;
+      }
+
+      // Save API key when changed
+      document.getElementById('all-apiKey').addEventListener('change', function () {
+        saveApiKey(this.value);
+      });
+
+      document.getElementById('restartApiKey').addEventListener('change', function () {
+        saveApiKey(this.value);
+      });
+
+      // Initialize all dashboard components
+      fetchBotStatus();
+      fetchChannels();
+      fetchLogs();
+      fetchCommands();
+
+      // Start performance monitoring if page is visible
+      if (!document.hidden) {
+        startPerformanceMonitoring();
+      }
+    });
+
+    window.editDbRow = function (table, row) {
+      const keys = Object.keys(row);
+      let html = `<div style='background:#222;padding:18px;border-radius:8px;max-width:95vw;margin:20px auto;'>`;
+      html += `<div style='font-weight:600;margin-bottom:10px;'>Edit Row (${table})</div>`;
+      html += `<form id='db-edit-row-form' style='display:flex;flex-direction:column;gap:10px;'>`;
+      for (const k of keys) {
+        let value = row[k] ?? '';
+        let inputType = 'text';
+        let inputStyle = '';
+        if (table === 'Channels' && (k === 'access_token' || k === 'refresh_token')) {
+          inputStyle = 'filter: blur(6px); user-select:none;';
+        }
+        html += `<div style='margin-bottom:8px;'><label style='margin-right:8px;'>${k}:</label><input type='${inputType}' name='${k}' value='${value}' style='${inputStyle}' /></div>`;
+      }
+      html += `<button type='submit' class='btn btn-success' style='margin-right:10px;'>Save</button>`;
+      html += `<button type='button' class='btn btn-danger' onclick='closeDbEdit()'>Cancel</button>`;
+      html += `</form></div>`;
+      const editor = document.getElementById('db-table-editor');
+      editor.innerHTML = html;
+      document.getElementById('db-edit-row-form').onsubmit = async function (e) {
+        e.preventDefault();
+        const form = e.target;
+        const data = {};
+        for (const el of form.elements) {
+          if (el.name) data[el.name] = el.value;
+        }
+        // Use first key as primary key (assumes id or unique field)
+        const pk = row[keys[0]];
+        await fetch(`/admin/api/db/${table}/${pk}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        loadDbTable();
+      };
+    };
+
+    window.closeDbEdit = function () {
+      loadDbTable();
+    };
+
+    window.deleteDbRow = async function (table, row) {
+      if (!confirm('Delete this row?')) return;
+      const keys = Object.keys(row);
+      const pk = row[keys[0]];
+      await fetch(`/admin/api/db/${table}/${pk}`, { method: 'DELETE' });
+      loadDbTable();
+    };
+
+    // Auto-refresh functions
     setInterval(fetchBotStatus, 30000);
+    setInterval(fetchLogs, 20000);
+    setInterval(fetchChannels, 45000);
   </script>
 </body>
 

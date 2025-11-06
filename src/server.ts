@@ -1,4 +1,4 @@
-// --- Environment Setup ---
+ // --- Environment Setup ---
 import * as dotenv from "dotenv";
 // Load environment file based on NODE_ENV as early as possible
 const envFile = process.env.NODE_ENV === "production" ? ".env" : ".env";
@@ -420,6 +420,115 @@ export const setupServer = () => {
     } catch (err) {
       logger.error('Error disconnecting bot/service:', err);
       res.status(500).json({ error: 'Failed to disconnect.' });
+    }
+  });
+
+   // --- Admin API: Live SQL Table Editor ---
+  // List rows for a table
+  app.get('/admin/api/db/:table', async (req: any, res: any) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Not authorized' });
+    const { table } = req.params;
+    try {
+      let rows;
+      if (table === 'StreamSessions') {
+        const { StreamSession } = await import('./db');
+        rows = await StreamSession.findAll();
+      } else if (table === 'Channels') {
+        const { Channel } = await import('./db');
+        rows = await Channel.findAll();
+      } else if (table === 'CustomResponse') {
+        const { CustomResponse } = await import('./db');
+        rows = await CustomResponse.findAll();
+      } else {
+        return res.status(400).json({ error: 'Unknown table' });
+      }
+      res.json({ rows });
+    } catch (err) {
+      logger.error('Error listing table rows:', err);
+      res.status(500).json({ error: 'Failed to list rows.' });
+    }
+  });
+
+  // Create a new row
+  app.post('/admin/api/db/:table', async (req: any, res: any) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Not authorized' });
+    const { table } = req.params;
+    const data = req.body;
+    try {
+      let row;
+      if (table === 'StreamSessions') {
+        const { StreamSession } = await import('./db');
+        row = await StreamSession.create(data);
+      } else if (table === 'Channels') {
+        const { Channel } = await import('./db');
+        row = await Channel.create(data);
+      } else if (table === 'CustomResponse') {
+        const { CustomResponse } = await import('./db');
+        row = await CustomResponse.create(data);
+      } else {
+        return res.status(400).json({ error: 'Unknown table' });
+      }
+      res.json({ row });
+    } catch (err) {
+      logger.error('Error creating table row:', err);
+      res.status(500).json({ error: 'Failed to create row.' });
+    }
+  });
+
+  // Update a row by primary key
+  app.put('/admin/api/db/:table/:id', async (req: any, res: any) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Not authorized' });
+    const { table, id } = req.params;
+    const data = req.body;
+    try {
+      let model;
+      if (table === 'StreamSessions') {
+        const { StreamSession } = await import('./db');
+        model = StreamSession;
+      } else if (table === 'Channels') {
+        const { Channel } = await import('./db');
+        model = Channel;
+      } else if (table === 'CustomResponse') {
+        const { CustomResponse } = await import('./db');
+        model = CustomResponse;
+      } else {
+        return res.status(400).json({ error: 'Unknown table' });
+      }
+      const row = await model.findByPk(id);
+      if (!row) return res.status(404).json({ error: 'Row not found' });
+      await row.update(data);
+      res.json({ row });
+    } catch (err) {
+      logger.error('Error updating table row:', err);
+      res.status(500).json({ error: 'Failed to update row.' });
+    }
+  });
+
+  // Delete a row by primary key
+  app.delete('/admin/api/db/:table/:id', async (req: any, res: any) => {
+    if (!isAdmin(req)) return res.status(403).json({ error: 'Not authorized' });
+    const { table, id } = req.params;
+    try {
+      let model;
+      if (table === 'StreamSessions') {
+        const { StreamSession } = await import('./db');
+        model = StreamSession;
+      } else if (table === 'Channels') {
+        const { Channel } = await import('./db');
+        model = Channel;
+      } else if (table === 'CustomResponse') {
+        const { CustomResponse } = await import('./db');
+        model = CustomResponse;
+      } else {
+        return res.status(400).json({ error: 'Unknown table' });
+      }
+      const row = await model.findByPk(id);
+      if (!row) return res.status(404).json({ error: 'Row not found' });
+      await row.destroy();
+      res.json({ success: true });
+    } catch (err) {
+      logger.error('Error deleting table row:', err);
+      res.status(500).json({ error: 'Failed to delete row.' });
     }
   });
 

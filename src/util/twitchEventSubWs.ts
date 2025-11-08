@@ -27,7 +27,7 @@ const userWebSockets: Record<
 
 const subscriptionTracking: SubscriptionTracking = {};
 
-export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
+export async function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
   if (!userWebSockets[userId]) {
     userWebSockets[userId] = {
       ws: null as unknown as WebSocket,
@@ -38,17 +38,24 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
 
     subscriptionTracking[userId] = {};
 
-    (async () => {
-      try {
-        userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
-      } catch (err) {
-        logger.error(`[EventSubWs] Failed to create WebSocket for ${userId}:`, err);
+    try {
+    interface SubscriptionTracking {
+      [userId: string]: {
+        [eventType: string]: {
+          subscriptionId?: string;
+          lastEventTime?: number;
+        }
       }
-    })();
+    }
+      userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
+    } catch (err) {
+      logger.error(`[EventSubWs] Failed to create WebSocket for ${userId}:`, err);
+    }
   }
 
+    const subscriptionTracking: SubscriptionTracking = {};
   // Check if this exact subscription already exists
-  const existingSub = userWebSockets[userId].subscriptions.find(
+    export async function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
     sub => sub.broadcasterId === broadcasterId
   );
 
@@ -56,14 +63,13 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
     userWebSockets[userId].subscriptions.push({ userId, accessToken, broadcasterId });
     if (userWebSockets[userId].sessionId) {
       subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);
+       subscriptionTracking[userId] = {};
     }
-  } else {
     logger.info(`[EventSubWs] Subscription for broadcaster ${broadcasterId} already exists for user ${userId}`);
   }
 
 
 async function handleStreamOffline(broadcasterName: string, broadcasterId: string) {
-  try {
     let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } });
     if (!channel) {
       channel = await Channel.findOne({ where: { username: broadcasterName } });
@@ -268,7 +274,8 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
     const existingTypes = new Set(activeWebsocketSubs.map((sub: any) => sub.type));
 
     // Subscribe to each event type if not already subscribed
-    for (const eventType of ['stream.online', 'stream.offline']) {
+    const eventTypes = ['stream.online', 'stream.offline'];
+    for (const eventType of eventTypes) {
       if (existingTypes.has(eventType)) {
         logger.info(`[EventSubWs] Subscription for ${eventType} already exists for broadcaster ${broadcasterId}`);
         continue;

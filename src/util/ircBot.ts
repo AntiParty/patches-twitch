@@ -142,19 +142,25 @@ export const startChatBot = async (
     logger.info(`[DEBUG] Bot connected to #${sanitizedUsername}`);
   });
 
-  // Initialize heartbeat
-  let lastPong = Date.now();
+  // Initialize heartbeat using any incoming activity as health indicator
+  let lastActivity = Date.now();
+  const HEARTBEAT_INTERVAL = 60_000; // send PING every minute
+  const MAX_NO_ACTIVITY = 600_000; // 10 minutes tolerance
   const heartbeat = setInterval(() => {
-    if (connected) {
-      const now = Date.now();
-      if (now - lastPong > 180000) { // 3 minutes without PONG
-        logger.warn(`[DEBUG] No PONG received for ${sanitizedUsername} in 3 minutes, reconnecting...`);
-        socket.destroy(); // This will trigger the 'close' event
-        return;
-      }
-      socket.write("PING :tmi.twitch.tv\r\n");
+    if (!connected) return;
+    const now = Date.now();
+    if (now - lastActivity > MAX_NO_ACTIVITY) {
+      logger.warn(`[DEBUG] No activity for ${sanitizedUsername} in ${Math.floor(MAX_NO_ACTIVITY/1000)}s, reconnecting...`);
+      socket.destroy(); // This will trigger the 'close' event
+      return;
     }
-  }, 60000); // Send PING every minute
+    // send PING to solicit PONG / activity
+    try {
+      socket.write("PING :tmi.twitch.tv\r\n");
+    } catch (e) {
+      logger.warn(`[DEBUG] Failed to write PING for ${sanitizedUsername}:`, e);
+    }
+  }, HEARTBEAT_INTERVAL);
 
   socket.on("data", async (data) => {
     const lines = data.toString().split("\r\n");
@@ -163,8 +169,16 @@ export const startChatBot = async (
 
       if (!line) continue;
 
+      // Update last-activity on any incoming data line to avoid false timeouts
+      lastActivity = Date.now();
+
       if (line.startsWith("PING")) {
         socket.write("PONG :tmi.twitch.tv\r\n");
+        continue;
+      }
+
+      // Some servers may send PONG; treat it as activity and continue
+      if (line.toUpperCase().includes("PONG")) {
         continue;
       }
 
@@ -218,17 +232,17 @@ export const startChatBot = async (
         const channelRow = await Channel.findOne({
           where: { username: channelName },
         });
-        const broadcasterId = channelRow?.get("twitch_user_id");
+        const broadcasterId = String(channelRow?.get("twitch_user_id") || "");
 
         commandEntry(
           {
-            say: async (msg: string, replyToId: string) => {
+            say: async (msg: string, replyToId?: string) => {
               if (!broadcasterId) {
                 logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
                 return;
               }
               logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
-              await sendChatMessage(broadcasterId, msg, replyToId);
+              await sendChatMessage(broadcasterId, msg, replyToId || undefined);
             },
             raw: (line: string) =>
               socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),

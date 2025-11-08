@@ -265,13 +265,20 @@ export const setupServer = () => {
       // Auto-reconnect IRC bot for all connected channels so new token is used
       const commandHandler = loadCommands();
       const usernames = Object.keys(clients);
-      for (const uname of usernames) {
-        try {
-          await reconnectChatBot(uname, commandHandler);
-        } catch (e) {
-          logger.warn(`Failed to reconnect IRC bot for ${uname}:`, e);
-        }
-      }
+      // Stagger reconnects to avoid reconnect storms
+      const delayPer = 200;
+      const reconnectPromises = usernames.map((uname, i) => new Promise<void>(resolve => {
+        setTimeout(async () => {
+          try {
+            await reconnectChatBot(uname, commandHandler);
+          } catch (e) {
+            logger.warn(`Failed to reconnect IRC bot for ${uname}:`, e);
+          } finally {
+            resolve();
+          }
+        }, i * delayPer + Math.floor(Math.random() * 100));
+      }));
+      await Promise.allSettled(reconnectPromises);
       res.json({
         ok: true,
         accessTokenPreview: result.accessToken.slice(0, 6) + "…",

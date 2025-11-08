@@ -94,13 +94,23 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
           // Reconnect IRC clients to apply new token
           const commandHandler = loadCommands();
           const usernames = Object.keys(clients);
-          for (const uname of usernames) {
-            try {
-              await reconnectChatBot(uname, commandHandler);
-            } catch (e) {
-              logger.warn(`[BotTokenRefresher] Failed to reconnect ${uname}:`, e);
-            }
-          }
+          // Stagger reconnects with small delay + jitter to avoid reconnect storms
+          const delayPer = 200; // ms between starts
+          const reconnectPromises = usernames.map((uname, i) => {
+            return new Promise<void>((resolve) => {
+              const delay = i * delayPer + Math.floor(Math.random() * 100);
+              setTimeout(async () => {
+                try {
+                  await reconnectChatBot(uname, commandHandler);
+                } catch (e) {
+                  logger.warn(`[BotTokenRefresher] Failed to reconnect ${uname}:`, e);
+                } finally {
+                  resolve();
+                }
+              }, delay);
+            });
+          });
+          await Promise.allSettled(reconnectPromises);
           if (typeof onRefresh === "function") {
             onRefresh(result);
           }

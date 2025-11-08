@@ -2,7 +2,7 @@
 import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
-import { sendMessageToDiscord } from '@/handlers/discordHandler';
+import { sendInfoToDiscord } from '@/handlers/discordHandler';
 
 let lastUpdate = Date.now();
 const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
@@ -50,7 +50,7 @@ async function updateAllCachesRateLimited() {
   }
 
   lastUpdate = Date.now(); // Update lastUpdate after all caches are updated
-  sendMessageToDiscord(`Cache update completed at ${new Date().toLocaleString()}`);
+  sendInfoToDiscord(`Cache update completed at ${new Date().toLocaleString()}`);
 }
 
 async function updateCache(type: 'regular' | 'worldTour', season: number) {

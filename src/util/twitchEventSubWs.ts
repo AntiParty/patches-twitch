@@ -3,7 +3,7 @@ import axios from 'axios';
 import logger from './logger';
 import { Channel, StreamSession } from '../db';
 import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
-import { sendMessageToDiscord } from '@/handlers/discordHandler';
+import { sendInfoToDiscord } from '@/handlers/discordHandler';
 
 interface UserSubscription {
   userId: string;
@@ -49,7 +49,7 @@ async function handleStreamOffline(broadcasterName: string, broadcasterId: strin
       logger.warn(`No linked THE FINALS account for ${broadcasterName} / ID: ${broadcasterId}`);
       return;
     }
-    sendMessageToDiscord(`Stream Session ended for ${broadcasterName} - removing session data.`);
+    sendInfoToDiscord(`Stream Session ended for ${broadcasterName} - removing session data.`);
     await StreamSession.destroy({ where: { channel: broadcasterName.toLowerCase() } });
     logger.info(`StreamSession destroyed for ${broadcasterName}`);
   } catch (err) {
@@ -99,7 +99,7 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
       start_wt_rank: startWTRank,
       started_at: new Date()
     });
-    sendMessageToDiscord(`Stream Session created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`);
+    sendInfoToDiscord(`Stream Session created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`);
     logger.info(
       `StreamSession created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`
     );

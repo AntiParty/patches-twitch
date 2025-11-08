@@ -11,10 +11,21 @@ interface UserSubscription {
   broadcasterId: string;
 }
 
+interface SubscriptionTracking {
+  [userId: string]: {
+    [eventType: string]: {
+      subscriptionId?: string;
+      lastEventTime?: number;
+    }
+  }
+}
+
 const userWebSockets: Record<
   string,
   { ws: WebSocket; sessionId: string | null; subscriptions: UserSubscription[]; shouldReconnect?: boolean }
 > = {};
+
+const subscriptionTracking: SubscriptionTracking = {};
 
 export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
   if (!userWebSockets[userId]) {
@@ -25,17 +36,30 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
       shouldReconnect: true
     };
 
+    subscriptionTracking[userId] = {};
+
     (async () => {
-      userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
+      try {
+        userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
+      } catch (err) {
+        logger.error(`[EventSubWs] Failed to create WebSocket for ${userId}:`, err);
+      }
     })();
   }
 
-  userWebSockets[userId].subscriptions.push({ userId, accessToken, broadcasterId });
+  // Check if this exact subscription already exists
+  const existingSub = userWebSockets[userId].subscriptions.find(
+    sub => sub.broadcasterId === broadcasterId
+  );
 
-  if (userWebSockets[userId].sessionId) {
-    subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);
+  if (!existingSub) {
+    userWebSockets[userId].subscriptions.push({ userId, accessToken, broadcasterId });
+    if (userWebSockets[userId].sessionId) {
+      subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);
+    }
+  } else {
+    logger.info(`[EventSubWs] Subscription for broadcaster ${broadcasterId} already exists for user ${userId}`);
   }
-}
 
 
 async function handleStreamOffline(broadcasterName: string, broadcasterId: string) {
@@ -111,6 +135,9 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
 async function createUserWebSocket(userId: string, accessToken: string): Promise<WebSocket> {
   const ws = new WebSocket('wss://eventsub.wss.twitch.tv/ws');
 
+  // Track subscribed event types to prevent duplicates
+  const subscribedTypes = new Set<string>();
+
   ws.on('open', () => {
     logger.info(`[EventSubWs] Connected to Twitch EventSub WebSocket for user ${userId}`);
   });
@@ -135,6 +162,24 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
         const broadcasterName = event.broadcaster_user_name;
         const broadcasterId = event.broadcaster_user_id;
 
+        // Update last event time for deduplication
+        if (!subscriptionTracking[userId]) {
+          subscriptionTracking[userId] = {};
+        }
+        if (!subscriptionTracking[userId][eventType]) {
+          subscriptionTracking[userId][eventType] = {};
+        }
+
+        const now = Date.now();
+        const lastEventTime = subscriptionTracking[userId][eventType].lastEventTime || 0;
+        
+        // Deduplicate events within a 5-second window
+        if (now - lastEventTime < 5000) {
+          logger.info(`[EventSubWs] Skipping duplicate ${eventType} event for ${broadcasterName} (within 5s window)`);
+          return;
+        }
+
+        subscriptionTracking[userId][eventType].lastEventTime = now;
         logger.info(`[EventSubWs] Event: ${eventType} for ${broadcasterName}`);
         logger.debug(JSON.stringify(event, null, 2));
 
@@ -168,7 +213,13 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
     logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, reconnecting in 5s...`);
     setTimeout(() => {
       if (userWebSockets[userId]?.shouldReconnect !== false) {
-        userWebSockets[userId].ws = createUserWebSocket(userId, accessToken);
+        (async () => {
+          try {
+            userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
+          } catch (err) {
+            logger.error(`[EventSubWs] Failed to reconnect WebSocket for user ${userId}:`, err);
+          }
+        })();
       }
     }, 5000);
   });
@@ -181,17 +232,69 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
 }
 
 async function subscribeUserToEvents(userId: string, accessToken: string, broadcasterId: string, sessionId: string) {
-  const eventTypes = ['stream.online', 'stream.offline'];
-
-  let warnedInvalidToken = false;
-  for (const type of eventTypes) {
-    let validToken = accessToken;
-
+  try {
+    // First validate the token
     try {
       await axios.get('https://id.twitch.tv/oauth2/validate', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
-    } catch {
+    } catch (err) {
+      logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required. Disabling reconnect.`);
+      if (userWebSockets[userId]) {
+        userWebSockets[userId].shouldReconnect = false;
+        if (userWebSockets[userId].ws && typeof userWebSockets[userId].ws.close === 'function') {
+          userWebSockets[userId].ws.close();
+        }
+      }
+      throw err; // Re-throw to be caught by outer try-catch
+    }
+
+    // Check existing subscriptions
+    const subCheckResponse = await axios.get('https://api.twitch.tv/helix/eventsub/subscriptions', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Client-Id': process.env.TWITCH_CLIENT_ID!
+      }
+    });
+
+    const existingSubs = subCheckResponse.data.data || [];
+    const activeWebsocketSubs = existingSubs.filter((sub: any) => 
+      sub.transport.method === 'websocket' && 
+      sub.status === 'enabled' &&
+      sub.transport.session_id === sessionId &&
+      sub.condition.broadcaster_user_id === broadcasterId
+    );
+
+    const existingTypes = new Set(activeWebsocketSubs.map((sub: any) => sub.type));
+
+    // Subscribe to each event type if not already subscribed
+    for (const eventType of ['stream.online', 'stream.offline']) {
+      if (existingTypes.has(eventType)) {
+        logger.info(`[EventSubWs] Subscription for ${eventType} already exists for broadcaster ${broadcasterId}`);
+        continue;
+      }
+
+      try {
+        await axios.post('https://api.twitch.tv/helix/eventsub/subscriptions', {
+          type: eventType,
+          version: '1',
+          condition: { broadcaster_user_id: broadcasterId },
+          transport: { method: 'websocket', session_id: sessionId }
+        }, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Client-Id': process.env.TWITCH_CLIENT_ID!,
+            'Content-Type': 'application/json'
+          }
+        });
+        logger.info(`[EventSubWs] Subscribed ${userId} to ${eventType} via WebSocket`);
+      } catch (subErr: any) {
+        logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${eventType}:`, subErr.response?.data || subErr.message);
+      }
+    }
+  } catch (err: any) {
+    logger.error(`[EventSubWs] Failed to setup/validate subscriptions for ${userId}:`, err.response?.data || err.message);
+  }
       if (!warnedInvalidToken) {
         logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Refresh required. Disabling reconnect.`);
         warnedInvalidToken = true;

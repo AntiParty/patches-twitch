@@ -9,9 +9,45 @@ interface IRCClient {
   username: string;
   channel: string;
   connected: boolean;
+  reconnectAttempts: number;
+  reconnectTimeout?: NodeJS.Timeout;
 }
 
 const clients: { [username: string]: IRCClient } = {};
+const MAX_RECONNECT_ATTEMPTS = 10;
+const INITIAL_RECONNECT_DELAY = 5000; // 5 seconds
+const MAX_RECONNECT_DELAY = 300000; // 5 minutes
+
+function getReconnectDelay(attempts: number): number {
+  // Exponential backoff with max delay
+  return Math.min(INITIAL_RECONNECT_DELAY * Math.pow(2, attempts), MAX_RECONNECT_DELAY);
+}
+
+async function handleReconnect(username: string, commandHandler: Record<string, any>) {
+  const client = clients[username];
+  if (!client) return;
+
+  if (client.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    logger.error(`[DEBUG] Max reconnection attempts reached for ${username}. Manual intervention required.`);
+    return;
+  }
+
+  const delay = getReconnectDelay(client.reconnectAttempts);
+  logger.info(`[DEBUG] Attempting to reconnect ${username} in ${delay}ms (attempt ${client.reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+
+  client.reconnectTimeout = setTimeout(async () => {
+    try {
+      await reconnectChatBot(username, commandHandler);
+      client.reconnectAttempts = 0; // Reset attempts on successful reconnection
+      logger.info(`[DEBUG] Successfully reconnected bot for ${username}`);
+    } catch (err) {
+      client.reconnectAttempts++;
+      logger.error(`[DEBUG] Reconnection failed for ${username}:`, err);
+      // Try again with exponential backoff
+      handleReconnect(username, commandHandler);
+    }
+  }, delay);
+}
 
 /**
  * Sends a message using Twitch Helix Chat API to show Chat Bot Badge
@@ -105,6 +141,20 @@ export const startChatBot = async (
     connected = true;
     logger.info(`[DEBUG] Bot connected to #${sanitizedUsername}`);
   });
+
+  // Initialize heartbeat
+  let lastPong = Date.now();
+  const heartbeat = setInterval(() => {
+    if (connected) {
+      const now = Date.now();
+      if (now - lastPong > 180000) { // 3 minutes without PONG
+        logger.warn(`[DEBUG] No PONG received for ${sanitizedUsername} in 3 minutes, reconnecting...`);
+        socket.destroy(); // This will trigger the 'close' event
+        return;
+      }
+      socket.write("PING :tmi.twitch.tv\r\n");
+    }
+  }, 60000); // Send PING every minute
 
   socket.on("data", async (data) => {
     const lines = data.toString().split("\r\n");
@@ -202,6 +252,15 @@ export const startChatBot = async (
   socket.on("close", () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
     connected = false;
+    clearInterval(heartbeat);
+
+    const client = clients[sanitizedUsername];
+    if (client) {
+      if (client.reconnectTimeout) {
+        clearTimeout(client.reconnectTimeout);
+      }
+      handleReconnect(sanitizedUsername, commandHandler);
+    }
   });
 
   clients[sanitizedUsername] = {
@@ -209,6 +268,7 @@ export const startChatBot = async (
     username: botUsername,
     channel: sanitizedUsername,
     connected,
+    reconnectAttempts: 0
   };
 };
 
@@ -216,6 +276,9 @@ export const stopChatBot = async (username: string) => {
   const client = clients[username];
   if (!client) return;
   try {
+    if (client.reconnectTimeout) {
+      clearTimeout(client.reconnectTimeout);
+    }
     client.socket.write(`PART #${client.channel}\r\n`);
     client.socket.end();
     logger.info(`[DEBUG] Bot disconnected for ${username}`);

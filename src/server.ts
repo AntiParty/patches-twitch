@@ -18,7 +18,7 @@ import session from 'express-session'; // Session management
 import logger from "./util/logger"; // Logging utility
 import { performanceMonitor } from "./util/performanceMonitor"; // Performance monitoring
 import path from "path"; // Path utilities
-import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics"; // Analytics
+//import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics"; // Analytics
 import rateLimit from "express-rate-limit"; // Rate limiting
 import { refreshBotToken } from "./util/botAuth"; // Bot token refresher
 import { reconnectChatBot, clients } from "./util/ircBot"; // IRC reconnect
@@ -159,7 +159,7 @@ export const setupServer = () => {
 
   // Parse JSON bodies for all routes
   app.use(express.json());
-  loadAnalytics(); // Load analytics data into memory
+  //loadAnalytics(); // Load analytics data into memory
 
   // --- Request Tracking Middleware ---
   app.use((req, res, next) => {
@@ -177,7 +177,6 @@ export const setupServer = () => {
       return next();
     }
     // Track all other requests
-    return trackRequest(req, res, next);
   });
 
   // Serve static files from frontend directory
@@ -311,9 +310,11 @@ export const setupServer = () => {
   });
 
   // Admin API: web analytics
+  /*
   app.get("/admin/api/web-analytics", (req, res) => {
     res.json(getAnalytics());
   });
+  */
 
   // Admin API: last 100 lines of main log
   app.get('/admin/api/logs', (req: any, res: any) => {
@@ -629,9 +630,11 @@ export const setupServer = () => {
   //app.use("/callback", authLimiter);
 
   // Prometheus metrics endpoint
+  /*
   app.get("/analytics", (req, res) => {
     res.json(getAnalytics());
   });
+  */
 
   // Markdown docs endpoint
   app.get('/docs-markdown', (req: Request, res: Response) => {

@@ -57,7 +57,7 @@ export async function sendChatMessage(
   message: string,
   replyParentId?: string
 ) {
-  const appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
+  const appAccessToken = process.env.TWITCH_BOT_TOKEN;
   const clientId = process.env.TWITCH_CLIENT_ID;
   const botUserId = process.env.TWITCH_BOT_USER_ID;
 

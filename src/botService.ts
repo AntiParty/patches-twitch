@@ -7,6 +7,7 @@ import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubW
 import logger from "./util/logger";
 import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
+import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 
 dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
@@ -23,7 +24,9 @@ dbReady.then(async () => {
         logger.info(`[EventSubWs] Auto-subscribed ${user.username} (${user.twitch_user_id})`);
       }
     });
-
+    // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
+    startBotTokenAutoRefresher();
+    
     logger.info("Bot is up and running!");
 
     // Restore and continue tracking active stream sessions from DB

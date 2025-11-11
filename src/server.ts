@@ -1,4 +1,4 @@
- // --- Environment Setup ---
+// --- Environment Setup ---
 import * as dotenv from "dotenv";
 // Load environment file based on NODE_ENV as early as possible
 const envFile = process.env.NODE_ENV === "production" ? ".env" : ".env";
@@ -18,7 +18,6 @@ import session from 'express-session'; // Session management
 import logger from "./util/logger"; // Logging utility
 import { performanceMonitor } from "./util/performanceMonitor"; // Performance monitoring
 import path from "path"; // Path utilities
-//import { trackRequest, loadAnalytics, getAnalytics } from "./util/webAnalytics"; // Analytics
 import rateLimit from "express-rate-limit"; // Rate limiting
 import { refreshBotToken } from "./util/botAuth"; // Bot token refresher
 import { reconnectChatBot, clients } from "./util/ircBot"; // IRC reconnect
@@ -28,10 +27,8 @@ import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 // --- Admin Panel Config ---
 // List of admin usernames (comma-separated, lowercased)
 const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase());
-// Hashed admin password (bcrypt)
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
-// Session secret for admin panel
-const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_secret';
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || ''; // Hashed admin password (bcrypt)
+const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_secret'; // Session secret for admin panel
 
 // --- Global User Dashboard Access Toggle ---
 let userDashboardEnabled = true; // Default: enabled
@@ -63,7 +60,6 @@ export const commandCounter = new client.Counter({
   help: 'Total number of commands received',
   labelNames: ['command']
 });
-
 
 // --- Stats Tracking ---
 const statsFilePath = path.join(process.cwd(), "stats.json");
@@ -101,7 +97,6 @@ export function getCommandsProcessed() {
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
-
 
 // Custom metric: count API errors by endpoint
 const apiErrorCounter = new client.Counter({
@@ -152,32 +147,17 @@ function exportStatsToJson() {
 export const setupServer = () => {
   // Path to frontend assets and templates
   const frontendPath = path.join(process.cwd(), "frontend");
+  console.log("Serving frontend from:", frontendPath);
+  console.log("Exists?", fs.existsSync(frontendPath));
   const app = express();
   app.set("trust proxy", 1); // Trust reverse proxy headers
   app.set("view engine", "ejs"); // Use EJS for rendering views
   app.set("views", frontendPath);
+  app.use((req, res, next) => { console.log(`[REQ] ${req.method} ${req.url}`); next(); });
+  
 
   // Parse JSON bodies for all routes
   app.use(express.json());
-  //loadAnalytics(); // Load analytics data into memory
-
-  // --- Request Tracking Middleware ---
-  app.use((req, res, next) => {
-    const pathOnly = req.originalUrl.split("?")[0];
-    // Skip metrics and admin routes
-    if (pathOnly.startsWith("/metrics") || pathOnly.startsWith("/admin")) {
-      return next();
-    }
-    // Skip static assets by extension
-    if (/\.(css|js|png|jpe?g|gif|svg|ico|map|webmanifest|woff2?)$/i.test(pathOnly)) {
-      return next();
-    }
-    // Skip well-known/devtools noise
-    if (pathOnly.startsWith("/.well-known/")) {
-      return next();
-    }
-    // Track all other requests
-  });
 
   // Serve static files from frontend directory
   app.use(express.static(frontendPath));
@@ -316,13 +296,6 @@ export const setupServer = () => {
     }
   });
 
-  // Admin API: web analytics
-  /*
-  app.get("/admin/api/web-analytics", (req, res) => {
-    res.json(getAnalytics());
-  });
-  */
-
   // Admin API: last 100 lines of main log
   app.get('/admin/api/logs', (req: any, res: any) => {
     const logPath = path.join(process.cwd(), 'logs', 'main.log');
@@ -422,7 +395,7 @@ export const setupServer = () => {
       }
 
       // Optionally: destroy session
-      req.session.destroy(() => {});
+      req.session.destroy(() => { });
       logger.info(`[dashboard] ${username} disconnected and deleted their bot/service.`);
       res.json({ success: true });
     } catch (err) {
@@ -431,7 +404,7 @@ export const setupServer = () => {
     }
   });
 
-   // --- Admin API: Live SQL Table Editor ---
+  // --- Admin API: Live SQL Table Editor ---
   // List rows for a table
   app.get('/admin/api/db/:table', async (req: any, res: any) => {
     if (!isAdmin(req)) return res.status(403).json({ error: 'Not authorized' });
@@ -619,29 +592,20 @@ export const setupServer = () => {
   // Admin API: list all custom commands
   app.get('/admin/api/commands', async (req: any, res: any) => {
     try {
-      const { CustomResponse } = await import ('./db');
-      const commands = await CustomResponse.findAll({ attributes: ['channel', 'command', 'response']});
+      const { CustomResponse } = await import('./db');
+      const commands = await CustomResponse.findAll({ attributes: ['channel', 'command', 'response'] });
 
       const formatted = commands.map((c: any) => ({
         channel: c.channel,
         command: c.command,
         response: c.response
       }));
-      res.json({ commands: formatted});
+      res.json({ commands: formatted });
     } catch (err) {
       logger.error('Error fetching all custom commands:', err);
       res.status(500).json({ error: 'Failed to fetch commands.' });
     }
   });
-  // Apply rate limiting to /callback
-  //app.use("/callback", authLimiter);
-
-  // Prometheus metrics endpoint
-  /*
-  app.get("/analytics", (req, res) => {
-    res.json(getAnalytics());
-  });
-  */
 
   // Markdown docs endpoint
   app.get('/docs-markdown', (req: Request, res: Response) => {
@@ -736,20 +700,7 @@ export const setupServer = () => {
   });
 
   // Main landing page
-  app.get("/", (req: any, res: any) => {
-    // Check if user is authed and session is recent (within 7 days)
-    let isAuthed = false;
-    if (
-      req.session &&
-      req.session.isUser &&
-      req.session.twitchUsername &&
-      req.session.loginTime &&
-      (Date.now() - req.session.loginTime < 7 * 24 * 60 * 60 * 1000)
-    ) {
-      isAuthed = true;
-    }
-    res.render("index", { isAuthed });
-  });
+
 
   // API: list all users/channels
   app.get("/users", async (req: Request, res: Response) => {
@@ -890,6 +841,11 @@ export const setupServer = () => {
     } catch (error) {
       apiErrorCounter.inc({ endpoint: "/callback" });
       logger.error("Error during OAuth process:", error);
+      if (axios.isAxiosError(error)) {
+        logger.error("Axios error during OAuth process:", error.response?.data);
+      } else {
+        logger.error("Error during OAuth process:", error);
+      }
       res.status(500).send("Authentication failed");
     }
   });
@@ -952,13 +908,6 @@ export const setupServer = () => {
     const metrics = performanceMonitor.getMetrics();
     res.json(metrics);
   });
-
-  // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
-  try {
-    startBotTokenAutoRefresher();
-  } catch (e) {
-    logger.warn("Failed to start BotTokenAutoRefresher:", e);
-  }
 
   // Return configured Express app
   return app;

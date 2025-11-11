@@ -1,1 +1,0 @@
-node -e "const { Channel, sequelize } = require('./dist/db'); (async()=>{ await sequelize.authenticate(); const ch = await Channel.findOne({where:{username:'<username>'}}); ch.token_expires_at=new Date(Date.now()-3600*1000); await ch.save(); console.log('expired'); process.exit(0); })()"

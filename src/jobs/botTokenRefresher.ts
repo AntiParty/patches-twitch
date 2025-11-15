@@ -13,6 +13,7 @@ const MAX_BACKOFF_MS = 30 * 60 * 1000; // 30 minutes
 let isRefreshing = false;
 let lastRefreshAt = 0;
 let backoffMs = DEFAULT_INTERVAL_MS;
+let refreshInterval: NodeJS.Timeout | null = null;
 
 export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
   function formatDuration(seconds: number): string {
@@ -27,6 +28,7 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
       logger.warn("[BotTokenRefresher] Refresh already in progress; skipping.");
       return;
     }
+    let refreshAttempted = false;
     try {
       const token = process.env.TWITCH_BOT_TOKEN;
       if (!token) {
@@ -83,8 +85,9 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
           return;
         }
         isRefreshing = true;
-  const ttlInfo = typeof expiresIn === "number" ? formatDuration(expiresIn) : "unknown";
-  logger.info(`[BotTokenRefresher] Refreshing bot token (valid=${helixOk}; ttl=${ttlInfo})...`);
+        refreshAttempted = true;
+        const ttlInfo = typeof expiresIn === "number" ? formatDuration(expiresIn) : "unknown";
+        logger.info(`[BotTokenRefresher] Refreshing bot token (valid=${helixOk}; ttl=${ttlInfo})...`);
         try {
           const result = await refreshBotToken();
           lastRefreshAt = Date.now();
@@ -126,8 +129,23 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
       logger.error(`[BotTokenRefresher] Validation/refresh error:`, e?.message || e);
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
     } finally {
-      isRefreshing = false;
+      // Only reset isRefreshing if we actually attempted a refresh
+      if (refreshAttempted) {
+        isRefreshing = false;
+      }
     }
+  }
+
+  function scheduleNextCheck() {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+    refreshInterval = setTimeout(() => {
+      logger.info(`[BotTokenRefresher] Next refresh attempt in: ${formatDuration(backoffMs / 1000)}`);
+      checkAndRefresh().finally(() => {
+        scheduleNextCheck(); // Schedule next check after current one completes
+      });
+    }, backoffMs);
   }
 
   // Display token lifetime at startup
@@ -148,12 +166,26 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
       logger.warn('[BotTokenRefresher] No TWITCH_BOT_TOKEN set at startup; cannot determine token lifetime.');
     }
   })();
+  
   // Initial check
-  checkAndRefresh();
-  // Interval with dynamic backoff
-  setInterval(() => {
-    logger.info(`[BotTokenRefresher] Next refresh attempt in: ${formatDuration(backoffMs / 1000)}`);
-    checkAndRefresh();
-  }, backoffMs);
+  checkAndRefresh().finally(() => {
+    scheduleNextCheck(); // Schedule next check after initial one completes
+  });
+  
   logger.info(`[BotTokenRefresher] Started auto refresher (interval: ${DEFAULT_INTERVAL_MS / 60000}m, window: ${REFRESH_WINDOW_SEC / 60}m)`);
+  
+  // Cleanup on process exit
+  const cleanup = () => {
+    if (refreshInterval) {
+      clearTimeout(refreshInterval);
+      refreshInterval = null;
+    }
+    logger.info("[BotTokenRefresher] Cleaned up on process exit");
+  };
+  
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('exit', cleanup);
+  
+  return cleanup; // Return cleanup function for manual cleanup if needed
 }

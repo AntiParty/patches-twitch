@@ -11,6 +11,7 @@ interface IRCClient {
   connected: boolean;
   reconnectAttempts: number;
   reconnectTimeout?: NodeJS.Timeout;
+  intentionalDisconnect?: boolean;
 }
 
 const clients: { [username: string]: IRCClient } = {};
@@ -273,6 +274,12 @@ export const startChatBot = async (
       if (client.reconnectTimeout) {
         clearTimeout(client.reconnectTimeout);
       }
+      if (client.intentionalDisconnect) {
+        logger.info(`[DEBUG] Skipping reconnect for ${sanitizedUsername} due to intentional disconnect.`);
+        client.intentionalDisconnect = false;
+        delete clients[sanitizedUsername];
+        return;
+      }
       handleReconnect(sanitizedUsername, commandHandler);
     }
   });
@@ -286,12 +293,15 @@ export const startChatBot = async (
   };
 };
 
-export const stopChatBot = async (username: string) => {
+export const stopChatBot = async (username: string, intentional = false) => {
   const client = clients[username];
   if (!client) return;
   try {
     if (client.reconnectTimeout) {
       clearTimeout(client.reconnectTimeout);
+    }
+    if (intentional) {
+      client.intentionalDisconnect = true;
     }
     client.socket.write(`PART #${client.channel}\r\n`);
     client.socket.end();
@@ -299,7 +309,9 @@ export const stopChatBot = async (username: string) => {
   } catch (err) {
     logger.error(`[ERROR] Stopping bot for ${username}:`, err);
   } finally {
-    delete clients[username];
+    if (!intentional) {
+      delete clients[username];
+    }
   }
 };
 
@@ -307,7 +319,30 @@ export const reconnectChatBot = async (
   username: string,
   commandHandler: Record<string, any>
 ) => {
-  await stopChatBot(username);
+  const sanitizedUsername = username.replace(/^#/, "");
+  const client = clients[sanitizedUsername];
+  
+  // Clean up existing connection if it exists
+  if (client) {
+    if (client.reconnectTimeout) {
+      clearTimeout(client.reconnectTimeout);
+    }
+    // Mark as intentional disconnect to prevent auto-reconnect
+    client.intentionalDisconnect = true;
+    try {
+      client.socket.write(`PART #${client.channel}\r\n`);
+      client.socket.end();
+    } catch (err) {
+      // Socket might already be closed
+    }
+    // Remove from clients immediately so startChatBot can create a new one
+    delete clients[sanitizedUsername];
+  }
+  
+  // Small delay to ensure socket cleanup completes
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Start fresh connection
   await startChatBot(username, commandHandler);
 };
 

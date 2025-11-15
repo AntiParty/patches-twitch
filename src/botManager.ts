@@ -50,27 +50,48 @@ export class BotManager {
     }
     try {
       logger.info(`[${username}] Refreshing access token (via twitchUtils)...`);
+      // Always fetch fresh channel data from DB to avoid race conditions
       const channel = await Channel.findOne({ where: { username } });
       if (!channel) {
         logger.error(`No channel found for ${username}`);
         return;
       }
-  (channel as any).refresh_token = refreshToken;
+      // Use the refresh token from DB, not the parameter (which may be stale)
+      const dbRefreshToken = (channel as any).refresh_token || refreshToken;
+      if (!dbRefreshToken) {
+        logger.error(`No refresh token in database for ${username}`);
+        return;
+      }
+      // Ensure channel has the latest refresh token
+      (channel as any).refresh_token = dbRefreshToken;
+      
       const newAccessToken = await require("./util/twitchUtils").refreshAccessToken(channel);
       if (!newAccessToken) {
         logger.error(`[${username}] Token refresh failed (via twitchUtils)`);
         // Retry handled by twitchUtils, so no need to retry here
         return;
       }
-      // Update token refresh timer
-      const expiresIn = (channel as any).token_expires_at
-        ? new Date((channel as any).token_expires_at).getTime() - Date.now()
+      
+      // Re-fetch channel to get updated token_expires_at after refresh
+      const updatedChannel = await Channel.findOne({ where: { username } });
+      if (!updatedChannel) {
+        logger.warn(`[${username}] Channel not found after refresh, cannot update timer`);
+        return;
+      }
+      
+      // Update token refresh timer with fresh data
+      const expiresIn = (updatedChannel as any).token_expires_at
+        ? new Date((updatedChannel as any).token_expires_at).getTime() - Date.now()
         : 3600 * 1000;
-      this.scheduleTokenRefresh(
-        username,
-        (channel as any).refresh_token,
-        expiresIn - 5 * 60 * 1000
-      );
+      
+      if (expiresIn > 0) {
+        this.scheduleTokenRefresh(
+          username,
+          (updatedChannel as any).refresh_token,
+          expiresIn - 5 * 60 * 1000
+        );
+      }
+      
       // Reconnect bot with fresh token
       const freshCommandHandler = loadCommands();
       await reconnectChatBot(username, freshCommandHandler);

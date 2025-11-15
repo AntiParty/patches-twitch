@@ -34,4 +34,4 @@ export const execute = async (
 };
 
 // Aliases for this command
-export const aliases = ["help", "info", "h", "cmds", "cmd"];
+export const aliases = ["info", "h", "cmds", "cmd"];

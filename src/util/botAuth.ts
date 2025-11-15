@@ -47,7 +47,7 @@ export async function refreshBotToken(): Promise<BotTokenRefreshResult> {
 
     // Optionally verify token is valid
     await axios.get("https://id.twitch.tv/oauth2/validate", {
-      headers: { Authorization: `OAuth ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     // Save updated tokens to environment (and optionally your DB)

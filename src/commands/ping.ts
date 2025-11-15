@@ -34,4 +34,4 @@ export const execute = async (ctx) => {
   );
 };
 
-export const aliases = ["ping"];
+export const aliases = [];

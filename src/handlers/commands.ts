@@ -41,6 +41,10 @@ export const loadCommands = () => {
         if (Array.isArray(command.aliases)) {
           command.aliases.forEach((alias: string) => {
             const aliasKey = `!${alias.toLowerCase()}`;
+            // Skip if alias matches the main command name to avoid duplicates
+            if (aliasKey === mainKey) {
+              return;
+            }
             if (seenKeys.has(aliasKey)) {
               duplicateKeys.push(aliasKey);
             } else {

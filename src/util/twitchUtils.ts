@@ -149,9 +149,34 @@ let accessToken: string | null = null;
 
 // Per-user refresh lock and retry count. Use normalized (lowercased) keys to
 // avoid duplicate refreshes due to casing differences.
+// 
+// COORDINATION NOTE: This function is called from multiple places:
+// - botManager.refreshTokenFunction() - scheduled token refreshes
+// - getStreamStatusWithAutoRefresh() - on-demand refresh when token expires
+// The refreshLocks mechanism ensures only one refresh happens at a time per user,
+// preventing race conditions and duplicate refresh attempts.
 const refreshLocks: Record<string, boolean> = {};
 const refreshRetries: Record<string, number> = {};
+const refreshRetryTimers: Record<string, NodeJS.Timeout> = {}; // Track retry timers for cleanup
+const refreshCooldowns: Record<string, number> = {}; // Track cooldown expiry times
 const MAX_REFRESH_RETRIES = 5;
+const COOLDOWN_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+// Helper function to clear retry timer for a user
+function clearRetryTimer(key: string) {
+  if (refreshRetryTimers[key]) {
+    clearTimeout(refreshRetryTimers[key]);
+    delete refreshRetryTimers[key];
+  }
+}
+
+// Helper function to check if refresh token is still valid
+async function validateRefreshToken(refreshToken: string): Promise<boolean> {
+  if (!refreshToken) return false;
+  // Refresh tokens can't be validated directly, but we can check if it's a valid format
+  // Twitch refresh tokens are typically long strings
+  return refreshToken.length > 20;
+}
 
 export const refreshAccessToken = async (channel: any) => {
   const clientId = process.env.TWITCH_CLIENT_ID;
@@ -163,24 +188,71 @@ export const refreshAccessToken = async (channel: any) => {
     throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
   }
 
+  // Check if we're in cooldown period
+  const cooldownExpiry = refreshCooldowns[key];
+  if (cooldownExpiry && Date.now() < cooldownExpiry) {
+    const remaining = Math.ceil((cooldownExpiry - Date.now()) / 1000);
+    console.warn(`[${username}] Token refresh in cooldown, ${remaining}s remaining.`);
+    return null;
+  }
+
   if (refreshLocks[key]) {
     console.warn(`[${username}] Token refresh already in progress, skipping duplicate attempt.`);
     return null;
   }
+
+  // Check if we've exceeded max retries
   if (refreshRetries[key] && refreshRetries[key] >= MAX_REFRESH_RETRIES) {
-    console.error(`[${username}] Max token refresh retries reached, will not retry again for 10 minutes.`);
+    console.error(`[${username}] Max token refresh retries reached, entering cooldown.`);
+    refreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+    // Clear retry count after cooldown
     setTimeout(() => {
       refreshRetries[key] = 0;
-    }, 10 * 60 * 1000); // 10 minute cooldown
+      delete refreshCooldowns[key];
+    }, COOLDOWN_DURATION_MS);
     return null;
   }
+
+  // Fetch fresh channel data from DB to avoid race conditions
+  let freshChannel;
+  try {
+    freshChannel = await Channel.findOne({ where: { username } });
+    if (!freshChannel) {
+      console.error(`[${username}] Channel not found in database.`);
+      refreshLocks[key] = false;
+      return null;
+    }
+  } catch (dbErr) {
+    console.error(`[${username}] Failed to fetch fresh channel data:`, dbErr);
+    refreshLocks[key] = false;
+    return null;
+  }
+
+  // Validate refresh token before attempting refresh
+  const refreshToken = (freshChannel as any).refresh_token;
+  if (!refreshToken) {
+    console.error(`[${username}] No refresh token available.`);
+    refreshLocks[key] = false;
+    return null;
+  }
+
+  const isValidRefreshToken = await validateRefreshToken(refreshToken);
+  if (!isValidRefreshToken) {
+    console.error(`[${username}] Refresh token appears invalid.`);
+    refreshLocks[key] = false;
+    return null;
+  }
+
+  // Clear any existing retry timer
+  clearRetryTimer(key);
+
   refreshLocks[key] = true;
   refreshRetries[key] = (refreshRetries[key] || 0) + 1;
 
   const url = 'https://id.twitch.tv/oauth2/token';
   const params = new URLSearchParams({
     grant_type: 'refresh_token',
-    refresh_token: channel.refresh_token,
+    refresh_token: (freshChannel as any).refresh_token,
     client_id: clientId,
     client_secret: clientSecret,
   });
@@ -194,93 +266,158 @@ export const refreshAccessToken = async (channel: any) => {
       const errorDetails = await response.text();
       console.error(`[${username}] Token refresh failed: ${response.statusText}`);
       console.error(`[${username}] Error details: ${errorDetails}`);
-      // If error is unrecoverable (400), disable further retries
+      
+      // Always clear lock on error
+      refreshLocks[key] = false;
+      
+      // If error is unrecoverable (400), mark as needing re-auth and don't retry
       if (response.status === 400) {
-        console.error(`[${username}] Received 400 (invalid grant). Disabling further retries until manual re-authentication.`);
-        refreshLocks[key] = false;
+        console.error(`[${username}] Received 400 (invalid grant). Refresh token may be revoked. User needs to re-authenticate.`);
         refreshRetries[key] = MAX_REFRESH_RETRIES;
+        refreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+        
+        // Notify user via Discord
+        try {
+          const { sendDiscordAlert } = require('../handlers/discordHandler');
+          await sendDiscordAlert({
+            type: 'error',
+            title: 'Twitch Re-Authentication Required',
+            description: `@${username}, your Twitch token has been revoked or is invalid. Please re-authenticate your account at app.antiparty.dev to continue using bot features.`,
+            fields: [
+              { name: 'Reason', value: errorDetails || response.statusText },
+            ],
+          });
+        } catch (notifyErr) {
+          console.error(`[${username}] Failed to send Discord notification:`, notifyErr);
+        }
+        
+        // Notify user in Twitch chat (one-time)
+        try {
+          const { clients } = require('./ircBot');
+          const client = clients[username];
+          if (client && typeof client.say === 'function') {
+            if (!client._notifiedReauth) {
+              client.say(`#${username}`, `Your Twitch token has been revoked. Please re-authenticate at app.antiparty.dev to continue using bot features.`);
+              client._notifiedReauth = true;
+            }
+          }
+        } catch (chatErr) {
+          console.error(`[${username}] Failed to send Twitch chat notification:`, chatErr);
+        }
+        
         return null;
       }
-      // Notify user via Discord
+      
+      // For other errors, notify and schedule retry
       try {
         const { sendDiscordAlert } = require('../handlers/discordHandler');
         await sendDiscordAlert({
           type: 'error',
-          title: 'Twitch Re-Authentication Required',
-          description: `@${username}, your Twitch token could not be refreshed. Please re-authenticate your account to continue using bot features.`,
+          title: 'Twitch Token Refresh Failed',
+          description: `@${username}, your Twitch token could not be refreshed. The system will retry automatically.`,
           fields: [
             { name: 'Reason', value: errorDetails || response.statusText },
           ],
         });
       } catch (notifyErr) {
-        console.error(`[${username}] Failed to send Discord notification for token refresh failure:`, notifyErr);
+        console.error(`[${username}] Failed to send Discord notification:`, notifyErr);
       }
-      // Notify user in Twitch chat (one-time)
-      try {
-        const { clients } = require('./bot');
-        const client = clients[username];
-        if (client && typeof client.say === 'function') {
-          if (!client._notifiedReauth) {
-            client.say(`#${username}`, `Your Twitch token could not be refreshed. Please re-authenticate your account at app.antiparty.dev to continue using bot features.`);
-            client._notifiedReauth = true;
-          }
-        }
-      } catch (chatErr) {
-        console.error(`[${username}] Failed to send Twitch chat notification for token refresh failure:`, chatErr);
-      }
+      
       // Schedule retry using exponential backoff if not maxed out
       if (refreshRetries[key] < MAX_REFRESH_RETRIES) {
         const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, refreshRetries[key] - 1) * 60000); // cap at 10 minutes
         console.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
-        setTimeout(() => {
-          refreshLocks[key] = false;
-          refreshAccessToken(channel);
+        
+        // Store timer so we can clean it up
+        refreshRetryTimers[key] = setTimeout(async () => {
+          delete refreshRetryTimers[key];
+          // Re-fetch channel to get latest refresh token
+          const updatedChannel = await Channel.findOne({ where: { username } });
+          if (updatedChannel) {
+            refreshAccessToken(updatedChannel);
+          } else {
+            refreshLocks[key] = false;
+          }
         }, retryDelay);
       } else {
-        refreshLocks[key] = false;
+        // Max retries reached, enter cooldown
+        refreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+        setTimeout(() => {
+          refreshRetries[key] = 0;
+          delete refreshCooldowns[key];
+        }, COOLDOWN_DURATION_MS);
       }
       return null;
     }
+    
     const data = await response.json();
     tokenExpiryTime = Date.now() + (data.expires_in * 1000);
-    channel.access_token = data.access_token;
-    channel.refresh_token = data.refresh_token;
-    // Persist the expiry in the DB so other processes/instances can rely on it
+    
+    // Update channel with new tokens
+    freshChannel.access_token = data.access_token;
+    freshChannel.refresh_token = data.refresh_token;
+    
+    // Persist the expiry in the DB - ensure it's set properly
+    const expiresAt = new Date(Date.now() + data.expires_in * 1000);
     try {
-      channel.token_expires_at = new Date(Date.now() + data.expires_in * 1000);
+      (freshChannel as any).token_expires_at = expiresAt;
     } catch (err) {
-      // ignore if model doesn't allow assignment
+      console.error(`[${username}] Failed to set token_expires_at:`, err);
+      // Continue anyway - the save might still work
     }
-    await channel.save();
+    
+    await freshChannel.save();
+    
+    // Clear retry state on success
     refreshLocks[key] = false;
     refreshRetries[key] = 0;
+    clearRetryTimer(key);
+    delete refreshCooldowns[key];
+    
     return data.access_token;
   } catch (error: any) {
     console.error(`[${username}] Exception during Twitch token refresh:`, error);
+    
+    // Always clear lock on exception
+    refreshLocks[key] = false;
+    
     // Notify user via Discord
     try {
       const { sendDiscordAlert } = require('../handlers/discordHandler');
       await sendDiscordAlert({
         type: 'error',
-        title: 'Twitch Re-Authentication Required',
-        description: `@${username}, your Twitch token could not be refreshed due to an exception. Please re-authenticate your account.`,
+        title: 'Twitch Token Refresh Error',
+        description: `@${username}, an error occurred while refreshing your Twitch token. The system will retry automatically.`,
         fields: [
           { name: 'Error', value: error?.message || JSON.stringify(error) },
         ],
       });
     } catch (notifyErr) {
-      console.error(`[${username}] Failed to send Discord notification for token refresh exception:`, notifyErr);
+      console.error(`[${username}] Failed to send Discord notification:`, notifyErr);
     }
+    
     // Schedule retry with exponential backoff
     if (refreshRetries[key] < MAX_REFRESH_RETRIES) {
       const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, refreshRetries[key] - 1) * 60000);
       console.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
-      setTimeout(() => {
-        refreshLocks[key] = false;
-        refreshAccessToken(channel);
+      
+      refreshRetryTimers[key] = setTimeout(async () => {
+        delete refreshRetryTimers[key];
+        // Re-fetch channel to get latest refresh token
+        const updatedChannel = await Channel.findOne({ where: { username } });
+        if (updatedChannel) {
+          refreshAccessToken(updatedChannel);
+        } else {
+          refreshLocks[key] = false;
+        }
       }, retryDelay);
     } else {
-      refreshLocks[key] = false;
+      // Max retries reached, enter cooldown
+      refreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+      setTimeout(() => {
+        refreshRetries[key] = 0;
+        delete refreshCooldowns[key];
+      }, COOLDOWN_DURATION_MS);
     }
     return null;
   }

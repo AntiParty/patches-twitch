@@ -8,4 +8,4 @@ export const execute = async (ctx) => {
     const replyMessage = `Next cache update in ${min}m ${sec}s.`;
     await ctx.say(replyMessage, messageId);
 }
-export const aliases = ["nextcache", "cachetime"];
+export const aliases = ["cachetime"];

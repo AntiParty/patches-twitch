@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal | FinalsRR</title>
+    <meta name="description" content="Privacy Policy and Terms of Service for FinalsRR.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="./assets/logo.png">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <span class="logo-icon"></span>
+                FINALSRR
+            </a>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="index.html#community">Community</a>
+                <a href="index.html#premium">Premium</a>
+                <a href="/login" class="btn-login">Log in</a>
+            </div>
+            <div class="mobile-menu-btn">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="legal-page">
+        <div class="container">
+            <div class="legal-header">
+                <h1>Legal Center</h1>
+                <p>Transparency is key. Read our policies below.</p>
+            </div>
+
+            <div class="legal-tabs">
+                <button class="tab-btn active" data-target="privacy">Privacy Policy</button>
+                <button class="tab-btn" data-target="terms">Terms of Service</button>
+            </div>
+
+            <div class="legal-content-wrapper">
+                <div id="legal-content" class="markdown-body">
+                    <!-- Content will be loaded here -->
+                    <div class="loading-spinner">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>FINALSRR</h3>
+                    <p>The unofficial companion bot for THE FINALS.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="index.html#features">Features</a>
+                    <a href="#">Pricing</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <a href="/docs">Documentation</a>
+                    <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="legal.html#privacy">Privacy</a>
+                    <a href="legal.html#terms">Terms</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 FinalsRR. Not affiliated with Embark Studios.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="legal.js"></script>
+    <!-- Reusing script.js for mobile menu and particles if desired, but legal.js can handle specific logic. 
+         If we want the particles, we can include script.js too, but might need to adjust it to not error if elements are missing.
+         The user asked to "copy the styling of ... script.js", implying functionality too.
+         script.js has 'init', 'animate' which run on load. It also looks for .mobile-menu-btn.
+         Let's include script.js as well for the background and menu. -->
+    <script src="script.js"></script>
+</body>
+
+</html>

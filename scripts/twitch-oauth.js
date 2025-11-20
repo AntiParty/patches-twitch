@@ -10,7 +10,7 @@ const SCOPES = [
     "chat:edit", // allows the bot to send messages in chat
     "user:read:email", // optional, identifies the bot account (safe to keep)
     "user:write:chat",
-    "channel:bot"
+    "channel:bot",
   ];  
 
 // Step 1: Start mini server to handle redirect

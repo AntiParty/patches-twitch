@@ -620,6 +620,11 @@ export const setupServer = () => {
     res.sendFile(path.join(frontendPath, 'docs.html'));
   });
 
+  // Legal page
+  app.get('/legal', (req: Request, res: Response) => {
+    res.sendFile(path.join(frontendPath, 'legal.html'));
+  })
+
   /**
    * GET /login
    * Redirects user to Twitch authentication URL.
@@ -879,7 +884,7 @@ export const setupServer = () => {
       logger.error("Error fetching user stats for dashboard:", err);
     }
     res.render("user-dashboard", {
-      title: "Your Dashboard",
+      title: "FinalsRR - User dashboard",
       logoPath: "/assets/logo.png",
       username: req.session.twitchUsername,
       userStats,

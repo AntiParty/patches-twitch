@@ -72,17 +72,40 @@ export async function sendChatMessage(
     return;
   }
 
-  const body: any = {
-    broadcaster_id: broadcasterId,
-    sender_id: botUserId,
-    message,
-  };
-
-  if (replyParentId) {
-    body.reply_parent_message_id = replyParentId; // 👈 important
-  }
-
+  // Runtime message filtering to protect bot from sending banned content
   try {
+    const { containsBlockedWord, containsBlockedPhrase, matchesBlockRegex, sanitizeMessage } = await import('./messageFilter');
+
+    // If regex or phrase match -> suppress message entirely
+    if (matchesBlockRegex(message) || containsBlockedPhrase(message)) {
+      logger.warn(`[filter] Suppressing message to broadcaster ${broadcasterId} due to blocked phrase/regex. Message: ${message}`);
+      try {
+        const { sendWarningToDiscord } = await import('../handlers/discordHandler');
+        // Note: broadcasterId is numeric user id; try to include channel name if available
+        await sendWarningToDiscord(`${broadcasterId} has tried to use a blocked term`, `Suppressed outgoing message: ${message}`);
+      } catch (e) {
+        logger.warn('[filter] Failed to send Discord warning for suppressed message:', e);
+      }
+      return;
+    }
+
+    // If the message contains blocked words -> redact them, then send
+    let outMessage = message;
+    if (containsBlockedWord(message)) {
+      outMessage = sanitizeMessage(message);
+      logger.info(`[filter] Redacted blocked words in message to ${broadcasterId}.`);
+    }
+
+    const body: any = {
+      broadcaster_id: broadcasterId,
+      sender_id: botUserId,
+      message: outMessage,
+    };
+
+    if (replyParentId) {
+      body.reply_parent_message_id = replyParentId; // 👈 important
+    }
+
     const resp = await axios.post(
       "https://api.twitch.tv/helix/chat/messages",
       body,
@@ -96,7 +119,8 @@ export async function sendChatMessage(
     );
     logger.info("[DEBUG] Helix API response:", resp.data);
   } catch (err: any) {
-    logger.error("[ERROR] Failed to send chat message:", err.response?.data || err);
+    // If anything goes wrong with filtering or sending, log and avoid sending potentially unsafe content
+    logger.error("[ERROR] Failed to send chat message or message was filtered:", err?.response?.data || err);
   }
 }
 

@@ -132,6 +132,95 @@ dbReady.then(async () => {
       }
     });
 
+    controlApp.get("/health", async (req, res) => {
+      const timestamp = Date.now();
+      const uptime = process.uptime();
+
+      // -------------------------------------
+      // DATABASE CHECK
+      // -------------------------------------
+      let databaseStatus = {
+        name: "database",
+        status: "ok",
+        latencyMs: 0,
+        detail: "connected"
+      };
+
+      try {
+        const start = performance.now();
+        await Channel.findOne(); // light DB query
+        databaseStatus.latencyMs = Math.round(performance.now() - start);
+      } catch (err) {
+        databaseStatus.status = "error";
+        databaseStatus.detail = err.message;
+      }
+
+      // -------------------------------------
+      // BOT CHECK
+      // -------------------------------------
+      let botStatus = {
+        name: "bot",
+        status: "ok",
+        latencyMs: 0,
+        detail: "connected"
+      };
+
+      try {
+        const t0 = performance.now();
+        await botManager.ping(); // you already have internal connection states
+        botStatus.latencyMs = Math.round(performance.now() - t0);
+      } catch (err) {
+        botStatus.status = "error";
+        botStatus.detail = "ECONNREFUSED";
+        botStatus.latencyMs = null;
+      }
+
+      // -------------------------------------
+      // EVENTSUB WS (OPTIONAL HOOK)
+      // -------------------------------------
+      let eventsubStatus = {
+        name: "eventsub_ws",
+        status: "ok",
+        latencyMs: 0,
+        detail: "connected"
+      };
+
+      try {
+        if (global.eventsubWs && global.eventsubWs.readyState === 1) {
+          // OPEN
+          eventsubStatus.latencyMs = 1;
+        } else {
+          throw new Error("WS_NOT_CONNECTED");
+        }
+      } catch (err) {
+        eventsubStatus.status = "error";
+        eventsubStatus.detail = err.message ?? "WS_NOT_CONNECTED";
+        eventsubStatus.latencyMs = null;
+      }
+
+      // -------------------------------------
+      // OVERALL STATUS
+      // -------------------------------------
+      const checks = [databaseStatus, botStatus, eventsubStatus];
+      const overallOk = checks.every((x) => x.status === "ok");
+
+      const result = {
+        status: overallOk ? "ok" : "error",
+        version: "1.0.0",
+        timestamp,
+        uptime,
+        checks,
+        memory: process.memoryUsage(),
+        cpu: process.cpuUsage()
+      };
+
+      if (!overallOk) {
+        return res.status(500).json(result);
+      }
+
+      return res.json(result);
+    });
+
     controlApp.listen(4000, () => {
       logger.info("Bot control API running on http://localhost:4000");
     });

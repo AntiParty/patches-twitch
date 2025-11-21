@@ -1,5 +1,7 @@
 import { getCustomResponse, setCustomResponse } from '../db';
 import logger from '../util/logger';
+import { containsBlockedWord, containsBlockedPhrase, matchesBlockRegex } from '../util/messageFilter';
+import { sendWarningToDiscord } from '../handlers/discordHandler';
 
 interface CommandContext {
   say: (message: string) => Promise<void>;
@@ -58,6 +60,26 @@ export const execute = async (
     } else {
       // Set response
       const response = args.slice(1).join(' ');
+
+      // Check against blocked words/phrases/regex
+      try {
+        if (matchesBlockRegex(response) || containsBlockedPhrase(response) || containsBlockedWord(response)) {
+          logger.warn(`[editcmd] ${username} attempted to set a custom response containing blocked content for ${sanitizedChannel} !${cmd}`);
+          try {
+            await sendWarningToDiscord(`${sanitizedChannel} has tried to use a blocked term`, `User: ${username}\nCommand: !${cmd}\nChannel: ${sanitizedChannel}`);
+          } catch (e) {
+            logger.warn('[editcmd] Failed to send Discord warning:', e);
+          }
+          await ctx.say(`@${username}, your custom response contains words or phrases that are not allowed and was not saved.`);
+          return;
+        }
+      } catch (e) {
+        // If filter fails for some reason, err on the side of safety and reject the response
+        logger.error('[editcmd] messageFilter check failed:', e);
+        await ctx.say(`@${username}, failed to validate your custom response. Try again later.`);
+        return;
+      }
+
       await setCustomResponse(sanitizedChannel, cmd, response);
       logger.info(`[editcmd] ${username} set response for !${cmd} => ${response}`);
       await ctx.say(`@${username}, custom response for !${cmd} has been set.`);

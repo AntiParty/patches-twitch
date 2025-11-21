@@ -4,6 +4,7 @@
     "module": "ESNext",
     "strict": true,
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "importHelpers": true,
     "experimentalDecorators": true,
     "esModuleInterop": true,

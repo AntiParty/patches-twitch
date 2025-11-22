@@ -3,7 +3,7 @@
 **Last Updated: November 19, 2025**
 
 ## 1. Introduction
-Welcome to FinalsRR ("we," "our," or "us"). We are committed to protecting your privacy and ensuring you have a positive experience on our website and with our Twitch bot. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website or use our services.
+Welcome to FinalsRS ("we," "our," or "us"). We are committed to protecting your privacy and ensuring you have a positive experience on our website and with our Twitch bot. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website or use our services.
 
 ## 2. Information We Collect
 We collect information that you voluntarily provide to us when you register for the service, specifically:

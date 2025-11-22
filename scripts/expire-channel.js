@@ -2,8 +2,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// Use username from CLI args or default to 'finalsrr'
-const username = process.argv[2] || 'finalsrr';
+// Use username from CLI args or default to 'FinalsRS'
+const username = process.argv[2] || 'FinalsRS';
 
 // Resolve DB path (adjust if needed)
 const dbPath = path.resolve(__dirname, '../data/accounts.sqlite');

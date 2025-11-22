@@ -38,7 +38,7 @@ export const sendDiscordAlert = async (options: {
     timestamp: new Date().toISOString(),
     url: options.url,
     fields: options.fields,
-    footer: { text: options.footer || 'FinalsRR' },
+    footer: { text: options.footer || 'FinalsRS' },
   };
   try {
     await axios.post(discordWebhookUrl, { embeds: [embed] });

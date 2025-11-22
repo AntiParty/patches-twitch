@@ -603,7 +603,7 @@ export const setupServer = () => {
       if (!key || key !== process.env.API_key) {
         return res.status(403).json({ error: "Invalid API key" });
       }
-      exec("pm2 restart finalsrr-bot", (err, stdout, stderr) => {
+      exec("pm2 restart FinalsRS-bot", (err, stdout, stderr) => {
         if (err) {
           logger.error("Failed to restart bot via admin API:", err);
           return res.status(500).json({ success: false, error: "Failed to restart bot" });
@@ -974,7 +974,7 @@ export const setupServer = () => {
         title: "Dashboard Disabled",
         logoPath: "/assets/logo.png",
         username: req.session?.twitchUsername || "",
-        botUsername: "FinalsRR",
+        botUsername: "FinalsRS",
         message: "User dashboard is currently disabled by admin."
       });
     }
@@ -996,7 +996,7 @@ export const setupServer = () => {
       logger.error("Error fetching user stats for dashboard:", err);
     }
     res.render("user-dashboard", {
-      title: "FinalsRR - User dashboard",
+      title: "FinalsRS - User dashboard",
       logoPath: "/assets/logo.png",
       username: req.session.twitchUsername,
       userStats,

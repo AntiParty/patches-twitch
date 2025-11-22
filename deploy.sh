@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Change to your project directory
-cd /home/antiparty/dev/finalsrr || exit 1
+cd /home/antiparty/dev/FinalsRS || exit 1
 
 # Check for local uncommitted changes
 if [[ -n $(git status --porcelain) ]]; then
   echo "Warning: local changes detected, backing up before deploy..."
 
-  BACKUP_DIR="/home/antiparty/dev/finalsrr_backup_$(date +%Y%m%d_%H%M%S)"
+  BACKUP_DIR="/home/antiparty/dev/FinalsRS_backup_$(date +%Y%m%d_%H%M%S)"
   mkdir -p "$BACKUP_DIR"
 
   # Backup everything except .git and node_modules
@@ -24,7 +24,7 @@ bun install
 #bun run build
 
 # Restart both PM2 apps (make sure these names match your ecosystem config)
-pm2 restart finalsrr-server
-pm2 restart finalsrr-bot
+pm2 restart FinalsRS-server
+pm2 restart FinalsRS-bot
 
 echo "Deployment complete."

@@ -20,7 +20,7 @@ export const sendDiscordAlert = async (options: {
   footer?: string,
 }) => {
   if (!discordWebhookUrl) {
-    console.error('Discord webhook URL is not configured!');
+    logger.error('Discord webhook URL is not configured!');
     return;
   }
 
@@ -44,11 +44,11 @@ export const sendDiscordAlert = async (options: {
     await axios.post(discordWebhookUrl, { embeds: [embed] });
   } catch (error: any) {
     if (error.response) {
-      console.error('Discord webhook responded with error:', error.response.status, error.response.data);
+      logger.error('Discord webhook responded with error:', error.response.status, error.response.data);
     } else if (error.request) {
-      console.error('No response from Discord webhook:', error.request);
+      logger.error('No response from Discord webhook:', error.request);
     } else {
-      console.error('Failed to send embed message to Discord webhook:', error.message);
+      logger.error('Failed to send embed message to Discord webhook:', error.message);
     }
   }
 };

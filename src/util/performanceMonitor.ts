@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import os from 'os';
 import { PerformanceMetric, metricsDbReady } from '@/dbMetrics';
+import logger from '@/util/logger';
 
 export interface PerformanceMetrics {
   cpu: {
@@ -89,12 +90,12 @@ class PerformanceMonitor extends EventEmitter {
           connectedChannels: this.metrics.connectedChannels || 0,
           extra: null
         }).catch(err => {
-          console.error('[metrics-db] Failed to save performance metric:', err);
+          logger.error('[metrics-db] Failed to save performance metric:', err);
         });
       } catch (err) {
-        console.error('[metrics-db] Unexpected error saving metric:', err);
+        logger.error('[metrics-db] Unexpected error saving metric:', err);
       }
-    }).catch(()=>{/* ignore ready error */});
+    }).catch(() => {/* ignore ready error */ });
   }
 
   public getMetrics(): PerformanceMetrics {

@@ -1,5 +1,6 @@
 import { Sequelize, DataTypes, Model } from 'sequelize';
 import path from 'path';
+import logger from "@/util/logger"; // Logging utility
 import fs from 'fs';
 
 const dataDir = path.resolve(__dirname, '../data');
@@ -12,7 +13,7 @@ export const sequelizeMetrics = new Sequelize({
 });
 
 // Performance metric model (time-series)
-export class PerformanceMetric extends Model {}
+export class PerformanceMetric extends Model { }
 PerformanceMetric.init(
   {
     timestamp: { type: DataTypes.DATE, allowNull: false },
@@ -35,7 +36,7 @@ PerformanceMetric.init(
 );
 
 // Daily analytics summary
-export class AnalyticsDay extends Model {}
+export class AnalyticsDay extends Model { }
 AnalyticsDay.init(
   {
     day: { type: DataTypes.STRING, primaryKey: true }, // YYYY-MM-DD
@@ -59,8 +60,8 @@ AnalyticsDay.init(
 
 // Sync DB
 export const metricsDbReady = sequelizeMetrics.sync().then(() => {
-  console.log('[metrics-db] metrics DB ready');
+  logger.info('[metrics-db] metrics DB ready');
 }).catch(err => {
-  console.error('[metrics-db] failed to sync:', err);
+  logger.error('[metrics-db] failed to sync:', err);
   throw err;
 });

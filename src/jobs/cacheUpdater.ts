@@ -3,6 +3,7 @@ import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
+import logger from '@/util/logger';
 
 let lastUpdate = Date.now();
 const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
@@ -58,7 +59,7 @@ async function updateCache(type: 'regular' | 'worldTour', season: number) {
   const cachePath = getCachePath(type, season);
 
   try {
-    console.log(`Fetching ${type} leaderboard data for season ${season}...`);
+    logger.info(`Fetching ${type} leaderboard data for season ${season}...`);
     const response = await axios.get(url);
     if (response.status !== 200) {
       throw new Error(`${type} API (season ${season}) returned status ${response.status}`);
@@ -70,14 +71,14 @@ async function updateCache(type: 'regular' | 'worldTour', season: number) {
     }
 
     await fs.writeFile(cachePath, JSON.stringify(leaderboardData, null, 2), 'utf8');
-    console.log(`${type} cache for season ${season} updated with ${leaderboardData.length} entries.`);
+    logger.info(`${type} cache for season ${season} updated with ${leaderboardData.length} entries.`);
   } catch (error) {
-    console.error(`Error updating ${type} cache for season ${season}:`, error);
+    logger.error(`Error updating ${type} cache for season ${season}:`, error);
     try {
       const cachedData = await fs.readFile(cachePath, 'utf8');
-      console.log(`Loaded fallback ${type} cache for season ${season} with ${JSON.parse(cachedData).length} entries.`);
+      logger.info(`Loaded fallback ${type} cache for season ${season} with ${JSON.parse(cachedData).length} entries.`);
     } catch {
-      console.error(`No valid fallback ${type} cache found for season ${season}.`);
+      logger.error(`No valid fallback ${type} cache found for season ${season}.`);
     }
   }
 }
@@ -96,11 +97,11 @@ export async function updateAllCaches() {
 
 export function startCacheUpdater(intervalMs = 45 * 60 * 1000) {
   // Run immediately first
-  updateAllCachesRateLimited().catch(console.error);
+  updateAllCachesRateLimited().catch(logger.error);
 
   // Then run every interval
   setInterval(() => {
-    updateAllCachesRateLimited().catch(console.error);
+    updateAllCachesRateLimited().catch(logger.error);
   }, intervalMs);
 }
 

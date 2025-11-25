@@ -15,14 +15,13 @@ import { Channel, dbReady } from "@/db"; // Database model
 import { sendMessageToDiscord, sendChangelogToDiscord, sendInfoToDiscord, sendDiscordAlert } from "./handlers/discordHandler"; // Discord integration
 import { exec } from "child_process"; // For restarting bot process
 import session from 'express-session'; // Session management
-import logger from "./util/logger"; // Logging utility
-import { performanceMonitor } from "./util/performanceMonitor"; // Performance monitoring
+import logger from "@/util/logger"; // Logging utility
+import { performanceMonitor } from "@/util/performanceMonitor"; // Performance monitoring
 import path from "path"; // Path utilities
-import rateLimit from "express-rate-limit"; // Rate limiting
-import { refreshBotToken } from "./util/botAuth"; // Bot token refresher
-import { reconnectChatBot, clients } from "./util/ircBot"; // IRC reconnect
-import { loadCommands } from "./handlers/commands"; // Command handler
-import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
+//import rateLimit from "express-rate-limit"; // Rate limiting
+import { refreshBotToken } from "@/util/botAuth"; // Bot token refresher
+import { reconnectChatBot, clients } from "@/util/ircBot"; // IRC reconnect
+import { loadCommands } from "@/handlers/commands"; // Command handler
 import { containsBlockedWord, containsBlockedPhrase, matchesBlockRegex } from "./util/messageFilter";
 
 // Provide a small global type for health state used by the health endpoint
@@ -54,7 +53,7 @@ const getRedirectUri = () => {
   const uri = process.env.NODE_ENV === "production"
     ? "https://finalsrs.com/callback"
     : "http://localhost:3000/callback";
-  console.log(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
+  logger.info(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
   return uri;
 };
 
@@ -155,14 +154,14 @@ function exportStatsToJson() {
 export const setupServer = () => {
   // Path to frontend assets and templates
   const frontendPath = path.join(process.cwd(), "frontend");
-  console.log("Serving frontend from:", frontendPath);
-  console.log("Exists?", fs.existsSync(frontendPath));
+  logger.info("Serving frontend from:", frontendPath);
+  logger.info("Exists?", fs.existsSync(frontendPath));
   const app = express();
   app.set("trust proxy", 1); // Trust reverse proxy headers
   app.set("view engine", "ejs"); // Use EJS for rendering views
   app.set("views", frontendPath);
-  app.use((req, res, next) => { console.log(`[REQ] ${req.method} ${req.url}`); next(); });
-  
+  app.use((req, res, next) => { logger.info(`[REQ] ${req.method} ${req.url}`); next(); });
+
 
   // Parse JSON bodies for all routes
   app.use(express.json());
@@ -412,6 +411,37 @@ export const setupServer = () => {
     }
   });
 
+  app.post('/api/link-account', async (req: any, res: any) => {
+    //check if user is authenticated
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const { playerId } = req.body;
+    function isValidPlayerId(playerId: any): boolean {
+      return (
+        typeof playerId === "string" &&
+        /^[a-zA-Z0-9_.#-]{3,20}$/.test(playerId)
+      );
+    }
+    if (!isValidPlayerId(playerId)) {
+      return res.status(400).json({ error: 'Invalid player ID.' });
+    }
+
+    try {
+      const username = req.session.twitchUsername;
+      let channelInstance = await Channel.findOne({ where: { username } });
+      if (!channelInstance) {
+        await Channel.create({ username, player_id: playerId });
+      }
+      else {
+        await channelInstance.update({ player_id: playerId });
+      }
+      res.json({ success: true });
+      logger.info(`[dashboard] Linked player ID: ${playerId} for user: ${username}`);
+    } catch (err) {
+      logger.error('Error linking account via dashboard:', err);
+    }
+  });
   // --- Admin API: Live SQL Table Editor ---
   // List rows for a table
   app.get('/admin/api/db/:table', async (req: any, res: any) => {
@@ -690,128 +720,128 @@ export const setupServer = () => {
    * Returns health status of the server and database.
    */
   app.get("/health", async (req: Request, res: Response) => {
-  const checks: Array<any> = [];
+    const checks: Array<any> = [];
 
-  // Record a check outcome
-  function recordCheck(
-    name: string,
-    status: "ok" | "error" | "optional",
-    latencyMs: number | null = null,
-    detail: string | null = null
-  ) {
-    checks.push({ name, status, latencyMs, detail });
-  }
-
-  // Track health state globally for alert transitions
-  globalThis.__healthState = globalThis.__healthState || {};
-
-  // --- DATABASE CHECK ---
-  let dbHealthy = false;
-  let dbLatency: number | null = null;
-
-  try {
-    const dbStart = Date.now();
-
-    // Authenticate (timeout-protected)
-    await Promise.race([
-      (Channel.sequelize as any).authenticate(),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("DB auth timeout")), 2000)),
-    ]);
-
-    // Quick SELECT 1 test
-    await Promise.race([
-      (Channel.sequelize as any).query("SELECT 1"),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("DB query timeout")), 2000)),
-    ]);
-
-    dbLatency = Date.now() - dbStart;
-    dbHealthy = true;
-    recordCheck("database", "ok", dbLatency, "connected");
-  } catch (error: any) {
-    recordCheck(
-      "database",
-      "error",
-      dbLatency,
-      error?.message ?? String(error)
-    );
-
-    // Alert DB down only once (transition → unhealthy)
-    if (!globalThis.__healthState.dbDown) {
-      try {
-        sendMessageToDiscord("⚠️ Critical: Database connection failed during health check.");
-      } catch {}
-      globalThis.__healthState.dbDown = true;
-      globalThis.__healthState.dbDownSince = Date.now();
+    // Record a check outcome
+    function recordCheck(
+      name: string,
+      status: "ok" | "error" | "optional",
+      latencyMs: number | null = null,
+      detail: string | null = null
+    ) {
+      checks.push({ name, status, latencyMs, detail });
     }
-  }
 
-  // DB recovered: send recovery message once
-  if (dbHealthy && globalThis.__healthState.dbDown) {
+    // Track health state globally for alert transitions
+    globalThis.__healthState = globalThis.__healthState || {};
+
+    // --- DATABASE CHECK ---
+    let dbHealthy = false;
+    let dbLatency: number | null = null;
+
     try {
-      sendMessageToDiscord("✅ Notice: Database connection restored.");
-    } catch {}
-    globalThis.__healthState.dbDown = false;
-    globalThis.__healthState.dbRecoveredAt = Date.now();
-  }
+      const dbStart = Date.now();
 
-  // --- BOT CHECK (optional by default) ---
-  const strictBotCheck = process.env.HEALTH_CHECK_BOT_STRICT === "true";
-  const botCheckEnabled = process.env.HEALTH_CHECK_BOT !== "false";
+      // Authenticate (timeout-protected)
+      await Promise.race([
+        (Channel.sequelize as any).authenticate(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("DB auth timeout")), 2000)),
+      ]);
 
-  let botHealthy = null;
-  let botLatency = null;
+      // Quick SELECT 1 test
+      await Promise.race([
+        (Channel.sequelize as any).query("SELECT 1"),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("DB query timeout")), 2000)),
+      ]);
 
-  if (botCheckEnabled) {
-    try {
-      const botStart = Date.now();
-      await axios.get("http://localhost:4000/health", { timeout: 1500 });
-      botLatency = Date.now() - botStart;
-      botHealthy = true;
-
-      recordCheck("bot", strictBotCheck ? "ok" : "optional", botLatency, "responding");
-    } catch (err: any) {
-      botHealthy = false;
-
+      dbLatency = Date.now() - dbStart;
+      dbHealthy = true;
+      recordCheck("database", "ok", dbLatency, "connected");
+    } catch (error: any) {
       recordCheck(
-        "bot",
-        strictBotCheck ? "error" : "optional",
-        botLatency,
-        err?.code || err?.message || "bot unreachable"
+        "database",
+        "error",
+        dbLatency,
+        error?.message ?? String(error)
       );
+
+      // Alert DB down only once (transition → unhealthy)
+      if (!globalThis.__healthState.dbDown) {
+        try {
+          sendMessageToDiscord("⚠️ Critical: Database connection failed during health check.");
+        } catch { }
+        globalThis.__healthState.dbDown = true;
+        globalThis.__healthState.dbDownSince = Date.now();
+      }
     }
-  }
 
-  // --- RUNTIME METRICS ---
-  const memoryUsage = process.memoryUsage();
-  const cpuUsage = process.cpuUsage();
-  const uptime = process.uptime();
-  const timestamp = Date.now();
-  const { version } = require("../package.json");
+    // DB recovered: send recovery message once
+    if (dbHealthy && globalThis.__healthState.dbDown) {
+      try {
+        sendMessageToDiscord("✅ Notice: Database connection restored.");
+      } catch { }
+      globalThis.__healthState.dbDown = false;
+      globalThis.__healthState.dbRecoveredAt = Date.now();
+    }
 
-  // --- OVERALL HEALTH ---
-  const overallOk =
-    dbHealthy &&
-    (strictBotCheck
-      ? botHealthy === true
-      : true); // bot does NOT decide overall health unless strict mode is on
+    // --- BOT CHECK (optional by default) ---
+    const strictBotCheck = process.env.HEALTH_CHECK_BOT_STRICT === "true";
+    const botCheckEnabled = process.env.HEALTH_CHECK_BOT !== "false";
 
-  res.status(overallOk ? 200 : 500).json({
-    status: overallOk ? "ok" : "error",
-    version,
-    timestamp,
-    uptime,
-    checks,
-    memory: {
-      rss: memoryUsage.rss,
-      heapUsed: memoryUsage.heapUsed,
-      heapTotal: memoryUsage.heapTotal,
-    },
-    cpu: {
-      user: cpuUsage.user,
-      system: cpuUsage.system,
-    },
+    let botHealthy = null;
+    let botLatency = null;
+
+    if (botCheckEnabled) {
+      try {
+        const botStart = Date.now();
+        await axios.get("http://localhost:4000/health", { timeout: 1500 });
+        botLatency = Date.now() - botStart;
+        botHealthy = true;
+
+        recordCheck("bot", strictBotCheck ? "ok" : "optional", botLatency, "responding");
+      } catch (err: any) {
+        botHealthy = false;
+
+        recordCheck(
+          "bot",
+          strictBotCheck ? "error" : "optional",
+          botLatency,
+          err?.code || err?.message || "bot unreachable"
+        );
+      }
+    }
+
+    // --- RUNTIME METRICS ---
+    const memoryUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+    const uptime = process.uptime();
+    const timestamp = Date.now();
+    const { version } = require("../package.json");
+
+    // --- OVERALL HEALTH ---
+    const overallOk =
+      dbHealthy &&
+      (strictBotCheck
+        ? botHealthy === true
+        : true); // bot does NOT decide overall health unless strict mode is on
+
+    res.status(overallOk ? 200 : 500).json({
+      status: overallOk ? "ok" : "error",
+      version,
+      timestamp,
+      uptime,
+      checks,
+      memory: {
+        rss: memoryUsage.rss,
+        heapUsed: memoryUsage.heapUsed,
+        heapTotal: memoryUsage.heapTotal,
+      },
+      cpu: {
+        user: cpuUsage.user,
+        system: cpuUsage.system,
+      },
+    });
   });
-});
 
 
   // Main landing page

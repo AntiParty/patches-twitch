@@ -26,7 +26,7 @@ function findPlayer(data: any[] | null, name: string) {
   // Exact match first
   let player = data.find(p => normalizeName(p.name) === target);
   if (player) {
-    console.log(`[peak] Exact match for '${target}' found:`, player);
+    logger.info(`[peak] Exact match for '${target}' found:`, player);
   }
 
   // Fallback for names with #
@@ -35,19 +35,19 @@ function findPlayer(data: any[] | null, name: string) {
     // Try startsWith (original logic)
     player = data.find(p => normalizeName(p.name).startsWith(base));
     if (player) {
-      console.log(`[peak] startsWith match for base '${base}' found:`, player);
+      logger.info(`[peak] startsWith match for base '${base}' found:`, player);
     }
     // If still not found, try includes (for any substring match)
     if (!player) {
       player = data.find(p => normalizeName(p.name).includes(base));
       if (player) {
-        console.log(`[peak] includes match for base '${base}' found:`, player);
+        logger.info(`[peak] includes match for base '${base}' found:`, player);
       }
     }
   }
 
   if (!player) {
-    console.log(`[peak] No match found for '${target}' in this file.`);
+    logger.info(`[peak] No match found for '${target}' in this file.`);
   }
 
   return player;
@@ -65,10 +65,10 @@ async function getPeakRankAcrossSeasons(finalsName: string) {
     const filePath = path.resolve(__dirname, `../../cache/${file}`);
     try {
       const data = JSON.parse(await fs.readFile(filePath, 'utf8'));
-      console.log(`[peak] Checking file: ${file}, searching for: ${finalsName}`);
+      logger.info(`[peak] Checking file: ${file}, searching for: ${finalsName}`);
       const player = findPlayer(data, finalsName);
       if (player) {
-        console.log(`[peak] Found player in ${file}:`, player);
+        logger.info(`[peak] Found player in ${file}:`, player);
       }
       if (file.startsWith('regular')) {
         if (player && (!regularPeak || player.rank < regularPeak.rank)) {
@@ -82,7 +82,7 @@ async function getPeakRankAcrossSeasons(finalsName: string) {
         }
       }
     } catch (e) {
-      console.log(`[peak] Error reading file ${file}:`, e);
+      logger.info(`[peak] Error reading file ${file}:`, e);
       // ignore missing or invalid files
     }
   }

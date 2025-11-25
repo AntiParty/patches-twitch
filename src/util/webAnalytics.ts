@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
 import { AnalyticsDay, metricsDbReady } from '@/dbMetrics';
+import logger from '@/util/logger';
 
 type DailyStats = {
   totalRequests: number;
@@ -76,11 +77,11 @@ export function loadAnalytics() {
       for (const [day, data] of Object.entries(revived)) {
         history[day] = data;
       }
-      console.log(
+      logger.info(
         `[analytics] Loaded history with ${Object.keys(history).length} days`
       );
     } catch (e) {
-      console.error("[analytics] Failed to load:", e);
+      logger.error("[analytics] Failed to load:", e);
     }
   }
 
@@ -102,11 +103,11 @@ export function loadAnalytics() {
         // Prefer DB value over disk file
         history[day] = stats;
       }
-      console.log('[analytics] Merged analytics from DB');
+      logger.info('[analytics] Merged analytics from DB');
     } catch (err) {
-      console.error('[analytics] Failed to load analytics from DB:', err);
+      logger.error('[analytics] Failed to load analytics from DB:', err);
     }
-  }).catch(()=>{/* ignore ready err */});
+  }).catch(() => {/* ignore ready err */ });
 }
 
 export function saveAnalytics(force = false) {
@@ -120,9 +121,9 @@ export function saveAnalytics(force = false) {
     }
     fs.mkdirSync(path.dirname(SAVE_FILE), { recursive: true });
     fs.writeFileSync(SAVE_FILE, JSON.stringify(serializable, null, 2));
-    if (force) console.log("[analytics] Saved to disk");
+    if (force) logger.info("[analytics] Saved to disk");
   } catch (e) {
-    console.error("[analytics] Failed to save:", e);
+    logger.error("[analytics] Failed to save:", e);
   }
 
   // Persist per-day summaries into DB (non-blocking)
@@ -146,9 +147,9 @@ export function saveAnalytics(force = false) {
       }
       await Promise.all(upserts);
     } catch (err) {
-      console.error('[analytics] Failed to persist analytics to DB:', err);
+      logger.error('[analytics] Failed to persist analytics to DB:', err);
     }
-  }).catch(()=>{/* ignore ready err */});
+  }).catch(() => {/* ignore ready err */ });
 }
 
 // Auto-save every minute
@@ -164,7 +165,7 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 process.on("uncaughtException", (err) => {
-  console.error("[analytics] Uncaught exception:", err);
+  logger.error("[analytics] Uncaught exception:", err);
   saveAnalytics(true);
   process.exit(1);
 });

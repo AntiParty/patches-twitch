@@ -82,7 +82,7 @@ export const startStreamSessionPolling = async () => {
         }
       }
     } catch (err) {
-      console.error('Polling error:', err);
+      logger.error('Polling error:', err);
     }
   }, POLL_INTERVAL_MS);
 };

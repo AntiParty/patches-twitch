@@ -614,7 +614,15 @@
         </div>
         <div class="info-card">
           <h3>Linked Account</h3>
-          <p><%= userStats.playerId ? userStats.playerId : "Not linked" %></p>
+            <% if (userStats.playerId) { %>
+              <p><%= userStats.playerId %></p>
+            <% } else { %>
+              <div id="link-account-form">
+                <input type="text" id="player-id-input" placeholder="Enter your player ID" style="width: 70%; padding: 0.5rem; border-radius: 0.4rem; border: 1px solid var(--border); background: var(--panel-light); color: var(--text); font-size: 0.95rem; margin-bottom: 0.5rem;" />
+                <button id="link-account-btn" class="cta-button" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Link Account</button>
+                <div id="link-account-status" style="margin-top: 0.5rem; font-size: 0.9rem; display: none;"></div>
+              </div>
+            <% } %>
         </div>
         <div class="info-card">
           <h3>Status</h3>
@@ -646,8 +654,8 @@
           <p>Calculates how far away you are from your target rank, and shows the <strong>RS</strong> (Rank Score) needed to reach your goal</p>
         </div>
         <div class="feature-item">
-          <h3>Discord bot</h3>
-          <p>Possible Discord bot (Still TBD)</p>
+          <h3>Drops command</h3>
+          <p>Will Automatically display the latest Finals Twitch drops + preivew links (TBD)</p>
         </div>
         <div class="feature-item">
           <h3>Improve Documentation</h3>
@@ -834,7 +842,48 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       fetchCommands();
-      
+
+      // Link Account logic
+      const linkBtn = document.getElementById('link-account-btn');
+      if (linkBtn) {
+        linkBtn.addEventListener('click', async function () {
+          const input = document.getElementById('player-id-input');
+          const status = document.getElementById('link-account-status');
+          status.textContent = '';
+          status.style.display = 'block';
+          linkBtn.textContent = 'Linking...';
+          linkBtn.disabled = true;
+          try {
+            const res = await fetch('/api/link-account', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerId: input.value })
+            });
+            const data = await res.json();
+            if (data.success) {
+              status.style.color = 'var(--success)';
+              status.style.background = 'rgba(76, 175, 80, 0.1)';
+              status.style.border = '1px solid rgba(76, 175, 80, 0.3)';
+              status.textContent = '✓ Account linked!';
+              setTimeout(() => { window.location.reload(); }, 1200);
+            } else {
+              status.style.color = 'var(--error)';
+              status.style.background = 'rgba(244, 67, 54, 0.1)';
+              status.style.border = '1px solid rgba(244, 67, 54, 0.3)';
+              status.textContent = data.error || 'Failed to link account.';
+              linkBtn.textContent = 'Link Account';
+              linkBtn.disabled = false;
+            }
+          } catch {
+            status.style.color = 'var(--error)';
+            status.style.background = 'rgba(244, 67, 54, 0.1)';
+            status.style.border = '1px solid rgba(244, 67, 54, 0.3)';
+            status.textContent = 'Error linking account. Please try again.';
+            linkBtn.textContent = 'Link Account';
+            linkBtn.disabled = false;
+          }
+        });
+      }
       // Show guide modal only if user hasn't seen it before
       if (!localStorage.getItem('hasSeenGuide')) {
         setTimeout(showGuideModal, 1000);

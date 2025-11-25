@@ -1,5 +1,6 @@
 import axios from "axios";
 import { updateEnvVariables } from "./envUtils";
+import logger from "@/util/logger";
 
 export interface BotTokenRefreshResult {
   accessToken: string;
@@ -71,7 +72,7 @@ export async function refreshBotToken(): Promise<BotTokenRefreshResult> {
         : String(e?.response?.data || "");
     const msg = e?.message || "Unknown error";
 
-    console.error("[BotAuth] Refresh failed", { via: "Twitch API", status, body, msg });
+    logger.error("[BotAuth] Refresh failed", { via: "Twitch API", status, body, msg });
     throw new Error(`Refresh failed (Twitch API): ${status || ""} ${body || msg}`.trim());
   }
 }

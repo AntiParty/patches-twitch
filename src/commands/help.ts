@@ -11,7 +11,7 @@ export const execute = async (
 
         if (!username || !messageId) return;
 
-        
+
         const publicCommands = [
             "!help",
             "!addaccount",
@@ -20,16 +20,16 @@ export const execute = async (
             "!unlink",
         ];
 
-        
+
         const discordLink = "https://discord.gg/2UKzvzSEqA";
 
-        
+
         const replyMessage = `Link your Finals account with !link | 📜 Commands: ${publicCommands.join(
             ", "
         )} | 💬 Help: ${discordLink}`;
         await ctx.say(replyMessage, messageId);
     } catch (err) {
-        console.error("Error executing help command:", err);
+        logger.error("Error executing help command:", err);
     }
 };
 

@@ -4,11 +4,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { error } from 'console';
+import logger from "@/util/logger"; // Logging utility
 
 dotenv.config();
 
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('Using SQLite: true (forced)');
+logger.info('NODE_ENV:', process.env.NODE_ENV);
+logger.info('Using SQLite: true (forced)');
 
 const dataDir = path.resolve(__dirname, '../data');
 if (!fs.existsSync(dataDir)) {
@@ -22,7 +23,7 @@ const sequelize = new Sequelize({
 });
 
 // Channel model
-class Channel extends Model {}
+class Channel extends Model { }
 
 // Custom command response model
 // Utility functions for custom responses
@@ -34,7 +35,7 @@ async function getCustomResponse(channel: string, command: string): Promise<stri
 async function setCustomResponse(channel: string, command: string, response: string): Promise<void> {
   await CustomResponse.upsert({ channel, command, response });
 }
-class CustomResponse extends Model {}
+class CustomResponse extends Model { }
 CustomResponse.init(
   {
     channel: {
@@ -62,7 +63,7 @@ CustomResponse.init(
 );
 
 // StreamSession model
-class StreamSession extends Model {}
+class StreamSession extends Model { }
 Channel.init(
   {
     username: {
@@ -138,15 +139,15 @@ StreamSession.init(
     sequelize,
     modelName: 'StreamSession',
     tableName: 'StreamSessions',
-    timestamps: false 
+    timestamps: false
   }
 );
 
 // Sync the database and export a promise for sync completion
-const dbReady = sequelize.sync().then(() => {
-  console.log('Database synced.');
+const dbReady = sequelize.authenticate().then(() => {
+  logger.info('Database synced.');
 }).catch(error => {
-  console.error('database failed:', error);
+  logger.error('database failed:', error);
   throw error;
 });
 

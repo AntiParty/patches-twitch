@@ -121,7 +121,7 @@ export const execute = async (client: Client, channel: string, message: string, 
         const messageId = tags['id'];
 
         if (!username || !messageId) {
-            console.error('Missing username or message ID.');
+            logger.error('Missing username or message ID.');
             return;
         }
 
@@ -130,7 +130,7 @@ export const execute = async (client: Client, channel: string, message: string, 
         // Send a reply message
         client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);
     } catch (error) {
-        console.error('Error executing help command:', error);
+        logger.error('Error executing help command:', error);
     }
 };
 

@@ -6,12 +6,12 @@ const CLIENT_ID = "if823b0x5qoczett7hv4f9q5pk7p6n";
 const CLIENT_SECRET = "3ofebl4fdah47fq7sg6h86qg63zk66";
 const REDIRECT_URI = "http://localhost:3000/callback";
 const SCOPES = [
-    "chat:read", // allows the bot to read messages in chat
-    "chat:edit", // allows the bot to send messages in chat
-    "user:read:email", // optional, identifies the bot account (safe to keep)
-    "user:write:chat",
-    "channel:bot",
-  ];  
+  "chat:read", // allows the bot to read messages in chat
+  "chat:edit", // allows the bot to send messages in chat
+  "user:read:email", // optional, identifies the bot account (safe to keep)
+  "user:write:chat",
+  "channel:bot",
+];
 
 // Step 1: Start mini server to handle redirect
 const server = http.createServer(async (req, res) => {
@@ -38,10 +38,10 @@ const server = http.createServer(async (req, res) => {
     });
 
     const data = await tokenRes.json();
-    console.log("\n✅ Your Twitch Bot Tokens:");
-    console.log("Access Token:", data.access_token);
-    console.log("Refresh Token:", data.refresh_token);
-    console.log("Scopes:", data.scope);
+    logger.info("\n✅ Your Twitch Bot Tokens:");
+    logger.info("Access Token:", data.access_token);
+    logger.info("Refresh Token:", data.refresh_token);
+    logger.info("Scopes:", data.scope);
 
     res.end("✅ Success! You can close this window and return to the console.");
     server.close();
@@ -56,7 +56,7 @@ server.listen(3000, async () => {
   const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(
     REDIRECT_URI
   )}&response_type=code&scope=${SCOPES.join("+")}`;
-  console.log("🔗 Opening Twitch authorization URL...");
-  console.log(authUrl);
+  logger.info("🔗 Opening Twitch authorization URL...");
+  logger.info(authUrl);
   //await open(authUrl);
 });

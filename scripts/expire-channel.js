@@ -11,7 +11,7 @@ const dbPath = path.resolve(__dirname, '../data/accounts.sqlite');
 // Connect to SQLite database
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE, (err) => {
   if (err) {
-    console.error('❌ Failed to open database:', err.message);
+    logger.error('❌ Failed to open database:', err.message);
     process.exit(1);
   }
 });
@@ -28,7 +28,7 @@ const sql = `
 
 db.run(sql, [expiredAt, username], function (err) {
   if (err) {
-    console.error('❌ Database update failed:', err.message);
+    logger.error('❌ Database update failed:', err.message);
     db.close();
     process.exit(1);
   }
@@ -36,8 +36,8 @@ db.run(sql, [expiredAt, username], function (err) {
   if (this.changes === 0) {
     console.warn(`⚠️ No rows updated. Username "${username}" may not exist in Channels table.`);
   } else {
-    console.log(`✅ Marked token as expired for username="${username}".`);
-    console.log(`   → token_expires_at set to ${expiredAt}`);
+    logger.info(`✅ Marked token as expired for username="${username}".`);
+    logger.info(`   → token_expires_at set to ${expiredAt}`);
   }
 
   db.close();

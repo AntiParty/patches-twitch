@@ -94,61 +94,95 @@ Patches-Twitch is designed for streamers who want to display live stats, manage 
 
 ## Commands
 
-The bot supports the following commands:
+The bot supports a comprehensive set of commands for rank tracking, goal setting, and account management.
 
+### Quick Reference
+
+**Rank & Stats:**
+- `!rank` or `!r` — Shows your current rank and RS (includes goal progress if set)
+- `!record` — Shows session progress (RS gained/lost since stream started)
+- `!peak [player]` — Shows peak rank across all seasons
+
+**Goal Tracking:**
+- `!goal <rank>` — Set a rank goal to track progress
+- `!goal` — View current goal and progress
+
+**Account Management:**
+- `!link <PlayerName#1234>` — Link your THE FINALS account
+- `!unlink` — Unlink your account
+
+**Customization:**
+- `!editcmd <command> [response]` — Customize bot responses
+
+**Admin Only:**
+- `!resetdb` — Reset the database (use with caution)
+- `!wipesubs` — Delete all EventSub subscriptions
+
+### 📚 Full Documentation
+
+For complete command reference, usage examples, and customization options, see:
+- **[Commands Reference](./docs/COMMANDS.md)** - Complete guide to all commands
+- **[Custom Commands](./docs/custom-command-editing.md)** - Customize bot responses
+- **[Documentation Index](./docs/README.md)** - All available documentation
 
 **Usage Examples:**
-- `!addaccount 123456789` — Links the player ID `123456789` to your channel.
-- `!rank` — Shows your current rank in THE FINALS.
-- `!resetdb` — Only available to bot admins; resets the database.
+- `!link PlayerName#1234` — Links your THE FINALS account
+- `!goal 100` — Sets a goal to reach rank #100
+- `!rank` — Shows: "current rank is 48,234 RS in Diamond 1. 18,234 RS away from rank #100 (Ruby)"
 
 **Permissions:**
-- Some commands (e.g., `!resetdb`, `!wipesubs`) are restricted to admins or specific users. See `src/commands/` for details.
+- Most commands are available to all viewers
+- Admin commands (`!resetdb`, `!wipesubs`) are restricted to bot admins
 
 ## Creating Commands
 
-Commands are structured as individual modules in `src/commands/` using TypeScript and `tmi.js`. Each command exports an `execute` function and can include aliases.
+Commands are structured as individual modules in `src/commands/` using TypeScript. Each command exports an `execute` function and can include aliases.
 
-### Example: Help Command
+### Example: Rank Command Structure
 
 ```typescript
-// filepath: src/commands/help.ts
-import { Client, Userstate } from 'tmi.js';
+// filepath: src/commands/rank.ts
+import { Channel, RankGoal } from "../db";
+import logger from "../util/logger";
 
-export const execute = async (client: Client, channel: string, message: string, tags: Userstate) => {
-    try {
-        const username = tags['display-name'];
-        const messageId = tags['id'];
+interface CommandContext {
+  say: (message: string, replyToId?: string) => Promise<void>;
+  raw: (line: string) => void;
+  user: string;
+  channel: string;
+  message: string;
+  tags?: Record<string, any>;
+}
 
-        if (!username || !messageId) {
-            logger.error('Missing username or message ID.');
-            return;
-        }
-
-        const replyMessage = `Commands: !rank (check rank), !lastmatch (last match stats), !record (overall record), !addaccount <playerID> (link account). Need help? Join our Discord: discord.gg/santaigg`;
-
-        // Send a reply message
-        client.raw(`@reply-parent-msg-id=${messageId} PRIVMSG ${channel} :${replyMessage}`);
-    } catch (error) {
-        logger.error('Error executing help command:', error);
-    }
+export const execute = async (ctx: CommandContext) => {
+  const username = ctx.tags?.["display-name"] || ctx.user || "user";
+  
+  try {
+    // Your command logic here
+    await ctx.say(`@${username}, your current rank is...`, ctx.tags?.["id"]);
+  } catch (error) {
+    logger.error("[rank] Error:", error);
+    await ctx.say(`@${username}, something went wrong.`, ctx.tags?.["id"]);
+  }
 };
 
-export const aliases = ['commands', 'info', 'h'];
+export const aliases = ["r"];
 ```
 
 ### Creating a New Command
 1. Create a new file in `src/commands/`, e.g., `mycommand.ts`.
-2. Export an `execute` function with the required parameters.
+2. Export an `execute` function with `CommandContext` parameter.
 3. Optionally, export an `aliases` array for alternative triggers.
-4. Add your command to the command handler in `src/handlers/commands.ts` if needed.
+4. The command will be automatically loaded by `src/handlers/commands.ts`.
 
 ### Required Components
-- `execute`: The main function to handle command logic.
-- `client`: The `tmi.js` client instance for Twitch chat.
-- `channel`: The Twitch channel where the command was used.
-- `message`: The full message text.
-- `tags`: User metadata such as `display-name` and `id`.
+- `execute`: The main async function to handle command logic.
+- `ctx`: CommandContext object containing:
+  - `say`: Function to send messages to chat
+  - `user`: Username who triggered the command
+  - `channel`: The Twitch channel
+  - `message`: The full message text
+  - `tags`: User metadata (display-name, id, badges, etc.)
 - `aliases`: Alternative names for triggering the command.
 
 ## Project Structure

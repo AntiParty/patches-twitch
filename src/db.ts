@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { error } from 'console';
 import logger from "@/util/logger"; // Logging utility
+import { Op } from 'sequelize';
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ async function getCustomResponse(channel: string, command: string): Promise<stri
 async function setCustomResponse(channel: string, command: string, response: string): Promise<void> {
   await CustomResponse.upsert({ channel, command, response });
 }
+
 class CustomResponse extends Model { }
 CustomResponse.init(
   {
@@ -64,6 +66,8 @@ CustomResponse.init(
 
 // StreamSession model
 class StreamSession extends Model { }
+
+// Channel model initialization
 Channel.init(
   {
     username: {
@@ -143,18 +147,63 @@ StreamSession.init(
   }
 );
 
+// RankGoal model - Track user rank goals
+class RankGoal extends Model { }
+RankGoal.init(
+  {
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    target_rank: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    target_rank_score: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    starting_rank: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    starting_rank_score: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    achieved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    achieved_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'RankGoal',
+    tableName: 'RankGoals',
+    timestamps: false,
+  }
+);
+
 // Sync the database and export a promise for sync completion
-const dbReady = sequelize.authenticate().then(() => {
+const dbReady = sequelize.sync().then(() => {
   logger.info('Database synced.');
 }).catch(error => {
   logger.error('database failed:', error);
   throw error;
 });
 
-
-export { sequelize, Channel, StreamSession, CustomResponse, dbReady };
 // Returns stream sessions started within the last 8 hours (adjust as needed)
-import { Op } from 'sequelize';
 export async function getActiveSessions() {
   const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
   return await StreamSession.findAll({
@@ -165,4 +214,5 @@ export async function getActiveSessions() {
     }
   });
 }
-export { getCustomResponse, setCustomResponse };
+
+export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, dbReady, getCustomResponse, setCustomResponse };

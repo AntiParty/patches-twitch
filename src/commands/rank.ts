@@ -1,4 +1,4 @@
-import { Channel, getCustomResponse } from "../db";
+import { Channel, getCustomResponse, RankGoal } from "../db";
 import fs from "fs/promises";
 import path from "path";
 import logger from "../util/logger";
@@ -89,7 +89,7 @@ export const execute = async (ctx: CommandContext) => {
   const normalizedChannel = ctx.channel.replace("#", "");
 
   try {
-    const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } });
+    const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } }) as any;
     if (!channelInstance?.player_id?.trim()) {
       await ctx.say(
         `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`,
@@ -132,21 +132,52 @@ export const execute = async (ctx: CommandContext) => {
     const usedCustom = await maybeSendCustomResponse("rank", ctx, vars);
     if (usedCustom) return;
 
+    // Check if user has a goal set
+    const goal = await RankGoal.findOne({ where: { channel: normalizedChannel } }) as any;
+
     let response = `@${username}, `;
     if (player && wtPlayer) {
-      response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS | WT rank: #${wtPlayer.rank}`;
+      response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+
+      // Add goal information if exists
+      if (goal && !goal.achieved && player.rank > goal.target_rank) {
+        const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
+        const rsAway = (goal.target_rank_score || 0) - player.rankScore;
+
+        if (rsAway > 0) {
+          response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
+          if (targetPlayer?.league) {
+            response += ` (${targetPlayer.league})`;
+          }
+        }
+      }
+
+      response += ` | WT rank: #${wtPlayer.rank}`;
     } else if (player) {
-      response += `#${player.rank} ${player.league} - ${player.rankScore.toLocaleString()} RS`;
+      response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+
+      // Add goal information if exists
+      if (goal && !goal.achieved && player.rank > goal.target_rank) {
+        const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
+        const rsAway = (goal.target_rank_score || 0) - player.rankScore;
+
+        if (rsAway > 0) {
+          response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
+          if (targetPlayer?.league) {
+            response += ` (${targetPlayer.league})`;
+          }
+        }
+      }
     } else if (wtPlayer) {
       response += `WT rank: #${wtPlayer.rank}`;
     } else {
       response += `not found on regular or World Tour leaderboards.`;
     }
 
-  await ctx.say(response, ctx.tags?.["id"]);
+    await ctx.say(response, ctx.tags?.["id"]);
   } catch (err) {
     logger.error("[rank] Error executing command:", err);
-  await ctx.say(`@${username}, something went wrong fetching your rank.`, ctx.tags?.["id"]);
+    await ctx.say(`@${username}, something went wrong fetching your rank.`, ctx.tags?.["id"]);
   }
 };
 

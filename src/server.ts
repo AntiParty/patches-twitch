@@ -98,7 +98,6 @@ export function incrementCommandsProcessed() {
     fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
   }
 }
-
 // Get current commandsProcessed value
 export function getCommandsProcessed() {
   return commandsProcessed;

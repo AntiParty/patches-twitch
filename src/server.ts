@@ -39,7 +39,6 @@ declare global {
 const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase());
 const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || ''; // Hashed admin password (bcrypt)
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change_this_secret'; // Session secret for admin panel
-
 // --- Global User Dashboard Access Toggle ---
 let userDashboardEnabled = true; // Default: enabled
 
@@ -53,7 +52,7 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 // Helper to get correct redirect URI based on environment
 const getRedirectUri = () => {
   const uri = process.env.NODE_ENV === "production"
-    ? "https://app.antiparty.dev/callback"
+    ? "https://finalsrs.com/callback"
     : "http://localhost:3000/callback";
   console.log(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
   return uri;

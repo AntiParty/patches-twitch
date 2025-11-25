@@ -152,4 +152,16 @@ const dbReady = sequelize.sync().then(() => {
 
 
 export { sequelize, Channel, StreamSession, CustomResponse, dbReady };
+// Returns stream sessions started within the last 8 hours (adjust as needed)
+import { Op } from 'sequelize';
+export async function getActiveSessions() {
+  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+  return await StreamSession.findAll({
+    where: {
+      started_at: {
+        [Op.gte]: eightHoursAgo
+      }
+    }
+  });
+}
 export { getCustomResponse, setCustomResponse };

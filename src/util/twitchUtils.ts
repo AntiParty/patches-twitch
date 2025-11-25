@@ -1,7 +1,27 @@
+// Returns array of usernames currently live from a list
+
 import fs from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
 import { Channel } from '../db'; // Adjust the path if necessary
+
+export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string }[]> {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  const accessToken = process.env.TWITCH_BOT_TOKEN;
+  if (!clientId || !accessToken) return [];
+  const results: { username: string }[] = [];
+  for (const username of usernames) {
+    try {
+      const status = await getStreamStatusForUser(username, accessToken);
+      if (status.isLive) {
+        results.push({ username });
+      }
+    } catch (err) {
+      // Optionally log error per user
+    }
+  }
+  return results;
+}
 
 // Function to get the stream status for a user from Twitch
 export const getStreamStatusForUser = async (username: string, accessToken: string) => {
@@ -282,7 +302,7 @@ export const refreshAccessToken = async (channel: any) => {
           await sendDiscordAlert({
             type: 'error',
             title: 'Twitch Re-Authentication Required',
-            description: `@${username}, your Twitch token has been revoked or is invalid. Please re-authenticate your account at app.antiparty.dev to continue using bot features.`,
+            description: `@${username}, your Twitch token has been revoked or is invalid. Please re-authenticate your account at finalsrs.com to continue using bot features.`,
             fields: [
               { name: 'Reason', value: errorDetails || response.statusText },
             ],
@@ -297,7 +317,7 @@ export const refreshAccessToken = async (channel: any) => {
           const client = clients[username];
           if (client && typeof client.say === 'function') {
             if (!client._notifiedReauth) {
-              client.say(`#${username}`, `Your Twitch token has been revoked. Please re-authenticate at app.antiparty.dev to continue using bot features.`);
+              client.say(`#${username}`, `Your Twitch token has been revoked. Please re-authenticate at finalsrs.com to continue using bot features.`);
               client._notifiedReauth = true;
             }
           }

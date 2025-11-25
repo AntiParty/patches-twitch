@@ -90,7 +90,6 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
       logger.warn(`${broadcasterName} not found in leaderboard caches`);
       return;
     }
-
     const startScore = player?.rankScore ?? 0;
     const startWTRank = wtPlayer?.rank ?? null;
 

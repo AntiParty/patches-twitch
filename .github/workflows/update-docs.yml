@@ -1,0 +1,47 @@
+name: Update Command Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/commands/**/*.ts'
+      - 'src/commands/**/*.js'
+  workflow_dispatch:
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Generate command documentation
+        run: node scripts/generate-docs.js
+      
+      - name: Check for changes
+        id: verify-changed
+        run: |
+          if git diff --quiet COMMANDS.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push if changed
+        if: steps.verify-changed.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add COMMANDS.md
+          git commit -m "docs: auto-update command list [skip ci]"
+          git push

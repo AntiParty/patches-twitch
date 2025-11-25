@@ -44,7 +44,7 @@ Patches-Twitch is designed for streamers who want to display live stats, manage 
    ```bash
    cp .env.example .env
    ```
-2. Edit the `.env` file and add your Twitch and Discord credentials:
+2. Edit the `.env` file and add your Twitch, Discord, and database credentials:
    ```env
    TWITCH_CLIENT_ID=
    TWITCH_CLIENT_SECRET=
@@ -52,12 +52,23 @@ Patches-Twitch is designed for streamers who want to display live stats, manage 
 
    DATABASE_URL=
    DISCORD_WEBHOOK_URL=
+   DISCORD_CHANGELOG_WEBHOOK_URL=  # Optional: webhook for changelog notifications
 
    # grab tokens from https://twitchtokengenerator.com/
    TWITCH_BOT_USERNAME=  # Add your bot's username here
    TWITCH_BOT_TOKEN=  # Your current OAuth token
-   TWITCH_BOT_REFRESH_TOKEN=  # Your current refresh token :3
+   TWITCH_BOT_REFRESH_TOKEN=  # Your current refresh token
+
+   # Admin Panel Settings
+   ADMIN_USERS=admin1,admin2  # Comma-separated list of admin usernames
+   ADMIN_PASSWORD_HASH=  # bcrypt hash of your admin password (never store plaintext)
+   SESSION_SECRET=  # Random long string for session encryption
    ```
+
+**Tips:**
+- Make sure your Twitch app is set up correctly in the Twitch Developer Console.
+- The Discord webhook is optional but recommended for notifications.
+- Keep your `.env` file private and never commit it to version control.
 
 **Tips:**
 - Make sure your Twitch app is set up correctly in the Twitch Developer Console.

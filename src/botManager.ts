@@ -3,6 +3,7 @@ import { startChatBot, stopChatBot, reconnectChatBot } from "./util/ircBot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
 import { sendChatMessage  } from "./util/ircBot"
+import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
 import logger from "./util/logger";
 import axios from "axios";
 
@@ -17,6 +18,8 @@ export class BotManager {
 
   constructor() {
     this.commandHandler = loadCommands();
+    // Start polling for missing stream sessions when BotManager is instantiated
+    startStreamSessionPolling();
   }
 
   public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {

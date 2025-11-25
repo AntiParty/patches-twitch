@@ -1,0 +1,35 @@
+name: YOLO Security System
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan for secrets using TruffleHog
+        id: trufflehog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: .
+        continue-on-error: true
+
+      - name: Check if secrets were found
+        id: check
+        run: |
+          if echo "${{ steps.trufflehog.outputs.found }}" | grep -q "true"; then
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Roast the developer if secrets were found
+        if: steps.check.outputs.found == 'true'
+        run: |
+          echo "🔥 Secret detected! Bro leaked an API key 💀"
+          exit 1

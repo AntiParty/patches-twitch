@@ -63,6 +63,7 @@ a {
     align-items: center;
 }
 
+/* Flex container */
 .nav-container {
     display: flex;
     justify-content: space-between;
@@ -73,33 +74,34 @@ a {
     padding: 0 1.5rem;
 }
 
+/* Logo */
 .logo {
-    font-weight: 800;
-    font-size: 1.25rem;
-    letter-spacing: -0.5px;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    font-weight: 700;
+    font-size: 1.5rem;
 }
 
-.logo-icon {
-    width: 24px;
-    height: 24px;
-    background: var(--brand-primary);
-    border-radius: 4px;
-    display: inline-block;
+.logo-icon img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
 }
 
+/* Nav links */
 .nav-links {
     display: flex;
-    gap: 2rem;
+    gap: 1.75rem;
     align-items: center;
 }
 
+/* Remove that weird secondary left margin */
 .nav-links a {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     font-weight: 500;
     color: var(--text-secondary);
+    transition: color .2s ease;
 }
 
 .nav-links a:hover {
@@ -525,6 +527,13 @@ footer {
     color: var(--text-tertiary);
     font-size: 0.85rem;
 }
+
+.mobile-menu-btn {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+        }
 
 /* Responsive */
 @media (max-width: 768px) {

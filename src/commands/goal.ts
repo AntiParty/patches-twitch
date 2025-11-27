@@ -185,7 +185,6 @@ export const execute = async (
             if (rsDiff > 0) {
                 response += ` and gain ${rsDiff.toLocaleString()} RS`;
             }
-            response += `. Let's go! 💪`;
         } else if (rankDiff < 0) {
             response += `! You're already rank #${currentPlayer.rank} (${currentPlayer.league}), keep it up! 🔥`;
         } else {

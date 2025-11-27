@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinalsRS | The Ultimate Twitch Bot</title>
+    <meta name="description"
+        content="Real-time player stats, live leaderboards, and rank tracking for THE FINALS streamers.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="./assets/logo.png">
+    <script defer src="https://umami.antiparty.dev/script.js"
+        data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5"></script>
+    <meta name="keywords"
+        content="THE FINALS, Twitch bot, Twitch stats bot, FinalsRS, game stats, Twitch commands, THE FINALS leaderboard, Twitch integration" />
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Drops Page - Simple Single Image Layout */
+        .drops-hero {
+            padding: 10rem 0 4rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(to bottom, var(--bg-dark), #0c0c0e);
+        }
+
+        .drops-hero-glow {
+            position: absolute;
+            top: -30%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1200px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(217, 0, 47, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        .logo-icon img {
+            width: 32px;
+            /* adjust as needed */
+            height: 32px;
+            /* keeps it square */
+            object-fit: contain;
+        }
+
+        .drops-hero h1 {
+            font-size: 3.5rem;
+            line-height: 1.1;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+        }
+
+        .drops-hero .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Drops Content */
+        .drops-content {
+            padding: 4rem 0 6rem;
+        }
+
+        .drops-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Featured Image */
+        .drops-featured-image {
+            width: 100%;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
+        }
+
+        .drops-featured-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Drops List */
+        .drops-list-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .drops-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .drops-list-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .last-updated {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+        }
+
+        .drops-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 2rem 0;
+        }
+
+        .drop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 0;
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+
+        .drop-item:last-child {
+            border-bottom: none;
+        }
+
+        .drop-item-info {
+            flex: 1;
+        }
+
+        .drop-item-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .drop-item-category {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .drop-item-time {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--brand-primary);
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .drop-item-time svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* CTA Button */
+        .drops-cta {
+            text-align: center;
+        }
+
+        .btn-view-drops {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--brand-primary);
+            color: white;
+            padding: 1.25rem 3rem;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-view-drops:hover {
+            background: var(--brand-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--brand-glow);
+        }
+
+        .btn-view-drops svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Info Section */
+        .drops-info {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 3rem;
+            margin-top: 4rem;
+        }
+
+        .drops-info h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .drops-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .info-step {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: rgba(217, 0, 47, 0.1);
+            border: 1px solid rgba(217, 0, 47, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--brand-primary);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .drops-hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .drops-list-container {
+                padding: 2rem 1.5rem;
+            }
+
+            .drops-list-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .drop-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .drops-info {
+                padding: 2rem 1.5rem;
+            }
+
+            .drops-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Mobile Menu */
+        .mobile-menu-btn {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .mobile-menu-btn span {
+            width: 24px;
+            height: 2px;
+            background: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon"><img src="./assets/logo.png" alt=""></span>
+                FinalsRS
+            </div>
+            <div class="nav-links">
+                <a href="/">Home</a>
+                <a href="/twitch-drops">Drops</a>
+                <a href="/docs">Docs</a>
+                <a href="/login" class="btn-login" data-umami-event="Login button nav">Log in</a>
+            </div>
+            <div class="mobile-menu-btn">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="drops-hero">
+            <div class="drops-hero-glow"></div>
+            <div class="container">
+                <div class="badge">
+                    <span class="badge-dot"></span>
+                    Exclusive Rewards
+                </div>
+                <h1>Twitch <span class="text-gradient">Drops</span></h1>
+                <p class="subtitle">
+                    Watch THE FINALS streams and earn exclusive in-game rewards. Unlock unique skins, emotes, and more
+                    just by watching your favorite streamers.
+                </p>
+            </div>
+        </section>
+
+        <section class="drops-content">
+            <div class="drops-container">
+                <!-- Featured Image -->
+                <div class="drops-featured-image">
+                    <img src="./assets/drops/image+(148).webp" alt="THE FINALS Twitch Drops Showcase">
+                </div>
+
+                <!-- Drops List -->
+                <div class="drops-list-container">
+                    <div class="drops-list-header">
+                        <h2>Available Drops</h2>
+                        <span class="last-updated">Last updated: November 26, 2025</span>
+                    </div>
+
+                    <ul class="drops-list">
+                        <li class="drop-item">
+                            <div class="drop-item-info">
+                                <div class="drop-item-name">Popwave Cap</div>
+                                <div class="drop-item-category">Character Accessory</div>
+                            </div>
+                            <div class="drop-item-time">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                1 hour
+                            </div>
+                        </li>
+
+                        <li class="drop-item">
+                            <div class="drop-item-info">
+                                <div class="drop-item-name">Pour Decision Hoodie</div>
+                                <div class="drop-item-category">Character Accessory</div>
+                            </div>
+                            <div class="drop-item-time">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                2 hours
+                            </div>
+                        </li>
+
+                        <li class="drop-item">
+                            <div class="drop-item-info">
+                                <div class="drop-item-name">Shocktopuze</div>
+                                <div class="drop-item-category">Player Banner</div>
+                            </div>
+                            <div class="drop-item-time">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                4 hours
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="drops-cta">
+                        <a href="https://www.twitch.tv/drops/inventory" target="_blank" class="btn-view-drops"
+                            data-umami-event="View Twitch Drops">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                            View Twitch Drops
+                        </a>
+                    </div>
+                </div>
+
+                <!-- How to Claim Section -->
+                <div class="drops-info">
+                    <h2>How to Claim Twitch Drops</h2>
+                    <div class="drops-info-grid">
+                        <div class="info-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Link Your Account</h3>
+                                <p>Connect your Twitch account to your THE FINALS account in the game settings.</p>
+                            </div>
+                        </div>
+                        <div class="info-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Watch Streams</h3>
+                                <p>Watch any THE FINALS stream with Drops enabled for the required duration.</p>
+                            </div>
+                        </div>
+                        <div class="info-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Claim Your Drop</h3>
+                                <p>Once earned, claim your drop on Twitch and it will appear in your game inventory.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>FinalsRS</h3>
+                    <p>The unofficial companion bot for THE FINALS.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="/">Features</a>
+                    <a href="/drops">Twitch Drops</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <a href="/docs">Documentation</a>
+                    <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="/legal">Privacy</a>
+                    <a href="/legal#">Terms</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 FinalsRS. Not affiliated with Embark Studios.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

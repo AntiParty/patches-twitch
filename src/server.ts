@@ -680,6 +680,10 @@ export const setupServer = () => {
     res.sendFile(path.join(frontendPath, 'legal.html'));
   })
 
+  app.get('/twitch-drops', (req: Request, res: Response) => {
+    res.sendFile(path.join(frontendPath, 'drops.html'));
+  })
+
   /**
    * GET /login
    * Redirects user to Twitch authentication URL.

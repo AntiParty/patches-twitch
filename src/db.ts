@@ -97,6 +97,31 @@ Channel.init(
       allowNull: true,
       defaultValue: null,
     },
+    overlay_token: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    overlay_theme: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'minimal',
+    },
+    overlay_color: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: '#9147ff',
+    },
+    overlay_layout: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'compact',
+    },
+    session_start_rs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize,

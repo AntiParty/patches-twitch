@@ -1,0 +1,280 @@
+// Overlay API Routes for FinalsRS Stream Overlays
+import { Router } from 'express';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { Channel } from '../db';
+import logger from '../util/logger';
+
+const router = Router();
+
+// Generate or retrieve overlay token for authenticated user
+router.get('/api/overlay/:username/token', async (req: any, res: any) => {
+    if (!req.session?.isUser || !req.session.twitchUsername) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (req.session.twitchUsername !== req.params.username) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        let user: any = await Channel.findOne({ where: { username: req.params.username } });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        let token = user.get('overlay_token');
+
+        if (!token) {
+            token = crypto.randomBytes(32).toString('hex');
+            await user.update({ overlay_token: token });
+            logger.info(`[Overlay] Generated new token for ${req.params.username}`);
+        }
+
+        res.json({ token });
+    } catch (err) {
+        logger.error('Error generating overlay token:', err);
+        res.status(500).json({ error: 'Failed to generate token' });
+    }
+});
+
+// Regenerate overlay token
+router.post('/api/overlay/:username/regenerate-token', async (req: any, res: any) => {
+    if (!req.session?.isUser || !req.session.twitchUsername) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (req.session.twitchUsername !== req.params.username) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        const token = crypto.randomBytes(32).toString('hex');
+
+        await Channel.update(
+            { overlay_token: token },
+            { where: { username: req.params.username } }
+        );
+
+        logger.info(`[Overlay] Regenerated token for ${req.params.username}`);
+        res.json({ token });
+    } catch (err) {
+        logger.error('Error regenerating overlay token:', err);
+        res.status(500).json({ error: 'Failed to regenerate token' });
+    }
+});
+
+// Helper to find latest cache file (adapted from rank.ts)
+async function getLatestCacheFile(prefix: string): Promise<string | null> {
+    try {
+        const cacheDir = path.join(process.cwd(), 'cache');
+        if (!fs.existsSync(cacheDir)) return null;
+
+        const files = fs.readdirSync(cacheDir);
+        const matched = files
+            .filter(f => f.startsWith(prefix) && f.endsWith(".json"))
+            .map(f => {
+                const num = parseInt(f.match(/\d+/)?.[0] ?? "0", 10);
+                return { file: f, season: num };
+            })
+            .filter(x => x.season > 0)
+            .sort((a, b) => b.season - a.season); // newest first
+
+        return matched.length > 0 ? path.join(cacheDir, matched[0].file) : null;
+    } catch (err) {
+        logger.error(`[Overlay] Failed to list cache files for ${prefix}:`, err);
+        return null; // Return null on error
+    }
+}
+
+// Fetch overlay data using token (PUBLIC endpoint - rate limited recommended)
+router.get('/api/overlay/data/:token', async (req: any, res: any) => {
+    try {
+        const { token } = req.params;
+
+        const user: any = await Channel.findOne({ where: { overlay_token: token } });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Invalid token' });
+        }
+
+        // Get the identifying name
+        const finalsName = user.get('player_id') || user.get('username');
+        const searchName = finalsName.toLowerCase();
+
+        // 1. Fetch Regular Leaderboard Data
+        let stats: any = {};
+        try {
+            const regularFile = await getLatestCacheFile("regular_s");
+            if (regularFile) {
+                const raw = fs.readFileSync(regularFile, "utf8");
+                const data = JSON.parse(raw);
+                if (Array.isArray(data)) {
+                    const found = data.find((p: any) => p.name.toLowerCase() === searchName);
+                    if (found) {
+                        stats = found;
+                    }
+                }
+            }
+        } catch (err) {
+            logger.error(`[Overlay] Error reading regular leaderboard for ${finalsName}:`, err);
+        }
+
+        // 2. Fetch World Tour Data
+        let wtRank = "N/A";
+        try {
+            const wtFile = await getLatestCacheFile("worldTour_s");
+            if (wtFile) {
+                const raw = fs.readFileSync(wtFile, "utf8");
+                const data = JSON.parse(raw);
+                if (Array.isArray(data)) {
+                    const found = data.find((p: any) => p.name.toLowerCase() === searchName);
+                    if (found) {
+                        wtRank = `#${found.rank}`;
+                    }
+                }
+            }
+        } catch (err) {
+            logger.error(`[Overlay] Error reading WT leaderboard for ${finalsName}:`, err);
+        }
+
+        // Get rank goal if exists
+        const { RankGoal } = await import('../db');
+        const goal: any = await RankGoal.findOne({ where: { channel: user.get('username') } });
+
+        // Calculate session change
+        // If session_start_rs is 0 or null, set it to current rankScore on first load of the session
+        let startRS = user.get('session_start_rs');
+        if (!startRS && stats.rankScore > 0) {
+            // If we have a rank score but no start point, this might be the first poll. 
+            // Ideally we shouldn't auto-set it on GET, only on explicit reset, 
+            // BUT for a "Session Change" feature, we usually want "Since Stream Start".
+            // Since we can't know when stream started easily without Twitch API hook, 
+            // we rely on the user to reset, OR we default to 0 change.
+            // Currently, if startRS is 0, change is just the total score? No, that's bad.
+            // If startRS is 0, let's assume change is 0 for now until they hit reset?
+            // Or let's assume user manually resets. 
+        }
+
+        const sessionChange = startRS
+            ? (stats.rankScore || 0) - startRS
+            : 0;
+
+        // Return overlay data
+        res.json({
+            username: stats.name || finalsName,
+            rank: stats.rank || 'N/A',
+            league: stats.league || 'Unranked',
+            rankScore: stats.rankScore || 0,
+            wtRank: wtRank,
+            goal: null, // explicit request to not include goal
+            session: {
+                startRS: startRS || 0,
+                currentRS: stats.rankScore || 0,
+                change: sessionChange
+            },
+            lastUpdated: new Date().toISOString()
+        });
+    } catch (err) {
+        logger.error('Error fetching overlay data:', err);
+        res.status(500).json({ error: 'Failed to fetch overlay data' });
+    }
+});
+
+// Get overlay configuration
+router.get('/api/overlay/config/:token', async (req: any, res: any) => {
+    try {
+        const user: any = await Channel.findOne({ where: { overlay_token: req.params.token } });
+
+        if (!user) {
+            return res.status(404).json({ error: 'Invalid token' });
+        }
+
+        let layoutData = { mode: 'compact', visibility: {} };
+        const rawLayout = user.get('overlay_layout');
+        if (rawLayout) {
+            if (rawLayout.startsWith('{') || rawLayout.startsWith('[')) {
+                try { layoutData = JSON.parse(rawLayout); } catch (e) { }
+            } else {
+                layoutData.mode = rawLayout;
+            }
+        }
+
+        res.json({
+            theme: user.get('overlay_theme') || 'minimal',
+            primaryColor: user.get('overlay_color') || '#9147ff',
+            layout: layoutData
+        });
+    } catch (err) {
+        logger.error('Error fetching overlay config:', err);
+        res.status(500).json({ error: 'Failed to fetch config' });
+    }
+});
+
+// Update overlay configuration
+router.post('/api/overlay/config', async (req: any, res: any) => {
+    if (!req.session?.isUser || !req.session.twitchUsername) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const { theme, primaryColor, layoutMode, visibility } = req.body;
+        const username = req.session.twitchUsername;
+
+        const newLayoutStr = JSON.stringify({
+            mode: layoutMode || 'compact',
+            visibility: visibility || {}
+        });
+
+        await Channel.update(
+            {
+                overlay_theme: theme,
+                overlay_color: primaryColor,
+                overlay_layout: newLayoutStr
+            },
+            { where: { username } }
+        );
+
+        logger.info(`[Overlay] ${username} updated overlay config`);
+        res.json({ success: true });
+    } catch (err) {
+        logger.error('Error updating overlay config:', err);
+        res.status(500).json({ error: 'Failed to update config' });
+    }
+});
+
+// Reset session RS (for tracking session gains)
+router.post('/api/overlay/reset-session', async (req: any, res: any) => {
+    if (!req.session?.isUser || !req.session.twitchUsername) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const username = req.session.twitchUsername;
+        const user: any = await Channel.findOne({ where: { username } });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Get current RS from cache
+        const cachePath = path.join(process.cwd(), 'cache', `${user.get('player_id') || username}.json`);
+        let currentRS = 0;
+
+        if (fs.existsSync(cachePath)) {
+            const cacheData = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+            currentRS = cacheData.rankScore || 0;
+        }
+
+        await user.update({ session_start_rs: currentRS });
+        logger.info(`[Overlay] ${username} reset session to ${currentRS} RS`);
+        res.json({ success: true, sessionRS: currentRS });
+    } catch (err) {
+        logger.error('Error resetting session:', err);
+        res.status(500).json({ error: 'Failed to reset session' });
+    }
+});
+
+export default router;

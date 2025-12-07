@@ -569,6 +569,9 @@
         <li class="nav-item" onclick="switchView('rank-tracker')">
           <i class="fas fa-chart-line"></i> <span>Rank Tracker</span>
         </li>
+        <li class="nav-item" onclick="switchView('overlays')">
+          <i class="fas fa-tv"></i> <span>Stream Overlays</span>
+        </li>
         <li class="nav-item" onclick="switchView('settings')">
           <i class="fas fa-cog"></i> <span>Settings</span>
         </li>
@@ -788,48 +791,240 @@
         </div>
       </div>
 
-      <!-- Settings View -->
-      <div id="view-settings" class="view-section">
+      <div id="view-overlays" class="view-section">
         <div class="header">
-          <h2 class="page-title">Settings</h2>
+          <h2 class="page-title">Stream Overlays</h2>
+          <button class="btn btn-ghost" onclick="regenerateOverlayToken()">
+            <i class="fas fa-sync"></i> Regenerate Token
+          </button>
         </div>
 
-        <div class="grid-2">
+        <div class="grid-1-2">
+          <!-- Card 1: Link & Preview -->
           <div class="card">
-            <div class="card-title" style="margin-bottom: 20px;">Game Account</div>
-            <div style="margin-bottom: 20px;">
-              <label style="display:block; margin-bottom:8px; color:var(--text-muted); font-size: 13px;">Player ID
-                (Embark ID)</label>
-              <div style="display: flex; gap: 10px;">
-                <input id="player-id-input" type="text" class="input" placeholder="Name#1234"
-                  value="<%= userStats.playerId || '' %>">
-                <button id="link-account-btn" class="btn btn-primary">Save</button>
-              </div>
-              <div id="link-status" style="margin-top: 8px; font-size: 13px;"></div>
+            <div class="card-title">Overlay Link</div>
+            <div class="card-subtitle">Use this URL in your OBS Browser Source.</div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+              <input type="text" id="overlay-url-input" class="input" readonly value="">
+              <button class="btn btn-primary" onclick="copyOverlayUrl()"><i class="fas fa-copy"></i></button>
             </div>
-            <div class="feature-item" style="margin: 0;">
-              <h3 style="font-size: 13px; margin: 0;"><i class="fas fa-info-circle"></i> Why link?</h3>
-              <p style="margin-top: 4px;">Linking your account allows the bot to fetch your real-time stats without you
-                needing to type your name every time.</p>
+
+            <div style="margin-top: 20px;">
+              <button class="btn btn-ghost"
+                onclick="window.open(document.getElementById('overlay-url-input').value, '_blank')">
+                <i class="fas fa-external-link-alt"></i> Open in Browser
+              </button>
+            </div>
+
+            <div
+              style="margin-top: 20px; padding: 15px; background: rgba(255,193,7,0.1); border: 1px solid rgba(255,193,7,0.3); border-radius: 6px;">
+              <strong style="color: #ffc107; font-size: 13px;">Note:</strong>
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                Changes to Appearance Settings below are saved automatically and will update your overlay in real-time.
+              </p>
             </div>
           </div>
 
-          <div class="card" style="border-color: rgba(233, 25, 22, 0.3);">
-            <div class="card-title" style="color: var(--danger); margin-bottom: 20px;">Danger Zone</div>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
-              Disconnecting will remove the bot from your channel, delete your custom commands, and cancel your session.
-            </p>
-            <button id="disconnect-btn" class="btn btn-danger" style="width: 100%;">Disconnect Bot</button>
+          <!-- Card 2: Configuration -->
+          <div class="card">
+            <div class="card-title">Appearance Settings</div>
+            <div class="card-subtitle">Customize what appears on your overlay.</div>
+
+            <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+              <!-- Toggle Name -->
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="check-hide-name" onchange="saveOverlayConfig()">
+                <span style="font-size: 14px;">Hide Contestant Name</span>
+              </label>
+
+              <!-- Toggle Rank -->
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="check-hide-rank" onchange="saveOverlayConfig()">
+                <span style="font-size: 14px;">Hide Current Rank</span>
+              </label>
+
+              <!-- Toggle Score -->
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="check-hide-score" onchange="saveOverlayConfig()">
+                <span style="font-size: 14px;">Hide Rank Score</span>
+              </label>
+
+              <!-- Toggle WT -->
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="check-hide-wt" onchange="saveOverlayConfig()">
+                <span style="font-size: 14px;">Hide World Tour Rank</span>
+              </label>
+
+              <!-- Toggle Session -->
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="check-hide-session" onchange="saveOverlayConfig()">
+                <span style="font-size: 14px;">Hide Session Change</span>
+              </label>
+            </div>
+            <div id="save-status" style="margin-top:15px; font-size:12px; color: var(--text-muted); min-height: 20px;">
+            </div>
+
+            <div class="card" style="margin-top: 24px;">
+              <div class="card-title" style="margin-bottom: 16px;">📖 Setup Instructions</div>
+              <ol style="color: var(--text-muted); line-height: 1.8; padding-left: 20px;">
+                <li>Copy your overlay URL above</li>
+                <li>Open OBS Studio or Streamlabs OBS</li>
+                <li>Add a new <strong>Browser Source</strong> to your scene</li>
+                <li>Paste the URL and set dimensions to <strong>400x300</strong> pixels</li>
+                <li>Position and resize the overlay on your stream</li>
+                <li>The overlay auto-updates every 30 seconds</li>
+              </ol>
+            </div>
           </div>
-        </div>
-      </div>
+
+          <!-- Settings View -->
+          <div id="view-settings" class="view-section">
+            <div class="header">
+              <h2 class="page-title">Settings</h2>
+            </div>
+
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title" style="margin-bottom: 20px;">Game Account</div>
+                <div style="margin-bottom: 20px;">
+                  <label style="display:block; margin-bottom:8px; color:var(--text-muted); font-size: 13px;">Player ID
+                    (Embark ID)</label>
+                  <div style="display: flex; gap: 10px;">
+                    <input id="player-id-input" type="text" class="input" placeholder="Name#1234"
+                      value="<%= userStats.playerId || '' %>">
+                    <button id="link-account-btn" class="btn btn-primary">Save</button>
+                  </div>
+                  <div id="link-status" style="margin-top: 8px; font-size: 13px;"></div>
+                </div>
+                <div class="feature-item" style="margin: 0;">
+                  <h3 style="font-size: 13px; margin: 0;"><i class="fas fa-info-circle"></i> Why link?</h3>
+                  <p style="margin-top: 4px;">Linking your account allows the bot to fetch your real-time stats without
+                    you
+                    needing to type your name every time.</p>
+                </div>
+              </div>
+
+              <div class="card" style="border-color: rgba(233, 25, 22, 0.3);">
+                <div class="card-title" style="color: var(--danger); margin-bottom: 20px;">Danger Zone</div>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+                  Disconnecting will remove the bot from your channel, delete your custom commands, and cancel your
+                  session.
+                </p>
+                <button id="disconnect-btn" class="btn btn-danger" style="width: 100%;">Disconnect Bot</button>
+              </div>
+            </div>
+          </div>
 
     </main>
   </div>
 
   <script>
+    /* --- SERVER DATA --- */
+    const OVERLAY_TOKEN = "<%= userStats.overlayToken %>";
+    const OVERLAY_LAYOUT = <%- JSON.stringify(userStats.overlayLayout || {}) %>;
+
+    // --- State ---
+    let overlayToken = OVERLAY_TOKEN;
+    const overlayLayout = typeof OVERLAY_LAYOUT === 'string';
+
+    // --- On Load ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Overlay URL
+      updateOverlayUrlDisplay();
+
+      // Initialize Checkboxes
+      if (overlayLayout && overlayLayout.visibility) {
+        const v = overlayLayout.visibility;
+        if (v.hideName) document.getElementById('check-hide-name').checked = true;
+        if (v.hideRank) document.getElementById('check-hide-rank').checked = true;
+        if (v.hideScore) document.getElementById('check-hide-score').checked = true;
+        if (v.hideWT) document.getElementById('check-hide-wt').checked = true;
+        if (v.hideSession) document.getElementById('check-hide-session').checked = true;
+      }
+    });
+
+    // --- Overlay Functions ---
+    function updateOverlayUrlDisplay() {
+      const urlInput = document.getElementById('overlay-url-input');
+      if (urlInput) {
+        const origin = window.location.origin;
+        urlInput.value = `${origin}/overlays/overlay.html?token=${overlayToken}`;
+      }
+    }
+
+    function copyOverlayUrl() {
+      const urlInput = document.getElementById('overlay-url-input');
+      urlInput.select();
+      document.execCommand('copy');
+
+      const btn = document.querySelector('button[onclick="copyOverlayUrl()"]');
+      const originalHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check"></i>';
+      setTimeout(() => btn.innerHTML = originalHtml, 2000);
+    }
+
+    async function saveOverlayConfig() {
+      const statusEl = document.getElementById('save-status');
+      statusEl.innerText = 'Saving...';
+
+      const config = {
+        layoutMode: 'compact', // Default or fetch from dropdown if added back
+        visibility: {
+          hideName: document.getElementById('check-hide-name').checked,
+          hideRank: document.getElementById('check-hide-rank').checked,
+          hideScore: document.getElementById('check-hide-score').checked,
+          hideWT: document.getElementById('check-hide-wt').checked,
+          hideSession: document.getElementById('check-hide-session').checked
+        }
+      };
+
+      try {
+        const res = await fetch('/api/overlay/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+
+        if (res.ok) {
+          statusEl.innerHTML = '<span style="color: var(--success);"><i class="fas fa-check"></i> Saved</span>';
+          setTimeout(() => statusEl.innerText = '', 2000);
+        } else {
+          statusEl.innerText = 'Failed to save.';
+        }
+      } catch (e) {
+        console.error(e);
+        statusEl.innerText = 'Error saving config.';
+      }
+    }
+
+    async function regenerateOverlayToken() {
+      if (!confirm("Regenerating a new token will break your existing overlay links. Continue?")) return;
+
+      const btn = document.querySelector('button[onclick="regenerateOverlayToken()"]');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+      try {
+        const res = await fetch('/api/overlay/token', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.token) {
+          overlayToken = data.token;
+          updateOverlayUrlDisplay();
+          alert("New token generated! Update your OBS Browser Source.");
+        }
+      } catch (e) {
+        alert("Failed to regenerate token.");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync"></i> Regenerate Token';
+      }
+    }
+
     const rankNames = {
       1: 'Bronze',
+
       2: 'Silver',
       3: 'Gold',
       4: 'Platinum',
@@ -852,7 +1047,8 @@
         'overview': 0,
         'commands': 1,
         'rank-tracker': 2,
-        'settings': 3
+        'overlays': 3,
+        'settings': 4,
       };
 
       const navItems = document.querySelectorAll('.nav-item');
@@ -1071,6 +1267,97 @@
       }
     }
 
+    async function loadOverlayToken() {
+      try {
+        const response = await fetch(`/api/overlay/<%= username %>/token`);
+        const data = await response.json();
+        overlayToken = data.token;
+
+        const overlayUrl = `${window.location.origin}/overlays/minimal.html?token=${overlayToken}`;
+        document.getElementById('overlay-url').value = overlayUrl;
+        document.getElementById('overlay-preview').src = overlayUrl;
+
+        // Load current config
+        await loadOverlayConfig();
+      } catch (error) {
+        console.error('Failed to load overlay token:', error);
+        document.getElementById('overlay-url').value = 'Error loading token';
+      }
+    }
+
+    async function loadOverlayConfig() {
+      if (!overlayToken) return;
+
+      try {
+        const response = await fetch(`/api/overlay/config/${overlayToken}`);
+        const config = await response.json();
+
+        if (config) {
+          document.getElementById('overlay-theme').value = config.theme;
+          document.getElementById('overlay-color').value = config.primaryColor;
+          document.getElementById('overlay-layout').value = config.layout;
+        }
+      } catch (error) {
+        console.error('Failed to load overlay config:', error);
+      }
+    }
+
+    function copyOverlayURL() {
+      const input = document.getElementById('overlay-url');
+      input.select();
+      input.setSelectionRange(0, 99999); // For mobile
+      document.execCommand('copy');
+
+      // Visual feedback
+      const btn = event.target.closest('button');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 2000);
+    }
+
+    async function regenerateOverlayToken() {
+      if (!confirm('This will invalidate your current overlay link. Are you sure?')) return;
+
+      try {
+        const response = await fetch(`/api/overlay/<%= username %>/regenerate-token`, {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        overlayToken = data.token;
+        const overlayUrl = `${window.location.origin}/overlays/minimal.html?token=${overlayToken}`;
+        document.getElementById('overlay-url').value = overlayUrl;
+        document.getElementById('overlay-preview').src = overlayUrl;
+
+        alert('Token regenerated! Update your OBS browser source with the new URL.');
+      } catch (error) {
+        alert('Failed to regenerate token');
+      }
+    }
+
+    function updateOverlayPreview() {
+      // Refresh the iframe to show changes
+      const iframe = document.getElementById('overlay-preview');
+      iframe.src = iframe.src;
+    }
+
+    async function resetSession() {
+      if (!confirm('Reset your session tracker? This will set your session start RS to your current RS.')) return;
+
+      try {
+        const response = await fetch('/api/overlay/reset-session', {
+          method: 'POST'
+        });
+        const data = await response.json();
+
+        alert(`Session reset! Starting RS: ${data.sessionRS.toLocaleString()}`);
+        updateOverlayPreview();
+      } catch (error) {
+        alert('Failed to reset session');
+      }
+    }
 
     function updatePreview(cmd, val) {
       const previewMsg = document.getElementById('preview-response-msg');
@@ -1177,117 +1464,128 @@
         console.error('Error updating rank goal:', err);
         alert('Failed to update goal. Please try again.');
       }
+    }
 
-      async function deleteRankGoal() {
-        if (!confirm('Are you sure you want to delete your rank goal?')) {
-          return;
-        }
-
-        try {
-          const res = await fetch('/api/my-rank-goal', {
-            method: 'DELETE'
-          });
-
-          const data = await res.json();
-
-          if (data.success) {
-            // Reset form
-            document.getElementById('target-rank-select').value = '';
-            document.getElementById('current-rs-input').value = '';
-            document.getElementById('goal-label').innerText = 'No Goal Set';
-            document.getElementById('rs-needed').innerText = 'Set a goal to get started';
-            document.getElementById('rank-progress-bar').style.width = '0%';
-
-            alert('Rank goal deleted successfully.');
-          } else {
-            alert(data.error || 'Failed to delete goal.');
-          }
-        } catch (err) {
-          console.error('Error deleting rank goal:', err);
-          alert('Failed to delete goal. Please try again.');
-        }
+    async function deleteRankGoal() {
+      if (!confirm('Are you sure you want to delete your rank goal?')) {
+        return;
       }
 
-      // --- Account Linking ---
-      document.getElementById('link-account-btn').addEventListener('click', async function () {
-        const input = document.getElementById('player-id-input');
-        const status = document.getElementById('link-status');
-        const btn = this;
+      try {
+        const res = await fetch('/api/my-rank-goal', {
+          method: 'DELETE'
+        });
 
-        if (!input.value) return;
+        const data = await res.json();
 
-        btn.disabled = true;
-        btn.innerText = 'Saving...';
-        status.innerHTML = '';
+        if (data.success) {
+          // Reset form
+          document.getElementById('target-rank-select').value = '';
+          document.getElementById('current-rs-input').value = '';
+          document.getElementById('goal-label').innerText = 'No Goal Set';
+          document.getElementById('rs-needed').innerText = 'Set a goal to get started';
+          document.getElementById('rank-progress-bar').style.width = '0%';
 
-        try {
-          const res = await fetch('/api/link-account', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerId: input.value })
-          });
-          const data = await res.json();
+          alert('Rank goal deleted successfully.');
+        } else {
+          alert(data.error || 'Failed to delete goal.');
+        }
+      } catch (err) {
+        console.error('Error deleting rank goal:', err);
+        alert('Failed to delete goal. Please try again.');
+      }
+    }
 
-          if (data.success) {
-            status.innerHTML = '<span style="color:var(--success)">Successfully linked! Reloading...</span>';
-            setTimeout(() => window.location.reload(), 1000);
-          } else {
-            status.innerHTML = `<span style="color:var(--danger)">${data.error || 'Failed'}</span>`;
+    // --- Account Linking ---
+    document.addEventListener('DOMContentLoaded', () => {
+      const linkAccountBtn = document.getElementById('link-account-btn');
+      if (linkAccountBtn) {
+        linkAccountBtn.addEventListener('click', async function () {
+          const input = document.getElementById('player-id-input');
+          const status = document.getElementById('link-status');
+          const btn = this;
+
+          if (!input.value) return;
+
+          btn.disabled = true;
+          btn.innerText = 'Saving...';
+          status.innerHTML = '';
+
+          try {
+            const res = await fetch('/api/link-account', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ playerId: input.value })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+              status.innerHTML = '<span style="color:var(--success)">Successfully linked! Reloading...</span>';
+              setTimeout(() => window.location.reload(), 1000);
+            } else {
+              status.innerHTML = `<span style="color:var(--danger)">${data.error || 'Failed'}</span>`;
+              btn.disabled = false;
+              btn.innerText = 'Save';
+            }
+          } catch (e) {
+            status.innerHTML = '<span style="color:var(--danger)">Error connecting to server</span>';
             btn.disabled = false;
             btn.innerText = 'Save';
           }
-        } catch (e) {
-          status.innerHTML = '<span style="color:var(--danger)">Error connecting to server</span>';
-          btn.disabled = false;
-          btn.innerText = 'Save';
-        }
-      });
+        });
+      }
 
-      document.getElementById('target-rank-select').addEventListener('change', async function () {
-        const sel = Number(this.value);
-        const rubyInfo = document.getElementById('ruby-info');
+      const targetRankSelect = document.getElementById('target-rank-select');
+      if (targetRankSelect) {
+        targetRankSelect.addEventListener('change', async function () {
+          const sel = Number(this.value);
+          const rubyInfo = document.getElementById('ruby-info');
 
-        if (sel === 6) {
-          if (rubyInfo) rubyInfo.style.display = 'block';
-        } else {
-          if (rubyInfo) rubyInfo.style.display = 'none';
-        }
+          if (sel === 6) {
+            if (rubyInfo) rubyInfo.style.display = 'block';
+          } else {
+            if (rubyInfo) rubyInfo.style.display = 'none';
+          }
 
-        const currentInputVal = parseNumber(document.getElementById('current-rs-input').value) || 0;
-        const fallbackTarget = rankThresholds[sel] ?? 0;
-        await updateRankDisplay(sel, fallbackTarget, currentInputVal);
-      });
+          const currentInputVal = parseNumber(document.getElementById('current-rs-input').value) || 0;
+          const fallbackTarget = rankThresholds[sel] ?? 0;
+          await updateRankDisplay(sel, fallbackTarget, currentInputVal);
+        });
+      }
 
       // --- Disconnect ---
-      document.getElementById('disconnect-btn').addEventListener('click', async function () {
-        if (!confirm('Are you sure? This will remove the bot from your channel.')) return;
+      const disconnectBtn = document.getElementById('disconnect-btn');
+      if (disconnectBtn) {
+        disconnectBtn.addEventListener('click', async function () {
+          if (!confirm('Are you sure? This will remove the bot from your channel.')) return;
 
-        const btn = this;
-        btn.disabled = true;
-        btn.innerText = 'Disconnecting...';
+          const btn = this;
+          btn.disabled = true;
+          btn.innerText = 'Disconnecting...';
 
-        try {
-          const res = await fetch('/api/disconnect-bot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          const data = await res.json();
+          try {
+            const res = await fetch('/api/disconnect-bot', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
 
-          if (data.success) {
-            alert('Disconnected successfully.');
-            window.location.href = '/';
-          } else {
-            alert(data.error || 'Failed');
+            if (data.success) {
+              alert('Disconnected successfully.');
+              window.location.href = '/';
+            } else {
+              alert(data.error || 'Failed');
+              btn.disabled = false;
+              btn.innerText = 'Disconnect Bot';
+            }
+          } catch (e) {
+            alert('Error');
             btn.disabled = false;
             btn.innerText = 'Disconnect Bot';
           }
-        } catch (e) {
-          alert('Error');
-          btn.disabled = false;
-          btn.innerText = 'Disconnect Bot';
-        }
-      });
-    }
+        });
+      }
+    });
   </script>
 </body>
 

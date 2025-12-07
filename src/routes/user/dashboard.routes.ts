@@ -1,0 +1,182 @@
+/**
+ * User Dashboard Routes
+ * Handles user dashboard rendering and account management
+ */
+import { Router } from 'express';
+import axios from 'axios';
+import { Channel } from '@/db';
+import logger from '@/util/logger';
+import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
+import { isValidPlayerId } from '@/middleware/validation.middleware';
+
+const router = Router();
+
+// Global user dashboard access toggle
+let userDashboardEnabled = true;
+
+/**
+ * GET /dashboard
+ * Render user dashboard with personalized data
+ */
+router.get("/dashboard", async (req: any, res: any) => {
+    if (!userDashboardEnabled) {
+        // Render auth.ejs with a message about dashboard being disabled
+        return res.render("auth", {
+            title: "Dashboard Disabled",
+            logoPath: "/assets/logo.png",
+            username: req.session?.twitchUsername || "",
+            botUsername: "FinalsRS",
+            message: "User dashboard is currently disabled by admin."
+        });
+    }
+
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+        return res.redirect("/login");
+    }
+
+    // Fetch personalized data (example: user stats)
+    let userStats: any = {};
+    try {
+        const user = await Channel.findOne({ where: { username: req.session.twitchUsername } });
+        if (user) {
+            userStats = {
+                username: user.get('username'),
+                twitchUserId: user.get('twitch_user_id'),
+                playerId: user.get('player_id') || null,
+                overlayToken: user.get('overlay_token') || null,
+                overlayLayout: user.get('overlay_layout') || null, // Will store configs
+            };
+        }
+    } catch (err) {
+        logger.error("Error fetching user stats for dashboard:", err);
+    }
+
+    res.render("user-dashboard", {
+        title: "FinalsRS - User dashboard",
+        logoPath: "/assets/logo.png",
+        username: req.session.twitchUsername,
+        userStats,
+    });
+});
+
+/**
+ * POST /api/link-account
+ * Link THE FINALS player ID to Twitch account
+ */
+router.post('/api/link-account', requireUserAPI, async (req: any, res: any) => {
+    const { playerId } = req.body;
+
+    if (!isValidPlayerId(playerId)) {
+        return res.status(400).json({ error: 'Invalid player ID.' });
+    }
+
+    try {
+        const username = req.session.twitchUsername;
+        let channelInstance = await Channel.findOne({ where: { username } });
+
+        if (!channelInstance) {
+            await Channel.create({ username, player_id: playerId });
+        } else {
+            await channelInstance.update({ player_id: playerId });
+        }
+
+        res.json({ success: true });
+        logger.info(`[dashboard] Linked player ID: ${playerId} for user: ${username}`);
+    } catch (err) {
+        logger.error('Error linking account via dashboard:', err);
+        res.status(500).json({ error: 'Failed to link account.' });
+    }
+});
+
+/**
+ * POST /api/disconnect-bot
+ * Disconnect bot/service and delete user from database
+ */
+router.post('/api/disconnect-bot', requireUserAPI, async (req: any, res: any) => {
+    const username = req.session.twitchUsername;
+
+    try {
+        // Cache user object before deletion
+        const user = await Channel.findOne({ where: { username } });
+
+        // Notify bot process to remove channel and disconnect EventSub WebSocket FIRST
+        try {
+            const twitchUserId = (user as any)?.twitch_user_id;
+            if (twitchUserId) {
+                await axios.post('http://localhost:4000/remove-channel', {
+                    twitch_user_id: twitchUserId,
+                    username,
+                });
+                logger.info(`[dashboard] Bot notified to remove channel: ${username} (${twitchUserId})`);
+            } else {
+                logger.warn(`[dashboard] No twitch_user_id found for ${username}, skipping bot removal.`);
+            }
+        } catch (botErr) {
+            logger.error(`[dashboard] Error notifying bot to remove channel for ${username}:`, botErr);
+        }
+
+        // NOW Remove channel from DB
+        await Channel.destroy({ where: { username } });
+
+        // Remove all custom responses for this user
+        try {
+            const { CustomResponse, RankGoal } = await import('@/db');
+            await RankGoal.destroy({ where: { channel: username } });
+            await CustomResponse.destroy({ where: { channel: username } });
+            logger.info(`[dashboard] Deleted custom responses and rank goals for ${username}`);
+        } catch (customErr) {
+            logger.error(`[dashboard] Error deleting custom data for ${username}:`, customErr);
+        }
+
+        // Delete all EventSub subscriptions for this user
+        try {
+            const clientId = process.env.TWITCH_CLIENT_ID!;
+            const accessToken = (user as any)?.access_token;
+
+            if (accessToken) {
+                const subsResp = await axios.get('https://api.twitch.tv/helix/eventsub/subscriptions', {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Client-ID': clientId,
+                    }
+                });
+
+                const subs = subsResp.data.data || [];
+                for (const sub of subs) {
+                    await axios.delete(`https://api.twitch.tv/helix/eventsub/subscriptions?id=${sub.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Client-ID': clientId,
+                        }
+                    });
+                }
+                logger.info(`[dashboard] Deleted ${subs.length} EventSub subscriptions for ${username}`);
+            } else {
+                logger.warn(`[dashboard] No access token found for ${username}, skipping EventSub deletion.`);
+            }
+        } catch (eventsubErr) {
+            logger.error(`[dashboard] Error deleting EventSub subscriptions for ${username}:`, eventsubErr);
+        }
+
+        // Destroy session
+        req.session.destroy(() => { });
+        logger.info(`[dashboard] ${username} disconnected and deleted their bot/service.`);
+        res.json({ success: true });
+    } catch (err) {
+        logger.error('Error disconnecting bot/service:', err);
+        res.status(500).json({ error: 'Failed to disconnect.' });
+    }
+});
+
+/**
+ * Export dashboard enable/disable functions for admin API
+ */
+export function isDashboardEnabled(): boolean {
+    return userDashboardEnabled;
+}
+
+export function setDashboardEnabled(enabled: boolean): void {
+    userDashboardEnabled = enabled;
+}
+
+export default router;

@@ -19,11 +19,10 @@ API.md
 stats.json
 stats.json
 data/analytics.json
-TODO.md
-TODO.md
 data/metrics.sqlite
 *.sqlite
 /data
 stats.json
-TODO.md
 config/blocked.json
+/dist
+/.vscode

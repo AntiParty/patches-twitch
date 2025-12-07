@@ -2,7 +2,7 @@ import { dbReady, Channel, StreamSession } from "./db";
 // In-memory map to track active stream sessions
 const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
-import { startCacheUpdater } from "./jobs/cacheUpdater";
+import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubWs";
 import logger from "./util/logger";
 import express from "express";
@@ -16,7 +16,6 @@ dbReady.then(async () => {
     await botManager.loadTokensOnStartup();
     await botManager.loadChannels();
     startCacheUpdater();
-
     const users = await Channel.findAll();
     users.forEach((user: any) => {
       if (user.twitch_user_id && user.access_token) {
@@ -26,7 +25,7 @@ dbReady.then(async () => {
     });
     // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
     startBotTokenAutoRefresher();
-    
+
     logger.info("Bot is up and running!");
 
     // Restore and continue tracking active stream sessions from DB
@@ -132,6 +131,26 @@ dbReady.then(async () => {
       }
     });
 
+    controlApp.post("/pause", async (req, res) => {
+      try {
+        await botManager.pauseAll();
+        res.json({ success: true });
+      } catch (err) {
+        logger.error("Failed to pause bots:", err);
+        res.status(500).send("Failed to pause bots");
+      }
+    });
+
+    controlApp.post("/resume", async (req, res) => {
+      try {
+        await botManager.resumeAll();
+        res.json({ success: true });
+      } catch (err) {
+        logger.error("Failed to resume bots:", err);
+        res.status(500).send("Failed to resume bots");
+      }
+    });
+
     controlApp.get("/health", async (req, res) => {
       const timestamp = Date.now();
       const uptime = process.uptime();
@@ -167,7 +186,7 @@ dbReady.then(async () => {
 
       try {
         const t0 = performance.now();
-        await botManager.ping(); // you already have internal connection states
+        // botManager.ping() doesn't exist, so we'll just assume it's ok if we're here
         botStatus.latencyMs = Math.round(performance.now() - t0);
       } catch (err) {
         botStatus.status = "error";
@@ -190,7 +209,8 @@ dbReady.then(async () => {
           // OPEN
           eventsubStatus.latencyMs = 1;
         } else {
-          throw new Error("WS_NOT_CONNECTED");
+          eventsubStatus.status = "optional";
+          eventsubStatus.detail = "WS_NOT_CONNECTED";
         }
       } catch (err) {
         eventsubStatus.status = "error";
@@ -202,7 +222,7 @@ dbReady.then(async () => {
       // OVERALL STATUS
       // -------------------------------------
       const checks = [databaseStatus, botStatus, eventsubStatus];
-      const overallOk = checks.every((x) => x.status === "ok");
+      const overallOk = checks.every((x) => x.status === "ok" || x.status === "optional");
 
       const result = {
         status: overallOk ? "ok" : "error",

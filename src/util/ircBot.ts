@@ -3,6 +3,7 @@ import axios from "axios";
 import { Channel } from "../db";
 import { commandCounter, incrementCommandsProcessed } from "../server";
 import logger from "./logger";
+import { refreshToken as getAppAccessToken } from "./twitchUtils";
 
 interface IRCClient {
   socket: net.Socket;
@@ -58,7 +59,19 @@ export async function sendChatMessage(
   message: string,
   replyParentId?: string
 ) {
-  const appAccessToken = process.env.TWITCH_BOT_TOKEN;
+  let appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
+
+  // If no token is cached in env, try to generate one
+  if (!appAccessToken) {
+    try {
+      logger.info("[DEBUG] No App Access Token found, generating new one...");
+      appAccessToken = await getAppAccessToken();
+    } catch (e) {
+      logger.error("[ERROR] Failed to generate App Access Token:", e);
+      return;
+    }
+  }
+
   const clientId = process.env.TWITCH_CLIENT_ID;
   const botUserId = process.env.TWITCH_BOT_USER_ID;
 
@@ -106,18 +119,47 @@ export async function sendChatMessage(
       body.reply_parent_message_id = replyParentId; // 👈 important
     }
 
-    const resp = await axios.post(
-      "https://api.twitch.tv/helix/chat/messages",
-      body,
-      {
-        headers: {
-          Authorization: `Bearer ${appAccessToken}`,
-          "Client-Id": clientId,
-          "Content-Type": "application/json",
-        },
+    try {
+      const resp = await axios.post(
+        "https://api.twitch.tv/helix/chat/messages",
+        body,
+        {
+          headers: {
+            Authorization: `Bearer ${appAccessToken}`,
+            "Client-Id": clientId,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      logger.info("[DEBUG] Helix API response:", resp.data);
+    } catch (err: any) {
+      // If 401 Unauthorized, try refreshing the token once
+      if (err.response && err.response.status === 401) {
+        logger.warn("[DEBUG] App Access Token expired or invalid (401). Refreshing...");
+        try {
+          const newAccessToken = await getAppAccessToken();
+          if (newAccessToken) {
+            const resp = await axios.post(
+              "https://api.twitch.tv/helix/chat/messages",
+              body,
+              {
+                headers: {
+                  Authorization: `Bearer ${newAccessToken}`,
+                  "Client-Id": clientId,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+            logger.info("[DEBUG] Helix API response (after refresh):", resp.data);
+            return;
+          }
+        } catch (retryErr: any) {
+          logger.error("[ERROR] Failed to retry sendChatMessage after token refresh:", retryErr?.response?.data || retryErr);
+          return;
+        }
       }
-    );
-    logger.info("[DEBUG] Helix API response:", resp.data);
+      throw err; // Re-throw to be caught by outer catch
+    }
   } catch (err: any) {
     // If anything goes wrong with filtering or sending, log and avoid sending potentially unsafe content
     logger.error("[ERROR] Failed to send chat message or message was filtered:", err?.response?.data || err);
@@ -175,7 +217,7 @@ export const startChatBot = async (
     if (!connected) return;
     const now = Date.now();
     if (now - lastActivity > MAX_NO_ACTIVITY) {
-      logger.warn(`[DEBUG] No activity for ${sanitizedUsername} in ${Math.floor(MAX_NO_ACTIVITY/1000)}s, reconnecting...`);
+      logger.warn(`[DEBUG] No activity for ${sanitizedUsername} in ${Math.floor(MAX_NO_ACTIVITY / 1000)}s, reconnecting...`);
       socket.destroy(); // This will trigger the 'close' event
       return;
     }
@@ -345,7 +387,7 @@ export const reconnectChatBot = async (
 ) => {
   const sanitizedUsername = username.replace(/^#/, "");
   const client = clients[sanitizedUsername];
-  
+
   // Clean up existing connection if it exists
   if (client) {
     if (client.reconnectTimeout) {
@@ -362,10 +404,10 @@ export const reconnectChatBot = async (
     // Remove from clients immediately so startChatBot can create a new one
     delete clients[sanitizedUsername];
   }
-  
+
   // Small delay to ensure socket cleanup completes
   await new Promise(resolve => setTimeout(resolve, 100));
-  
+
   // Start fresh connection
   await startChatBot(username, commandHandler);
 };

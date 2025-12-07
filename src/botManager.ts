@@ -2,7 +2,7 @@ import { Channel } from "./db";
 import { startChatBot, stopChatBot, reconnectChatBot } from "./util/ircBot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
-import { sendChatMessage  } from "./util/ircBot"
+import { sendChatMessage } from "./util/ircBot"
 import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
 import logger from "./util/logger";
 import axios from "axios";
@@ -27,10 +27,10 @@ export class BotManager {
       // Always reload commands before starting each bot
       const freshCommandHandler = loadCommands();
       await startChatBot(username, freshCommandHandler);
-      
+
       // Subscribe user to EventSub via WebSocket
       addUserSubscription(twitchUserId, accessToken, twitchUserId);
-      
+
       logger.info(`Bot started successfully for ${username}`);
     } catch (error) {
       logger.error(`Failed to start bot for ${username}:`, error);
@@ -67,26 +67,26 @@ export class BotManager {
       }
       // Ensure channel has the latest refresh token
       (channel as any).refresh_token = dbRefreshToken;
-      
+
       const newAccessToken = await require("./util/twitchUtils").refreshAccessToken(channel);
       if (!newAccessToken) {
         logger.error(`[${username}] Token refresh failed (via twitchUtils)`);
         // Retry handled by twitchUtils, so no need to retry here
         return;
       }
-      
+
       // Re-fetch channel to get updated token_expires_at after refresh
       const updatedChannel = await Channel.findOne({ where: { username } });
       if (!updatedChannel) {
         logger.warn(`[${username}] Channel not found after refresh, cannot update timer`);
         return;
       }
-      
+
       // Update token refresh timer with fresh data
       const expiresIn = (updatedChannel as any).token_expires_at
         ? new Date((updatedChannel as any).token_expires_at).getTime() - Date.now()
         : 3600 * 1000;
-      
+
       if (expiresIn > 0) {
         this.scheduleTokenRefresh(
           username,
@@ -94,7 +94,7 @@ export class BotManager {
           expiresIn - 5 * 60 * 1000
         );
       }
-      
+
       // Reconnect bot with fresh token
       const freshCommandHandler = loadCommands();
       await reconnectChatBot(username, freshCommandHandler);
@@ -174,7 +174,7 @@ export class BotManager {
         await this.refreshTokenFunction(username, refresh_token);
       } else if (timeLeft <= validationWindow) {
         // If token will expire within the validation window, call validate to update schedule
-        logger.info(`Token for ${username} expires soon (in ${Math.round(timeLeft/1000)}s). Validating.`);
+        logger.info(`Token for ${username} expires soon (in ${Math.round(timeLeft / 1000)}s). Validating.`);
         await this.validateToken(username, access_token, refresh_token);
       } else {
         // Token healthy and not near expiry; skip to avoid unnecessary API calls
@@ -199,7 +199,7 @@ export class BotManager {
     try {
       const channels = await Channel.findAll();
       logger.info(`Found ${channels.length} channels to load`);
-      
+
       for (const channel of channels) {
         const chanAny: any = channel as any;
         const username = chanAny.username;
@@ -251,6 +251,22 @@ export class BotManager {
         }
       }
     }
+  }
+
+  public async pauseAll() {
+    logger.info("[BotManager] Pausing all bots...");
+    const channels = await Channel.findAll();
+    for (const channel of channels) {
+      const username = (channel as any).username;
+      await this.stopBotForUser(username);
+    }
+    logger.info("[BotManager] All bots paused.");
+  }
+
+  public async resumeAll() {
+    logger.info("[BotManager] Resuming all bots...");
+    await this.loadChannels();
+    logger.info("[BotManager] All bots resumed.");
   }
 }
 

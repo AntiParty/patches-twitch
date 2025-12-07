@@ -116,6 +116,26 @@ export const execute = async (
             return;
         }
 
+        // Remove goal
+        if (args[0]?.toLowerCase() === "remove" || args[0]?.toLowerCase() === "delete") {
+            const deleted = await RankGoal.destroy({
+                where: { channel: sanitizedChannel },
+            });
+
+            if (deleted) {
+                await ctx.say(
+                    `@${username}, your rank goal has been removed.`,
+                    ctx.tags?.["id"]
+                );
+            } else {
+                await ctx.say(
+                    `@${username}, you don't have a rank goal set.`,
+                    ctx.tags?.["id"]
+                );
+            }
+            return;
+        }
+
         // Set new goal
         const targetRankInput = args[0];
         const targetRank = parseInt(targetRankInput, 10);

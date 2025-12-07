@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import logger from '@/util/logger';
+import exp from 'constants';
 
 let lastUpdate = Date.now();
 const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
@@ -110,4 +111,35 @@ export function getNextCacheUpdateInfo(intervalMs = 45 * 60 * 1000) {
   const nextUpdateAt = Math.max(0, lastUpdate + intervalMs);
   const msLeft = Math.max(0, nextUpdateAt - now);
   return { nextUpdateAt, msLeft };
+}
+function getRegularCachePath(season: number) {
+  return path.resolve(__dirname, `../../cache/regular_s${season}.json`);
+}
+
+async function loadRegularSeasonData(season: number) {
+  const cachePath = getRegularCachePath(season);
+  const raw = await fs.readFile(cachePath, "utf8");
+  return JSON.parse(raw);
+}
+export async function getRubyRankThreshold() {
+  try {
+    const data = await loadRegularSeasonData(REGULAR_SEASON_END);
+
+    if (!data || data.length < 500) {
+      logger.error(`Season ${REGULAR_SEASON_END} does not have 500 players.`);
+      return undefined;
+    }
+
+    // Leaderboard is already sorted, so index 499 = rank 500
+    const entry = data[499];
+
+    return {
+      season: REGULAR_SEASON_END,
+      threshold: entry.rankScore,
+      player: entry.name,
+    };
+  } catch (err) {
+    logger.error("Failed to get Ruby threshold:", err);
+    return undefined;
+  }
 }

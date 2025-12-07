@@ -2,20 +2,30 @@
 import { getCustomResponse, Channel } from '../db';
 import fs from 'fs/promises';
 import path from 'path';
+import logger from '../util/logger';
 
 export const name = 'peak';
 export const description = 'Show your peak rank across all seasons (including World Tour)';
 
 // Helper to get all leaderboard files
-function getLeaderboardFiles() {
-  const regularSeasons = Array.from({ length: 7 }, (_, i) => `regular_s${i + 1}.json`);
-  const worldTourSeasons = Array.from({ length: 5 }, (_, i) => `worldTour_s${i + 3}.json`);
-  return [...regularSeasons, ...worldTourSeasons];
+async function getLeaderboardFiles() {
+  const cacheDir = path.resolve(__dirname, '../../cache');
+  try {
+    const files = await fs.readdir(cacheDir);
+    // keep files that match regular_sN.json or worldTour_sN.json
+    return files
+      .filter(f => /^(regular_s\d+|worldTour_s\d+)\.json$/.test(f))
+      // sort by name so order is deterministic (optional)
+      .sort((a, b) => a.localeCompare(b));
+  } catch (e) {
+    logger.info('[peak] Error reading cache directory', e);
+    return [];
+  }
 }
 
 // Normalize a player name for comparison
 function normalizeName(name: string) {
-  return name?.trim().toLowerCase() || '';
+  return name?.toLowerCase().trim() || '';
 }
 
 // Helper to find a player in a leaderboard
@@ -23,39 +33,52 @@ function findPlayer(data: any[] | null, name: string) {
   if (!data) return null;
   const target = normalizeName(name);
 
-  // Exact match first
-  let player = data.find(p => normalizeName(p.name) === target);
-  if (player) {
-    logger.info(`[peak] Exact match for '${target}' found:`, player);
-  }
+  const fieldsToCheck = ["name", "steamName", "psnName", "xboxName"];
 
-  // Fallback for names with #
-  if (!player && target.includes('#')) {
-    const base = target.split('#')[0];
-    // Try startsWith (original logic)
-    player = data.find(p => normalizeName(p.name).startsWith(base));
-    if (player) {
-      logger.info(`[peak] startsWith match for base '${base}' found:`, player);
-    }
-    // If still not found, try includes (for any substring match)
-    if (!player) {
-      player = data.find(p => normalizeName(p.name).includes(base));
-      if (player) {
-        logger.info(`[peak] includes match for base '${base}' found:`, player);
+  const normalize = (v: any) => v ? v.toLowerCase().trim() : "";
+
+  // 1. Exact match in ANY field
+  for (const player of data) {
+    for (const f of fieldsToCheck) {
+      if (normalize(player[f]) === target) {
+        logger.info(`[peak] Exact match for '${target}' on field '${f}' found:`, player);
+        return player;
       }
     }
   }
 
-  if (!player) {
-    logger.info(`[peak] No match found for '${target}' in this file.`);
+  // 2. If target includes #, fallback to nickname match
+  if (target.includes("#")) {
+    const base = normalize(target.split("#")[0]);
+
+    // startsWith
+    for (const player of data) {
+      for (const f of fieldsToCheck) {
+        if (normalize(player[f]).startsWith(base)) {
+          logger.info(`[peak] startsWith match for base '${base}' found in field '${f}':`, player);
+          return player;
+        }
+      }
+    }
+
+    // includes
+    for (const player of data) {
+      for (const f of fieldsToCheck) {
+        if (normalize(player[f]).includes(base)) {
+          logger.info(`[peak] includes match for base '${base}' found in field '${f}':`, player);
+          return player;
+        }
+      }
+    }
   }
 
-  return player;
+  logger.info(`[peak] No match found for '${target}'`);
+  return null;
 }
 
 // Get peak rank across all seasons
 async function getPeakRankAcrossSeasons(finalsName: string) {
-  const files = getLeaderboardFiles();
+  const files = await getLeaderboardFiles();
   let regularPeak: any = null;
   let regularPeakSeason = '';
   let wtPeak: any = null;

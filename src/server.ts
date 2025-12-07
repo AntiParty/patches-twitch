@@ -15,6 +15,7 @@ import { Channel, dbReady } from "@/db"; // Database model
 import { sendMessageToDiscord, sendChangelogToDiscord, sendInfoToDiscord, sendDiscordAlert } from "./handlers/discordHandler"; // Discord integration
 import { exec } from "child_process"; // For restarting bot process
 import session from 'express-session'; // Session management
+import { sessionConfig } from '@/config/session.config'; // Database-backed session store
 import logger from "@/util/logger"; // Logging utility
 import { performanceMonitor } from "@/util/performanceMonitor"; // Performance monitoring
 import path from "path"; // Path utilities
@@ -170,20 +171,7 @@ export const setupServer = () => {
   app.use(express.static(frontendPath));
 
   // --- Session Middleware for Admin Panel ---
-  app.use(
-    session({
-      name: 'admin.sid',
-      secret: SESSION_SECRET,
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
-      },
-    })
-  );
+  app.use(session(sessionConfig));
 
   // --- Admin Auth Helpers ---
   // Checks if current session is an authenticated admin
@@ -368,6 +356,8 @@ export const setupServer = () => {
       // Remove all custom responses for this user
       try {
         const { CustomResponse } = await import('./db');
+        const { RankGoal } = await import('@/db')
+        await RankGoal.destroy({ where: { channel: username } });
         await CustomResponse.destroy({ where: { channel: username } });
         logger.info(`[dashboard] Deleted custom responses for ${username}`);
       } catch (customErr) {
@@ -442,6 +432,129 @@ export const setupServer = () => {
       logger.error('Error linking account via dashboard:', err);
     }
   });
+
+
+  app.get('/api/my-rank-goal', async (req: any, res: any) => {
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    try {
+      const username = req.session.twitchUsername;
+      const { RankGoal } = await import('./db');
+
+      const goal = await RankGoal.findOne({
+        where: { channel: username }
+      });
+
+      if (!goal) {
+        return res.json({ goal: null });
+      }
+
+      res.json({
+        goal: {
+          targetRank: goal.target_rank,
+          targetRankScore: goal.target_rank_score,
+          startingRank: goal.starting_rank,
+          startingRankScore: goal.starting_rank_score,
+          createdAt: goal.created_at,
+          achieved: goal.achieved,
+          achievedAt: goal.achieved_at
+        }
+      });
+    } catch (err) {
+      logger.error('Error fetching rank goal:', err);
+      res.status(500).json({ error: 'Failed to fetch rank goal.' });
+    }
+  });
+
+  app.post('/api/my-rank-goal', async (req: any, res: any) => {
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    try {
+      const username = req.session.twitchUsername;
+      const { targetRank, currentRS } = req.body;
+
+      // Validate input
+      if (typeof targetRank !== 'number' || targetRank < 1) {
+        return res.status(400).json({ error: 'Invalid target rank.' });
+      }
+      if (typeof currentRS !== 'number' || currentRS < 0) {
+        return res.status(400).json({ error: 'Invalid current RS.' });
+      }
+
+      // Map rank names to numbers (1=Bronze, 2=Silver, 3=Gold, 4=Platinum, 5=Diamond, 6=Ruby)
+      // Target RS thresholds for each rank (based on THE FINALS)
+      // Note: Ruby (6) is Top 500 and has a dynamic threshold that changes throughout the season
+      // It also doesn't unlock until mid-season. For tracking, we use a very high threshold.
+      const rankThresholds = {
+        1: 0,      // Bronze: 0 - 9,999
+        2: 10000,  // Silver: 10,000 - 19,999
+        3: 20000,  // Gold: 20,000 - 29,000
+        4: 30000,  // Platinum: 30,000 - 39,000
+        5: 40000,  // Diamond: 40,000+
+        6: 999999  // Ruby: Top 500 (dynamic threshold, unlocks mid-season)
+      };
+
+      const targetRS = rankThresholds[targetRank] || 50000;
+
+      const { RankGoal } = await import('./db');
+
+      // Upsert the rank goal
+      await RankGoal.upsert({
+        channel: username,
+        target_rank: targetRank,
+        target_rank_score: targetRS,
+        starting_rank: null, // Can be derived from current game stats if available
+        starting_rank_score: currentRS,
+        created_at: new Date(),
+        achieved: currentRS >= targetRS,
+        achieved_at: currentRS >= targetRS ? new Date() : null
+      });
+
+      logger.info(`[dashboard] ${username} set rank goal: target=${targetRank}, currentRS=${currentRS}`);
+      res.json({ success: true });
+    } catch (err) {
+      logger.error('Error setting rank goal:', err);
+      res.status(500).json({ error: 'Failed to set rank goal.' });
+    }
+  });
+
+  app.delete('/api/my-rank-goal', async (req: any, res: any) => {
+    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    try {
+      const username = req.session.twitchUsername;
+      const { RankGoal } = await import('./db');
+
+      const deleted = await RankGoal.destroy({
+        where: { channel: username }
+      });
+
+      if (deleted === 0) {
+        return res.status(404).json({ error: 'No rank goal found to delete.' });
+      }
+
+      logger.info(`[dashboard] ${username} deleted their rank goal`);
+      res.json({ success: true });
+    } catch (err) {
+      logger.error('Error deleting rank goal:', err);
+      res.status(500).json({ error: 'Failed to delete rank goal.' });
+    }
+  });
+
+  app.get('/api/ruby-status', async (req: any, res: any) => {
+    try {
+      const { getRubyRankThreshold } = await import('@/jobs/cacheUpdater');
+      const threshold = await getRubyRankThreshold();
+      res.json({ rubyRankThreshold: threshold });
+    } catch (err) {
+      logger.error('Error checking Ruby status:', err);
+      res.status(500).json({ error: 'Failed to check Ruby status.' });
+    }
+  });
+
   // --- Admin API: Live SQL Table Editor ---
   // List rows for a table
   app.get('/admin/api/db/:table', async (req: any, res: any) => {
@@ -684,39 +797,22 @@ export const setupServer = () => {
     res.sendFile(path.join(frontendPath, 'drops.html'));
   })
 
+  app.get('/sitemap.xml', (req: Request, res: Response) => {
+    res.sendFile(path.join(process.cwd(), 'frontend', 'sitemap.xml'));
+  })
+
   /**
    * GET /login
    * Redirects user to Twitch authentication URL.
    */
   app.get("/login", (req: Request, res: Response) => {
+    // check if user is already logged in
+    if (req.session && req.session.isUser && req.session.twitchUsername) {
+      return res.redirect('/dashboard');
+    }
     const authUrl = getAuthUrl();
     logger.info(`Generated auth URL: ${authUrl}`);
     res.redirect(authUrl);
-  });
-
-  /**
-   * POST /changelog
-   * Requires x-api-key header. Sends changelog to Discord.
-   */
-  app.post("/changelog", async (req: Request, res: Response) => {
-    try {
-      const apiKey = req.headers['x-api-key'];
-      if (apiKey !== process.env.API_KEY) {
-        logger.info(`ENV API Key: ${process.env.API_KEY}`);
-        logger.info(`Received API Key: ${apiKey}`);
-        return res.status(403).json({ error: "Forbidden" });
-      }
-      const { title, categories } = req.body;
-      if (!title || !categories || typeof categories !== 'object') {
-        return res.status(400).json({ error: "Title and categories are required" });
-      }
-      await sendChangelogToDiscord(title, categories);
-      logger.info("Changelog sent to Discord successfully.");
-      res.status(200).json({ message: "Changelog sent successfully" });
-    } catch (error) {
-      logger.error("Error sending changelog to Discord:", error);
-      res.status(500).json({ error: "Failed to send changelog" });
-    }
   });
 
   /**

@@ -79,11 +79,45 @@ router.get('/api/channels', requireAdminAPI, async (req: any, res: any) => {
  * Get last 100 lines of main log file
  */
 router.get('/api/logs', requireAdminAPI, (req: any, res: any) => {
-    const logPath = path.join(process.cwd(), 'logs', 'main.log');
-    fs.readFile(logPath, 'utf8', (err, data) => {
-        if (err) return res.json([]);
-        const lines = data.trim().split(/\r?\n/);
-        res.json(lines.slice(-100));
+    // make the log path work regardless of where the server is started from
+    const logFilePath = path.join(process.cwd(), 'logs', 'combined.log');
+    fs.readFile(logFilePath, 'utf8', (err, data) => {
+        if (err) {
+            logger.error('Error reading log file:', err);
+            return res.status(500).json({ error: 'Failed to read log file' });
+        }
+        const lines = data.trim().split('\n');
+        const last100Lines = lines.slice(-100);
+
+        const entries: any[] = [];
+        let currentEntry: any = null;
+
+        last100Lines.forEach(line => {
+            // Expected format: TIMESTAMP [LEVEL]: MESSAGE
+            const match = line.match(/^(\S+) \[(\w+)\]: (.*)$/);
+            if (match) {
+                if (currentEntry) entries.push(currentEntry);
+                currentEntry = {
+                    timestamp: match[1],
+                    level: match[2].toLowerCase(),
+                    message: match[3]
+                };
+            } else {
+                if (currentEntry) {
+                    currentEntry.message += '\n' + line;
+                } else {
+                    // Orphan line or non-standard format
+                    entries.push({
+                        timestamp: new Date().toISOString(),
+                        level: 'info',
+                        message: line
+                    });
+                }
+            }
+        });
+        if (currentEntry) entries.push(currentEntry);
+
+        res.json({ entries });
     });
 });
 

@@ -10,6 +10,7 @@ import { Channel } from '@/db';
 import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
 import { requireApiKey } from '@/middleware/auth.middleware';
+import { getAnalytics } from '@/util/webAnalytics';
 
 const router = Router();
 
@@ -262,6 +263,24 @@ router.get('/api/ruby-status', async (req: any, res: any) => {
     } catch (err) {
         logger.error('Error checking Ruby status:', err);
         res.status(500).json({ error: 'Failed to check Ruby status.' });
+    }
+});
+
+/**
+ * get analytics data
+ * Returns aggregated web analytics including historical and today's data.
+ * Combines data from AnalyticsDay and RequestMetric tables.
+ * 
+ */
+
+router.get('/api/analytics', async (req: any, res: any) => {
+    try {
+        const analytics = await getAnalytics();
+        res.json(analytics);
+        
+    } catch (err) {
+        logger.error('Error fetching analytics:', err);
+        res.status(500).json({ error: 'Failed to fetch analytics.' });
     }
 });
 

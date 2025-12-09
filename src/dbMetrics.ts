@@ -35,20 +35,44 @@ PerformanceMetric.init(
   }
 );
 
-// Daily analytics summary
+/**
+ * db for storing requests metrics
+ * store: endpoint, method, responsetime, statusCode, RequestCount
+ */
+export class RequestMetric extends Model { }
+RequestMetric.init(
+  {
+    timestamp: { type: DataTypes.DATE, allowNull: false },
+    endpoint: { type: DataTypes.STRING, allowNull: false },
+    method: { type: DataTypes.STRING, allowNull: false },
+    responseTimeMs: { type: DataTypes.FLOAT, allowNull: false },
+    statusCode: { type: DataTypes.INTEGER, allowNull: false },
+    ip: { type: DataTypes.STRING, allowNull: true },
+    userAgent: { type: DataTypes.STRING, allowNull: true },
+    referer: { type: DataTypes.STRING, allowNull: true },
+  },
+  {
+    sequelize: sequelizeMetrics,
+    modelName: 'RequestMetric',
+    tableName: 'RequestMetrics',
+    timestamps: false,
+  }
+);
+
+// Sync DB
 export class AnalyticsDay extends Model { }
 AnalyticsDay.init(
   {
-    day: { type: DataTypes.STRING, primaryKey: true }, // YYYY-MM-DD
-    totalRequests: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
-    perRoute: { type: DataTypes.TEXT, allowNull: true }, // JSON
-    uniqueVisitors: { type: DataTypes.INTEGER, allowNull: true },
-    avgResponseTimeMs: { type: DataTypes.INTEGER, allowNull: true },
-    p95ResponseTimeMs: { type: DataTypes.INTEGER, allowNull: true },
-    statusCodes: { type: DataTypes.TEXT, allowNull: true }, // JSON
-    userAgents: { type: DataTypes.TEXT, allowNull: true }, // JSON
-    referrers: { type: DataTypes.TEXT, allowNull: true }, // JSON
-    rawUniqueIps: { type: DataTypes.TEXT, allowNull: true } // optional raw IP list (JSON)
+    day: { type: DataTypes.STRING, primaryKey: true },
+    totalRequests: { type: DataTypes.INTEGER, defaultValue: 0 },
+    perRoute: { type: DataTypes.TEXT, allowNull: true },
+    uniqueVisitors: { type: DataTypes.INTEGER, defaultValue: 0 },
+    avgResponseTimeMs: { type: DataTypes.FLOAT, defaultValue: 0 },
+    p95ResponseTimeMs: { type: DataTypes.FLOAT, defaultValue: 0 },
+    statusCodes: { type: DataTypes.TEXT, allowNull: true },
+    userAgents: { type: DataTypes.TEXT, allowNull: true },
+    referrers: { type: DataTypes.TEXT, allowNull: true },
+    rawUniqueIps: { type: DataTypes.TEXT, allowNull: true }, // Store raw IPs to re-hydrate Sets if needed
   },
   {
     sequelize: sequelizeMetrics,
@@ -57,8 +81,6 @@ AnalyticsDay.init(
     timestamps: false,
   }
 );
-
-// Sync DB
 export const metricsDbReady = sequelizeMetrics.sync().then(() => {
   logger.info('[metrics-db] metrics DB ready');
 }).catch(err => {

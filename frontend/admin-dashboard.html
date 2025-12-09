@@ -896,16 +896,19 @@
       const logs = await res.json();
       const viewer = document.getElementById('logs-viewer');
       viewer.innerHTML = '';
-      logs.forEach(line => {
-        // Simple coloring based on content
-        let cls = '';
-        if (line.includes('ERROR')) cls = 'log-error';
-        else if (line.includes('WARN')) cls = 'log-warn';
-        else if (line.includes('INFO')) cls = 'log-info';
-        
-        viewer.innerHTML += `<div class="log-entry ${cls}">${line}</div>`;
-      });
-      viewer.scrollTop = viewer.scrollHeight;
+      if (logs.entries) {
+        logs.entries.forEach(entry => {
+          const time = new Date(entry.timestamp).toLocaleTimeString();
+          const levelClass = entry.level === 'info' ? 'log-info' : entry.level === 'warn' ? 'log-warn' : 'log-error';
+          viewer.innerHTML += `
+            <div class="log-entry">
+              <span class="log-time">[${time}]</span>
+              <span class="${levelClass}">${entry.message}</span>
+            </div>
+          `;
+        });
+        viewer.scrollTop = viewer.scrollHeight;
+      }
     }
 
     // --- Actions ---

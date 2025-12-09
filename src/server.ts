@@ -13,6 +13,7 @@ import session from 'express-session';
 import { sessionConfig } from '@/config/session.config';
 import logger from "@/util/logger";
 import path from "path";
+import { trackRequest, loadAnalytics } from "@/util/webAnalytics";
 
 // Import all routes
 import routes from './routes';
@@ -113,6 +114,16 @@ export const setupServer = () => {
     next();
   });
 
+  // Analytics
+  loadAnalytics();
+  //block it from tracking admin routes
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/admin")) {
+      return next();
+    }
+    trackRequest(req, res, next);
+  });
+
   // Parse JSON bodies for all routes
   app.use(express.json());
 
@@ -124,6 +135,15 @@ export const setupServer = () => {
 
   // --- Mount All Routes ---
   app.use(routes);
+
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    logger.error(err.message || "Unknown Error", { stack: err.stack });
+    if (res.headersSent) {
+      return next(err);
+    }
+    res.status(500).json({ error: "Internal Server Error" });
+  });
 
   // Export stats to JSON periodically
   setInterval(exportStatsToJson, 60000); // Every minute

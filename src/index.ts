@@ -1,6 +1,7 @@
 import http from "http";
 import { setupServer } from "./server";
 import { dbReady } from "./db";
+//import dbMetrics from "@/dbMetrics";
 import logger from "@/util/logger";
 
 dbReady.then(async () => {

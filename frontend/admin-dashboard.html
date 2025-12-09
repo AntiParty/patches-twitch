@@ -172,14 +172,35 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     /* Cards & Grid */
-    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
 
     .card {
       background-color: var(--bg-card);
@@ -214,7 +235,7 @@
     }
 
     .progress-bg {
-      background-color: rgba(255,255,255,0.1);
+      background-color: rgba(255, 255, 255, 0.1);
       height: 6px;
       border-radius: 3px;
       overflow: hidden;
@@ -240,17 +261,44 @@
       gap: 8px;
     }
 
-    .btn-primary { background-color: var(--primary); color: white; }
-    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
 
-    .btn-danger { background-color: rgba(233, 25, 22, 0.1); color: var(--danger); border: 1px solid rgba(233, 25, 22, 0.2); }
-    .btn-danger:hover { background-color: rgba(233, 25, 22, 0.2); }
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
 
-    .btn-success { background-color: rgba(0, 179, 95, 0.1); color: var(--success); border: 1px solid rgba(0, 179, 95, 0.2); }
-    .btn-success:hover { background-color: rgba(0, 179, 95, 0.2); }
+    .btn-danger {
+      background-color: rgba(233, 25, 22, 0.1);
+      color: var(--danger);
+      border: 1px solid rgba(233, 25, 22, 0.2);
+    }
 
-    .btn-ghost { background-color: transparent; color: var(--text-muted); }
-    .btn-ghost:hover { background-color: var(--bg-hover); color: var(--text-main); }
+    .btn-danger:hover {
+      background-color: rgba(233, 25, 22, 0.2);
+    }
+
+    .btn-success {
+      background-color: rgba(0, 179, 95, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(0, 179, 95, 0.2);
+    }
+
+    .btn-success:hover {
+      background-color: rgba(0, 179, 95, 0.2);
+    }
+
+    .btn-ghost {
+      background-color: transparent;
+      color: var(--text-muted);
+    }
+
+    .btn-ghost:hover {
+      background-color: var(--bg-hover);
+      color: var(--text-main);
+    }
 
     .input {
       background-color: var(--bg-app);
@@ -261,14 +309,39 @@
       width: 100%;
       font-size: 14px;
     }
-    .input:focus { outline: none; border-color: var(--primary); }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
 
     /* Tables & Lists */
-    .table-container { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 12px; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border); }
-    td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-main); }
-    tr:last-child td { border-bottom: none; }
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
 
     .log-container {
       background-color: #000;
@@ -279,11 +352,29 @@
       overflow-y: auto;
       font-size: 13px;
     }
-    .log-entry { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
-    .log-time { color: #666; margin-right: 8px; }
-    .log-info { color: var(--info); }
-    .log-warn { color: var(--warning); }
-    .log-error { color: var(--danger); }
+
+    .log-entry {
+      margin-bottom: 4px;
+      border-bottom: 1px solid #111;
+      padding-bottom: 2px;
+    }
+
+    .log-time {
+      color: #666;
+      margin-right: 8px;
+    }
+
+    .log-info {
+      color: var(--info);
+    }
+
+    .log-warn {
+      color: var(--warning);
+    }
+
+    .log-error {
+      color: var(--danger);
+    }
 
     /* Channels Grid */
     .channels-grid {
@@ -291,6 +382,7 @@
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 15px;
     }
+
     .channel-card {
       background-color: var(--bg-card);
       border: 1px solid var(--border);
@@ -300,14 +392,38 @@
       flex-direction: column;
       gap: 10px;
     }
-    .channel-header { display: flex; justify-content: space-between; align-items: center; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: var(--success); display: inline-block; margin-right: 6px; }
+
+    .channel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--success);
+      display: inline-block;
+      margin-right: 6px;
+    }
 
     /* Responsive */
     @media (max-width: 768px) {
-      .app-container { grid-template-columns: 1fr; }
-      .sidebar { display: none; } /* Mobile menu needed in real app */
-      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .app-container {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      /* Mobile menu needed in real app */
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -358,7 +474,7 @@
 
     <!-- Main Content -->
     <main class="main-content">
-      
+
       <!-- Dashboard View -->
       <div id="view-dashboard" class="view-section active">
         <div class="header">
@@ -386,7 +502,8 @@
           </div>
           <div class="card">
             <div class="card-title">System Status</div>
-            <div class="metric-value" style="color: var(--success); font-size: 20px;"><i class="fas fa-check-circle"></i> Healthy</div>
+            <div class="metric-value" style="color: var(--success); font-size: 20px;"><i
+                class="fas fa-check-circle"></i> Healthy</div>
             <div class="metric-label">All systems operational</div>
           </div>
         </div>
@@ -402,34 +519,45 @@
                   <span class="metric-label">CPU Usage</span>
                   <span id="cpu-val">0%</span>
                 </div>
-                <div class="progress-bg"><div id="cpu-bar" class="progress-fill" style="width: 0%; background-color: var(--primary);"></div></div>
+                <div class="progress-bg">
+                  <div id="cpu-bar" class="progress-fill" style="width: 0%; background-color: var(--primary);"></div>
+                </div>
               </div>
               <div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                   <span class="metric-label">Memory Usage</span>
                   <span id="mem-val">0MB</span>
                 </div>
-                <div class="progress-bg"><div id="mem-bar" class="progress-fill" style="width: 0%; background-color: var(--info);"></div></div>
+                <div class="progress-bg">
+                  <div id="mem-bar" class="progress-fill" style="width: 0%; background-color: var(--info);"></div>
+                </div>
               </div>
               <div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                   <span class="metric-label">Bot Latency</span>
                   <span id="lat-val">0ms</span>
                 </div>
-                <div class="progress-bg"><div id="lat-bar" class="progress-fill" style="width: 0%; background-color: var(--warning);"></div></div>
+                <div class="progress-bg">
+                  <div id="lat-bar" class="progress-fill" style="width: 0%; background-color: var(--warning);"></div>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="card">
-             <div class="card-header">
-              <div class="card-title">Quick Actions</div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-              <button class="btn btn-primary" onclick="restartBot()"><i class="fas fa-power-off"></i> Restart Bot</button>
-              <button class="btn btn-primary" onclick="refreshBotToken()"><i class="fas fa-key"></i> Refresh Token</button>
-              <button class="btn btn-danger" onclick="pauseBot()"><i class="fas fa-pause"></i> Pause All Bots</button>
-              <button class="btn btn-success" onclick="resumeBot()"><i class="fas fa-play"></i> Resume All Bots</button>
+            <div class="card-header">
+              <div class="card-title">Quick Actions
+                <button class="btn btn-primary" onclick="restartBot()"><i class="fas fa-power-off"></i> Restart
+                  Bot</button>
+                <button class="btn btn-primary" onclick="refreshBotToken()"><i class="fas fa-key"></i> Refresh
+                  Token</button>
+                <button class="btn btn-danger" onclick="pauseBot()"><i class="fas fa-pause"></i> Pause All Bots</button>
+                <button class="btn btn-success" onclick="resumeBot()"><i class="fas fa-play"></i> Resume All
+                  Bots</button>
+                <button class="btn" style="background-color: var(--info); color: white; grid-column: span 2;"
+                  onclick="triggerDeploy()"><i class="fas fa-cloud-upload-alt"></i> Update System (Git Pull +
+                  Restart)</button>
+              </div>
             </div>
             <div id="action-status" style="margin-top: 15px; font-size: 14px; color: var(--text-muted);"></div>
           </div>
@@ -454,17 +582,22 @@
         </div>
         <div class="card" style="max-width: 800px;">
           <div style="margin-bottom: 20px;">
-             <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Target Channels</label>
-             <div id="broadcast-targets" style="padding:10px; border:1px solid var(--border); border-radius:var(--radius); min-height:40px; display:flex; flex-wrap:wrap; gap:5px;">
-               <span style="color:var(--text-muted); font-style:italic; padding:5px;">Select channels from the 'Channels' tab or leave empty for ALL.</span>
-             </div>
+            <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Target Channels</label>
+            <div id="broadcast-targets"
+              style="padding:10px; border:1px solid var(--border); border-radius:var(--radius); min-height:40px; display:flex; flex-wrap:wrap; gap:5px;">
+              <span style="color:var(--text-muted); font-style:italic; padding:5px;">Select channels from the 'Channels'
+                tab
+                or leave empty for ALL.</span>
+            </div>
           </div>
           <div style="margin-bottom: 20px;">
             <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Message</label>
-            <textarea id="broadcast-msg" class="input" style="min-height: 120px; resize: vertical;" placeholder="Type your announcement..."></textarea>
+            <textarea id="broadcast-msg" class="input" style="min-height: 120px; resize: vertical;"
+              placeholder="Type your announcement..."></textarea>
           </div>
           <div style="display:flex; justify-content:flex-end;">
-            <button class="btn btn-primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Send Broadcast</button>
+            <button class="btn btn-primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Send
+              Broadcast</button>
           </div>
           <div id="broadcast-status" style="margin-top:15px;"></div>
         </div>
@@ -474,7 +607,8 @@
       <div id="view-commands" class="view-section">
         <div class="header">
           <h2 class="page-title">Custom Commands</h2>
-          <button class="btn btn-success" onclick="showAddCommandModal()"><i class="fas fa-plus"></i> Add Command</button>
+          <button class="btn btn-success" onclick="showAddCommandModal()"><i class="fas fa-plus"></i> Add
+            Command</button>
         </div>
         <div class="card">
           <div class="table-container">
@@ -499,7 +633,8 @@
             <input id="new-cmd-name" class="input" placeholder="!command" style="flex:1;">
             <input id="new-cmd-resp" class="input" placeholder="Response text" style="flex:2;">
             <button class="btn btn-success" onclick="addNewCommand()">Save</button>
-            <button class="btn btn-ghost" onclick="document.getElementById('add-command-panel').style.display='none'">Cancel</button>
+            <button class="btn btn-ghost"
+              onclick="document.getElementById('add-command-panel').style.display='none'">Cancel</button>
           </div>
         </div>
       </div>
@@ -525,8 +660,8 @@
         <div class="header">
           <h2 class="page-title">System Logs</h2>
           <div style="display:flex; gap:10px;">
-             <button class="btn btn-ghost" onclick="fetchLogs()"><i class="fas fa-sync"></i> Refresh</button>
-             <span style="font-size:12px; color:var(--text-muted); align-self:center;">Auto-refreshing every 20s</span>
+            <button class="btn btn-ghost" onclick="fetchLogs()"><i class="fas fa-sync"></i> Refresh</button>
+            <span style="font-size:12px; color:var(--text-muted); align-self:center;">Auto-refreshing every 20s</span>
           </div>
         </div>
         <div id="logs-viewer" class="log-container">
@@ -545,11 +680,13 @@
             <div style="margin-bottom: 15px;">
               <label style="display:block; margin-bottom:5px; color:var(--text-muted);">Admin API Key</label>
               <input id="settings-api-key" type="password" class="input" placeholder="Enter API Key">
-              <div style="font-size:12px; color:var(--text-muted); margin-top:5px;">Required for sensitive actions (Restart, Broadcast).</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:5px;">Required for sensitive actions
+                (Restart,
+                Broadcast).</div>
             </div>
             <button class="btn btn-primary" onclick="saveSettings()">Save Key</button>
           </div>
-          
+
           <div class="card">
             <div class="card-title" style="margin-bottom: 15px;">Feature Flags</div>
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
@@ -574,13 +711,13 @@
     document.addEventListener('DOMContentLoaded', () => {
       ensureCsrfToken();
       loadSettings();
-      
+
       // Initial Data Load
       refreshAll();
-      
+
       // Start polling
       startPolling();
-      
+
       // Setup DB listener
       document.getElementById('db-table-select').addEventListener('change', loadDbTable);
     });
@@ -589,11 +726,11 @@
       // Update Sidebar
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       event.currentTarget.classList.add('active');
-      
+
       // Update Main Content
       document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
       document.getElementById(`view-${viewId}`).classList.add('active');
-      
+
       // Trigger specific loads
       if (viewId === 'database') loadDbTable();
       if (viewId === 'logs') fetchLogs();
@@ -644,20 +781,20 @@
       try {
         const res = await fetch('/admin/api/performance');
         const metrics = await res.json();
-        
+
         if (metrics && metrics.cpu) {
           document.getElementById('cpu-val').textContent = metrics.cpu.usage.toFixed(1) + '%';
           document.getElementById('cpu-bar').style.width = metrics.cpu.usage + '%';
-          
+
           const memUsed = (metrics.memory.used / 1024 / 1024).toFixed(0);
           const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
           const memPercent = (metrics.memory.used / metrics.memory.total * 100);
           document.getElementById('mem-val').textContent = `${memUsed}MB / ${memTotal}MB`;
           document.getElementById('mem-bar').style.width = memPercent + '%';
-          
+
           if (metrics.botLatency) {
-             document.getElementById('lat-val').textContent = metrics.botLatency.toFixed(0) + 'ms';
-             document.getElementById('lat-bar').style.width = Math.min(metrics.botLatency, 100) + '%';
+            document.getElementById('lat-val').textContent = metrics.botLatency.toFixed(0) + 'ms';
+            document.getElementById('lat-bar').style.width = Math.min(metrics.botLatency, 100) + '%';
           }
         }
       } catch (e) { console.error(e); }
@@ -671,7 +808,7 @@
           document.getElementById('dash-commands').textContent = data.stats.commandsProcessed.toLocaleString();
           document.getElementById('dash-uptime').textContent = formatUptime(data.stats.uptime);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     function formatUptime(seconds) {
@@ -687,7 +824,7 @@
         const data = await res.json();
         const list = document.getElementById('channels-list');
         list.innerHTML = '';
-        
+
         let count = 0;
         if (data.channels) {
           count = data.channels.length;
@@ -738,7 +875,7 @@
       if (!msg) return;
       const key = getApiKey();
       if (!key) return alert('API Key required in Settings');
-      
+
       try {
         await ensureCsrfToken();
         await fetch('/admin/api/message', {
@@ -756,9 +893,9 @@
       const msg = document.getElementById('broadcast-msg').value;
       const key = getApiKey();
       if (!msg || !key) return alert('Message and API Key required');
-      
+
       const targets = selectedChannels.size > 0 ? Array.from(selectedChannels) : null; // null means all
-      
+
       try {
         await ensureCsrfToken();
         // If targets is null, we might need a loop or a backend endpoint that handles "all".
@@ -767,25 +904,25 @@
         // app.post("/admin/api/message", ... { channel, message } ... axios.post(..., { channel, message })
         // And botManager.sendMessage(message, channel) handles "all" if channel is undefined.
         // So if I send channel: undefined (or null), it should broadcast.
-        
+
         if (targets) {
-           // Send to specific list
-           for (const ch of targets) {
-             await fetch('/admin/api/message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-                body: JSON.stringify({ channel: ch, message: msg, key })
-             });
-           }
-        } else {
-           // Send to all
-           await fetch('/admin/api/message', {
+          // Send to specific list
+          for (const ch of targets) {
+            await fetch('/admin/api/message', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ message: msg, key }) // channel undefined
-           });
+              body: JSON.stringify({ channel: ch, message: msg, key })
+            });
+          }
+        } else {
+          // Send to all
+          await fetch('/admin/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ message: msg, key }) // channel undefined
+          });
         }
-        
+
         document.getElementById('broadcast-msg').value = '';
         document.getElementById('broadcast-status').innerHTML = '<span style="color:var(--success)">Broadcast Sent!</span>';
         setTimeout(() => document.getElementById('broadcast-status').innerHTML = '', 3000);
@@ -823,14 +960,14 @@
       const name = document.getElementById('new-cmd-name').value;
       const resp = document.getElementById('new-cmd-resp').value;
       if (!name || !resp) return;
-      
+
       await ensureCsrfToken();
       await fetch('/admin/api/commands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
         body: JSON.stringify({ name, response: resp })
       });
-      
+
       document.getElementById('new-cmd-name').value = '';
       document.getElementById('new-cmd-resp').value = '';
       document.getElementById('add-command-panel').style.display = 'none';
@@ -852,21 +989,21 @@
       const table = document.getElementById('db-table-select').value;
       const container = document.getElementById('db-editor-container');
       container.innerHTML = '<div style="color:var(--text-muted)">Loading...</div>';
-      
+
       const res = await fetch(`/admin/api/db/${table}`);
       const data = await res.json();
       const rows = data.rows || [];
-      
+
       if (rows.length === 0) {
         container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted)">No records found</div>';
         return;
       }
-      
+
       const keys = Object.keys(rows[0]);
       let html = '<div class="table-container"><table><thead><tr>';
       keys.forEach(k => html += `<th>${k}</th>`);
       html += '<th>Actions</th></tr></thead><tbody>';
-      
+
       rows.forEach(row => {
         html += '<tr>';
         keys.forEach(k => {
@@ -958,33 +1095,58 @@
       });
       alert('Token refresh requested');
     }
-    
-    async function toggleUserDashboard() {
-        // Check current state
-        const btn = document.getElementById('toggle-dashboard-btn');
-        const isEnabled = btn.innerText === 'Enabled';
-        const newState = !isEnabled;
-        
-        await ensureCsrfToken();
-        const res = await fetch('/admin/api/user-dashboard-access', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ enabled: newState })
+
+    async function triggerDeploy() {
+      const key = getApiKey();
+      if (!key) return alert('API Key required');
+      if (!confirm("This will backup the current bot, pull the latest code from GitHub, and restart the server. The dashboard will go offline for a moment. Continue?")) return;
+
+      await ensureCsrfToken();
+      try {
+        const res = await fetch('/admin/api/deploy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ key })
         });
         const data = await res.json();
         if (data.success) {
-            btn.innerText = newState ? 'Enabled' : 'Disabled';
-            btn.className = newState ? 'btn btn-success' : 'btn btn-danger';
+          alert(data.message);
+          document.getElementById('action-status').innerHTML = '<span style="color:var(--warning)">Deployment in progress... Connection may be lost.</span>';
+        } else {
+          alert('Deployment failed: ' + (data.error || 'Unknown error'));
         }
+      } catch (e) {
+        alert('Request sent. Server might be restarting already.');
+      }
     }
-    
+
+    async function toggleUserDashboard() {
+      // Check current state
+      const btn = document.getElementById('toggle-dashboard-btn');
+      const isEnabled = btn.innerText === 'Enabled';
+      const newState = !isEnabled;
+
+      await ensureCsrfToken();
+      const res = await fetch('/admin/api/user-dashboard-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+        body: JSON.stringify({ enabled: newState })
+      });
+      const data = await res.json();
+      if (data.success) {
+        btn.innerText = newState ? 'Enabled' : 'Disabled';
+        btn.className = newState ? 'btn btn-success' : 'btn btn-danger';
+      }
+    }
+
     // Initial check for dashboard state
     fetch('/admin/api/user-dashboard-access').then(r => r.json()).then(d => {
-        const btn = document.getElementById('toggle-dashboard-btn');
-        btn.innerText = d.enabled ? 'Enabled' : 'Disabled';
-        btn.className = d.enabled ? 'btn btn-success' : 'btn btn-danger';
+      const btn = document.getElementById('toggle-dashboard-btn');
+      btn.innerText = d.enabled ? 'Enabled' : 'Disabled';
+      btn.className = d.enabled ? 'btn btn-success' : 'btn btn-danger';
     });
 
   </script>
 </body>
+
 </html>

@@ -16,6 +16,7 @@ import { loadCommands } from '@/handlers/commands';
 import { requireAdminAPI, isAdmin, requireApiKey } from '@/middleware/auth.middleware';
 import { csrfProtection } from '@/middleware/csrf.middleware';
 import { isDashboardEnabled, setDashboardEnabled } from '@/routes/user/dashboard.routes';
+import { sendWarningToDiscord } from '@/handlers/discordHandler';
 
 const router = Router();
 
@@ -236,6 +237,44 @@ router.post("/api/restart-bot", requireApiKey, async (req: any, res: any) => {
     } catch (err) {
         logger.error("Unexpected error in restart-bot endpoint:", err);
         res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+/**
+ * POST /admin/api/deploy
+ * Trigger the deployment script
+ */
+router.post("/api/deploy", requireApiKey, async (req: any, res: any) => {
+    try {
+        const deployScriptPath = path.join(process.cwd(), 'deploy.sh');
+        logger.info(`[Admin] Triggering deployment script at ${deployScriptPath}`);
+        // Detect shell
+        let shell = "bash";
+        if (process.platform === "win32") {
+            const possiblePaths = [
+                "C:\\Program Files\\Git\\bin\\bash.exe",
+                "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+                "C:\\Git\\bin\\bash.exe"
+            ];
+            const found = possiblePaths.find(p => fs.existsSync(p));
+            shell = found ? `"${found}"` : "bash"; // Fallback to 'bash' in PATH if custom path not found
+        }
+
+        logger.info(`[Admin] Using shell: ${shell}`);
+        const deployProcess = exec(`${shell} "${deployScriptPath}"`, {
+            cwd: process.cwd(),
+        }, (err, stdout, stderr) => {
+            if (err) {
+                logger.error("Deploy script failed:", err);
+            } else {
+                logger.info("Deploy script output:", stdout);
+            }
+        });
+        res.json({ success: true, message: "Deployment started. The server will backup and restart shortly." });
+        sendWarningToDiscord("Deployment started. The server will backup and restart shortly.");
+    } catch (err) {
+        logger.error("Error triggering deployment:", err);
+        res.status(500).json({ error: "Failed to trigger deployment" });
     }
 });
 

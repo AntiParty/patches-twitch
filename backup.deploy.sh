@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Change to your project directory
+cd /home/antiparty/dev/FinalsRS || exit 1
+
+# Always create a backup before deployment
+echo "Creating backup..."
+BACKUP_DIR="/home/antiparty/dev/FinalsRS_backup_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+
+# Backup everything except .git and node_modules
+rsync -av --exclude='.git' --exclude='node_modules' ./ "$BACKUP_DIR"/
+echo "Backup execution complete: $BACKUP_DIR"
+
+# Pull latest changes from origin/main
+git pull origin main
+
+# Install dependencies (using Bun if preferred)
+bun install
+
+# Build project (TypeScript -> dist)
+#bun run build
+
+# Restart both PM2 apps (make sure these names match your ecosystem config)
+pm2 restart FinalsRS-server
+pm2 restart FinalsRS-bot
+
+echo "Deployment complete."

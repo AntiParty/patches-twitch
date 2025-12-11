@@ -46,9 +46,9 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
   }
 
   const parts = [
-    `Uptime: ${uptime} |`,
-    `Latency: ${latency} |`,
-    `Mem: ${usedMB}/${totalMB}MB (${percent}%) |`,
+    `Uptime: ${uptime}`,
+    `Latency: ${latency}`,
+    `Mem: ${usedMB}/${totalMB}MB (${percent}%)`,
     `DB: ${dbHealth}`
   ];
 

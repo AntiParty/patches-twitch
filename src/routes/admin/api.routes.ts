@@ -246,32 +246,41 @@ router.post("/api/restart-bot", requireApiKey, async (req: any, res: any) => {
  */
 router.post("/api/deploy", requireApiKey, async (req: any, res: any) => {
     try {
-        const deployScriptPath = path.join(process.cwd(), 'deploy.sh');
+        const deployScriptPath = path.join(process.cwd(), "deploy.sh");
+
         logger.info(`[Admin] Triggering deployment script at ${deployScriptPath}`);
-        // Detect shell
-        let shell = "bash";
-        if (process.platform === "win32") {
-            const possiblePaths = [
-                "C:\\Program Files\\Git\\bin\\bash.exe",
-                "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
-                "C:\\Git\\bin\\bash.exe"
-            ];
-            const found = possiblePaths.find(p => fs.existsSync(p));
-            shell = found ? `"${found}"` : "bash"; // Fallback to 'bash' in PATH if custom path not found
-        }
+
+        // Always use bash on your Linux server
+        const shell = "/bin/bash";
 
         logger.info(`[Admin] Using shell: ${shell}`);
-        const deployProcess = exec(`${shell} "${deployScriptPath}"`, {
-            cwd: process.cwd(),
-        }, (err, stdout, stderr) => {
-            if (err) {
-                logger.error("Deploy script failed:", err);
-            } else {
-                logger.info("Deploy script output:", stdout);
+
+        const cmd = `${shell} "${deployScriptPath}"`;
+        logger.info(`[Admin] Executing command: ${cmd}`);
+
+        const deployProcess = exec(
+            cmd,
+            {
+                cwd: process.cwd(),
+                env: { 
+                    ...process.env, 
+                    PATH: "/usr/bin:/bin:/usr/local/bin:/usr/sbin:/sbin" 
+                }
+            },
+            (err, stdout, stderr) => {
+                if (stdout) logger.info(`[Deploy stdout]:\n${stdout}`);
+                if (stderr) logger.error(`[Deploy stderr]:\n${stderr}`);
+                if (err) logger.error("[Deploy Error]:", err);
             }
+        );
+
+        res.json({
+            success: true,
+            message: "Deployment started. The server will backup and restart shortly."
         });
-        res.json({ success: true, message: "Deployment started. The server will backup and restart shortly." });
+
         sendWarningToDiscord("Deployment started. The server will backup and restart shortly.");
+
     } catch (err) {
         logger.error("Error triggering deployment:", err);
         res.status(500).json({ error: "Failed to trigger deployment" });

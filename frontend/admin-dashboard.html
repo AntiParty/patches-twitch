@@ -1110,8 +1110,8 @@
         const data = await res.json();
         if (data.success) {
           document.getElementById('action-status').innerHTML = '<span style="color:var(--success)">Deploy initiated. Bot restarting...</span>';
-        } else {
-          document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy failed: ' + data.message + '</span>';
+          const msg = data.message || data.error || data.details || "Unknown error";
+          document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy failed: ' + msg + '</span>';
         }
       } catch (e) {
         document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy request failed</span>';

@@ -46,14 +46,13 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
   }
 
   const parts = [
-    `🤖 FinalsBot v1.9.4`,
-    `⏳ ${uptime}`,
-    `📶 ${latency}`,
-    `💾 ${usedMB}/${totalMB}MB (${percent}%)`,
-    `🎲 DB: ${dbHealth}`
+    `Uptime: ${uptime} |`,
+    `Latency: ${latency} |`,
+    `Mem: ${usedMB}/${totalMB}MB (${percent}%) |`,
+    `DB: ${dbHealth}`
   ];
 
-  if (temp !== "N/A") parts.push(`🌡️ ${temp}`);
+  if (temp !== "N/A") parts.push(`Temp: ${temp}`);
 
   await ctx.say(parts.join(" | "));
 };

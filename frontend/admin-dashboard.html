@@ -1099,24 +1099,22 @@
     async function triggerDeploy() {
       const key = getApiKey();
       if (!key) return alert('API Key required');
-      if (!confirm("This will backup the current bot, pull the latest code from GitHub, and restart the server. The dashboard will go offline for a moment. Continue?")) return;
-
+      if (!confirm('This will pull the latest code from Git and restart the bot. Continue?')) return;
       await ensureCsrfToken();
       try {
         const res = await fetch('/admin/api/deploy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN, 'API_KEY': key },
           body: JSON.stringify({ key })
         });
         const data = await res.json();
         if (data.success) {
-          alert(data.message);
-          document.getElementById('action-status').innerHTML = '<span style="color:var(--warning)">Deployment in progress... Connection may be lost.</span>';
+          document.getElementById('action-status').innerHTML = '<span style="color:var(--success)">Deploy initiated. Bot restarting...</span>';
         } else {
-          alert('Deployment failed: ' + (data.error || 'Unknown error'));
+          document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy failed: ' + data.message + '</span>';
         }
       } catch (e) {
-        alert('Request sent. Server might be restarting already.');
+        document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy request failed</span>';
       }
     }
 

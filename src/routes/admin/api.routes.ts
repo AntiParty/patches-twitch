@@ -245,30 +245,20 @@ router.post("/api/restart-bot", requireApiKey, async (req: any, res: any) => {
  * Trigger the deployment script
  */
 router.post("/api/deploy", requireApiKey, async (req, res) => {
-    try {
-        await axios.post(
-            "http://127.0.0.1:2500/deploy",
-            {}, // empty body
-            {
-                headers: {
-                    "x-deploy-token": process.env.DEPLOY_SECRET
-                },
-                timeout: 10000 // optional: 10s timeout
-            }
-        );
+  try {
+    const deploySecret = process.env.DEPLOY_SECRET || "supersecret";
+    
+    const response = await axios.post("http://127.0.0.1:2500/deploy", {}, {
+      headers: { "x-deploy-token": deploySecret }
+    });
 
-        res.json({
-            success: true,
-            message: "Deployment triggered successfully"
-        });
-    } catch (err: any) {
-        console.error("Deployment request failed:", err.message || err);
-        res.status(500).json({
-            error: "Failed to trigger deployment",
-            details: err.message || String(err)
-        });
-    }
+    res.json({ success: true, message: "Deployment triggered" });
+  } catch (err: any) {
+    console.error("Deploy trigger failed:", err.response?.data || err.message || err);
+    res.status(500).json({ error: "Failed to trigger deployment", details: err.message });
+  }
 });
+
 
 /**
  * POST /admin/api/pause-bot

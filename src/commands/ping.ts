@@ -1,37 +1,61 @@
 // src/commands/ping.ts
 import os from "os";
-import axios from "axios";
 import fs from "fs/promises";
 import { Channel } from "../db";
-import logger from "@/util/logger";
 
-export const execute = async (ctx) => {
+export const execute = async (ctx: any, channel: string, str: string, tags: Record<string, any>) => {
+  const start = Date.now();
+
   // Uptime
   const uptimeSec = Math.floor(process.uptime());
-  const uptime = `${Math.floor(uptimeSec / 60)}m ${uptimeSec % 60}s`;
+  const h = Math.floor(uptimeSec / 3600);
+  const m = Math.floor((uptimeSec % 3600) / 60);
+  const s = uptimeSec % 60;
+  const uptime = `${h}h ${m}m ${s}s`;
 
   // Memory
   const mem = process.memoryUsage();
-  const usedMB = Math.round(mem.rss / 1024 / 1024);
-  const totalMB = Math.round(os.totalmem() / 1024 / 1024);
+  const usedMB = (mem.rss / 1024 / 1024).toFixed(0);
+  const totalMB = (os.totalmem() / 1024 / 1024).toFixed(0);
+  const percent = Math.round((parseInt(usedMB) / parseInt(totalMB)) * 100);
 
-  // Pi Temperature
+  // System Details
+  const platform = os.platform();
   let temp = "N/A";
-  try {
-    const raw = await fs.readFile("/sys/class/thermal/thermal_zone0/temp", "utf8");
-    temp = `${(parseInt(raw, 10) / 1000).toFixed(1)}°C`;
-  } catch {}
+
+  if (platform === 'linux') {
+    try {
+      const raw = await fs.readFile("/sys/class/thermal/thermal_zone0/temp", "utf8");
+      temp = `${(parseInt(raw, 10) / 1000).toFixed(1)}°C`;
+    } catch { }
+  }
 
   // DB Health
   let dbHealth = "OK";
   try {
-    await Channel.findOne({ where: {} });
+    await Channel.findOne({ where: {}, attributes: ['id'] });
   } catch {
-    dbHealth = "ERROR";
+    dbHealth = "ERR";
   }
-  await ctx.say(
-    `Uptime: ${uptime} | Temp: ${temp} | Mem: ${usedMB}/${totalMB}MB | DB: ${dbHealth} `
-  );
+
+  // Latency
+  let latency = "0ms";
+  if (tags && tags['tmi-sent-ts']) {
+    const msgTs = parseInt(tags['tmi-sent-ts']);
+    latency = `${Date.now() - msgTs}ms`;
+  }
+
+  const parts = [
+    `🤖 FinalsBot v1.9.4`,
+    `⏳ ${uptime}`,
+    `📶 ${latency}`,
+    `💾 ${usedMB}/${totalMB}MB (${percent}%)`,
+    `🎲 DB: ${dbHealth}`
+  ];
+
+  if (temp !== "N/A") parts.push(`🌡️ ${temp}`);
+
+  await ctx.say(parts.join(" | "));
 };
 
-export const aliases = [];
+export const aliases = ["status", "info"];

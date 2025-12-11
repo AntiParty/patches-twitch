@@ -1,3 +1,4 @@
+import { logger } from '@/util/logger'
 export const execute = async (
     ctx: { say: (msg: string) => Promise<void> },
     channel: string,

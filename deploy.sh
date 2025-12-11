@@ -68,8 +68,8 @@ echo "Restarting application..."
 
 if command -v pm2 &> /dev/null; then
     echo "PM2 detected. Restarting services..."
-    pm2 restart FinalsRS-server || echo "Warning: Failed to restart FinalsRS-server (Is it running?)"
-    pm2 restart FinalsRS-bot || echo "Warning: Failed to restart FinalsRS-bot (Is it running?)"
+    pm2 restart finalsrr-server || echo "Warning: Failed to restart FinalsRS-server (Is it running?)"
+    pm2 restart finalsrr-bot || echo "Warning: Failed to restart FinalsRS-bot (Is it running?)"
 else
     echo "PM2 not found. Skipping automatic process restart."
     echo "If running locally with a watcher, it should update automatically."

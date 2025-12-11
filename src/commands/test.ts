@@ -12,10 +12,12 @@ export const execcute = async (
         const messageId = ctx.tags?.['id'];
 
         if (!username || !messageId) return;
-        const testMessage = `Hello ${username}, this is a test message!`;
-
-        await ctx.say(testMessage, messageId);
+        const replyMessage = `This is a test command, ${username}!`;
+        await ctx.say(replyMessage, messageId);
     } catch (err) {
         logger.error("Error executing test command:", err);
     }
 };
+
+// Aliases for this command
+export const aliases = ["tst", "testing"];

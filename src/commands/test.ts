@@ -20,4 +20,4 @@ export const execcute = async (
 };
 
 // Aliases for this command
-export const aliases = ["tst", "testing", "testcmd"];
+export const aliases = ["tst", "testing", "aga"];

@@ -244,45 +244,13 @@ router.post("/api/restart-bot", requireApiKey, async (req: any, res: any) => {
  * POST /admin/api/deploy
  * Trigger the deployment script
  */
-router.post("/api/deploy", requireApiKey, async (req: any, res: any) => {
+router.post("/api/deploy", requireApiKey, async (req, res) => {
     try {
-        const deployScriptPath = path.join(process.cwd(), "deploy.sh");
-
-        logger.info(`[Admin] Triggering deployment script at ${deployScriptPath}`);
-
-        // Always use bash on your Linux server
-        const shell = "/bin/bash";
-
-        logger.info(`[Admin] Using shell: ${shell}`);
-
-        const cmd = `${shell} "${deployScriptPath}"`;
-        logger.info(`[Admin] Executing command: ${cmd}`);
-
-        const deployProcess = exec(
-            cmd,
-            {
-                cwd: process.cwd(),
-                env: { 
-                    ...process.env, 
-                    PATH: "/usr/bin:/bin:/usr/local/bin:/usr/sbin:/sbin" 
-                }
-            },
-            (err, stdout, stderr) => {
-                if (stdout) logger.info(`[Deploy stdout]:\n${stdout}`);
-                if (stderr) logger.error(`[Deploy stderr]:\n${stderr}`);
-                if (err) logger.error("[Deploy Error]:", err);
-            }
-        );
-
-        res.json({
-            success: true,
-            message: "Deployment started. The server will backup and restart shortly."
+        await axios.post("http://127.0.0.1:2500/deploy", null, {
+            headers: { "x-deploy-token": process.env.DEPLOY_SECRET }
         });
-
-        sendWarningToDiscord("Deployment started. The server will backup and restart shortly.");
-
+        res.json({ success: true, message: "Deployment triggered" });
     } catch (err) {
-        logger.error("Error triggering deployment:", err);
         res.status(500).json({ error: "Failed to trigger deployment" });
     }
 });

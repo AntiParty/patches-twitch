@@ -1,10 +1,26 @@
 #!/bin/bash
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin:/sbin:/home/antiparty/.bun/bin"
+export PM2_HOME="/home/antiparty/.pm2"
+
+##############################################
+# AUTO-DETECT BINARIES
+##############################################
+
+GIT=$(command -v git)
+NPM=$(command -v npm)
+PM2=$(command -v pm2)
+BUN=$(command -v bun)
+
+echo "Detected git: $GIT"
+echo "Detected npm: $NPM"
+echo "Detected pm2: $PM2"
+echo "Detected bun: $BUN"
 
 ##############################################
 # CONFIG
 ##############################################
 
-PROD_PATH="/home/antiparty/dev/FinalsRS"
+PROD_PATH="/home/antiparty/Desktop/FinalsRR"
 BACKUP_ROOT="/home/antiparty/dev"
 SERVER_NAME="finalsrr-server"
 BOT_NAME="finalsrr-bot"
@@ -18,16 +34,7 @@ echo "Starting Deployment Script"
 echo "Timestamp: $(date)"
 echo "----------------------------------------"
 
-# Ensure we're inside the production directory
-if [ ! -d "$PROD_PATH" ]; then
-    echo "❌ ERROR: Production directory not found: $PROD_PATH"
-    exit 1
-fi
-
-if [[ "$(pwd)" != "$PROD_PATH" ]]; then
-    echo "Switching to production directory: $PROD_PATH"
-    cd "$PROD_PATH" || exit 1
-fi
+cd "$PROD_PATH" || { echo "? PROD PATH missing"; exit 1; }
 
 ##############################################
 # BACKUP
@@ -40,16 +47,11 @@ echo "Creating backup at: $BACKUP_DIR"
 mkdir -p "$BACKUP_DIR"
 
 if command -v rsync >/dev/null 2>&1; then
-    rsync -av \
-        --exclude='.git' \
-        --exclude='node_modules' \
-        --exclude='dist' \
-        --exclude='.env' \
-        ./ "$BACKUP_DIR"/
+    rsync -av --exclude='.git' --exclude='node_modules' --exclude='dist' --exclude='.env' ./ "$BACKUP_DIR"/
 else
-    echo "⚠️ rsync not found — using tar fallback"
-    tar --exclude='./node_modules' --exclude='./.git' --exclude='./dist' --exclude='./.env' -cf - . \
-        | (cd "$BACKUP_DIR" && tar xf -)
+    echo "?? rsync missing, using tar fallback"
+    tar --exclude='./node_modules' --exclude='./.git' --exclude='./dist' --exclude='./.env' \
+        -cf - . | (cd "$BACKUP_DIR" && tar xf -)
 fi
 
 echo "Backup complete."
@@ -58,11 +60,11 @@ echo "Backup complete."
 # GIT PULL
 ##############################################
 
-echo "Pulling latest changes from origin/main..."
-if git pull origin main; then
-    echo "Git pull successful."
+echo "Pulling latest changes..."
+if [ -x "$GIT" ]; then
+    "$GIT" pull origin main || echo "?? git pull failed"
 else
-    echo "⚠️ Git pull failed — continuing anyway."
+    echo "? git NOT FOUND"
 fi
 
 ##############################################
@@ -71,27 +73,25 @@ fi
 
 echo "Installing dependencies..."
 
-if command -v bun >/dev/null 2>&1; then
-    bun install
+if [ -x "$BUN" ]; then
+    chmod +x "$BUN" 2>/dev/null
+    "$BUN" install || echo "?? bun install failed"
 else
-    echo "⚠️ Bun not found — using npm"
-    npm install
+    echo "?? bun missing, using npm"
+    "$NPM" install || echo "?? npm install failed"
 fi
 
 ##############################################
 # PM2 RESTART
 ##############################################
 
-echo "Restarting application..."
+echo "Restarting services..."
 
-if command -v pm2 >/dev/null 2>&1; then
-    echo "PM2 detected. Restarting services..."
-
-    pm2 restart "$SERVER_NAME" || echo "⚠️ WARNING: Failed to restart $SERVER_NAME"
-    pm2 restart "$BOT_NAME"    || echo "⚠️ WARNING: Failed to restart $BOT_NAME"
-
+if [ -x "$PM2" ]; then
+    "$PM2" restart "$SERVER_NAME" || echo "?? failed to restart $SERVER_NAME"
+    "$PM2" restart "$BOT_NAME" || echo "?? failed to restart $BOT_NAME"
 else
-    echo "⚠️ PM2 not found. Cannot restart processes automatically."
+    echo "? PM2 NOT FOUND"
 fi
 
 ##############################################
@@ -99,5 +99,5 @@ fi
 ##############################################
 
 echo "----------------------------------------"
-echo "Deployment Finished Successfully"
+echo "Deployment Finished"
 echo "----------------------------------------"

@@ -1104,7 +1104,7 @@
       try {
         const res = await fetch('/admin/api/deploy', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN, 'API_KEY': key },
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN, 'x-deploy-token': key },
           body: JSON.stringify({ key })
         });
         const data = await res.json();

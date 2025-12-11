@@ -249,7 +249,7 @@ router.post("/api/deploy", requireApiKey, async (req, res) => {
     const deploySecret = process.env.DEPLOY_SECRET || "supersecret";
     
     const response = await axios.post("http://127.0.0.1:2500/deploy", {}, {
-      headers: { "x-deploy-token": deploySecret }
+      headers: { "x-deploy-token": "supersecret" }
     });
 
     res.json({ success: true, message: "Deployment triggered" });

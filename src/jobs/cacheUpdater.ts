@@ -12,8 +12,8 @@ const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
 const REGULAR_SEASON_START = 1;
 const WORLD_TOUR_SEASON_START = 3;
 // Update this if new seasons are added
-const REGULAR_SEASON_END = 8;
-const WORLD_TOUR_SEASON_END = 8;
+const REGULAR_SEASON_END = 9;
+const WORLD_TOUR_SEASON_END = 9;
 
 function getApiUrl(type: 'regular' | 'worldTour', season: number) {
   if (type === 'regular') {

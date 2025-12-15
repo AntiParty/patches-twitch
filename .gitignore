@@ -26,3 +26,4 @@ stats.json
 config/blocked.json
 /dist
 /.vscode
+stats.json

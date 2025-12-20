@@ -108,6 +108,11 @@ export const setupServer = () => {
   app.set("view engine", "ejs"); // Use EJS for rendering views
   app.set("views", frontendPath);
 
+  // Security middleware (before logging to reduce spam)
+  const { blockSuspiciousRequests, rateLimitByIP } = require('@/middleware/security');
+  app.use(blockSuspiciousRequests);
+  app.use(rateLimitByIP);
+
   // Request logging
   app.use((req, res, next) => {
     logger.info(`[REQ] ${req.method} ${req.url}`);

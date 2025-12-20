@@ -10,6 +10,24 @@ export const sequelizeMetrics = new Sequelize({
   dialect: 'sqlite',
   storage: path.resolve(__dirname, '../data/metrics.sqlite'),
   logging: false,
+  // Enable WAL mode for better concurrent access
+  dialectOptions: {
+    // Enable WAL (Write-Ahead Logging) mode for better concurrency
+    mode: 3, // SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+  },
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  retry: {
+    max: 3,
+    match: [
+      /SQLITE_BUSY/,
+      /database is locked/,
+    ],
+  },
 });
 
 // Performance metric model (time-series)
@@ -81,8 +99,16 @@ AnalyticsDay.init(
     timestamps: false,
   }
 );
-export const metricsDbReady = sequelizeMetrics.sync().then(() => {
-  logger.info('[metrics-db] metrics DB ready');
+export const metricsDbReady = sequelizeMetrics.sync().then(async () => {
+  // Enable WAL mode for better concurrent access
+  try {
+    await sequelizeMetrics.query('PRAGMA journal_mode=WAL;');
+    await sequelizeMetrics.query('PRAGMA busy_timeout=5000;'); // 5 second timeout
+    logger.info('[metrics-db] metrics DB ready (WAL mode enabled)');
+  } catch (err) {
+    logger.warn('[metrics-db] Could not enable WAL mode:', err);
+    logger.info('[metrics-db] metrics DB ready (default mode)');
+  }
 }).catch(err => {
   logger.error('[metrics-db] failed to sync:', err);
   throw err;

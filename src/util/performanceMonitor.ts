@@ -75,25 +75,43 @@ class PerformanceMonitor extends EventEmitter {
     };
 
     this.emit('metrics', this.metrics);
-    // Persist a simplified metric row to the metrics DB (fire-and-forget)
-    metricsDbReady.then(() => {
-      try {
-        PerformanceMetric.create({
-          timestamp: new Date(this.metrics.lastUpdate),
-          cpuUsage: this.metrics.cpu.usage,
-          loadAvg: JSON.stringify(this.metrics.cpu.loadAvg || []),
-          memoryTotal: this.metrics.memory.total,
-          memoryUsed: this.metrics.memory.used,
-          heapUsed: this.metrics.memory.heapUsed,
-          heapTotal: this.metrics.memory.heapTotal,
-          botLatencyMs: this.metrics.botLatency,
-          connectedChannels: this.metrics.connectedChannels || 0,
-          extra: null
-        }).catch(err => {
-          logger.error('[metrics-db] Failed to save performance metric:', err);
-        });
-      } catch (err) {
-        logger.error('[metrics-db] Unexpected error saving metric:', err);
+
+    // Persist a simplified metric row to the metrics DB with retry logic
+    metricsDbReady.then(async () => {
+      const maxRetries = 3;
+      let attempt = 0;
+
+      while (attempt < maxRetries) {
+        try {
+          await PerformanceMetric.create({
+            timestamp: new Date(this.metrics.lastUpdate),
+            cpuUsage: this.metrics.cpu.usage,
+            loadAvg: JSON.stringify(this.metrics.cpu.loadAvg || []),
+            memoryTotal: this.metrics.memory.total,
+            memoryUsed: this.metrics.memory.used,
+            heapUsed: this.metrics.memory.heapUsed,
+            heapTotal: this.metrics.memory.heapTotal,
+            botLatencyMs: this.metrics.botLatency,
+            connectedChannels: this.metrics.connectedChannels || 0,
+            extra: null
+          });
+          break; // Success, exit retry loop
+        } catch (err: any) {
+          attempt++;
+          if (err.message?.includes('SQLITE_BUSY') || err.message?.includes('database is locked')) {
+            if (attempt < maxRetries) {
+              // Wait with exponential backoff before retrying
+              await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)));
+            } else {
+              // Only log after all retries exhausted
+              logger.error('[metrics-db] Failed to save performance metric after retries:', err.message);
+            }
+          } else {
+            // Non-locking error, log and break
+            logger.error('[metrics-db] Unexpected error saving metric:', err);
+            break;
+          }
+        }
       }
     }).catch(() => {/* ignore ready error */ });
   }

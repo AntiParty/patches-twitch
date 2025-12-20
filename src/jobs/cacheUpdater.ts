@@ -132,9 +132,10 @@ export async function getRubyRankThreshold() {
 
     // Leaderboard is already sorted, so index 499 = rank 500
     const entry = data[499];
-
+    
     return {
       season: REGULAR_SEASON_END,
+      league: entry.league,
       threshold: entry.rankScore,
       player: entry.name,
     };

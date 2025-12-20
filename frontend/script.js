@@ -9,6 +9,8 @@ canvas.style.width = '100%';
 canvas.style.height = '100%';
 canvas.style.zIndex = '-1';
 canvas.style.pointerEvents = 'none';
+// get badge dot text
+const badgeDot = document.querySelector('.badge-dot');
 
 let width, height;
 let particles = [];
@@ -106,6 +108,8 @@ window.addEventListener('resize', () => {
 resize();
 init();
 animate();
+
+
 
 // Mobile Menu Toggle
 const menuBtn = document.querySelector('.mobile-menu-btn');

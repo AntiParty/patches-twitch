@@ -16,6 +16,9 @@ const userWebSockets: Record<
   { ws: WebSocket; sessionId: string | null; subscriptions: UserSubscription[]; shouldReconnect?: boolean }
 > = {};
 
+// Track ongoing token refresh operations to prevent concurrent refreshes for the same user
+const tokenRefreshLocks: Map<string, Promise<string | null>> = new Map();
+
 export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
   if (!userWebSockets[userId]) {
     userWebSockets[userId] = {
@@ -192,7 +195,6 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
 async function subscribeUserToEvents(userId: string, accessToken: string, broadcasterId: string, sessionId: string) {
   const eventTypes = ['stream.online', 'stream.offline'];
 
-  let warnedInvalidToken = false;
   let validToken = accessToken;
 
   // First, validate the token
@@ -202,65 +204,71 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
     });
     logger.debug?.(`[EventSubWs] Token valid for user ${userId}`);
   } catch {
-    // Token is invalid/expired, try to get a fresh one from the database
+    // Token is invalid/expired, try to refresh it
     logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Attempting to refresh...`);
-    warnedInvalidToken = true;
 
-    try {
-      // Fetch the channel from database to get the refresh token
-      const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
-      if (!channel) {
-        logger.error(`[EventSubWs] No channel found for user ${userId}. Cannot refresh token.`);
-        if (userWebSockets[userId]) {
-          userWebSockets[userId].shouldReconnect = false;
-          if (userWebSockets[userId].ws && typeof userWebSockets[userId].ws.close === 'function') {
-            userWebSockets[userId].ws.close();
+    // Check if there's already an ongoing refresh for this user
+    let refreshPromise = tokenRefreshLocks.get(userId);
+
+    if (!refreshPromise) {
+      // No ongoing refresh, create a new one
+      refreshPromise = (async () => {
+        try {
+          // Fetch the channel from database to get the refresh token
+          const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
+          if (!channel) {
+            logger.error(`[EventSubWs] No channel found for user ${userId}. Cannot refresh token.`);
+            return null;
           }
-        }
-        return;
-      }
 
-      const channelAny = channel as any;
-      const refreshToken = channelAny.refresh_token;
+          const channelAny = channel as any;
+          const refreshToken = channelAny.refresh_token;
 
-      if (!refreshToken) {
-        logger.error(`[EventSubWs] No refresh token found for user ${userId}. User needs to re-authenticate.`);
-        if (userWebSockets[userId]) {
-          userWebSockets[userId].shouldReconnect = false;
-          if (userWebSockets[userId].ws && typeof userWebSockets[userId].ws.close === 'function') {
-            userWebSockets[userId].ws.close();
+          if (!refreshToken) {
+            logger.error(`[EventSubWs] No refresh token found for user ${userId}. User needs to re-authenticate.`);
+            return null;
           }
-        }
-        return;
-      }
 
-      // Import the refresh function dynamically to avoid circular dependencies
-      const { refreshAccessToken } = await import('./twitchUtils');
-      const newAccessToken = await refreshAccessToken(channel);
+          // Import the refresh function dynamically to avoid circular dependencies
+          const { refreshAccessToken } = await import('./twitchUtils');
+          const newAccessToken = await refreshAccessToken(channel);
 
-      if (!newAccessToken) {
-        logger.error(`[EventSubWs] Failed to refresh token for user ${userId}. Disabling reconnect.`);
-        if (userWebSockets[userId]) {
-          userWebSockets[userId].shouldReconnect = false;
-          if (userWebSockets[userId].ws && typeof userWebSockets[userId].ws.close === 'function') {
-            userWebSockets[userId].ws.close();
+          if (!newAccessToken) {
+            logger.error(`[EventSubWs] Failed to refresh token for user ${userId}.`);
+            return null;
           }
+
+          logger.info(`[EventSubWs] Successfully refreshed token for user ${userId}`);
+
+          // Update all subscriptions with the new token
+          if (userWebSockets[userId]?.subscriptions) {
+            userWebSockets[userId].subscriptions.forEach(sub => {
+              sub.accessToken = newAccessToken;
+            });
+          }
+
+          return newAccessToken;
+        } catch (refreshErr) {
+          logger.error(`[EventSubWs] Error during token refresh for ${userId}:`, refreshErr);
+          return null;
+        } finally {
+          // Remove the lock after refresh completes (success or failure)
+          tokenRefreshLocks.delete(userId);
         }
-        return;
-      }
+      })();
 
-      // Token successfully refreshed! Use the new token
-      validToken = newAccessToken;
-      logger.info(`[EventSubWs] Successfully refreshed token for user ${userId}`);
+      // Store the promise so other concurrent calls can wait for it
+      tokenRefreshLocks.set(userId, refreshPromise);
+    } else {
+      logger.debug?.(`[EventSubWs] Waiting for ongoing token refresh for user ${userId}...`);
+    }
 
-      // Update the subscription with the new token
-      const subIndex = userWebSockets[userId]?.subscriptions.findIndex(s => s.userId === userId);
-      if (subIndex !== undefined && subIndex >= 0 && userWebSockets[userId]) {
-        userWebSockets[userId].subscriptions[subIndex].accessToken = newAccessToken;
-      }
+    // Wait for the refresh to complete
+    const newToken = await refreshPromise;
 
-    } catch (refreshErr) {
-      logger.error(`[EventSubWs] Error during token refresh for ${userId}:`, refreshErr);
+    if (!newToken) {
+      // Token refresh failed, disable reconnect and close WebSocket
+      logger.error(`[EventSubWs] Failed to refresh token for user ${userId}. Disabling reconnect.`);
       if (userWebSockets[userId]) {
         userWebSockets[userId].shouldReconnect = false;
         if (userWebSockets[userId].ws && typeof userWebSockets[userId].ws.close === 'function') {
@@ -269,10 +277,14 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
       }
       return;
     }
+
+    // Token successfully refreshed! Use the new token
+    validToken = newToken;
   }
 
   // Now subscribe to events with the valid token
-  for (const type of eventTypes) {
+  for (let i = 0; i < eventTypes.length; i++) {
+    const type = eventTypes[i];
     try {
       await axios.post('https://api.twitch.tv/helix/eventsub/subscriptions', {
         type,
@@ -287,6 +299,11 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
         }
       });
       logger.info(`[EventSubWs] Subscribed ${userId} to ${type} via WebSocket`);
+
+      // Add a small delay between subscriptions to avoid rate limiting
+      if (i < eventTypes.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     } catch (err: any) {
       logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${type}:`, err.response?.data || err.message);
     }

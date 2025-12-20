@@ -252,21 +252,6 @@ router.get("/users", requireApiKey, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/ruby-status
- * Check Ruby rank status and threshold
- */
-router.get('/api/ruby-status', async (req: any, res: any) => {
-    try {
-        const { getRubyRankThreshold } = await import('@/jobs/cacheUpdater');
-        const threshold = await getRubyRankThreshold();
-        res.json({ rubyRankThreshold: threshold });
-    } catch (err) {
-        logger.error('Error checking Ruby status:', err);
-        res.status(500).json({ error: 'Failed to check Ruby status.' });
-    }
-});
-
-/**
  * get analytics data
  * Returns aggregated web analytics including historical and today's data.
  * Combines data from AnalyticsDay and RequestMetric tables.
@@ -283,5 +268,23 @@ router.get('/api/analytics', async (req: any, res: any) => {
         res.status(500).json({ error: 'Failed to fetch analytics.' });
     }
 });
+
+// test route to verify if Ruby is unlocked/available
+// only a GET request
+router.get('/api/ruby-status', async (req: any, res: any) => {
+    try {
+        const { getRubyRankThreshold } = await import('@/jobs/cacheUpdater');
+        const threshold = await getRubyRankThreshold();
+        // 
+        if (threshold?.league === 'Ruby') {
+            return res.json({ rubyAvailable: true, message: 'Ruby league is available!' });
+        } else {
+            return res.json({ rubyAvailable: false, message: 'Ruby league is not yet available.' });
+        }
+    } catch (err) {
+        logger.error('Error testing Ruby availability:', err);
+        return res.status(500).json({ error: 'Failed to test Ruby availability.' });
+    }
+})
 
 export default router;

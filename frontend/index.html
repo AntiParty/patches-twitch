@@ -2,63 +2,124 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinalsRS | Twitch Bot for THE FINALS - Stats & Leaderboards</title>
-<!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-KB6VBBXB');</script>
-<!-- End Google Tag Manager -->
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://finalsrs.com/">
-    <meta property="og:title" content="FinalsRS | Twitch Bot for THE FINALS - Stats & Leaderboards">
-    <meta property="og:description"
-        content="Real-time player stats, live leaderboards, and rank tracking for THE FINALS streamers. Engage your chat with zero latency.">
-    <meta property="og:image" content="https://finalsrs.com/assets/finalsrr-chat-preview.png">
+  <!-- Basic -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-    <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta property="twitter:domain" content="finalsrs.com">
-    <meta property="twitter:url" content="https://finalsrs.com/">
-    <meta name="twitter:title" content="FinalsRS | Twitch Bot for THE FINALS - Stats & Leaderboards">
-    <meta name="twitter:description"
-        content="Real-time player stats, live leaderboards, and rank tracking for THE FINALS streamers.">
-    <meta name="twitter:image" content="https://finalsrs.com/assets/finalsrr-chat-preview.png">
+  <!-- Primary SEO -->
+  <title>FinalsRS – Twitch Bot for THE FINALS | Live Stats, Leaderboards & Rank Tracking</title>
+  <meta
+    name="description"
+    content="FinalsRS is a free Twitch bot for THE FINALS. Show live player stats, real-time leaderboards, and rank tracking directly in chat with zero latency."
+  />
+  <meta name="robots" content="index, follow" />
 
-    <!-- Canonical -->
-    <link rel="canonical" href="https://finalsrs.com/">
-    <meta name="google-site-verification" content="x9Ypq3cctF6c7a5910mpq6fnmtg83h9jXrxheEqE0WM" />
-    <!-- Schema.org Structured Data -->
-    <script type="application/ld+json">
+  <!-- Canonical -->
+  <link rel="canonical" href="https://finalsrs.com/" />
+
+  <!-- Open Graph (Facebook, Discord, etc.) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FinalsRS" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:url" content="https://finalsrs.com/" />
+  <meta
+    property="og:title"
+    content="FinalsRS – Twitch Bot for THE FINALS | Live Stats & Leaderboards"
+  />
+  <meta
+    property="og:description"
+    content="Engage your Twitch chat with real-time stats, live leaderboards, and rank tracking for THE FINALS."
+  />
+  <meta
+    property="og:image"
+    content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
+  />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@FinalsRS" />
+  <meta
+    name="twitter:title"
+    content="FinalsRS – Twitch Bot for THE FINALS"
+  />
+  <meta
+    name="twitter:description"
+    content="Free Twitch bot for THE FINALS with live stats, leaderboards, and rank tracking."
+  />
+  <meta
+    name="twitter:image"
+    content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
+  />
+
+  <!-- Keywords (minor ranking impact, still fine to keep) -->
+  <meta
+    name="keywords"
+    content="THE FINALS Twitch bot, FinalsRS, Twitch stats bot, THE FINALS leaderboard, Twitch rank tracking, live game stats"
+  />
+
+  <!-- Icons -->
+  <link rel="icon" href="./assets/logo.png" />
+  <link rel="apple-touch-icon" href="./assets/logo.png" />
+
+  <!-- Performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Google Tag Manager -->
+  <script>
+    (function (w, d, s, l, i) {
+      w[l] = w[l] || [];
+      w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+      var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s),
+        dl = l != "dataLayer" ? "&l=" + l : "";
+      j.async = true;
+      j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+      f.parentNode.insertBefore(j, f);
+    })(window, document, "script", "dataLayer", "GTM-KB6VBBXB");
+  </script>
+  <!-- End GTM -->
+
+  <!-- Umami Analytics -->
+  <script
+    defer
+    src="https://umami.antiparty.dev/script.js"
+    data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5"
+  ></script>
+
+  <!-- Google Site Verification -->
+  <meta
+    name="google-site-verification"
+    content="x9Ypq3cctF6c7a5910mpq6fnmtg83h9jXrxheEqE0WM"
+  />
+
+  <!-- Schema.org Structured Data -->
+  <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "FinalsRS",
-      "applicationCategory": "UtilitiesApplication",
-      "operatingSystem": "Cloud-based",
+      "url": "https://finalsrs.com/",
+      "description": "A free Twitch bot for THE FINALS providing real-time player stats, leaderboards, and rank tracking.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web",
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD"
-      },
-      "description": "Real-time player stats, live leaderboards, and rank tracking for THE FINALS streamers."
+      }
     }
-    </script>
-    <meta name="description"
-        content="Real-time player stats, live leaderboards, and rank tracking for THE FINALS streamers.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="icon" href="./assets/logo.png">
-    <script defer src="https://umami.antiparty.dev/script.js"
-        data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5"></script>
-    <meta name="keywords"
-        content="THE FINALS, Twitch bot, Twitch stats bot, FinalsRS, game stats, Twitch commands, THE FINALS leaderboard, Twitch integration" />
-    <link rel="stylesheet" href="styles.css">
+  </script>
 </head>
 
 <body>

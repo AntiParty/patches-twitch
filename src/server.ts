@@ -14,6 +14,7 @@ import { sessionConfig } from '@/config/session.config';
 import logger from "@/util/logger";
 import path from "path";
 import { trackRequest, loadAnalytics } from "@/util/webAnalytics";
+import { blockSuspiciousRequests, rateLimitByIP } from "@/middleware/security";
 
 // Import all routes
 import routes from './routes';
@@ -109,7 +110,6 @@ export const setupServer = () => {
   app.set("views", frontendPath);
 
   // Security middleware (before logging to reduce spam)
-  const { blockSuspiciousRequests, rateLimitByIP } = require('@/middleware/security');
   app.use(blockSuspiciousRequests);
   app.use(rateLimitByIP);
 

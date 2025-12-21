@@ -48,7 +48,7 @@ const SUSPICIOUS_EXTENSIONS = [
 /**
  * Middleware to block suspicious requests
  */
-export function blockSuspiciousRequests(req: Request, res: Response, next: NextFunction) {
+export function blockSuspiciousRequests(req: Request, res: Response, next: NextFunction): void {
     const path = req.path.toLowerCase();
 
     // Check for suspicious paths
@@ -68,7 +68,8 @@ export function blockSuspiciousRequests(req: Request, res: Response, next: NextF
         }
 
         // Return 404 to not reveal that we're blocking
-        return res.status(404).end();
+        res.status(404).end();
+        return;
     }
 
     next();
@@ -82,7 +83,7 @@ const requestCounts = new Map<string, { count: number; resetAt: number }>();
 const MAX_REQUESTS_PER_MINUTE = 60;
 const WINDOW_MS = 60000; // 1 minute
 
-export function rateLimitByIP(req: Request, res: Response, next: NextFunction) {
+export function rateLimitByIP(req: Request, res: Response, next: NextFunction): void {
     const ip = req.ip || 'unknown';
     const now = Date.now();
 
@@ -91,14 +92,16 @@ export function rateLimitByIP(req: Request, res: Response, next: NextFunction) {
     if (!record || now > record.resetAt) {
         // New window
         requestCounts.set(ip, { count: 1, resetAt: now + WINDOW_MS });
-        return next();
+        next();
+        return;
     }
 
     record.count++;
 
     if (record.count > MAX_REQUESTS_PER_MINUTE) {
         logger.warn(`[Security] Rate limit exceeded for IP: ${ip}`);
-        return res.status(429).json({ error: 'Too many requests' });
+        res.status(429).json({ error: 'Too many requests' });
+        return;
     }
 
     next();

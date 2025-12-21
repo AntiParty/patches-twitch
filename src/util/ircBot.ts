@@ -197,7 +197,15 @@ export const startChatBot = async (
   }
 
   const socket = new net.Socket();
-  let connected = false;
+  
+  // Initialize client object BEFORE connecting so we can update it
+  clients[sanitizedUsername] = {
+    socket,
+    username: botUsername,
+    channel: sanitizedUsername,
+    connected: false,
+    reconnectAttempts: 0
+  };
 
   socket.connect(6667, "irc.chat.twitch.tv", () => {
     logger.info(`[DEBUG] Connecting to IRC as ${botUsername}`);
@@ -205,7 +213,11 @@ export const startChatBot = async (
     socket.write(`PASS oauth:${botToken}\r\n`);
     socket.write(`NICK ${botUsername}\r\n`);
     socket.write(`JOIN #${sanitizedUsername}\r\n`);
-    connected = true;
+    
+    // Update the client object's connected state
+    if (clients[sanitizedUsername]) {
+      clients[sanitizedUsername].connected = true;
+    }
     logger.info(`[DEBUG] Bot connected to #${sanitizedUsername}`);
   });
 
@@ -214,7 +226,7 @@ export const startChatBot = async (
   const HEARTBEAT_INTERVAL = 60_000; // send PING every minute
   const MAX_NO_ACTIVITY = 600_000; // 10 minutes tolerance
   const heartbeat = setInterval(() => {
-    if (!connected) return;
+    if (!clients[sanitizedUsername]?.connected) return;
     const now = Date.now();
     if (now - lastActivity > MAX_NO_ACTIVITY) {
       logger.warn(`[DEBUG] No activity for ${sanitizedUsername} in ${Math.floor(MAX_NO_ACTIVITY / 1000)}s, reconnecting...`);
@@ -230,7 +242,27 @@ export const startChatBot = async (
   }, HEARTBEAT_INTERVAL);
 
   socket.on("data", async (data) => {
-    const lines = data.toString().split("\r\n");
+    const rawData = data.toString();
+    
+    // Log ALL incoming data for debugging authentication issues
+    logger.info(`[DEBUG] Raw IRC data from ${sanitizedUsername}: ${rawData.replace(/\r\n/g, ' | ')}`);
+    
+    // Check for common error messages from Twitch
+    if (rawData.includes("Login authentication failed") || rawData.includes("Login unsuccessful")) {
+      logger.error(`[ERROR] ⚠️ Twitch IRC authentication FAILED for ${sanitizedUsername}. Check TWITCH_BOT_TOKEN and TWITCH_BOT_USERNAME.`);
+      logger.error(`[ERROR] Bot username: ${process.env.TWITCH_BOT_USERNAME}, Token present: ${!!process.env.TWITCH_BOT_TOKEN}`);
+      // Don't reconnect on auth failure - manual intervention needed
+      if (clients[sanitizedUsername]) {
+        clients[sanitizedUsername].intentionalDisconnect = true;
+      }
+      socket.destroy();
+      return;
+    }
+    if (rawData.includes("Error logging in") || rawData.includes("NOTICE")) {
+      logger.error(`[ERROR] Twitch IRC login error for ${sanitizedUsername}: ${rawData}`);
+    }
+
+    const lines = rawData.split("\r\n");
 
     for (const line of lines) {
 
@@ -332,7 +364,9 @@ export const startChatBot = async (
   );
   socket.on("close", () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
-    connected = false;
+    if (clients[sanitizedUsername]) {
+      clients[sanitizedUsername].connected = false;
+    }
     clearInterval(heartbeat);
 
     const client = clients[sanitizedUsername];
@@ -349,14 +383,6 @@ export const startChatBot = async (
       handleReconnect(sanitizedUsername, commandHandler);
     }
   });
-
-  clients[sanitizedUsername] = {
-    socket,
-    username: botUsername,
-    channel: sanitizedUsername,
-    connected,
-    reconnectAttempts: 0
-  };
 };
 
 export const stopChatBot = async (username: string, intentional = false) => {

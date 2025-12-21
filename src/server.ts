@@ -1,8 +1,6 @@
 // --- Environment Setup ---
 import * as dotenv from "dotenv";
-// Load environment file based on NODE_ENV as early as possible
-const envFile = process.env.NODE_ENV === "production" ? ".env" : ".env";
-dotenv.config({ path: require('path').resolve(__dirname, "..", envFile) });
+dotenv.config();
 
 // --- Core Imports ---
 import fs from 'fs';

@@ -244,8 +244,10 @@ export const startChatBot = async (
   socket.on("data", async (data) => {
     const rawData = data.toString();
     
-    // Log ALL incoming data for debugging authentication issues
-    logger.info(`[DEBUG] Raw IRC data from ${sanitizedUsername}: ${rawData.replace(/\r\n/g, ' | ')}`);
+    // Only log PRIVMSG (actual chat) and potential errors, not PING/PONG spam
+    if (rawData.includes("PRIVMSG") || rawData.includes("NOTICE") || rawData.includes("Login")) {
+      logger.info(`[DEBUG] IRC from ${sanitizedUsername}: ${rawData.replace(/\r\n/g, ' | ')}`);
+    }
     
     // Check for common error messages from Twitch
     if (rawData.includes("Login authentication failed") || rawData.includes("Login unsuccessful")) {
@@ -258,7 +260,9 @@ export const startChatBot = async (
       socket.destroy();
       return;
     }
-    if (rawData.includes("Error logging in") || rawData.includes("NOTICE")) {
+    // Only log NOTICE messages that indicate actual errors
+    if (rawData.includes("Error logging in") || 
+        (rawData.includes("NOTICE") && (rawData.includes("authentication") || rawData.includes("banned")))) {
       logger.error(`[ERROR] Twitch IRC login error for ${sanitizedUsername}: ${rawData}`);
     }
 
@@ -313,6 +317,8 @@ export const startChatBot = async (
       const args = argsStr ? argsStr.split(/\s+/) : [];
       const commandKey = rawCommand.startsWith("!") ? rawCommand : "!" + rawCommand;
 
+      logger.info(`[DEBUG] Command detected: ${commandKey} from ${user} in #${channelName}`);
+
       if (!commandHandler || typeof commandHandler !== "object") {
         logger.error("[ERROR] commandHandler is undefined or not an object. Cannot process command:", { commandKey, rawCommand, message });
         continue;
@@ -325,6 +331,7 @@ export const startChatBot = async (
       }
 
       if (commandEntry && typeof commandEntry === "function") {
+        logger.info(`[DEBUG] Executing command: ${commandKey}`);
         if (commandCounter?.inc) commandCounter.inc({ command: rawCommand });
         if (incrementCommandsProcessed) incrementCommandsProcessed();
 
@@ -355,6 +362,8 @@ export const startChatBot = async (
           tags,
           args
         );
+      } else {
+        logger.warn(`[DEBUG] Command not found or not a function: ${commandKey}`);
       }
     }
   });

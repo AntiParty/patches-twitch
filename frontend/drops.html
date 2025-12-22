@@ -401,96 +401,19 @@
             <div class="drops-container">
                 <!-- Featured Image -->
                 <div class="drops-featured-image">
-                    <img src="./assets/drops/image+(148).webp" alt="THE FINALS Twitch Drops Showcase">
+                    <img id="drops-featured-img" src="./assets/drops/image+(148).webp" alt="THE FINALS Twitch Drops Showcase">
                 </div>
 
                 <!-- Drops List -->
                 <div class="drops-list-container">
                     <div class="drops-list-header">
                         <h2>Available Drops</h2>
-                        <span class="last-updated">Last updated: November 28, 2025</span>
+                        <span class="last-updated" id="drops-last-updated">Last updated: November 28, 2025</span>
                     </div>
 
-                    <ul class="drops-list">
-                        <li class="drop-item">
-                            <div class="drop-item-info">
-                                <div class="drop-item-name">TGM25 Official Charm</div>
-                                <div class="drop-item-category">Character Accessory</div>
-                            </div>
-                            <div class="drop-item-time">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                1 hour
-                            </div>
-                        </li>
-
-                        <li class="drop-item">
-                            <div class="drop-item-info">
-                                <div class="drop-item-name">TGM25 M11</div>
-                                <div class="drop-item-category">Weapon Skin</div>
-                            </div>
-                            <div class="drop-item-time">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                2 hours
-                            </div>
-                        </li>
-
-                        <li class="drop-item">
-                            <div class="drop-item-info">
-                                <div class="drop-item-name">TGM25 BFR Titan</div>
-                                <div class="drop-item-category">Weapon Skin</div>
-                            </div>
-                            <div class="drop-item-time">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                3 hours
-                            </div>
-                        </li>
-                        <li class="drop-item">
-                            <div class="drop-item-info">
-                                <div class="drop-item-name">TGM25 P90</div>
-                                <div class="drop-item-category">Weapon Skin</div>
-                            </div>
-                            <div class="drop-item-time">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                4 hours
-                            </div>
-                        </li>
-
-                        <li class="drop-item">
-                            <div class="drop-item-info">
-                                <div class="drop-item-name">TGM25 Official Visor</div>
-                                <div class="drop-item-category">Player Sin</div>
-                            </div>
-                            <div class="drop-item-time">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                </svg>
-                                5 hours
-                            </div>
-                        </li>
-
+                    <ul class="drops-list" id="drops-list">
+                        <!-- Populated by JS -->
+                        <div style="text-align: center; padding: 20px; color: var(--text-tertiary);">Loading drops...</div>
                     </ul>
 
                     <div class="drops-cta">
@@ -568,6 +491,67 @@
     </footer>
 
     <script src="script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Fetch drops data with cache busting
+                const res = await fetch('/drops.json?t=' + Date.now());
+                if (!res.ok) throw new Error('Failed to load drops data');
+                const data = await res.json();
+
+                // Update Header Info
+                if (data.lastUpdated) {
+                    document.getElementById('drops-last-updated').textContent = `Last updated: ${data.lastUpdated}`;
+                }
+                if (data.featuredImage) {
+                    document.getElementById('drops-featured-img').src = data.featuredImage;
+                }
+
+                // Render List
+                const listEl = document.getElementById('drops-list');
+                listEl.innerHTML = ''; // Clear placeholder
+
+                if (data.drops && Array.isArray(data.drops)) {
+                    data.drops.forEach(drop => {
+                        const li = document.createElement('li');
+                        li.className = 'drop-item';
+                        li.innerHTML = `
+                            <div class="drop-item-info">
+                                <div class="drop-item-name">${escapeHtml(drop.name)}</div>
+                                <div class="drop-item-category">${escapeHtml(drop.category)}</div>
+                            </div>
+                            <div class="drop-item-time">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                ${escapeHtml(drop.duration)}
+                            </div>
+                        `;
+                        listEl.appendChild(li);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('drops-list').innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-tertiary);">
+                        Failed to load drops data. Please try again later.
+                    </div>`;
+            }
+        });
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
 </body>
 
 </html>

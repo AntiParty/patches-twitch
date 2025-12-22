@@ -304,4 +304,45 @@ router.post('/api/user-dashboard-access', requireAdminAPI, (req: any, res: any) 
     res.json({ success: true, enabled });
 });
 
+/**
+ * GET /admin/api/drops
+ * Get drops configuration
+ */
+router.get('/api/drops', requireAdminAPI, (req: any, res: any) => {
+    const dropsPath = path.join(process.cwd(), 'frontend', 'drops.json');
+    fs.readFile(dropsPath, 'utf8', (err, data) => {
+        if (err) {
+            logger.error('Error reading drops file:', err);
+            return res.status(500).json({ error: 'Failed to read drops config' });
+        }
+        try {
+            res.json(JSON.parse(data));
+        } catch (e) {
+            res.status(500).json({ error: 'Invalid JSON in drops config' });
+        }
+    });
+});
+
+/**
+ * POST /admin/api/drops
+ * Update drops configuration
+ */
+router.post('/api/drops', requireAdminAPI, (req: any, res: any) => {
+    const dropsPath = path.join(process.cwd(), 'frontend', 'drops.json');
+    const newConfig = req.body;
+
+    if (!newConfig || !Array.isArray(newConfig.drops)) {
+        return res.status(400).json({ error: 'Invalid drops configuration' });
+    }
+
+    fs.writeFile(dropsPath, JSON.stringify(newConfig, null, 2), (err) => {
+        if (err) {
+            logger.error('Error writing drops file:', err);
+            return res.status(500).json({ error: 'Failed to save drops config' });
+        }
+        logger.info(`[Admin] Updated drops configuration`);
+        res.json({ success: true });
+    });
+});
+
 export default router;

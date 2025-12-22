@@ -447,6 +447,9 @@
         <li class="nav-item" onclick="switchView('broadcast')">
           <i class="fas fa-bullhorn"></i> Broadcast
         </li>
+        <li class="nav-item" onclick="switchView('drops')">
+          <i class="fas fa-gift"></i> Drops
+        </li>
         <li class="nav-item" onclick="switchView('commands')">
           <i class="fas fa-terminal"></i> Commands
         </li>
@@ -603,6 +606,40 @@
         </div>
       </div>
 
+      <!-- Drops View -->
+      <div id="view-drops" class="view-section">
+        <div class="header">
+          <h2 class="page-title">Manage Twitch Drops</h2>
+          <button class="btn btn-primary" onclick="saveDropsConfig()"><i class="fas fa-save"></i> Save Changes</button>
+        </div>
+
+        <!-- Global Settings -->
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-title" style="margin-bottom: 15px;">Global Settings</div>
+          <div class="grid-2">
+            <div>
+              <label style="display:block; margin-bottom:5px; color:var(--text-muted);">Last Updated Text</label>
+              <input id="drop-last-updated" class="input" placeholder="e.g. November 28, 2025">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; color:var(--text-muted);">Featured Image URL</label>
+              <input id="drop-featured-image" class="input" placeholder="Path to image">
+            </div>
+          </div>
+        </div>
+
+        <!-- Drops List -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Active Drops List</div>
+            <button class="btn btn-success" onclick="addDropItem()"><i class="fas fa-plus"></i> Add Item</button>
+          </div>
+          <div id="drops-items-container" style="display:flex; flex-direction:column; gap:10px;">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
       <!-- Commands View -->
       <div id="view-commands" class="view-section">
         <div class="header">
@@ -735,6 +772,7 @@
       if (viewId === 'database') loadDbTable();
       if (viewId === 'logs') fetchLogs();
       if (viewId === 'channels') fetchChannels();
+      if (viewId === 'drops') loadDropsConfig();
     }
 
     function refreshAll() {
@@ -744,6 +782,107 @@
       fetchCommands();
       fetchPerformance();
     }
+
+
+    // --- Drops Management ---
+    async function loadDropsConfig() {
+        const container = document.getElementById('drops-items-container');
+        container.innerHTML = '<div style="padding:20px; text-align:center;">Loading...</div>';
+        try {
+            const res = await fetch('/admin/api/drops');
+            if (!res.ok) throw new Error('Failed to load');
+            const data = await res.json();
+            
+            // Globals
+            document.getElementById('drop-last-updated').value = data.lastUpdated || '';
+            document.getElementById('drop-featured-image').value = data.featuredImage || '';
+
+            // Items
+            container.innerHTML = '';
+            if (data.drops && Array.isArray(data.drops)) {
+                data.drops.forEach(drop => addDropItem(drop));
+            }
+        } catch (err) {
+            container.innerHTML = `<div style="color:var(--danger)">Error: ${err.message}</div>`;
+        }
+    }
+
+    function addDropItem(data = {}) {
+        const container = document.getElementById('drops-items-container');
+        const id = Date.now() + Math.random().toString().slice(2, 5);
+        
+        const div = document.createElement('div');
+        div.className = 'drop-edit-row';
+        div.id = `drop-row-${id}`;
+        div.style.cssText = 'display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:10px; align-items:center; background:var(--bg-app); padding:10px; border-radius:6px; border:1px solid var(--border);';
+        
+        div.innerHTML = `
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Name</label>
+                <input class="input drop-name" value="${escapeHtml(data.name || '')}" placeholder="Item Name">
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Category</label>
+                <input class="input drop-cat" value="${escapeHtml(data.category || '')}" placeholder="Category">
+            </div>
+            <div>
+                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Duration</label>
+                <input class="input drop-dur" value="${escapeHtml(data.duration || '')}" placeholder="e.g. 1 hour">
+            </div>
+            <div style="display:flex; align-items:flex-end; height:100%;">
+                <button class="btn btn-danger" style="padding:8px;" onclick="removeDropItem('${id}')"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    function removeDropItem(id) {
+        const el = document.getElementById(`drop-row-${id}`);
+        if(el) el.remove();
+    }
+
+    async function saveDropsConfig() {
+        const lastUpdated = document.getElementById('drop-last-updated').value;
+        const featuredImage = document.getElementById('drop-featured-image').value;
+        
+        const drops = [];
+        document.querySelectorAll('.drop-edit-row').forEach(row => {
+            drops.push({
+                name: row.querySelector('.drop-name').value,
+                category: row.querySelector('.drop-cat').value,
+                duration: row.querySelector('.drop-dur').value,
+                icon: 'circle' // Default
+            });
+        });
+
+        const config = { lastUpdated, featuredImage, drops };
+
+        try {
+            await ensureCsrfToken();
+            const res = await fetch('/admin/api/drops', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+                body: JSON.stringify(config)
+            });
+            const data = await res.json();
+            if (data.success) alert('Saved!');
+            else alert('Error: ' + data.error);
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Initial check for dashboard state
 
     function startPolling() {
       setInterval(fetchPerformance, 5000);
@@ -1146,5 +1285,4 @@
 
   </script>
 </body>
-
 </html>

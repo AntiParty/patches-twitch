@@ -246,7 +246,7 @@ export const startChatBot = async (
     
     // Only log PRIVMSG (actual chat) and potential errors, not PING/PONG spam
     if (rawData.includes("PRIVMSG") || rawData.includes("NOTICE") || rawData.includes("Login")) {
-      logger.info(`[DEBUG] IRC from ${sanitizedUsername}: ${rawData.replace(/\r\n/g, ' | ')}`);
+      //logger.info(`[DEBUG] IRC from ${sanitizedUsername}: ${rawData.replace(/\r\n/g, ' | ')}`);
     }
     
     // Check for common error messages from Twitch

@@ -26,19 +26,19 @@ const sequelize = new Sequelize({
 // Channel model
 // add bot_enabled boolean to Channel model
 class Channel extends Model {
-  public id!: number;
-  public username!: string;
-  public player_id!: string | null;
-  public twitch_user_id!: string | null;
-  public access_token!: string | null;
-  public refresh_token!: string | null;
-  public token_expires_at!: Date | null;
-  public overlay_token!: string | null;
-  public overlay_theme!: string | null;
-  public overlay_color!: string | null;
-  public overlay_layout!: string | null;
-  public session_start_rs!: number | null;
-  public bot_enabled!: boolean;
+  declare id: number;
+  declare username: string;
+  declare player_id: string | null;
+  declare twitch_user_id: string | null;
+  declare access_token: string | null;
+  declare refresh_token: string | null;
+  declare token_expires_at: Date | null;
+  declare overlay_token: string | null;
+  declare overlay_theme: string | null;
+  declare overlay_color: string | null;
+  declare overlay_layout: string | null;
+  declare session_start_rs: number | null;
+  declare bot_enabled: boolean;
 }
 
 

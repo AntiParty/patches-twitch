@@ -242,13 +242,75 @@ RankGoal.init(
   }
 );
 
+/**
+ * Simple migration runner to add missing columns without wiping the DB.
+ */
+async function runMigrations() {
+  const queryInterface = sequelize.getQueryInterface();
+  try {
+    // Check if Channels table exists
+    const tableInfo = await queryInterface.describeTable('Channels').catch(() => null);
+    if (!tableInfo) return; // Table doesn't exist yet, sync() will handle it
+
+    // Add bot_enabled if missing
+    if (!tableInfo.bot_enabled) {
+      logger.info('[Migration] Adding bot_enabled column to Channels table...');
+      await queryInterface.addColumn('Channels', 'bot_enabled', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      });
+      logger.info('[Migration] bot_enabled column added successfully.');
+    }
+
+    // Add overlay columns if missing
+    if (!tableInfo.overlay_theme) {
+      logger.info('[Migration] Adding overlay_theme column to Channels table...');
+      await queryInterface.addColumn('Channels', 'overlay_theme', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'minimal',
+      });
+    }
+    if (!tableInfo.overlay_color) {
+      logger.info('[Migration] Adding overlay_color column to Channels table...');
+      await queryInterface.addColumn('Channels', 'overlay_color', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: '#9147ff',
+      });
+    }
+    if (!tableInfo.overlay_layout) {
+      logger.info('[Migration] Adding overlay_layout column to Channels table...');
+      await queryInterface.addColumn('Channels', 'overlay_layout', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: 'compact',
+      });
+    }
+    if (!tableInfo.session_start_rs) {
+      logger.info('[Migration] Adding session_start_rs column to Channels table...');
+      await queryInterface.addColumn('Channels', 'session_start_rs', {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: null,
+      });
+    }
+  } catch (err) {
+    logger.error('[Migration] Migration error:', err);
+  }
+}
+
 // Sync the database and export a promise for sync completion
-const dbReady = sequelize.sync().then(() => {
-  logger.info('Database synced.');
-}).catch(error => {
-  logger.error('database failed:', error);
-  throw error;
-});
+const dbReady = sequelize.sync()
+  .then(async () => {
+    await runMigrations();
+    logger.info('Database synced and migrations checked.');
+  })
+  .catch(error => {
+    logger.error('database failed:', error);
+    throw error;
+  });
 
 // Returns stream sessions started within the last 8 hours (adjust as needed)
 export async function getActiveSessions() {

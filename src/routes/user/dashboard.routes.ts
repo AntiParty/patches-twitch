@@ -45,6 +45,7 @@ router.get("/dashboard", async (req: any, res: any) => {
                 playerId: user.get('player_id') || null,
                 overlayToken: user.get('overlay_token') || null,
                 overlayLayout: user.get('overlay_layout') || null, // Will store configs
+                botEnabled: user.get('bot_enabled'),
             };
         }
     } catch (err) {
@@ -165,6 +166,46 @@ router.post('/api/disconnect-bot', requireUserAPI, async (req: any, res: any) =>
     } catch (err) {
         logger.error('Error disconnecting bot/service:', err);
         res.status(500).json({ error: 'Failed to disconnect.' });
+    }
+});
+
+/**
+ * POST /api/toggle-bot
+ * Toggles bot_enabled field
+ */
+
+router.post('/api/toggle-bot', requireUserAPI, async (req: any, res: any) => {
+    const username = req.session.twitchUsername;
+    try {
+        const channelInstance = await Channel.findOne({ where: { username } });
+        if (!channelInstance) {
+            return res.status(404).json({ error: 'Channel not found.' });
+        }
+        const newState = !channelInstance.get('bot_enabled');
+        await channelInstance.update({ bot_enabled: newState });
+
+        // Notify bot process for immediate effect
+        try {
+            if (newState) {
+                await axios.post('http://localhost:4000/add-channel', {
+                    twitch_user_id: channelInstance.get('twitch_user_id'),
+                    username,
+                });
+            } else {
+                await axios.post('http://localhost:4000/remove-channel', {
+                    twitch_user_id: channelInstance.get('twitch_user_id'),
+                    username,
+                });
+            }
+        } catch (botErr) {
+            logger.error(`[dashboard] Error notifying bot process of status change for ${username}:`, botErr);
+        }
+
+        logger.info(`[dashboard] Toggled bot for ${username} to ${newState}`);
+        res.json({ success: true, bot_enabled: newState });
+    } catch (err) {
+        logger.error(`[dashboard] Error toggling bot for ${username}: `, err);
+        res.status(500).json({ error: 'Failed to toggle bot.' });
     }
 });
 

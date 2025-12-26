@@ -24,7 +24,23 @@ const sequelize = new Sequelize({
 });
 
 // Channel model
-class Channel extends Model { }
+// add bot_enabled boolean to Channel model
+class Channel extends Model {
+  public id!: number;
+  public username!: string;
+  public player_id!: string | null;
+  public twitch_user_id!: string | null;
+  public access_token!: string | null;
+  public refresh_token!: string | null;
+  public token_expires_at!: Date | null;
+  public overlay_token!: string | null;
+  public overlay_theme!: string | null;
+  public overlay_color!: string | null;
+  public overlay_layout!: string | null;
+  public session_start_rs!: number | null;
+  public bot_enabled!: boolean;
+}
+
 
 // Custom command response model
 // Utility functions for custom responses
@@ -36,6 +52,7 @@ async function getCustomResponse(channel: string, command: string): Promise<stri
 async function setCustomResponse(channel: string, command: string, response: string): Promise<void> {
   await CustomResponse.upsert({ channel, command, response });
 }
+
 
 class CustomResponse extends Model { }
 CustomResponse.init(
@@ -121,6 +138,11 @@ Channel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+    },
+    bot_enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {

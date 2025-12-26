@@ -1,4 +1,4 @@
-import { Sequelize, DataTypes, Model } from "sequelize";
+import { Sequelize, DataTypes, Model, Op } from "sequelize";
 import path from "path";
 import logger from "@/util/logger"; // Logging utility
 import fs from "fs";
@@ -66,6 +66,9 @@ RequestMetric.init(
     modelName: "RequestMetric",
     tableName: "RequestMetrics",
     timestamps: false,
+    indexes: [
+      { fields: ["timestamp"] }
+    ]
   }
 );
 
@@ -103,6 +106,26 @@ export const metricsDbReady = sequelizeMetrics
       logger.warn("[metrics-db] Could not enable WAL mode:", err);
       logger.info("[metrics-db] metrics DB ready (default mode)");
     }
+  })
+  .then(() => {
+    // Start periodic cleanup of old metrics (e.g., every 24 hours)
+    const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+    setInterval(async () => {
+      try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const deletedRequests = await RequestMetric.destroy({
+          where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
+        });
+        const deletedPerf = await PerformanceMetric.destroy({
+          where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
+        });
+        if (deletedRequests > 0 || deletedPerf > 0) {
+          logger.info(`[metrics-db] Cleaned up ${deletedRequests} request logs and ${deletedPerf} performance logs older than 30 days.`);
+        }
+      } catch (err) {
+        logger.error("[metrics-db] Failed to clean up old metrics:", err);
+      }
+    }, CLEANUP_INTERVAL);
   })
   .catch((err) => {
     logger.error("[metrics-db] failed to sync:", err);

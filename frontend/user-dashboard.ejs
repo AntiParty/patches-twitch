@@ -288,6 +288,39 @@
       background-color: rgba(0, 179, 95, 0.2);
     }
 
+    .btn-success-solid {
+      background-color: var(--success);
+      color: white;
+    }
+
+    .btn-success-solid:hover {
+      background-color: #009e54;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 179, 95, 0.3);
+    }
+
+    .btn-danger-solid {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .btn-danger-solid:hover {
+      background-color: #d11613;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(233, 25, 22, 0.3);
+    }
+
+    /* Status Indicators */
+    .indicator-success {
+      background: var(--success) !important;
+      box-shadow: 0 0 10px var(--success) !important;
+    }
+
+    .indicator-danger {
+      background: var(--danger) !important;
+      box-shadow: 0 0 10px var(--danger) !important;
+    }
+
     .btn-ghost {
       background-color: transparent;
       color: var(--text-muted);
@@ -609,19 +642,31 @@
             <div style="color: var(--text-muted); margin-top: 4px;">Welcome back, <%= username %>
             </div>
           </div>
-          <a href="/" class="btn btn-ghost"><i class="fas fa-external-link-alt"></i> Public Page</a>
+          <a href="/" class="btn btn-ghost"><i class="fas fa-external-link-alt"></i> Home Page</a>
         </div>
 
         <div class="grid-3" style="margin-bottom: 30px;">
           <div class="card">
             <div class="card-header">
               <div class="card-title">Bot Status</div>
-              <div
-                style="width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success);">
+              <i class="fas fa-robot" style="color: var(--text-muted); font-size: 14px;"></i>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+              <div id="bot-status-text" style="font-size: 24px; font-weight: 700; color: var(--text-main);">
+                <%= userStats.botEnabled ? 'Active' : 'Inactive' %>
+              </div>
+              <div id="bot-status-indicator"
+                class="<%= userStats.botEnabled ? 'indicator-success' : 'indicator-danger' %>"
+                style="width: 10px; height: 10px; border-radius: 50%;">
               </div>
             </div>
-            <div style="font-size: 24px; font-weight: 700; color: var(--text-main);">Active</div>
-            <div class="card-subtitle">Connected to chat</div>
+            <div class="card-subtitle" id="bot-status-subtitle">
+              <%= userStats.botEnabled ? 'Connected to chat' : 'Bot is currently offline' %>
+            </div>
+            <button class="btn <%= userStats.botEnabled ? 'btn-danger-solid' : 'btn-success-solid' %>" id="toggle-bot-btn" onclick="toggleBot()" style="margin-top: 20px; width: 100%; font-weight: 600; padding: 12px;">
+              <i class="fas <%= userStats.botEnabled ? 'fa-power-off' : 'fa-play' %>" id="toggle-bot-icon"></i> 
+              <span id="toggle-bot-text"><%= userStats.botEnabled ? 'Turn Off' : 'Turn On' %></span>
+            </button>
           </div>
 
           <div class="card">
@@ -666,6 +711,7 @@
                 <h3 style="font-size: 14px; margin: 0;">Twitch Drops</h3>
                 <p style="font-size: 12px; margin-top: 4px;">Auto-post drop links in chat.</p>
               </div>
+              
             </div>
           </div>
 
@@ -675,7 +721,7 @@
               style="background: var(--bg-hover); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 16px;">
               <i class="fas fa-rocket" style="font-size: 24px; color: var(--primary);"></i>
             </div>
-            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Ready to Level Up?</h3>
+            <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Want to Change commands?</h3>
             <p style="color: var(--text-muted); max-width: 300px; margin-bottom: 20px;">Check out the documentation to
               learn about advanced commands and features.</p>
             <button class="btn btn-ghost" onclick="window.open('/docs', '_blank')">View Documentation</button>
@@ -696,6 +742,36 @@
             <div id="commands-list" style="display: flex; flex-direction: column; gap: 16px;">
               <!-- Populated by JS -->
               <div style="text-align: center; padding: 20px; color: var(--text-muted);">Loading...</div>
+            </div>
+
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+              <div class="card-title" style="margin-bottom: 12px; font-size: 14px; color: var(--text-muted);">Available Variables</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="font-size: 12px; background: var(--bg-app); padding: 8px; border-radius: 4px;">
+                  <code style="color: var(--primary); font-weight: 700;">{username}</code>
+                  <div style="color: var(--text-muted); margin-top: 2px;">Viewer's display name</div>
+                </div>
+                <div style="font-size: 12px; background: var(--bg-app); padding: 8px; border-radius: 4px;">
+                  <code style="color: var(--primary); font-weight: 700;">{rank}</code>
+                  <div style="color: var(--text-muted); margin-top: 2px;">Global leaderboard rank</div>
+                </div>
+                <div style="font-size: 12px; background: var(--bg-app); padding: 8px; border-radius: 4px;">
+                  <code style="color: var(--primary); font-weight: 700;">{league}</code>
+                  <div style="color: var(--text-muted); margin-top: 2px;">League (e.g. Diamond 1)</div>
+                </div>
+                <div style="font-size: 12px; background: var(--bg-app); padding: 8px; border-radius: 4px;">
+                  <code style="color: var(--primary); font-weight: 700;">{score}</code>
+                  <div style="color: var(--text-muted); margin-top: 2px;">Total Rank Score (RS)</div>
+                </div>
+                <div style="font-size: 12px; background: var(--bg-app); padding: 8px; border-radius: 4px;">
+                  <code style="color: var(--primary); font-weight: 700;">{wtRank}</code>
+                  <div style="color: var(--text-muted); margin-top: 2px;">World Tour rank</div>
+                </div>
+                <div style="font-size: 12px; background: var(--bg-app); padding: 8px; border-radius: 4px;">
+                  <code style="color: var(--primary); font-weight: 700;">{rankScore}</code>
+                  <div style="color: var(--text-muted); margin-top: 2px;">Alias for {score}</div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1359,22 +1435,41 @@
       }
     }
 
+    const mockVars = {
+      username: '<%= username %>',
+      user: '<%= username %>',
+      rank: '#123',
+      league: 'Diamond 1',
+      rankScore: '45,210',
+      score: '45,210',
+      wtRank: '#456',
+      found: 'true'
+    };
+
     function updatePreview(cmd, val) {
       const previewMsg = document.getElementById('preview-response-msg');
       const content = previewMsg.querySelector('.msg-content');
       const user = previewMsg.querySelector('.user-name');
+      const viewerName = document.querySelector('.chat-msg .user-name');
 
-      // Update the user message to match the command being edited
-      // (Simulating user typing !rank)
-      // Actually, let's just update the bot response part
+      // Update the user message to match the command (!rank, !record, etc)
+      const userMsgs = document.querySelectorAll('.chat-msg .msg-content');
+      if (userMsgs.length >= 2) {
+        userMsgs[1].innerText = `!${cmd}`;
+      }
+
+      let responseText = val || (cmd === 'rank' ? 'Your rank is {rankScore} RS in {league} | WT rank: {wtRank}' : `(Default response for !${cmd})`);
+      
+      // Replace variables with mock data
+      responseText = responseText.replace(/\{(\w+)\}/g, (match, v) => {
+        return mockVars[v] || match;
+      });
 
       user.innerText = 'FinalsRS';
-      content.innerText = val || `(Default response for !${cmd})`;
+      content.innerText = responseText;
+      content.style.fontSize = '13px';
       content.style.color = val ? '#efeff1' : '#adadb8';
-
-      // Highlight the active command in preview
-      // Maybe add a "User: !rank" message above it dynamically?
-      // For simplicity, just update the bot response text.
+      previewMsg.style.opacity = '1';
     }
 
     async function saveCommand(cmd) {
@@ -1586,6 +1681,53 @@
         });
       }
     });
+
+    async function toggleBot() {
+      const btn = document.getElementById('toggle-bot-btn');
+      const text = document.getElementById('toggle-bot-text');
+      const icon = document.getElementById('toggle-bot-icon');
+      const statusText = document.getElementById('bot-status-text');
+      const statusSubtitle = document.getElementById('bot-status-subtitle');
+      const indicator = document.getElementById('bot-status-indicator');
+
+      const originalText = text.innerText;
+      text.innerText = 'Wait...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/toggle-bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          const isEnabled = data.bot_enabled;
+
+          // Update Button
+          btn.className = `btn ${isEnabled ? 'btn-danger-solid' : 'btn-success-solid'}`;
+          text.innerText = isEnabled ? 'Turn Off' : 'Turn On';
+          icon.className = `fas ${isEnabled ? 'fa-power-off' : 'fa-play'}`;
+
+          // Update Status Display
+          statusText.innerText = isEnabled ? 'Active' : 'Inactive';
+          statusSubtitle.innerText = isEnabled ? 'Connected to chat' : 'Bot is currently offline';
+          
+          indicator.className = isEnabled ? 'indicator-success' : 'indicator-danger';
+
+          btn.disabled = false;
+        } else {
+          alert('Failed to toggle bot status.');
+          text.innerText = originalText;
+          btn.disabled = false;
+        }
+      } catch (err) {
+        console.error('Error toggling bot:', err);
+        alert('An error occurred. Please try again.');
+        text.innerText = originalText;
+        btn.disabled = false;
+      }
+    }
   </script>
 </body>
 

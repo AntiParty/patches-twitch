@@ -14,15 +14,6 @@ dbReady.then(async () => {
 
   try {
     await botManager.loadTokensOnStartup();
-    await botManager.loadChannels();
-    startCacheUpdater();
-    const users = await Channel.findAll();
-    users.forEach((user: any) => {
-      if (user.twitch_user_id && user.access_token) {
-        addUserSubscription(user.twitch_user_id, user.access_token, user.twitch_user_id);
-        logger.info(`[EventSubWs] Auto-subscribed ${user.username} (${user.twitch_user_id})`);
-      }
-    });
     // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
     startBotTokenAutoRefresher();
 
@@ -51,7 +42,7 @@ dbReady.then(async () => {
     controlApp.use(express.json());
 
     // Add channel after auth
-    controlApp.post("/add-channel", async (req, res) => {
+    controlApp.post("/add-channel", async (req: any, res: any) => {
       const { twitch_user_id } = req.body;
       if (!twitch_user_id) {
         return res.status(400).send("Missing twitch_user_id");
@@ -63,13 +54,13 @@ dbReady.then(async () => {
 
         await botManager.startBotForUser(
           user.username,
-          user.access_token,
-          user.refresh_token,
-          user.twitch_user_id
+          user.access_token || "",
+          user.refresh_token || "",
+          user.twitch_user_id || ""
         );
         res.send(`Channel ${user.username} added to bot`);
         logger.info(`[ControlAPI] Added channel: ${user.username}`);
-        sendMessageToDiscord(user.username)
+        sendMessageToDiscord(user.username);
       } catch (err) {
         logger.error("Failed to add channel via control API:", err);
         res.status(500).send("Internal error");
@@ -78,7 +69,7 @@ dbReady.then(async () => {
 
 
     // Remove channel and disconnect EventSub WebSocket
-    controlApp.post("/remove-channel", async (req, res) => {
+    controlApp.post("/remove-channel", async (req: any, res: any) => {
       const { twitch_user_id, username } = req.body;
       if (!twitch_user_id && !username) {
         return res.status(400).send("Missing twitch_user_id or username");
@@ -115,7 +106,7 @@ dbReady.then(async () => {
     });
 
     // --- NEW: Send a message via botManager ---
-    controlApp.post("/send-message", async (req, res) => {
+    controlApp.post("/send-message", async (req: any, res: any) => {
       const { channel, message } = req.body;
       if (!message || typeof message !== "string") {
         return res.status(400).send("Message is required");
@@ -131,7 +122,7 @@ dbReady.then(async () => {
       }
     });
 
-    controlApp.post("/pause", async (req, res) => {
+    controlApp.post("/pause", async (req: any, res: any) => {
       try {
         await botManager.pauseAll();
         res.json({ success: true });
@@ -141,7 +132,7 @@ dbReady.then(async () => {
       }
     });
 
-    controlApp.post("/resume", async (req, res) => {
+    controlApp.post("/resume", async (req: any, res: any) => {
       try {
         await botManager.resumeAll();
         res.json({ success: true });
@@ -151,7 +142,7 @@ dbReady.then(async () => {
       }
     });
 
-    controlApp.get("/health", async (req, res) => {
+    controlApp.get("/health", async (req: any, res: any) => {
       const timestamp = Date.now();
       const uptime = process.uptime();
 
@@ -169,7 +160,7 @@ dbReady.then(async () => {
         const start = performance.now();
         await Channel.findOne(); // light DB query
         databaseStatus.latencyMs = Math.round(performance.now() - start);
-      } catch (err) {
+      } catch (err: any) {
         databaseStatus.status = "error";
         databaseStatus.detail = err.message;
       }
@@ -191,7 +182,7 @@ dbReady.then(async () => {
       } catch (err) {
         botStatus.status = "error";
         botStatus.detail = "ECONNREFUSED";
-        botStatus.latencyMs = null;
+        botStatus.latencyMs = 0;
       }
 
       // -------------------------------------
@@ -205,17 +196,17 @@ dbReady.then(async () => {
       };
 
       try {
-        if (global.eventsubWs && global.eventsubWs.readyState === 1) {
+        if ((global as any).eventsubWs && (global as any).eventsubWs.readyState === 1) {
           // OPEN
           eventsubStatus.latencyMs = 1;
         } else {
           eventsubStatus.status = "optional";
           eventsubStatus.detail = "WS_NOT_CONNECTED";
         }
-      } catch (err) {
+      } catch (err: any) {
         eventsubStatus.status = "error";
         eventsubStatus.detail = err.message ?? "WS_NOT_CONNECTED";
-        eventsubStatus.latencyMs = null;
+        eventsubStatus.latencyMs = 0;
       }
 
       // -------------------------------------

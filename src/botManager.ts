@@ -24,13 +24,16 @@ export class BotManager {
 
   public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {
     try {
-      // Always reload commands before starting each bot
-      const freshCommandHandler = loadCommands();
-      await startChatBot(username, freshCommandHandler);
-
-      // Subscribe user to EventSub via WebSocket
-      addUserSubscription(twitchUserId, accessToken, twitchUserId);
-
+      // Use the cached command handler instead of reloading every time
+      const channel = await Channel.findOne({ where: { username } });
+      if (!channel || !channel.bot_enabled) {
+        logger.info(`Bot not enabled for ${username}`);
+        return;
+      } else {
+        await startChatBot(username, this.commandHandler);
+        addUserSubscription(twitchUserId, accessToken, twitchUserId);
+      }
+      
       logger.info(`Bot started successfully for ${username}`);
     } catch (error) {
       logger.error(`Failed to start bot for ${username}:`, error);
@@ -95,9 +98,8 @@ export class BotManager {
         );
       }
 
-      // Reconnect bot with fresh token
-      const freshCommandHandler = loadCommands();
-      await reconnectChatBot(username, freshCommandHandler);
+      // Reconnect bot with cached command handler
+      await reconnectChatBot(username, this.commandHandler);
       logger.info(`[${username}] Bot reconnected after token refresh.`);
       tokenRefreshFailures[username] = 0;
     } catch (error) {
@@ -145,8 +147,8 @@ export class BotManager {
     }
   }
 
-  public async validateAllTokens() {
-    const channels = await Channel.findAll();
+  public async validateAllTokens(prefetchedChannels?: Channel[]) {
+    const channels = prefetchedChannels || await Channel.findAll();
     const validationWindow = 30 * 60 * 1000; // 30 minutes
 
     for (const channel of channels) {
@@ -190,14 +192,16 @@ export class BotManager {
   }
 
   public async loadTokensOnStartup() {
-    logger.info("Loading stored tokens...");
-    await this.validateAllTokens();
+    logger.info("Loading stored tokens and starting bots...");
+    const channels = await Channel.findAll();
+    await this.validateAllTokens(channels);
     this.startTokenValidationInterval();
+    await this.loadChannels(channels);
   }
 
-  public async loadChannels() {
+  public async loadChannels(prefetchedChannels?: Channel[]) {
     try {
-      const channels = await Channel.findAll();
+      const channels = prefetchedChannels || await Channel.findAll();
       logger.info(`Found ${channels.length} channels to load`);
 
       for (const channel of channels) {
@@ -267,6 +271,14 @@ export class BotManager {
     logger.info("[BotManager] Resuming all bots...");
     await this.loadChannels();
     logger.info("[BotManager] All bots resumed.");
+  }
+
+  /**
+   * Manually reload commands from disk
+   */
+  public reloadCommands() {
+    this.commandHandler = loadCommands();
+    logger.info("[BotManager] Command handlers reloaded.");
   }
 }
 

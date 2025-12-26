@@ -138,8 +138,7 @@ function aggregateRows(rows: any[]) {
  * Returns analytics. 
  * Strategies:
  * 1. Fetch historical days from AnalyticsDay table.
- * 2. Fetch "today's" raw requests from RequestMetric table.
- * 3. Aggregate today's data and merge with history.
+ * 2. Fetch "today's" stats using aggregated database queries to save RAM.
  */
 export async function getAnalytics() {
   await metricsDbReady;
@@ -161,24 +160,67 @@ export async function getAnalytics() {
     };
   });
 
-  // 2. Aggregate Today
+  // 2. Aggregate Today (Memory Efficient Approach)
   const todayStr = new Date().toISOString().slice(0, 10);
-  const startOfToday = new Date(todayStr); // 00:00:00 UTC implied by ISO slice
+  const startOfToday = new Date(todayStr);
 
-  const todayRequests = await RequestMetric.findAll({
-    where: {
-      timestamp: {
-        [Op.gte]: startOfToday
-      }
-    },
-    raw: true
+  // Check if we have any requests today
+  const totalRequests = await RequestMetric.count({
+    where: { timestamp: { [Op.gte]: startOfToday } }
   });
 
-  if (todayRequests.length > 0) {
-    // Overwrite or add today
-    result[todayStr] = aggregateRows(todayRequests);
+  if (totalRequests > 0) {
+    // Helper to get grouped counts
+    const getGroupedCounts = async (column: string, limit?: number) => {
+      const rows = await RequestMetric.findAll({
+        attributes: [column, [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col(column)), 'count']],
+        where: { timestamp: { [Op.gte]: startOfToday } },
+        group: [column],
+        order: [[RequestMetric.sequelize!.literal('count'), 'DESC']],
+        limit,
+        raw: true
+      });
+      return Object.fromEntries(rows.map((r: any) => [r[column] || 'unknown', r.count]));
+    };
+
+    const [perRoute, statusCodes, topUserAgents, topReferrers, uniqueVisitors, avgResponseTime] = await Promise.all([
+      getGroupedCounts('endpoint'),
+      getGroupedCounts('statusCode'),
+      getGroupedCounts('userAgent', 5),
+      getGroupedCounts('referer', 5),
+      RequestMetric.count({
+        where: { timestamp: { [Op.gte]: startOfToday } },
+        distinct: true,
+        col: 'ip'
+      }),
+      RequestMetric.sequelize!.query(
+        'SELECT AVG(responseTimeMs) as avg FROM RequestMetrics WHERE timestamp >= :start',
+        { replacements: { start: startOfToday.toISOString() }, type: 'SELECT' }
+      )
+    ]);
+
+    // p95 is harder in SQLite; we'll fetch just the response times (lower RAM than full rows)
+    const responseTimes = await RequestMetric.findAll({
+      attributes: ['responseTimeMs'],
+      where: { timestamp: { [Op.gte]: startOfToday } },
+      order: [['responseTimeMs', 'ASC']],
+      raw: true
+    }) as any[];
+    
+    const p95Idx = Math.floor(0.95 * (responseTimes.length - 1));
+    const p95ResponseTimeMs = responseTimes[p95Idx]?.responseTimeMs || 0;
+
+    result[todayStr] = {
+      totalRequests,
+      perRoute,
+      uniqueVisitors,
+      avgResponseTimeMs: Math.round((avgResponseTime[0] as any)?.avg || 0),
+      p95ResponseTimeMs,
+      statusCodes,
+      topUserAgents,
+      topReferrers
+    };
   } else if (!result[todayStr]) {
-    // Init empty if no requests yet
     result[todayStr] = aggregateRows([]);
   }
 

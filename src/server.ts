@@ -53,19 +53,9 @@ try {
   commandsProcessed = 0;
 }
 
-// Increment commandsProcessed and persist to stats.json
+// Increment commandsProcessed
 export function incrementCommandsProcessed() {
   commandsProcessed++;
-  try {
-    const statsRaw = fs.readFileSync(statsFilePath, "utf8");
-    const stats = JSON.parse(statsRaw);
-    stats.commandsProcessed = commandsProcessed;
-    fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
-  } catch (err) {
-    // If file doesn't exist, create it
-    const stats = { userCount: 0, commandsProcessed, uptime: 0 };
-    fs.writeFileSync(statsFilePath, JSON.stringify(stats, null, 2));
-  }
 }
 
 // Get current commandsProcessed value

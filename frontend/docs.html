@@ -1,278 +1,488 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <!-- Basic -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FinalsRS Documentation – Setup, Commands & Twitch Integration</title>
+    <!-- Primary SEO -->
+    <title>Documentation – FinalsRS | Customizing Your Twitch Bot</title>
+    <meta
+      name="description"
+      content="Official FinalsRS documentation. Learn how to customize your Twitch bot commands, use variables, and integrate THE FINALS stats."
+    />
+    <meta name="robots" content="index, follow" />
 
-  <!-- Primary SEO -->
-  <title>FinalsRS Documentation – Setup, Commands & Twitch Integration</title>
-  <meta name="description"
-    content="Official FinalsRS documentation. Learn how to set up the FinalsRS Twitch bot, available commands, leaderboard features, and THE FINALS stat tracking." />
-  <meta name="robots" content="index, follow" />
+    <!-- Canonical -->
+    <link rel="canonical" href="https://finalsrs.com/docs" />
 
-  <!-- Canonical -->
-  <link rel="canonical" href="https://finalsrs.com/docs" />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FinalsRS" />
+    <meta property="og:url" content="https://finalsrs.com/docs" />
+    <meta
+      property="og:title"
+      content="FinalsRS Documentation – Custom Commands & Variables"
+    />
+    <meta
+      property="og:description"
+      content="Setup guides, commands, and variable documentation for the FinalsRS Twitch bot."
+    />
+    <meta
+      property="og:image"
+      content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
+    />
 
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="FinalsRS" />
-  <meta property="og:url" content="https://finalsrs.com/docs" />
-  <meta property="og:title" content="FinalsRS Documentation – Setup & Commands" />
-  <meta property="og:description"
-    content="Learn how to use FinalsRS, the Twitch bot for THE FINALS. Setup guides, chat commands, and feature documentation." />
+    <!-- Icons -->
+    <link rel="icon" href="./assets/logo.png" />
+    <link rel="apple-touch-icon" href="./assets/logo.png" />
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="FinalsRS Documentation" />
-  <meta name="twitter:description"
-    content="Setup guides, commands, and usage documentation for the FinalsRS Twitch bot." />
+    <!-- Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
 
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css" />
 
-
-  <!-- Keywords (optional, informational only) -->
-  <meta name="keywords"
-    content="FinalsRS documentation, THE FINALS Twitch bot setup, Twitch bot commands THE FINALS, FinalsRS commands" />
-  <link rel="icon" href="./assets/logo.png">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #0d0d0d;
-      --surface: #1a1a1a;
-      --border: #2e2e2e;
-      --text: #e5e5e5;
-      --text-muted: #a3a3a3;
-      --accent: #ffffff;
-    }
-
-    body {
-      margin: 0;
-      font-family: "Poppins", sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      line-height: 1.7;
-    }
-
-    /* Navbar */
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem 2rem;
-      background: rgba(20, 20, 20, 0.85);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .logo {
-      font-weight: 600;
-      font-size: 1.1rem;
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    .links {
-      display: flex;
-      gap: 1.5rem;
-    }
-
-    nav a {
-      color: var(--text);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.2s ease;
-    }
-
-    nav a:hover {
-      color: var(--accent);
-    }
-
-    /* Content */
-    main {
-      max-width: 800px;
-      margin: 3rem auto;
-      padding: 0 1.5rem;
-    }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: var(--accent);
-    }
-
-    h2 {
-      font-size: 1.3rem;
-      margin-top: 2rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0.4rem;
-      color: var(--text);
-    }
-
-    p {
-      color: var(--text-muted);
-      margin: 1rem 0;
-    }
-
-    code {
-      background-color: #222;
-      color: var(--accent);
-      padding: 0.25rem 0.4rem;
-      border-radius: 4px;
-      font-family: 'Consolas', monospace;
-      font-size: 0.9em;
-    }
-
-    pre {
-      background-color: #161616;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-      overflow-x: auto;
-      color: var(--text);
-      margin: 1.5rem 0;
-      font-size: 0.95em;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 1.5rem 0;
-    }
-
-    th,
-    td {
-      padding: 0.75rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-
-    th {
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    tr:hover {
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    footer {
-      text-align: center;
-      padding: 2rem 1rem;
-      border-top: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    @media (max-width: 768px) {
-      main {
-        margin: 2rem auto;
+    <style>
+      .docs-hero {
+        padding: 10rem 0 4rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 0%, rgba(217, 0, 47, 0.05) 0%, transparent 50%);
       }
 
-      nav {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+      .docs-hero-glow {
+        position: absolute;
+        top: -30%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 1200px;
+        height: 800px;
+        background: radial-gradient(circle, rgba(217, 0, 47, 0.1) 0%, transparent 70%);
+        z-index: -1;
+        pointer-events: none;
       }
-    }
-  </style>
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "TechArticle",
-      "headline": "FinalsRS Documentation",
-      "description": "Documentation for FinalsRS, a Twitch bot for THE FINALS including setup instructions and chat commands.",
-      "url": "https://finalsrs.com/docs",
-      "publisher": {
-        "@type": "Organization",
-        "name": "FinalsRS"
+
+      .docs-hero h1 {
+        font-size: 3.5rem;
+        font-weight: 800;
+        letter-spacing: -2px;
+        margin-bottom: 1rem;
       }
-    }
-  </script>
-</head>
 
-<body>
-  <nav>
-    <a href="index.html" class="logo">FinalsRS</a>
-    <div class="links">
-      <a href="index.html">Home</a>
-      <a href="docs.html" style="color: var(--accent);">Docs</a>
-      <a href="https://discord.gg/2UKzvzSEqA" target="_blank">Discord</a>
-    </div>
-  </nav>
+      /* Button styling for Discord Link */
+      .btn--join-discord {
+        display: inline-flex;
+        text-decoration: none !important;
+        align-items: center;
+        gap: 0.75rem;
+        background: var(--brand-primary);
+        color: #ffffff !important;
+        
+        padding: 1rem 2.5rem;
+        border-radius: var(--radius-md);
+        font-weight: 700;
+        transition: all 0.2s ease;
+      }
+      .btn--join-discord:hover {
+        background: var(--brand-hover);
+        transform: translateY(-2px);     
+      }
 
-  <main>
-    <h1>FinalsRS Bot Documentation</h1>
-    <p>Welcome to the FinalsRS documentation. This page explains how to customize and manage your Twitch bot commands
-      easily.</p>
+      .docs-hero .subtitle {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        margin-bottom: 3rem;
+        max-width: 700px;
+        margin: 0 auto;
+      }
 
-    <h2>View Your Current Command</h2>
-    <p>To check your bot’s current message for a command:</p>
-    <pre><code>!editcmd rank</code></pre>
+      /* Docs Content */
+      .docs-content {
+        padding: 0 0 6rem;
+      }
 
-    <h2>Customize a Command</h2>
-    <p>Change what your bot says when a viewer uses a command:</p>
-    <pre><code>!editcmd rank @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank}</code></pre>
+      .docs-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
 
-    <h2>Available Variables</h2>
-    <table>
-      <tr>
-        <th>Variable</th>
-        <th>Description</th>
-        <th>Example</th>
-      </tr>
-      <tr>
-        <td><code>{username}</code></td>
-        <td>The viewer's Twitch username</td>
-        <td>CoolStreamer92</td>
-      </tr>
-      <tr>
-        <td><code>{rank}</code></td>
-        <td>Their current rank</td>
-        <td>#948</td>
-      </tr>
-      <tr>
-        <td><code>{league}</code></td>
-        <td>League tier</td>
-        <td>Diamond 3</td>
-      </tr>
-      <tr>
-        <td><code>{rankScore}</code></td>
-        <td>Rank score</td>
-        <td>43,331 RS</td>
-      </tr>
-      <tr>
-        <td><code>{wtRank}</code></td>
-        <td>World Tour rank</td>
-        <td>#470</td>
-      </tr>
-    </table>
+      .docs-main-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 4rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      }
 
-    <h2>Reset a Command</h2>
-    <p>To reset a command to its default message:</p>
-    <pre><code>!editcmd rank</code></pre>
+      .markdown-body section {
+        margin-bottom: 4rem;
+      }
 
-    <h2>Example</h2>
-    <p>This example customizes the <code>!record</code> command:</p>
-    <pre><code>!editcmd record @{username}'s session: {sessionRS} | Total: {currentRS} RS</code></pre>
+      .markdown-body section:last-child {
+        margin-bottom: 0;
+      }
 
-    <h2>Need Help?</h2>
-    <p>Join our <a href="https://discord.gg/2UKzvzSEqA">Discord community</a> for support or suggestions.</p>
-  </main>
+      .markdown-body h2 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        letter-spacing: -1px;
+      }
 
-  <footer>
-    © 2025 FinalsRS — Made for streamers, by streamers.<br>
-    Not affiliated with Embark Studios.
-  </footer>
-</body>
+      .markdown-body h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+      }
 
+      .markdown-body p {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        background: rgba(217, 0, 47, 0.1);
+        color: var(--brand-primary);
+        border: 1px solid rgba(217, 0, 47, 0.2);
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+      }
+
+      .var-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1.25rem;
+        margin-top: 2rem;
+      }
+
+      .var-card {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-color);
+        padding: 1.5rem;
+        border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+      }
+
+      .var-code {
+        color: #fff;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        font-size: 0.95rem;
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      .var-desc {
+        color: var(--text-tertiary);
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+
+      .code-example {
+        background: #000;
+        padding: 2rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+        font-family: 'JetBrains Mono', monospace;
+        margin: 2rem 0;
+      }
+
+      .code-example .cmd {
+        color: var(--brand-primary);
+        font-weight: 700;
+      }
+
+      .code-example .comment {
+        color: #52525b;
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      .table-wrapper {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        margin-top: 2rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th {
+        background: rgba(255, 255, 255, 0.03);
+        padding: 1.25rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      td {
+        padding: 1.25rem;
+        border-top: 1px solid var(--border-color);
+        color: var(--text-secondary);
+      }
+
+      hr {
+        border: 0;
+        height: 1px;
+        background: linear-gradient(to right, transparent, var(--border-color), transparent);
+        margin: 4rem 0;
+      }
+
+      @media (max-width: 768px) {
+        .docs-hero h1 { font-size: 2.5rem; }
+        .docs-main-card { padding: 2rem; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar">
+      <div class="nav-container">
+        <a href="/" class="logo">
+          <span class="logo-icon"><img src="./assets/logo.png" alt="FinalsRS Logo" /></span>
+          FinalsRS
+        </a>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/twitch-drops" data-umami-event="Twitch Drops">Drops</a>
+          <a href="/docs" style="color: var(--text-primary)" data-umami-event="Visit Docs">Docs</a>
+          <a href="/login" class="btn-login" data-umami-event="Login button nav">Log in</a>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <section class="docs-hero">
+        <div class="docs-hero-glow"></div>
+        <div class="container">
+          <div class="badge">
+            <span class="badge-dot"></span>
+            Documentation
+          </div>
+          <h1>Command <span class="text-gradient">Documentation</span></h1>
+          <p class="subtitle">
+            Welcome to the FinalsRS documentation. This page explains how to customize and manage your Twitch bot commands easily
+          </p>
+        </div>
+      </section>
+
+      <section class="docs-content">
+        <div class="docs-container">
+          <div class="docs-main-card">
+            <div class="markdown-body">
+              <!-- Section: Custom Commands -->
+              <section id="customizing">
+                <div class="tag">Configuration</div>
+                <h2>Customizing Commands</h2>
+                <p>
+                  You can fully customize the responses for <code>!rank</code>, <code>!record</code>, and <code>!peak</code>. 
+                  Use variables in curly braces <code>{variable}</code> to inject dynamic player data into your custom messages.
+                </p>
+
+                <h3>How to edit</h3>
+                <p>Use the <code>!editcmd</code> command directly in your Twitch chat:</p>
+                <div class="code-example">
+                  <span class="comment">// Example: Set a custom rank message</span><br />
+                  <span class="cmd">!editcmd rank</span> @{username}, I am currently rank #{rank} with {rankScore} RS! 🔥
+                </div>
+              </section>
+
+              <hr />
+
+              <!-- Section: !rank variables -->
+              <section id="rank-vars">
+                <div class="tag">Variables</div>
+                <h2>!rank Command</h2>
+                <p>Show your current standing on the leaderboards.</p>
+                <div class="var-grid">
+                  <div class="var-card">
+                    <span class="var-code">{username}</span>
+                    <span class="var-desc">The Twitch user who called the command.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{rank}</span>
+                    <span class="var-desc">Current leaderboard rank (e.g. #450).</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{league}</span>
+                    <span class="var-desc">Current league (e.g. Diamond 3).</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{rankScore}</span>
+                    <span class="var-desc">Current Rank Score (RS) value.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{wtRank}</span>
+                    <span class="var-desc">Current World Tour rank.</span>
+                  </div>
+                </div>
+              </section>
+
+              <hr />
+
+              <!-- Section: !record variables -->
+              <section id="record-vars">
+                <div class="tag">Variables</div>
+                <h2>!record Command</h2>
+                <p>Track your session progress since you went live.</p>
+                <div class="var-grid">
+                  <div class="var-card">
+                    <span class="var-code">{sessionRS}</span>
+                    <span class="var-desc">RS gained or lost this session (e.g. +120).</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{currentRS}</span>
+                    <span class="var-desc">Your total current RS.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{wtDiff}</span>
+                    <span class="var-desc">World Tour ranks gained/lost this session.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{startRS}</span>
+                    <span class="var-desc">Your RS at the start of the stream.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{wtRank}</span>
+                    <span class="var-desc">Your current World Tour rank.</span>
+                  </div>
+                </div>
+              </section>
+
+              <hr />
+
+              <!-- Section: !peak variables -->
+              <section id="peak-vars">
+                <div class="tag">Variables</div>
+                <h2>!peak Command</h2>
+                <p>Display your all-time highest achievements.</p>
+                <div class="var-grid">
+                  <div class="var-card">
+                    <span class="var-code">{rank}</span>
+                    <span class="var-desc">Highest rank ever achieved.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{league}</span>
+                    <span class="var-desc">League of peak rank (e.g. Diamond 1).</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{rankScore}</span>
+                    <span class="var-desc">Peak Rank Score (RS) value.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{season}</span>
+                    <span class="var-desc">The season the peak was achieved.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{wtRank}</span>
+                    <span class="var-desc">Highest World Tour rank achieved.</span>
+                  </div>
+                  <div class="var-card">
+                    <span class="var-code">{wtSeason}</span>
+                    <span class="var-desc">The WT season for that peak.</span>
+                  </div>
+                </div>
+              </section>
+
+              <hr />
+
+              <!-- Section: Goal Command -->
+              <section id="goals">
+                <div class="tag">New System</div>
+                <h2>Set Your Goals</h2>
+                <p>
+                  The <code>!goal</code> command helps you track your journey to a specific rank.
+                </p>
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Command</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code>!goal &lt;rank&gt;</code></td>
+                        <td>Set a target rank (e.g. <code>!goal 100</code>)</td>
+                      </tr>
+                      <tr>
+                        <td><code>!goal</code></td>
+                        <td>Display current goal progress</td>
+                      </tr>
+                      <tr>
+                        <td><code>!goal remove</code></td>
+                        <td>Remove your current goal</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <div style="text-align: center; margin-top: 4rem; padding-top: 4rem; border-top: 1px solid var(--border-color);">
+                <h2>Need More Help?</h2>
+                <p style="margin-bottom: 2rem; color: var(--text-secondary);">
+                  Join our community on Discord for real-time support and feature requests.
+                </p>
+                <a href="https://discord.com/invite/2UKzvzSEqA" class="btn--join-discord primary large" data-umami-event="Discord Support Docs"
+                  >Join Discord</a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h3>FinalsRS</h3>
+            <p>The unofficial companion bot for THE FINALS.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="/#features">Features</a>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
+            <a href="/docs">Documentation</a>
+            <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
+          </div>
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <a href="/legal">Privacy Policy</a>
+            <a href="/legal#">Terms of Service</a>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 FinalsRS. Not affiliated with Embark Studios.</p>
+        </div>
+      </div>
+    </footer>
+  </body>
 </html>

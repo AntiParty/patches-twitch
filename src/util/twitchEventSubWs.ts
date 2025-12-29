@@ -122,6 +122,8 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
     try {
       const msg = JSON.parse(data.toString());
       const type = msg.metadata?.message_type;
+      // log the message fully at debug level
+      logger.debug(`[EventSubWs] Message for user ${userId}: ${JSON.stringify(msg, null, 2)}`);
 
       if (type === 'session_welcome') {
         const sessionId = msg.payload.session.id;

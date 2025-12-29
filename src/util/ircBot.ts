@@ -307,9 +307,9 @@ export const startChatBot = async (
       tags.username = user;
       if (!tags["display-name"]) tags["display-name"] = user;
 
-      // Log raw IRC line and parsed tags (keys + values) for debugging
-      logger.debug?.(`[DEBUG] Raw IRC line: ${line.replace(/\r\n/g, '')}`);
-      logger.debug?.(`[DEBUG] Parsed tags for ${user} in #${channelName}: ${JSON.stringify(tags)}`);
+      // Log raw IRC line and parsed tags (keys + values) for debugging (always log)
+      logger.info(`[RAW IRC] ${line.replace(/\r\n/g, '')}`);
+      logger.info(`[RAW TAGS] ${user} in #${channelName} -> ${JSON.stringify(tags)}`);
       logger.info(`[DEBUG] IRC message from ${user} in #${channelName}: ${message}`);
 
       // Only process messages that start with '!'

@@ -307,10 +307,18 @@ export const startChatBot = async (
       tags.username = user;
       if (!tags["display-name"]) tags["display-name"] = user;
 
+      const roomId = tags["room-id"];
+      const sourceRoomId = tags["source-room-id"];
+
+      if (sourceRoomId && roomId && sourceRoomId !== roomId) {
+        // Message is from a different room (e.g., hosted channel), ignore
+        continue;
+      }
+
       // Log raw IRC line and parsed tags (keys + values) for debugging (always log)
-      logger.info(`[RAW IRC] ${line.replace(/\r\n/g, '')}`);
-      logger.info(`[RAW TAGS] ${user} in #${channelName} -> ${JSON.stringify(tags)}`);
-      logger.info(`[DEBUG] IRC message from ${user} in #${channelName}: ${message}`);
+      //logger.info(`[RAW IRC] ${line.replace(/\r\n/g, '')}`);
+      //logger.info(`[RAW TAGS] ${user} in #${channelName} -> ${JSON.stringify(tags)}`);
+      //logger.info(`[DEBUG] IRC message from ${user} in #${channelName}: ${message}`);
 
       // Only process messages that start with '!'
       if (!message.trim().startsWith("!")) {

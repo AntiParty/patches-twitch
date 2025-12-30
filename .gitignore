@@ -28,3 +28,5 @@ config/blocked.json
 /.vscode
 stats.json
 /asdasdadsasd
+data.json
+API_SPEC.md

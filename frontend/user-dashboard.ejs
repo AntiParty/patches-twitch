@@ -184,6 +184,85 @@
       display: block;
     }
 
+    .gs-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.gs-modal {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid var(--border);
+  padding: 24px;
+  animation: fadeIn 0.25s ease;
+}
+
+.gs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.gs-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.gs-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.gs-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gs-step {
+  display: flex;
+  gap: 12px;
+  background: var(--bg-hover);
+  padding: 14px;
+  border-radius: var(--radius);
+}
+
+.gs-step span {
+  background: var(--primary);
+  color: white;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gs-step p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.gs-footer {
+  margin-top: 24px;
+  text-align: right;
+}
+
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -992,6 +1071,54 @@
               </div>
             </div>
           </div>
+          <div id="getting-started-modal" class="gs-overlay">
+  <div class="gs-modal">
+    <div class="gs-header">
+      <h2>Getting Started</h2>
+      <button class="gs-close" onclick="closeGettingStarted()">✕</button>
+    </div>
+
+    <div class="gs-steps">
+      <div class="gs-step">
+        <span>1</span>
+        <div>
+          <strong>Check if the bot is on</strong>
+          <p>Check if the bot is on so it can connect to your Twitch chat.</p>
+        </div>
+      </div>
+
+      <div class="gs-step">
+        <span>2</span>
+        <div>
+          <strong>Link your game account</strong>
+          <p>Add your Embark ID in <em>Settings</em> to enable stat tracking.</p>
+        </div>
+      </div>
+
+      <div class="gs-step">
+        <span>3</span>
+        <div>
+          <strong>Customize commands (optional)</strong>
+          <p>Edit your !rank and other commands in <em>My Commands</em>.</p>
+        </div>
+      </div>
+
+      <div class="gs-step">
+        <span>4</span>
+        <div>
+          <strong>Add your overlay (optional)</strong>
+          <p>Copy your overlay link and add it as a Browser Source in OBS.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="gs-footer">
+      <button class="btn btn-primary" onclick="finishGettingStarted()">
+        Got it, let’s go 🔥
+      </button>
+    </div>
+  </div>
+</div>
     </main>
   </div>
 
@@ -999,6 +1126,7 @@
     /* --- SERVER DATA --- */
     const OVERLAY_TOKEN = "<%= userStats.overlayToken %>";
     const OVERLAY_LAYOUT = <%- JSON.stringify(userStats.overlayLayout || {}) %>;
+    const GS_KEY = 'finalsrs_getting_started_seen';
 
     // --- State ---
     let overlayToken = OVERLAY_TOKEN;
@@ -1008,6 +1136,10 @@
     document.addEventListener('DOMContentLoaded', () => {
       // Initialize Overlay URL
       updateOverlayUrlDisplay();
+
+      if (!localStorage.getItem(GS_KEY)) {
+        openGettingStarted();
+      }
 
       // Initialize Checkboxes
       if (overlayLayout && overlayLayout.visibility) {
@@ -1019,6 +1151,19 @@
         if (v.hideSession) document.getElementById('check-hide-session').checked = true;
       }
     });
+
+    function openGettingStarted() {
+      document.getElementById('getting-started-modal').style.display = 'flex';
+    }
+
+    function closeGettingStarted() {
+      document.getElementById('getting-started-modal').style.display = 'none';
+    }
+
+    function finishGettingStarted() {
+      localStorage.setItem(GS_KEY, 'true');
+      closeGettingStarted();
+    }
 
     // --- Overlay Functions ---
     function updateOverlayUrlDisplay() {

@@ -11,6 +11,8 @@ const BOT_KEYWORDS = [
 ];
 
 let isAntipartyLive = false;
+let currentStreamId: string | null = null;
+let currentStreamTitle: string | null = null;
 const ANTIPARTY_TWITCH_ID = '660153356';
 
 async function updateLiveStatus() {
@@ -47,7 +49,15 @@ async function updateLiveStatus() {
         }
 
         const data = await res.json() as any;
-        isAntipartyLive = data.data && data.data.length > 0;
+        if (data.data && data.data.length > 0) {
+            isAntipartyLive = true;
+            currentStreamId = data.data[0].id;
+            currentStreamTitle = data.data[0].title;
+        } else {
+            isAntipartyLive = false;
+            currentStreamId = null;
+            currentStreamTitle = null;
+        }
     } catch (err) {
         logger.error('[IGN-STATS] Live status check failed:', err);
     }
@@ -79,7 +89,9 @@ export async function trackIGNVisit(req: Request) {
             userAgent: req.headers['user-agent']?.slice(0, 255) || 'unknown',
             referer: req.headers['referer']?.slice(0, 255) || 'direct',
             path: path,
-            isLive: isAntipartyLive
+            isLive: isAntipartyLive,
+            streamId: currentStreamId,
+            streamTitle: currentStreamTitle
         });
     } catch (err) {
         logger.error('[IGN-STATS] Failed to track visit:', err);
@@ -98,7 +110,7 @@ export async function getIGNStats() {
     todayStart.setHours(0, 0, 0, 0);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [total, today, last7days, last5min, totalLive, recentRows, dailyRows] = await Promise.all([
+    const [total, today, last7days, last5min, totalLive, recentRows, dailyRows, streamRows] = await Promise.all([
         IGNVisit.count(),
         IGNVisit.count({ where: { timestamp: { [Op.gte]: todayStart } } }),
         IGNVisit.count({ where: { timestamp: { [Op.gte]: sevenDaysAgo } } }),
@@ -118,6 +130,19 @@ export async function getIGNStats() {
             group: ['day'],
             order: [['day', 'ASC']],
             raw: true
+        }),
+        IGNVisit.findAll({
+            attributes: [
+                'streamId',
+                'streamTitle',
+                [Sequelize.fn('MIN', Sequelize.col('timestamp')), 'startTime'],
+                [Sequelize.fn('COUNT', Sequelize.col('id')), 'hits']
+            ],
+            where: { streamId: { [Op.ne]: null } },
+            group: ['streamId'],
+            order: [[Sequelize.fn('MIN', Sequelize.col('timestamp')), 'DESC']],
+            limit: 5,
+            raw: true
         })
     ]);
 
@@ -127,11 +152,17 @@ export async function getIGNStats() {
         liveCount: parseInt(r.liveCount) || 0
     }));
 
+    const recentStreams = streamRows.map((s: any) => ({
+        id: s.streamId,
+        title: s.streamTitle || 'Untitled Stream',
+        startTime: s.startTime,
+        hits: s.hits
+    }));
+
     const recentVisits = recentRows.map((v: any) => {
         const ts = new Date(v.timestamp);
         const secondsAgo = Math.floor((now.getTime() - ts.getTime()) / 1000);
         
-        // Basic user agent formatting (extract browser/OS if possible, or just keep it short)
         let agent = v.userAgent || 'Unknown';
         if (agent.includes('Windows')) agent = 'Windows / Browser';
         else if (agent.includes('iPhone') || agent.includes('Android')) agent = 'Mobile / Browser';
@@ -141,6 +172,7 @@ export async function getIGNStats() {
             secondsAgo: Math.max(0, secondsAgo),
             agent,
             isLive: v.isLive,
+            streamTitle: v.streamTitle,
             source: v.referer.includes('google') ? 'Google' : 
                     v.referer.includes('bing') ? 'Bing' :
                     v.referer.includes('twitch') ? 'Twitch' : 
@@ -156,6 +188,7 @@ export async function getIGNStats() {
         totalLive,
         isCurrentlyLive: isAntipartyLive,
         dailyBreakdown,
+        recentStreams,
         recentVisits
     };
 }

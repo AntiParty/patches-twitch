@@ -223,6 +223,36 @@
       </table>
     </div>
 
+    <!-- RECENT STREAMS / DETAILS -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <div class="card">
+        <div class="label" style="margin-bottom:12px;">Recent Streams</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th style="text-align:right">Hits</th>
+            </tr>
+          </thead>
+          <tbody id="streams">
+            <tr><td colspan="2" style="color:var(--muted);">No streams tracked yet…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" id="stream-detail" style="display:none; border-color: var(--live); background: rgba(255, 75, 75, 0.02);">
+        <div class="label" style="color: var(--live)">Stream Detail</div>
+        <div id="stream-detail-content">
+            <h3 id="sd-title" style="margin: 8px 0 4px 0; font-size: 16px;">Title</h3>
+            <div id="sd-date" style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Date</div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 13px; color: var(--muted);">Conversion:</span>
+                <span id="sd-hits" style="font-size: 20px; font-weight: 700; color: var(--live);">0</span>
+            </div>
+        </div>
+      </div>
+    </div>
+
     <!-- RECENT VISITS -->
     <div class="card">
       <div class="label" style="margin-bottom:12px;">Recent Visitors</div>
@@ -230,7 +260,7 @@
         <thead>
           <tr>
             <th>Time</th>
-            <th>Status</th>
+            <th>Stream</th>
             <th>Type</th>
           </tr>
         </thead>
@@ -402,6 +432,38 @@
 
       if (data.dailyBreakdown) updateHeatmap(data.dailyBreakdown);
 
+      // Recent Streams
+      const streamsBody = document.getElementById("streams");
+      streamsBody.innerHTML = "";
+      if (data.recentStreams && data.recentStreams.length > 0) {
+          data.recentStreams.forEach(s => {
+              const row = document.createElement("tr");
+              row.className = "stream-row";
+              row.style.cursor = "pointer";
+              row.onclick = () => {
+                  const detail = document.getElementById("stream-detail");
+                  detail.style.display = "block";
+                  document.getElementById("sd-title").textContent = s.title;
+                  document.getElementById("sd-date").textContent = new Date(s.startTime).toLocaleString();
+                  document.getElementById("sd-hits").textContent = s.hits;
+                  
+                  // Highlight row
+                  document.querySelectorAll(".stream-row").forEach(r => r.style.background = "none");
+                  row.style.background = "rgba(255, 255, 255, 0.05)";
+              };
+              row.innerHTML = `
+                <td>
+                    <div style="font-weight:600; color:var(--text); font-size:12px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.title}</div>
+                    <div style="font-size:10px; color:var(--muted);">${new Date(s.startTime).toLocaleDateString()}</div>
+                </td>
+                <td style="font-weight:700; color:var(--live); text-align:right; font-size:14px;">${s.hits}</td>
+              `;
+              streamsBody.appendChild(row);
+          });
+      } else {
+          streamsBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px; color:var(--muted);">Check back later!</td></tr>';
+      }
+
       // Daily Table
       const dailyBody = document.getElementById("daily");
       dailyBody.innerHTML = "";
@@ -425,10 +487,10 @@
       tbody.innerHTML = "";
       lastFetchedVisits.forEach(v => {
         const row = document.createElement("tr");
-        const liveBadge = v.isLive ? '<span style="color:#ff4b4b; font-weight:700;">●</span>' : '';
+        const streamInfo = v.isLive ? `<span style="color:#ff4b4b; font-weight:700;">●</span> ${v.streamTitle || 'Live'}` : '<span style="color:var(--muted)">Offline</span>';
         row.innerHTML = `
           <td>${formatTime(v.secondsAgo)}</td>
-          <td>${liveBadge} ${v.isLive ? 'Live' : 'Offline'}</td>
+          <td style="font-size:11px; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${streamInfo}</td>
           <td style="color:var(--muted)">${v.agent}</td>
         `;
         tbody.appendChild(row);

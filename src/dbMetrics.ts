@@ -104,6 +104,8 @@ IGNVisit.init(
     referer: { type: DataTypes.STRING, allowNull: true },
     path: { type: DataTypes.STRING, allowNull: false },
     isLive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    streamId: { type: DataTypes.STRING, allowNull: true },
+    streamTitle: { type: DataTypes.STRING, allowNull: true },
   },
   {
     sequelize: sequelizeMetrics,
@@ -139,6 +141,20 @@ export const metricsDbReady = sequelizeMetrics
           type: DataTypes.BOOLEAN,
           allowNull: false,
           defaultValue: false
+        });
+      }
+      if (tableInfo && !tableInfo.streamId) {
+        logger.info("[metrics-db] Adding streamId column to IGNVisits...");
+        await queryInterface.addColumn('IGNVisits', 'streamId', {
+          type: DataTypes.STRING,
+          allowNull: true
+        });
+      }
+      if (tableInfo && !tableInfo.streamTitle) {
+        logger.info("[metrics-db] Adding streamTitle column to IGNVisits...");
+        await queryInterface.addColumn('IGNVisits', 'streamTitle', {
+          type: DataTypes.STRING,
+          allowNull: true
         });
       }
     } catch (err) {

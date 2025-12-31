@@ -11,7 +11,10 @@ import session from 'express-session';
 import { sessionConfig } from '@/config/session.config';
 import logger from "@/util/logger";
 import path from "path";
+import csrf from "csurf";
 import { trackRequest, loadAnalytics } from "@/util/webAnalytics";
+import { trackIGNVisit } from "@/util/ignStats";
+
 import { blockSuspiciousRequests, rateLimitByIP } from "@/middleware/security";
 
 // Import all routes
@@ -115,6 +118,7 @@ export const setupServer = () => {
       return next();
     }
     trackRequest(req, res, next);
+    trackIGNVisit(req); // Background tracking for IGN experiment
   });
 
   // Parse JSON bodies for all routes
@@ -126,8 +130,29 @@ export const setupServer = () => {
   // Session middleware
   app.use(session(sessionConfig));
 
+  // --- CSRF Protection ---
+  // Apply CSRF protection to all routes. 
+  // We exclude public API tokens if necessary, but here we'll use a standard implementation.
+  const csrfProtection = csrf({ cookie: false });
+  
+  app.use((req, res, next) => {
+    // Skip CSRF for health check and public overlay data (token-based)
+    if (req.path === '/health' || req.path.startsWith('/api/overlay/data/') || req.path.startsWith('/api/overlay/config/')) {
+      return next();
+    }
+    csrfProtection(req, res, next);
+  });
+
+  app.use((req, res, next) => {
+    if (req.csrfToken) {
+      res.locals.csrfToken = req.csrfToken();
+    }
+    next();
+  });
+
   // --- Mount All Routes ---
   app.use(routes);
+
 
   // Global Error Handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

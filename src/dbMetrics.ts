@@ -94,6 +94,28 @@ AnalyticsDay.init(
     timestamps: false,
   }
 );
+// IGN Visit model for the YouTube/IGN experiment
+export class IGNVisit extends Model {}
+IGNVisit.init(
+  {
+    timestamp: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    ip: { type: DataTypes.STRING, allowNull: true },
+    userAgent: { type: DataTypes.STRING, allowNull: true },
+    referer: { type: DataTypes.STRING, allowNull: true },
+    path: { type: DataTypes.STRING, allowNull: false },
+    isLive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  },
+  {
+    sequelize: sequelizeMetrics,
+    modelName: "IGNVisit",
+    tableName: "IGNVisits",
+    timestamps: false,
+    indexes: [
+      { fields: ["timestamp"] }
+    ]
+  }
+);
+
 export const metricsDbReady = sequelizeMetrics
   .sync()
   .then(async () => {
@@ -106,6 +128,22 @@ export const metricsDbReady = sequelizeMetrics
       logger.warn("[metrics-db] Could not enable WAL mode:", err);
       logger.info("[metrics-db] metrics DB ready (default mode)");
     }
+
+    // Migration for IGNVisit isLive column
+    try {
+      const queryInterface = sequelizeMetrics.getQueryInterface();
+      const tableInfo = await queryInterface.describeTable('IGNVisits').catch(() => null);
+      if (tableInfo && !tableInfo.isLive) {
+        logger.info("[metrics-db] Adding isLive column to IGNVisits...");
+        await queryInterface.addColumn('IGNVisits', 'isLive', {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false
+        });
+      }
+    } catch (err) {
+      logger.error("[metrics-db] IGNVisits migration failed:", err);
+    }
   })
   .then(() => {
     // Start periodic cleanup of old metrics (e.g., every 24 hours)
@@ -113,14 +151,18 @@ export const metricsDbReady = sequelizeMetrics
     setInterval(async () => {
       try {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const deletedRequests = await RequestMetric.destroy({
           where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
         });
         const deletedPerf = await PerformanceMetric.destroy({
           where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
         });
-        if (deletedRequests > 0 || deletedPerf > 0) {
-          logger.info(`[metrics-db] Cleaned up ${deletedRequests} request logs and ${deletedPerf} performance logs older than 30 days.`);
+        const deletedIGN = await IGNVisit.destroy({
+          where: { timestamp: { [Op.lt]: sevenDaysAgo } }
+        });
+        if (deletedRequests > 0 || deletedPerf > 0 || deletedIGN > 0) {
+          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (30d), ${deletedPerf} perf (30d), and ${deletedIGN} IGN logs (7d).`);
         }
       } catch (err) {
         logger.error("[metrics-db] Failed to clean up old metrics:", err);

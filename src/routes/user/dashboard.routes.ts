@@ -43,8 +43,7 @@ router.get("/dashboard", async (req: any, res: any) => {
                 username: user.get('username'),
                 twitchUserId: user.get('twitch_user_id'),
                 playerId: user.get('player_id') || null,
-                overlayToken: user.get('overlay_token') || null,
-                overlayLayout: user.get('overlay_layout') || null, // Will store configs
+                // Do NOT render overlay token/layout into the page. Client will request via authenticated API.
                 botEnabled: user.get('bot_enabled'),
             };
         }

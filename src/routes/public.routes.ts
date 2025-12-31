@@ -287,4 +287,20 @@ router.get('/api/ruby-status', async (req: any, res: any) => {
     }
 })
 
+router.get('/api/ign-stats', async (req: any, res: any) => {
+    try {
+        const { getIGNStats } = await import('@/util/ignStats');
+        const ignStats = await getIGNStats();
+        res.json(ignStats);
+    } catch (err) {
+        logger.error('Error fetching IGN stats:', err);
+        res.status(500).json({ error: 'Failed to fetch IGN stats.' });
+    }
+})
+
+//analytics dashboard for youtube video expirement
+router.get('/analytics-dashboard', (req: Request, res: Response) => {
+    res.sendFile(path.join(frontendPath, 'analytics-dashboard.html'));
+})
+
 export default router;

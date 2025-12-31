@@ -18,16 +18,21 @@ const sessionStore = new SessionStore({
 
 // Session configuration
 export const sessionConfig: session.SessionOptions = {
-    name: 'admin.sid',
+    // Use configurable cookie name; avoid indicating admin in cookie name
+    name: process.env.SESSION_NAME || 'fsr.sid',
     secret: process.env.SESSION_SECRET || 'change_this_secret',
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    // Refresh expiry on activity; reduces fixation window
+    rolling: true,
     cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
+        // Shorter lifetime (8 hours) by default
+        maxAge: Number(process.env.SESSION_MAX_AGE_MS) || 8 * 60 * 60 * 1000,
+        path: '/',
     },
 };
 

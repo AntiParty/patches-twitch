@@ -98,11 +98,26 @@ router.get("/callback", async (req: any, res: any) => {
             twitch_user_id: twitchUserId,
         });
 
-        // Store user info in session
+        // Regenerate session to prevent session fixation and then store minimal user info
         if (req.session) {
-            req.session.isUser = true;
-            req.session.twitchUserId = twitchUserId;
-            req.session.twitchUsername = twitchUsername;
+            await new Promise((resolve, reject) => {
+                req.session.regenerate((err: any) => {
+                    if (err) {
+                        logger.error('[Auth] Session regenerate failed', err);
+                        return reject(err);
+                    }
+                    req.session.isUser = true;
+                    req.session.twitchUserId = twitchUserId;
+                    req.session.twitchUsername = twitchUsername;
+                    req.session.save((err2: any) => {
+                        if (err2) {
+                            logger.error('[Auth] Session save failed', err2);
+                            return reject(err2);
+                        }
+                        resolve(null);
+                    });
+                });
+            });
         }
 
         // Notify bot process to start this user

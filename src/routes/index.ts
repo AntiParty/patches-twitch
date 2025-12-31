@@ -7,7 +7,7 @@ import authRoutes from './auth.routes';
 import publicRoutes from './public.routes';
 import userRoutes from './user';
 import adminRoutes from './admin';
-import overlayRoutes from './overlayRoutes';
+import overlayRoutes from './overlay.routes';
 
 const router = Router();
 

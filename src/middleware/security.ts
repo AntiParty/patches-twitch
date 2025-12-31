@@ -107,12 +107,49 @@ export function rateLimitByIP(req: Request, res: Response, next: NextFunction): 
     next();
 }
 
-// Clean up old entries every 5 minutes
+// Rate limiter for sensitive operations (e.g., token regeneration)
+const abuseTracker = new Map<string, { count: number; lastAbuse: number }>();
+const REGENERATE_LIMIT_MS = 15 * 60 * 1000; // 15 minutes
+const REGENERATE_MAX_REQUESTS = 5;
+
+export function rateLimitRegenerate(req: Request, res: Response, next: NextFunction): void {
+    const userId = (req as any).session?.twitchUsername || req.ip || 'unknown';
+    const now = Date.now();
+    
+    const record = requestCounts.get(`regen_${userId}`);
+
+    if (!record || now > record.resetAt) {
+        requestCounts.set(`regen_${userId}`, { count: 1, resetAt: now + REGENERATE_LIMIT_MS });
+        next();
+        return;
+    }
+
+    record.count++;
+
+    if (record.count > REGENERATE_MAX_REQUESTS) {
+        const abuse = abuseTracker.get(userId) || { count: 0, lastAbuse: 0 };
+        abuse.count++;
+        abuse.lastAbuse = now;
+        abuseTracker.set(userId, abuse);
+
+        logger.warn(`[Security] Abuse pattern detected: Repeated token regeneration by ${userId} (Total abuse events: ${abuse.count})`);
+        res.status(429).json({ 
+            error: 'Too many regeneration attempts. Please wait 15 minutes.',
+            retryAfter: Math.ceil((record.resetAt - now) / 1000)
+        });
+        return;
+    }
+
+    next();
+}
+
+// Clean up old entries periodically
 setInterval(() => {
     const now = Date.now();
-    for (const [ip, record] of requestCounts.entries()) {
+    for (const [key, record] of requestCounts.entries()) {
         if (now > record.resetAt) {
-            requestCounts.delete(ip);
+            requestCounts.delete(key);
         }
     }
 }, 300000);
+

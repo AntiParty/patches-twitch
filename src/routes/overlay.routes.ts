@@ -5,10 +5,59 @@ import fs from 'fs';
 import path from 'path';
 import { Channel } from '../db';
 import logger from '../util/logger';
+import { requireUserAPI } from '@/middleware/auth.middleware';
+import { rateLimitRegenerate } from '@/middleware/security';
 
 const router = Router();
 
-// Generate or retrieve overlay token for authenticated user
+/**
+ * SESSION-BASED ENDPOINTS (for the dashboard)
+ */
+
+// GET /api/overlay/token - return overlay token for current logged-in user
+router.get('/api/overlay/token', requireUserAPI, async (req: any, res: any) => {
+    try {
+        const username = req.session.twitchUsername;
+        const user: any = await Channel.findOne({ where: { username } });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        let token = user.get('overlay_token');
+        if (!token) {
+            token = crypto.randomBytes(32).toString('hex');
+            await user.update({ overlay_token: token });
+            logger.info(`[Overlay] Generated token for ${username}`);
+        }
+
+        res.json({ token });
+    } catch (err) {
+        logger.error('[Overlay] Error fetching token:', err);
+        res.status(500).json({ error: 'Failed to fetch token' });
+    }
+});
+
+// POST /api/overlay/regenerate-token - regenerate overlay token for current user
+router.post('/api/overlay/regenerate-token', requireUserAPI, rateLimitRegenerate, async (req: any, res: any) => {
+    try {
+        const username = req.session.twitchUsername;
+        const user: any = await Channel.findOne({ where: { username } });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const token = crypto.randomBytes(32).toString('hex');
+        await user.update({ overlay_token: token });
+        logger.info(`[Overlay] Regenerated token for ${username}`);
+        res.json({ token });
+    } catch (err) {
+        logger.error('[Overlay] Error regenerating token:', err);
+        res.status(500).json({ error: 'Failed to regenerate token' });
+    }
+});
+
+
+/**
+ * PUBLIC/TOKEN-BASED ENDPOINTS (for the overlay files)
+ */
+
+// Generate or retrieve overlay token for authenticated user (legacy/named params)
 router.get('/api/overlay/:username/token', async (req: any, res: any) => {
     if (!req.session?.isUser || !req.session.twitchUsername) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -40,7 +89,7 @@ router.get('/api/overlay/:username/token', async (req: any, res: any) => {
     }
 });
 
-// Regenerate overlay token
+// Regenerate overlay token (legacy/named params)
 router.post('/api/overlay/:username/regenerate-token', async (req: any, res: any) => {
     if (!req.session?.isUser || !req.session.twitchUsername) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -145,19 +194,7 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
         const goal: any = await RankGoal.findOne({ where: { channel: user.get('username') } });
 
         // Calculate session change
-        // If session_start_rs is 0 or null, set it to current rankScore on first load of the session
         let startRS = user.get('session_start_rs');
-        if (!startRS && stats.rankScore > 0) {
-            // If we have a rank score but no start point, this might be the first poll. 
-            // Ideally we shouldn't auto-set it on GET, only on explicit reset, 
-            // BUT for a "Session Change" feature, we usually want "Since Stream Start".
-            // Since we can't know when stream started easily without Twitch API hook, 
-            // we rely on the user to reset, OR we default to 0 change.
-            // Currently, if startRS is 0, change is just the total score? No, that's bad.
-            // If startRS is 0, let's assume change is 0 for now until they hit reset?
-            // Or let's assume user manually resets. 
-        }
-
         const sessionChange = startRS
             ? (stats.rankScore || 0) - startRS
             : 0;

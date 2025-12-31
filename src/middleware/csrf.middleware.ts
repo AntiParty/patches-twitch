@@ -5,13 +5,12 @@
 import csrf from 'csurf';
 import express from 'express';
 
-// CSRF protection middleware for admin routes
-export const csrfProtection = csrf();
+// CSRF protection middleware
+export const csrfProtection = csrf({ cookie: false });
 
-// Middleware for admin login routes: parse urlencoded and apply CSRF
+// Middleware for admin login routes: parse urlencoded
 export const adminLoginMiddleware = [
-    express.urlencoded({ extended: false }),
-    csrfProtection
+    express.urlencoded({ extended: false })
 ];
 
 /**

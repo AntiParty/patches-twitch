@@ -11,9 +11,9 @@ import session from 'express-session';
 import { sessionConfig } from '@/config/session.config';
 import logger from "@/util/logger";
 import path from "path";
-import csrf from "csurf";
 import { trackRequest, loadAnalytics } from "@/util/webAnalytics";
 import { trackIGNVisit } from "@/util/ignStats";
+import { csrfProtection } from "@/middleware/csrf.middleware";
 
 import { blockSuspiciousRequests, rateLimitByIP } from "@/middleware/security";
 
@@ -121,8 +121,9 @@ export const setupServer = () => {
     trackIGNVisit(req); // Background tracking for IGN experiment
   });
 
-  // Parse JSON bodies for all routes
+  // Parse JSON and URL-encoded bodies for all routes
   app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
 
   // Serve static files from frontend directory
   app.use(express.static(frontendPath));
@@ -133,8 +134,6 @@ export const setupServer = () => {
   // --- CSRF Protection ---
   // Apply CSRF protection to all routes. 
   // We exclude public API tokens if necessary, but here we'll use a standard implementation.
-  const csrfProtection = csrf({ cookie: false });
-  
   app.use((req, res, next) => {
     // Skip CSRF for health check and public overlay data (token-based)
     if (req.path === '/health' || req.path.startsWith('/api/overlay/data/') || req.path.startsWith('/api/overlay/config/')) {
@@ -156,9 +155,16 @@ export const setupServer = () => {
 
   // Global Error Handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err.code === 'EBADCSRFTOKEN') {
+      logger.warn(`CSRF Error: ${err.message} [${req.method} ${req.url}]`);
+      res.status(403).json({ error: "Invalid CSRF token" });
+      return;
+    }
+
     logger.error(err.message || "Unknown Error", { stack: err.stack });
     if (res.headersSent) {
-      return next(err);
+      next(err);
+      return;
     }
     res.status(500).json({ error: "Internal Server Error" });
   });

@@ -19,7 +19,4 @@ router.use(apiRoutes);
 // Mount database editor routes
 router.use(databaseRoutes);
 
-// CSRF error handler for admin routes
-router.use(csrfErrorHandler);
-
 export default router;

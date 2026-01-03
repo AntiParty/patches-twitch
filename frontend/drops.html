@@ -54,9 +54,26 @@
         {
             "@context": "https://schema.org",
             "@type": "WebPage",
-            "name": "THE FINALS Twitch Drops",
+            "name": "THE FINALS Twitch Drops Tracker",
             "url": "https://finalsrs.com/drops",
-            "description": "Live tracker for THE FINALS Twitch Drops, including rewards and eligibility."
+            "description": "Live tracker for THE FINALS Twitch Drops, including rewards, durations, and eligibility criteria."
+        }
+    </script>
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [{
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://finalsrs.com/"
+            },{
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Twitch Drops",
+                "item": "https://finalsrs.com/drops"
+            }]
         }
     </script>
     <link rel="stylesheet" href="styles.css">
@@ -366,7 +383,7 @@
     <nav class="navbar">
         <div class="nav-container">
             <div class="logo">
-                <span class="logo-icon"><img src="./assets/logo.png" alt=""></span>
+                <span class="logo-icon"><img src="./assets/logo.png" alt="FinalsRS Logo"></span>
                 FinalsRS
             </div>
             <div class="nav-links">

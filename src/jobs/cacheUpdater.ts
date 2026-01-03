@@ -7,7 +7,7 @@ import logger from '@/util/logger';
 import exp from 'constants';
 
 let lastUpdate = Date.now();
-const updateIntervalMs = 45 * 60 * 1000; // 45 minutes
+const updateIntervalMs = 35 * 60 * 1000; // 35 minutes 
 
 const REGULAR_SEASON_START = 1;
 const WORLD_TOUR_SEASON_START = 3;

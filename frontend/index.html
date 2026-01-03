@@ -1,360 +1,491 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <!-- Basic -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
-<head>
-  <!-- Basic -->
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Primary SEO -->
+    <title>
+      #1 Twitch Bot for THE FINALS – Live Stats & Leaderboards | FinalsRS
+    </title>
+    <meta
+      name="description"
+      content="Level up your THE FINALS stream with FinalsRS - the #1 FREE Twitch bot for real-time player stats, live leaderboards, and zero-latency rank tracking. Join hundreds of streamers today!"
+    />
+    <meta name="robots" content="index, follow" />
 
-  <!-- Primary SEO -->
-  <title>FinalsRS – Twitch Bot for THE FINALS | Live Stats, Leaderboards & Rank Tracking</title>
-  <meta
-    name="description"
-    content="FinalsRS is a free Twitch bot for THE FINALS. Show live player stats, real-time leaderboards, and rank tracking directly in chat with zero latency."
-  />
-  <meta name="robots" content="index, follow" />
+    <!-- Canonical -->
+    <link rel="canonical" href="https://finalsrs.com/" />
 
-  <!-- Canonical -->
-  <link rel="canonical" href="https://finalsrs.com/" />
+    <!-- Open Graph (Facebook, Discord, etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FinalsRS" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://finalsrs.com/" />
+    <meta
+      property="og:title"
+      content="FinalsRS – Twitch Bot for THE FINALS | Live Stats & Leaderboards"
+    />
+    <meta
+      property="og:description"
+      content="Engage your Twitch chat with real-time stats, live leaderboards, and rank tracking for THE FINALS."
+    />
+    <meta
+      property="og:image"
+      content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
-  <!-- Open Graph (Facebook, Discord, etc.) -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="FinalsRS" />
-  <meta property="og:locale" content="en_US" />
-  <meta property="og:url" content="https://finalsrs.com/" />
-  <meta
-    property="og:title"
-    content="FinalsRS – Twitch Bot for THE FINALS | Live Stats & Leaderboards"
-  />
-  <meta
-    property="og:description"
-    content="Engage your Twitch chat with real-time stats, live leaderboards, and rank tracking for THE FINALS."
-  />
-  <meta
-    property="og:image"
-    content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
-  />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@FinalsRS" />
+    <meta name="twitter:title" content="FinalsRS – Twitch Bot for THE FINALS" />
+    <meta
+      name="twitter:description"
+      content="Free Twitch bot for THE FINALS with live stats, leaderboards, and rank tracking."
+    />
+    <meta
+      name="twitter:image"
+      content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
+    />
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@FinalsRS" />
-  <meta
-    name="twitter:title"
-    content="FinalsRS – Twitch Bot for THE FINALS"
-  />
-  <meta
-    name="twitter:description"
-    content="Free Twitch bot for THE FINALS with live stats, leaderboards, and rank tracking."
-  />
-  <meta
-    name="twitter:image"
-    content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
-  />
+    <!-- Keywords (minor ranking impact, still fine to keep) -->
+    <meta
+      name="keywords"
+      content="THE FINALS Twitch bot, FinalsRS, Twitch stats bot, THE FINALS leaderboard, Twitch rank tracking, live game stats"
+    />
 
-  <!-- Keywords (minor ranking impact, still fine to keep) -->
-  <meta
-    name="keywords"
-    content="THE FINALS Twitch bot, FinalsRS, Twitch stats bot, THE FINALS leaderboard, Twitch rank tracking, live game stats"
-  />
+    <!-- Icons -->
+    <link rel="icon" href="./assets/logo.png" />
+    <link rel="apple-touch-icon" href="./assets/logo.png" />
 
-  <!-- Icons -->
-  <link rel="icon" href="./assets/logo.png" />
-  <link rel="apple-touch-icon" href="./assets/logo.png" />
+    <!-- Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
 
-  <!-- Performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css" />
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="styles.css" />
+    <!-- Google Tag Manager -->
+    <script>
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+        var f = d.getElementsByTagName(s)[0],
+          j = d.createElement(s),
+          dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, "script", "dataLayer", "GTM-KB6VBBXB");
+    </script>
+    <!-- End GTM -->
 
-  <!-- Google Tag Manager -->
-  <script>
-    (function (w, d, s, l, i) {
-      w[l] = w[l] || [];
-      w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
-      var f = d.getElementsByTagName(s)[0],
-        j = d.createElement(s),
-        dl = l != "dataLayer" ? "&l=" + l : "";
-      j.async = true;
-      j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
-      f.parentNode.insertBefore(j, f);
-    })(window, document, "script", "dataLayer", "GTM-KB6VBBXB");
-  </script>
-  <!-- End GTM -->
+    <!-- Umami Analytics -->
+    <script
+      defer
+      src="https://umami.antiparty.dev/script.js"
+      data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5"
+    ></script>
 
-  <!-- Umami Analytics -->
-  <script
-    defer
-    src="https://umami.antiparty.dev/script.js"
-    data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5"
-  ></script>
+    <!-- Google Site Verification -->
+    <meta
+      name="google-site-verification"
+      content="x9Ypq3cctF6c7a5910mpq6fnmtg83h9jXrxheEqE0WM"
+    />
 
-  <!-- Google Site Verification -->
-  <meta
-    name="google-site-verification"
-    content="x9Ypq3cctF6c7a5910mpq6fnmtg83h9jXrxheEqE0WM"
-  />
-
-  <!-- Schema.org Structured Data -->
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "FinalsRS",
-      "url": "https://finalsrs.com/",
-      "description": "A free Twitch bot for THE FINALS providing real-time player stats, leaderboards, and rank tracking.",
-      "applicationCategory": "GameApplication",
-      "operatingSystem": "Web",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "FinalsRS",
+        "url": "https://finalsrs.com/",
+        "description": "A free Twitch bot for THE FINALS providing real-time player stats, leaderboards, and rank tracking.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
       }
-    }
-  </script>
-</head>
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is FinalsRS?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "FinalsRS is a powerful Twitch bot designed specifically for THE FINALS. It allows streamers to display real-time player stats, live leaderboard rankings, and match history directly in their Twitch chat."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is FinalsRS free to use?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, FinalsRS is completely free to use for all THE FINALS streamers. You can add it to your channel with just a few clicks."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does FinalsRS track World Tour ranks?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Absolutely! FinalsRS tracks both Rank Score (RS) and World Tour (WT) rankings live."
+            }
+          }
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://finalsrs.com/"
+          }
+        ]
+      }
+    </script>
+  </head>
 
-<body>
-<!-- Google Tag Manager (noscript) -->
-<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KB6VBBXB"
-height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-<!-- End Google Tag Manager (noscript) -->
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript
+      ><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-KB6VBBXB"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe
+    ></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <span class="logo-icon"><img src="./assets/logo.png" alt="FinalsRS Logo"></span>
-                FinalsRS
-            </div>
-            <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="/twitch-drops" data-umami-event="Twitch Drops">Drops</a>
-                <a href="/docs" data-umami-event="Visit Docs">Docs</a>
-                <a href="/login" class="btn-login" data-umami-event="Login button nav">Log in</a>
-            </div>
-            <div class="mobile-menu-btn">
-                <span></span><span></span><span></span>
-            </div>
+      <div class="nav-container">
+        <div class="logo">
+          <span class="logo-icon"
+            ><img src="./assets/logo.png" alt="FinalsRS Logo"
+          /></span>
+          FinalsRS
         </div>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/twitch-drops" data-umami-event="Twitch Drops">Drops</a>
+          <a href="/docs" data-umami-event="Visit Docs">Docs</a>
+          <a href="/login" class="btn-login" data-umami-event="Login button nav"
+            >Log in</a
+          >
+        </div>
+        <div class="mobile-menu-btn">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
     </nav>
 
     <main>
-        <section class="hero">
-            <div class="hero-bg-glow"></div>
-            <div class="container">
-                <div class="hero-content">
-                    <div class="badge">
-                        <span class="badge-dot"></span>
-                        Beta Release
-                    </div>
-                    <h1>The Ultimate Twitch Bot for <span class="text-gradient">THE FINALS</span></h1>
-                    <p class="subtitle">
-                        Engage your chat with real-time player stats, live leaderboards, and rank tracking.
-                        Built by streamers, for streamers.
-                    </p>
-                    <div class="cta-group">
-                        <a href="/login" class="btn-primary" data-umami-event="Register button">Add to Twitch</a>
-                        <a href="#features" class="btn-secondary">View Features</a>
-                    </div>
-                    <div class="trust-bar">
-                        <p>TRUSTED BY FINALS STREAMERS</p>
-                        <div class="streamer-avatars">
-                            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png"
-                                alt="LeftClickSnipe" class="avatar" title="LeftClickSnipe"
-                                style="width: 50px; height: 50px; border-radius: 50%;">
-                            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png"
-                                alt="Its_GDawg" class="avatar" title="Its_GDawg"
-                                style="width: 50px; height: 50px; border-radius: 50%;">
-                            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
-                                alt="antiparty" class="avatar" title="antiparty"
-                                style="width: 50px; height: 50px; border-radius: 50%;">
-                            <span class="more-count">+10 more</span>
-                        </div>
-                    </div>
-                </div>
+      <section class="hero">
+        <div class="hero-bg-glow"></div>
+        <div class="container">
+          <div class="hero-content">
+            <div class="badge">
+              <span class="badge-dot"></span>
+              Beta Release
             </div>
-        </section>
-
-        <section id="features" class="features-section">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Everything you need for chat</h2>
-                    <p>Powerful tools to keep your viewers engaged while you focus on the win.</p>
-                </div>
-
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="icon-box">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                            </svg>
-                        </div>
-                        <h3>Real-Time Stats</h3>
-                        <p>Display your K/D, win rate, and match history directly in chat with zero latency.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="icon-box">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M12 20v-6M6 20V10M18 20V4"></path>
-                            </svg>
-                        </div>
-                        <h3>Live Leaderboards</h3>
-                        <p>Track your rank progress live. Show your viewers exactly how close you are to Diamond.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="icon-box">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9" cy="7" r="4"></circle>
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                            </svg>
-                        </div>
-                        <h3>Community Commands</h3>
-                        <p>Fun interactive commands that let your chat predict your next match outcome.</p>
-                    </div>
-                </div>
+            <h1>
+              The Ultimate Twitch Bot for
+              <span class="text-gradient">THE FINALS</span>
+            </h1>
+            <p class="subtitle">
+              Engage your chat with real-time player stats, live leaderboards,
+              and rank tracking. Built by streamers, for streamers.
+            </p>
+            <div class="cta-group">
+              <a
+                href="/login"
+                class="btn-primary"
+                data-umami-event="Register button"
+                >Add to Twitch</a
+              >
+              <a href="#features" class="btn-secondary">View Features</a>
             </div>
-        </section>
-
-        <section class="story-section">
-            <div class="container">
-                <div class="story-grid">
-                    <div class="story-content">
-                        <div class="label">OUR MISSION</div>
-                        <h2>Bridging the gap between Game and Stream</h2>
-                        <p>
-                            "As a huge fan and streamer of THE FINALS, I’ve really wanted the developers to provide more
-                            official APIs.
-                            With better access to game data, creators like me could build tools that make streams more
-                            engaging."
-                        </p>
-                        <p>
-                            FinalsRS exists to prove what's possible. We're pushing the boundaries of what a Twitch bot
-                            can do
-                            by bringing leaderboard data together with live stats.
-                        </p>
-                    </div>
-                    <div class="story-visual">
-                        <div class="code-block">
-                            <div class="code-header">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="code-content">
-                                <span class="cmd">!rank</span>
-                                <span class="response">@User > <strong>Diamond 3</strong> - 43,331 RS | WT rank:
-                                    #498</span>
-                                <br>
-                                <span class="cmd">!record</span>
-                                <span class="response">@User > session RS: ±0 (43,331 RS) | WT rank: #525 (+42 from
-                                    start)</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="trust-bar">
+              <p>TRUSTED BY FINALS STREAMERS</p>
+              <div class="streamer-avatars">
+                <img
+                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png"
+                  alt="LeftClickSnipe"
+                  class="avatar"
+                  title="LeftClickSnipe"
+                  style="width: 50px; height: 50px; border-radius: 50%"
+                />
+                <img
+                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png"
+                  alt="Its_GDawg"
+                  class="avatar"
+                  title="Its_GDawg"
+                  style="width: 50px; height: 50px; border-radius: 50%"
+                />
+                <img
+                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
+                  alt="antiparty"
+                  class="avatar"
+                  title="antiparty"
+                  style="width: 50px; height: 50px; border-radius: 50%"
+                />
+                <span class="more-count">+10 more</span>
+              </div>
             </div>
-        </section>
+          </div>
+        </div>
+      </section>
 
-        <section id="community" class="testimonials-section">
-            <div class="container">
-                <div class="section-header">
-                    <h2>Loved by the Community</h2>
-                </div>
-                <div class="testimonials-grid">
-                    <div class="testimonial-card">
-                        <div class="t-header">
-                            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png"
-                                alt="LeftClickSnipe" class="avatar" title="LeftClickSnipe"
-                                style="width: 50px; height: 50px; border-radius: 50%;">
-                            <div class="t-info">
-                                <h4>LeftClickSnipe</h4>
-                                <span>Streamer</span>
-                            </div>
-                        </div>
-                        <p>“It just works. Never had downtime once. The most reliable bot I've used for The Finals.”</p>
-                    </div>
-                    <div class="testimonial-card">
-                        <div class="t-header">
-                            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png"
-                                alt="Its_GDawg" class="avatar" title="Its_GDawg"
-                                style="width: 50px; height: 50px; border-radius: 50%;">
-                            <div class="t-info">
-                                <h4>Its_GDawg</h4>
-                                <span>Content Creator</span>
-                            </div>
-                        </div>
-                        <p>Super easy to set up and customize. Love it”</p>
-                    </div>
-                    <div class="testimonial-card">
-                        <div class="t-header">
-                            <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
-                                alt="antiparty" class="avatar" title="antiparty"
-                                style="width: 50px; height: 50px; border-radius: 50%;">
-                            <div class="t-info">
-                                <h4>Antiparty</h4>
-                                <span>Content Creator</span>
-                            </div>
-                        </div>
-                        <p>“Finally a Twitch bot that isn’t bloated. It does exactly what it needs to do perfectly.”</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+      <section id="features" class="features-section">
+        <div class="container">
+          <div class="section-header">
+            <h2>Everything you need for chat</h2>
+            <p>
+              Powerful tools to keep your viewers engaged while you focus on the
+              win.
+            </p>
+          </div>
 
-        <section class="cta-section">
-            <div class="container">
-                <div class="cta-box">
-                    <h2>Ready to upgrade your stream?</h2>
-                    <p>Join hundreds of other streamers using FinalsRS today.</p>
-                    <a href="/login" class="btn-primary large">Get Started for Free</a>
-                </div>
+          <div class="features-grid">
+            <div class="feature-card">
+              <div class="icon-box">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>
+              </div>
+              <h3>Real-Time Stats</h3>
+              <p>
+                Display your K/D, win rate, and match history directly in chat
+                with zero latency.
+              </p>
             </div>
-        </section>
+            <div class="feature-card">
+              <div class="icon-box">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 20v-6M6 20V10M18 20V4"></path>
+                </svg>
+              </div>
+              <h3>Live Leaderboards</h3>
+              <p>
+                Track your rank progress live. Show your viewers exactly how
+                close you are to Diamond.
+              </p>
+            </div>
+            <div class="feature-card">
+              <div class="icon-box">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+              </div>
+              <h3>Community Commands</h3>
+              <p>
+                Fun interactive commands that let your chat predict your next
+                match outcome.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="story-section">
+        <div class="container">
+          <div class="story-grid">
+            <div class="story-content">
+              <div class="label">OUR MISSION</div>
+              <h2>Bridging the gap between Game and Stream</h2>
+              <p>
+                "As a huge fan and streamer of THE FINALS, I’ve really wanted
+                the developers to provide more official APIs. With better access
+                to game data, creators like me could build tools that make
+                streams more engaging."
+              </p>
+              <p>
+                FinalsRS exists to prove what's possible. We're pushing the
+                boundaries of what a Twitch bot can do by bringing leaderboard
+                data together with live stats.
+              </p>
+            </div>
+            <div class="story-visual">
+              <div class="code-block">
+                <div class="code-header">
+                  <span class="dot red"></span>
+                  <span class="dot yellow"></span>
+                  <span class="dot green"></span>
+                </div>
+                <div class="code-content">
+                  <span class="cmd">!rank</span>
+                  <span class="response"
+                    >@User > <strong>Diamond 3</strong> - 43,331 RS | WT rank:
+                    #498</span
+                  >
+                  <br />
+                  <span class="cmd">!record</span>
+                  <span class="response"
+                    >@User > session RS: ±0 (43,331 RS) | WT rank: #525 (+42
+                    from start)</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="community" class="testimonials-section">
+        <div class="container">
+          <div class="section-header">
+            <h2>Loved by the Community</h2>
+          </div>
+          <div class="testimonials-grid">
+            <div class="testimonial-card">
+              <div class="t-header">
+                <img
+                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png"
+                  alt="LeftClickSnipe"
+                  class="avatar"
+                  title="LeftClickSnipe"
+                  style="width: 50px; height: 50px; border-radius: 50%"
+                />
+                <div class="t-info">
+                  <h4>LeftClickSnipe</h4>
+                  <span>Streamer</span>
+                </div>
+              </div>
+              <p>
+                “It just works. Never had downtime once. The most reliable bot
+                I've used for The Finals.”
+              </p>
+            </div>
+            <div class="testimonial-card">
+              <div class="t-header">
+                <img
+                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png"
+                  alt="Its_GDawg"
+                  class="avatar"
+                  title="Its_GDawg"
+                  style="width: 50px; height: 50px; border-radius: 50%"
+                />
+                <div class="t-info">
+                  <h4>Its_GDawg</h4>
+                  <span>Content Creator</span>
+                </div>
+              </div>
+              <p>Super easy to set up and customize. Love it”</p>
+            </div>
+            <div class="testimonial-card">
+              <div class="t-header">
+                <img
+                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
+                  alt="antiparty"
+                  class="avatar"
+                  title="antiparty"
+                  style="width: 50px; height: 50px; border-radius: 50%"
+                />
+                <div class="t-info">
+                  <h4>Antiparty</h4>
+                  <span>Content Creator</span>
+                </div>
+              </div>
+              <p>
+                “Finally a Twitch bot that isn’t bloated. It does exactly what
+                it needs to do perfectly.”
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cta-section">
+        <div class="container">
+          <div class="cta-box">
+            <h2>Ready to upgrade your stream?</h2>
+            <p>Join hundreds of other streamers using FinalsRS today.</p>
+            <a href="/login" class="btn-primary large">Get Started for Free</a>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-col">
-                    <h3>FinalsRS</h3>
-                    <p>The unofficial companion bot for THE FINALS.</p>
-                </div>
-                <div class="footer-col">
-                    <h4>Product</h4>
-                    <a href="#">Features</a>
-                </div>
-                <div class="footer-col">
-                    <h4>Resources</h4>
-                    <a href="/docs">Documentation</a>
-                    <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
-                </div>
-                <div class="footer-col">
-                    <h4>Legal</h4>
-                    <a href="/legal">Privacy</a>
-                    <a href="/legal#">Terms</a>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 FinalsRS. Not affiliated with Embark Studios.</p>
-            </div>
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h3>FinalsRS</h3>
+            <p>The unofficial companion bot for THE FINALS.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="#">Features</a>
+          </div>
+          <div class="footer-col">
+            <h4>Resources</h4>
+            <a href="/docs">Documentation</a>
+            <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
+          </div>
+          <div class="footer-col">
+            <h4>Legal</h4>
+            <a href="/legal">Privacy</a>
+            <a href="/legal#">Terms</a>
+          </div>
         </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 FinalsRS. Not affiliated with Embark Studios.</p>
+        </div>
+      </div>
     </footer>
     <script src="script.js"></script>
-</body>
-
+  </body>
 </html>

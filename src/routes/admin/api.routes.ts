@@ -31,8 +31,8 @@ router.get('/', csrfProtection, (req: any, res: any) => {
     if (!isAdmin(req)) {
         return res.redirect('/admin/login');
     }
-    const frontendPath = path.join(process.cwd(), 'frontend');
-    res.sendFile(path.join(frontendPath, 'admin-dashboard.html'));
+    const viewsPath = path.join(process.cwd(), 'frontend', 'views');
+    res.sendFile(path.join(viewsPath, 'admin-dashboard.html'));
 });
 
 /**
@@ -309,7 +309,7 @@ router.post('/api/user-dashboard-access', requireAdminAPI, (req: any, res: any) 
  * Get drops configuration
  */
 router.get('/api/drops', requireAdminAPI, (req: any, res: any) => {
-    const dropsPath = path.join(process.cwd(), 'frontend', 'drops.json');
+    const dropsPath = path.join(process.cwd(), 'frontend', 'public', 'drops.json');
     fs.readFile(dropsPath, 'utf8', (err, data) => {
         if (err) {
             logger.error('Error reading drops file:', err);
@@ -328,7 +328,7 @@ router.get('/api/drops', requireAdminAPI, (req: any, res: any) => {
  * Update drops configuration
  */
 router.post('/api/drops', requireAdminAPI, (req: any, res: any) => {
-    const dropsPath = path.join(process.cwd(), 'frontend', 'drops.json');
+    const dropsPath = path.join(process.cwd(), 'frontend', 'public', 'drops.json');
     const newConfig = req.body;
 
     if (!newConfig || !Array.isArray(newConfig.drops)) {

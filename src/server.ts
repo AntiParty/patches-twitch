@@ -91,9 +91,12 @@ function exportStatsToJson() {
 // --- Express Server Setup ---
 export const setupServer = () => {
   // Path to frontend assets and templates
-  const frontendPath = path.join(process.cwd(), "frontend");
-  logger.info("Serving frontend from:", frontendPath);
-  logger.info("Exists?", fs.existsSync(frontendPath));
+  const viewsPath = path.join(process.cwd(), "frontend", "views");
+  const publicPath = path.join(process.cwd(), "frontend", "public");
+  
+  logger.info("Serving views from:", viewsPath);
+  logger.info("Serving public from:", publicPath);
+  
   startCacheUpdater();
 
   const app = express();
@@ -101,7 +104,7 @@ export const setupServer = () => {
   // --- Middleware Setup ---
   app.set("trust proxy", 1); // Trust reverse proxy headers
   app.set("view engine", "ejs"); // Use EJS for rendering views
-  app.set("views", frontendPath);
+  app.set("views", viewsPath);
 
   // Security middleware (before logging to reduce spam)
   app.use(blockSuspiciousRequests);
@@ -139,7 +142,7 @@ export const setupServer = () => {
   app.use(express.urlencoded({ extended: false }));
 
   // Serve static files from frontend directory
-  app.use(express.static(frontendPath));
+  app.use(express.static(publicPath));
 
   // Session middleware
   app.use(session(sessionConfig));

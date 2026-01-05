@@ -14,12 +14,20 @@ import { getAnalytics } from '@/util/webAnalytics';
 
 const router = Router();
 
-// Path to frontend assets
-const frontendPath = path.join(process.cwd(), "frontend");
+// Path to frontend assets and templates
+const viewsPath = path.join(process.cwd(), "frontend", "views");
+const publicPath = path.join(process.cwd(), "frontend", "public");
 const statsFilePath = path.join(process.cwd(), "stats.json");
+
+
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
+
+router.get("/", (req: Request, res: Response) => {
+    res.sendFile(path.join(viewsPath, "index.html"));
+}); 
+
 
 /**
  * GET /health
@@ -154,7 +162,7 @@ router.get("/health", async (req: Request, res: Response) => {
  * Serve HTML docs page
  */
 router.get('/docs', (req: Request, res: Response) => {
-    res.sendFile(path.join(frontendPath, 'docs.html'));
+    res.sendFile(path.join(viewsPath, 'docs.html'));
 });
 
 /**
@@ -174,7 +182,7 @@ router.get('/docs-markdown', (req: Request, res: Response) => {
  * Serve legal page (privacy policy, ToS)
  */
 router.get('/legal', (req: Request, res: Response) => {
-    res.sendFile(path.join(frontendPath, 'legal.html'));
+    res.sendFile(path.join(viewsPath, 'legal.html'));
 });
 
 /**
@@ -182,7 +190,7 @@ router.get('/legal', (req: Request, res: Response) => {
  * Serve Twitch drops information page
  */
 router.get('/twitch-drops', (req: Request, res: Response) => {
-    res.sendFile(path.join(frontendPath, 'drops.html'));
+    res.sendFile(path.join(viewsPath, 'drops.html'));
 });
 
 /**
@@ -190,7 +198,7 @@ router.get('/twitch-drops', (req: Request, res: Response) => {
  * Serve sitemap for SEO
  */
 router.get('/sitemap.xml', (req: Request, res: Response) => {
-    res.sendFile(path.join(process.cwd(), 'frontend', 'sitemap.xml'));
+    res.sendFile(path.join(publicPath, 'sitemap.xml'));
 });
 
 /**
@@ -300,7 +308,7 @@ router.get('/api/ign-stats', async (req: any, res: any) => {
 
 //analytics dashboard for youtube video expirement
 router.get('/analytics-dashboard', (req: Request, res: Response) => {
-    res.sendFile(path.join(frontendPath, 'analytics-dashboard.html'));
+    res.sendFile(path.join(viewsPath, 'analytics-dashboard.html'));
 })
 
 export default router;

@@ -2,6 +2,7 @@ import { getLiveStreamsForUsers } from '../util/twitchUtils';
 import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
+import logger from '../util/logger';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
 const alertedMissingSession: Set<string> = new Set();
@@ -30,6 +31,17 @@ export const startStreamSessionPolling = async () => {
                 title: 'Missing Stream Session',
                 description: `User ${user.username} is live on Twitch, but no session has started in the bot and no linked THE FINALS account.`,
               });
+
+              try {
+                const { botManager } = await import('../botManager');
+                await botManager.sendMessage(
+                  `Hey @${user.username}, I see you're live! To track your leaderboard stats, please link your account using !link <EmbarkID>.`,
+                  user.username
+                );
+              } catch (e) {
+                logger.error(`Failed to send unlinked account alert to ${user.username}:`, e);
+              }
+              
               alertedMissingSession.add(user.username);
               continue;
             }

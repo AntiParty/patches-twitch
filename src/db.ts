@@ -82,7 +82,12 @@ CustomResponse.init(
 );
 
 // StreamSession model
-class StreamSession extends Model { }
+class StreamSession extends Model {
+  declare channel: string;
+  declare start_score: number;
+  declare start_wt_rank: number | null;
+  declare started_at: Date;
+}
 
 // Channel model initialization
 Channel.init(

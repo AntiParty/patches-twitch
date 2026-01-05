@@ -35,3 +35,5 @@ export const execute = async (
         console.error('Error executing devmode command:', error);
     }
 }
+
+export const aliases = ['devmode', 'dev'];

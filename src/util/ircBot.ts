@@ -16,6 +16,7 @@ interface IRCClient {
 }
 
 const clients: { [username: string]: IRCClient } = {};
+export const devModeChannels = new Set<string>();
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 5000; // 5 seconds
 const MAX_RECONNECT_DELAY = 300000; // 5 minutes
@@ -341,6 +342,18 @@ export const startChatBot = async (
       if (!commandEntry) {
         // Try with ! prefix if not found
         commandEntry = commandHandler["!" + rawCommand];
+      }
+
+      // -----------------------------------------------------------------------
+      // Check for Development Mode Silencing
+      // If channel is in devModeChannels AND we are NOT in development environment,
+      // we silence the bot (except for !devmode toggle command).
+      // -----------------------------------------------------------------------
+      if (devModeChannels.has(channelName) && process.env.NODE_ENV !== 'development') {
+        if (commandKey !== '!devmode') {
+           logger.info(`[DevMode] Silencing command ${commandKey} in #${channelName}`);
+           continue; 
+        }
       }
 
       if (commandEntry && typeof commandEntry === "function") {

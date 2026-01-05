@@ -22,6 +22,17 @@ export class BotManager {
     startStreamSessionPolling();
   }
 
+  private async getChannels(): Promise<Channel[]> {
+    let channels = await Channel.findAll();
+    if (process.env.NODE_ENV === 'development' && process.env.DEV_CHANNELS) {
+      const allowed = process.env.DEV_CHANNELS.split(',').map(s => s.trim().toLowerCase());
+      if (allowed.length > 0) {
+        channels = channels.filter((c: any) => allowed.includes(c.username.toLowerCase()));
+      }
+    }
+    return channels;
+  }
+
   public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {
     try {
       // Use the cached command handler instead of reloading every time
@@ -148,7 +159,7 @@ export class BotManager {
   }
 
   public async validateAllTokens(prefetchedChannels?: Channel[]) {
-    const channels = prefetchedChannels || await Channel.findAll();
+    const channels = prefetchedChannels || await this.getChannels();
     const validationWindow = 30 * 60 * 1000; // 30 minutes
 
     for (const channel of channels) {
@@ -193,7 +204,7 @@ export class BotManager {
 
   public async loadTokensOnStartup() {
     logger.info("Loading stored tokens and starting bots...");
-    const channels = await Channel.findAll();
+    const channels = await this.getChannels();
     await this.validateAllTokens(channels);
     this.startTokenValidationInterval();
     await this.loadChannels(channels);
@@ -201,7 +212,7 @@ export class BotManager {
 
   public async loadChannels(prefetchedChannels?: Channel[]) {
     try {
-      const channels = prefetchedChannels || await Channel.findAll();
+      const channels = prefetchedChannels || await this.getChannels();
       logger.info(`Found ${channels.length} channels to load`);
 
       for (const channel of channels) {
@@ -259,7 +270,7 @@ export class BotManager {
 
   public async pauseAll() {
     logger.info("[BotManager] Pausing all bots...");
-    const channels = await Channel.findAll();
+    const channels = await this.getChannels();
     for (const channel of channels) {
       const username = (channel as any).username;
       await this.stopBotForUser(username);

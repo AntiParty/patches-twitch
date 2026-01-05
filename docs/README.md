@@ -5,7 +5,9 @@ Welcome to the FinalsRS Bot documentation!
 ## 📚 Available Documentation
 
 ### [COMMANDS.md](./COMMANDS.md)
+
 Complete reference for all bot commands, including:
+
 - Rank & stats commands
 - Goal tracking system
 - Account management
@@ -14,13 +16,16 @@ Complete reference for all bot commands, including:
 - Usage examples and best practices
 
 ### [custom-command-editing.md](./custom-command-editing.md)
+
 Step-by-step guide for customizing bot responses:
+
 - How to view current custom messages
 - Setting custom responses
 - Available variables for each command
 - Examples and workflows
 
 ### [paidTwitchAccountService.md](./paidTwitchAccountService.md)
+
 Information about Twitch account services and integration.
 
 ---
@@ -28,11 +33,13 @@ Information about Twitch account services and integration.
 ## 🚀 Quick Start
 
 1. **Link Your Account**
+
    ```
    !link PlayerName#1234
    ```
 
 2. **Set a Goal**
+
    ```
    !goal 100
    ```
@@ -47,11 +54,13 @@ Information about Twitch account services and integration.
 ## 📖 Documentation Index
 
 ### For Streamers
+
 - [Commands Reference](./COMMANDS.md) - All available commands
 - [Custom Commands](./custom-command-editing.md) - Customize bot responses
 - [Goal System](./COMMANDS.md#-goal-commands) - Track your rank goals
 
 ### For Developers
+
 - [API Documentation](./API.md) - API endpoints and integration
 - [Project README](../README.md) - Setup and installation
 
@@ -66,4 +75,4 @@ Information about Twitch account services and integration.
 
 ---
 
-**Last Updated:** November 2025
+**Last Updated:** November 2026

@@ -14,6 +14,7 @@ import path from "path";
 import { trackRequest, loadAnalytics } from "@/util/webAnalytics";
 import { trackIGNVisit } from "@/util/ignStats";
 import { csrfProtection } from "@/middleware/csrf.middleware";
+import { startCacheUpdater } from "@/jobs/cacheUpdater";  
 
 import { blockSuspiciousRequests, rateLimitByIP } from "@/middleware/security";
 
@@ -81,7 +82,8 @@ function exportStatsToJson() {
     };
     fs.writeFile(statsFilePath, JSON.stringify(stats, null, 2), err => {
       if (err) logger.error("Failed to write stats.json:", err);
-      else logger.info("Exported stats.json");
+      //hide this log
+      //else logger.info("Exported stats.json");
     });
   });
 }
@@ -92,6 +94,7 @@ export const setupServer = () => {
   const frontendPath = path.join(process.cwd(), "frontend");
   logger.info("Serving frontend from:", frontendPath);
   logger.info("Exists?", fs.existsSync(frontendPath));
+  startCacheUpdater();
 
   const app = express();
 
@@ -105,8 +108,18 @@ export const setupServer = () => {
   app.use(rateLimitByIP);
 
   // Request logging
+  // Request logging
   app.use((req, res, next) => {
-    logger.info(`[REQ] ${req.method} ${req.url}`);
+    // Filter out static assets, health checks, and noisy paths
+    const skipLog = 
+      req.url.startsWith('/assets') || 
+      req.url.startsWith('/static') || 
+      req.url.startsWith('/health') ||
+      /\.(css|js|jpg|png|ico|svg|woff|woff2|ttf)$/.test(req.url);
+
+    if (!skipLog) {
+      logger.info(`[REQ] ${req.method} ${req.url}`);
+    }
     next();
   });
 

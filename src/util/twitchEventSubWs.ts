@@ -152,7 +152,8 @@ async function createUserWebSocket(userId: string, accessToken: string): Promise
         }
 
       } else if (type === 'session_keepalive') {
-        logger.info(`[EventSubWs] Received keepalive for user ${userId}`);
+        // keepalive is very verbose, so we log it at debug level
+        logger.debug(`[EventSubWs] Received keepalive for user ${userId}`);
       } else if (type === 'session_reconnect') {
         logger.info(`[EventSubWs] Reconnect requested for user ${userId}, connecting to new URL...`);
         ws.close();

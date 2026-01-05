@@ -16,7 +16,7 @@ dbReady.then(async () => {
     await botManager.loadTokensOnStartup();
     // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
     startBotTokenAutoRefresher();
-    startCacheUpdater();
+    //startCacheUpdater();
 
     logger.info("Bot is up and running!");
 

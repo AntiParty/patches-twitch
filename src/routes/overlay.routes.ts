@@ -3,7 +3,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { Channel } from '../db';
+import { Channel, StreamSession } from '../db';
 import logger from '../util/logger';
 import { requireUserAPI } from '@/middleware/auth.middleware';
 import { rateLimitRegenerate } from '@/middleware/security';
@@ -195,13 +195,22 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
 
         // Calculate session change
         let startRS = user.get('session_start_rs');
+        let usingStreamSession = false;
 
-        // Auto-initialize session start if not set
-        if (startRS === null || startRS === undefined) {
+        // Priority 1: Check for active StreamSession (matches !record command)
+        const activeSession: any = await StreamSession.findOne({ where: { channel: user.get('username') } });
+        
+        if (activeSession) {
+            startRS = activeSession.start_score;
+            usingStreamSession = true;
+        } 
+        
+        // Priority 2: Fallback to Channel session (manual/persistent)
+        // Auto-initialize session start if not set and no stream session
+        if (!usingStreamSession && (startRS === null || startRS === undefined)) {
             startRS = stats.rankScore || 0;
             // Only update if we have actual stats to init with
             if (stats.rankScore !== undefined) {
-                // We don't await this to keep response fast, but catch errors
                 user.update({ session_start_rs: startRS }).catch((e: any) => 
                     logger.error(`[Overlay] Failed to auto-init session for ${finalsName}`, e)
                 );
@@ -343,6 +352,13 @@ router.post('/api/overlay/reset-session', async (req: any, res: any) => {
         }
 
         await user.update({ session_start_rs: currentRS });
+        
+        // Also update active stream session if exists to keep them in sync
+        const activeSession = await StreamSession.findOne({ where: { channel: username } });
+        if (activeSession) {
+            await activeSession.update({ start_score: currentRS });
+        }
+
         logger.info(`[Overlay] ${username} reset session to ${currentRS} RS`);
         res.json({ success: true, sessionRS: currentRS });
     } catch (err) {

@@ -3,29 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Finals - Terminal Overlay</title>
+    <title>The Finals - Neon Glow Overlay</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap"
       rel="stylesheet"
     />
 
     <style>
       :root {
-        --terminal-green: #00ff41;
-        --terminal-bg: #000000;
-        --terminal-accent: #9147ff;
+        --neon-blue: #00f0ff;
+        --neon-pink: #ff00ff;
+        --neon-purple: #9147ff;
+        --dark-bg: #0a0a0a;
       }
 
       body {
         margin: 0;
         padding: 0;
         background-color: transparent;
-        font-family: "JetBrains Mono", monospace;
+        font-family: "Orbitron", sans-serif;
         overflow: hidden;
-        color: var(--terminal-green);
+        color: #fff;
         display: flex;
         justify-content: flex-start;
         align-items: flex-start;
@@ -33,72 +34,67 @@
         width: 100vw;
       }
 
-      .terminal-bar {
+      .neon-shard {
         display: flex;
         align-items: center;
-        gap: 15px;
-        padding: 8px 15px;
-        background: var(--terminal-bg);
-        border: 1px solid var(--terminal-green);
-        border-radius: 2px;
+        gap: 20px;
+        padding: 12px 25px;
+        background: var(--dark-bg);
+        border: 2px solid var(--neon-purple);
+        border-radius: 4px;
+        box-shadow: 0 0 10px rgba(145, 71, 255, 0.5),
+          inset 0 0 20px rgba(145, 71, 255, 0.2);
 
         position: absolute;
         top: 20px;
         left: 20px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
+
+        /* Slight skew for dynamic look */
+        transform: skewX(-10deg);
+        /* Fix text skew */
       }
 
-      .stat-cluster {
+      .stat-group {
         display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 14px;
+        flex-direction: column;
+        line-height: 1;
+        transform: skewX(10deg); /* Counter skew */
       }
 
-      .prompt {
-        color: var(--terminal-accent);
-        font-weight: 700;
-        margin-right: 2px;
+      .stat-label {
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--neon-blue);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+        text-shadow: 0 0 5px rgba(0, 240, 255, 0.6);
+        letter-spacing: 1px;
       }
 
-      .key {
-        color: #888;
-        font-size: 12px;
+      .stat-value {
+        font-size: 20px;
+        font-weight: 900;
+        color: #fff;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        white-space: nowrap;
       }
 
-      .value {
-        color: var(--terminal-green);
-        font-weight: 700;
+      .divider {
+        width: 2px;
+        height: 25px;
+        background: var(--neon-purple);
+        box-shadow: 0 0 8px var(--neon-purple);
+        transform: skewX(10deg);
       }
 
-      .cursor {
-        display: inline-block;
-        width: 8px;
-        height: 14px;
-        background: var(--terminal-green);
-        animation: cursor-blink 1s step-end infinite;
-      }
-
-      @keyframes cursor-blink {
-        0%,
-        50% {
-          opacity: 1;
-        }
-        51%,
-        100% {
-          opacity: 0;
-        }
-      }
-
-      .separator {
-        color: #444;
-      }
-
-      .val-pos {
+      .session-val.positive {
         color: #00ff88;
+        text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
       }
-      .val-neg {
+
+      .session-val.negative {
         color: #ff4444;
+        text-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
       }
 
       .hidden {
@@ -108,39 +104,38 @@
   </head>
 
   <body>
-    <div class="terminal-bar" id="main-container">
-      <div class="stat-cluster" id="group-name">
-        <span class="prompt">></span>
-        <span class="value" id="player-name">---</span>
+    <div class="neon-shard" id="main-container">
+      <div class="stat-group" id="group-name">
+        <div class="stat-label">Contestant</div>
+        <div class="stat-value" id="player-name">---</div>
       </div>
 
-      <div class="separator">|</div>
+      <div class="divider"></div>
 
-      <div class="stat-cluster" id="group-rank">
-        <span class="key">rank:</span>
-        <span class="value" id="rank-value">---</span>
+      <div class="stat-group" id="group-rank">
+        <div class="stat-label">Rank</div>
+        <div class="stat-value" id="rank-value">---</div>
       </div>
 
-      <div class="separator">|</div>
+      <div class="divider"></div>
 
-      <div class="stat-cluster" id="group-score">
-        <span class="key">rs:</span>
-        <span class="value" id="score-value">---</span>
+      <div class="stat-group" id="group-score">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="score-value">---</div>
       </div>
 
-      <div class="separator">|</div>
+      <div class="divider"></div>
 
-      <div class="stat-cluster" id="group-wt">
-        <span class="key">wt:</span>
-        <span class="value" id="wt-value">---</span>
+      <div class="stat-group" id="group-wt">
+        <div class="stat-label">WT Rank</div>
+        <div class="stat-value" id="wt-value">---</div>
       </div>
 
-      <div class="separator">|</div>
+      <div class="divider"></div>
 
-      <div class="stat-cluster" id="group-session">
-        <span class="key">Δ:</span>
-        <span class="value" id="session-change">---</span>
-        <span class="cursor"></span>
+      <div class="stat-group" id="group-session">
+        <div class="stat-label">Session</div>
+        <div class="stat-value session-val" id="session-change">---</div>
       </div>
     </div>
 
@@ -150,7 +145,7 @@
       const isPreview = urlParams.get("preview") === "true";
 
       let config = {
-        theme: "terminal",
+        theme: "neon",
         primaryColor: "#9147ff",
         layout: { mode: "compact", visibility: {} },
       };
@@ -164,9 +159,8 @@
             config.primaryColor = data.primaryColor || "#9147ff";
             config.layout = data.layout || { mode: "compact", visibility: {} };
 
-            // Adjust accent color for the prompt
             document.documentElement.style.setProperty(
-              "--terminal-accent",
+              "--neon-purple",
               config.primaryColor
             );
             applyVisibility();
@@ -179,6 +173,7 @@
       function applyVisibility() {
         const v = config.layout.visibility || {};
 
+        // Helper to hide group and following divider
         const toggleGroup = (id, hide) => {
           const el = document.getElementById(id);
           if (!el) return;
@@ -186,7 +181,7 @@
             el.classList.add("hidden");
             if (
               el.nextElementSibling &&
-              el.nextElementSibling.classList.contains("separator")
+              el.nextElementSibling.classList.contains("divider")
             ) {
               el.nextElementSibling.classList.add("hidden");
             }
@@ -194,7 +189,7 @@
             el.classList.remove("hidden");
             if (
               el.nextElementSibling &&
-              el.nextElementSibling.classList.contains("separator")
+              el.nextElementSibling.classList.contains("divider")
             ) {
               el.nextElementSibling.classList.remove("hidden");
             }
@@ -207,7 +202,7 @@
         toggleGroup("group-wt", v.hideWT);
         toggleGroup("group-session", v.hideSession);
 
-        // Fix separator logic (hide last separator)
+        // Clean up trailing dividers
         const container = document.getElementById("main-container");
         const visibleChildren = Array.from(container.children).filter(
           (c) => !c.classList.contains("hidden")
@@ -215,7 +210,7 @@
         if (
           visibleChildren.length > 0 &&
           visibleChildren[visibleChildren.length - 1].classList.contains(
-            "separator"
+            "divider"
           )
         ) {
           visibleChildren[visibleChildren.length - 1].classList.add("hidden");
@@ -225,11 +220,12 @@
       async function updateOverlay() {
         if (isPreview) {
           document.getElementById("player-name").textContent = "MOCK_USER";
-          document.getElementById("rank-value").textContent = "D1";
-          document.getElementById("score-value").textContent = "45250";
+          document.getElementById("rank-value").textContent = "Diamond 1";
+          document.getElementById("score-value").textContent = "45,250";
           document.getElementById("wt-value").textContent = "#1337";
           document.getElementById("session-change").textContent = "+250";
-          document.getElementById("session-change").className = "value val-pos";
+          document.getElementById("session-change").className =
+            "stat-value session-val positive";
           return;
         }
 
@@ -242,13 +238,13 @@
           const data = await res.json();
 
           document.getElementById("player-name").textContent =
-            data.playerName || "USER";
+            data.playerName || "Unknown";
           document.getElementById("rank-value").textContent =
-            data.league || "?";
+            data.league || "-"; // Using league name like "Gold 1"
           document.getElementById("score-value").textContent =
-            data.rankScore || "0";
+            data.rankScore?.toLocaleString() || "-";
           document.getElementById("wt-value").textContent =
-            data.worldTourRank || "-";
+            data.worldTourRank || "Unranked";
 
           const sessionEl = document.getElementById("session-change");
           if (data.sessionChange !== undefined && data.sessionChange !== 0) {
@@ -256,12 +252,14 @@
               data.sessionChange > 0
                 ? `+${data.sessionChange}`
                 : data.sessionChange;
-            sessionEl.textContent = change;
+            sessionEl.textContent = `${change}`;
             sessionEl.className =
-              data.sessionChange > 0 ? "value val-pos" : "value val-neg";
+              data.sessionChange > 0
+                ? "stat-value session-val positive"
+                : "stat-value session-val negative";
           } else {
             sessionEl.textContent = "0";
-            sessionEl.className = "value";
+            sessionEl.className = "stat-value session-val";
           }
         } catch (e) {
           console.error("Error updating overlay:", e);

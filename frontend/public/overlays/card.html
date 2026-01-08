@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Finals - Clean Card Overlay</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --card-accent: #9147ff;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: transparent;
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+        color: #fff;
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      .clean-bar {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 0;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        overflow: hidden;
+        color: #1a1a1a;
+
+        position: absolute;
+        top: 20px;
+        left: 20px;
+      }
+
+      .accent-strip {
+        width: 6px;
+        align-self: stretch;
+        background: var(--card-accent);
+      }
+
+      .stat-cluster {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 8px 0;
+        line-height: 1.1;
+      }
+
+      /* First item needs left padding */
+      .stat-cluster:first-of-type {
+        padding-left: 0;
+      }
+
+      /* Last item needs right padding */
+      .stat-cluster:last-child {
+        padding-right: 20px;
+      }
+
+      .label {
+        font-size: 10px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .value {
+        font-size: 18px;
+        font-weight: 800;
+        color: #1a1a1a;
+      }
+
+      .divider {
+        width: 1px;
+        height: 24px;
+        background: #eee;
+      }
+
+      .val-pos {
+        color: #00b35f;
+      }
+      .val-neg {
+        color: #e91916;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="clean-bar" id="main-container">
+      <div class="accent-strip"></div>
+
+      <div class="stat-cluster" id="group-name" style="padding-left: 10px">
+        <div class="label">Player</div>
+        <div class="value" id="player-name">---</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="stat-cluster" id="group-rank">
+        <div class="label">Rank</div>
+        <div class="value" id="rank-value">---</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="stat-cluster" id="group-score">
+        <div class="label">Score</div>
+        <div class="value" id="score-value">---</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="stat-cluster" id="group-wt">
+        <div class="label">WT Rank</div>
+        <div class="value" id="wt-value">---</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="stat-cluster" id="group-session" style="padding-right: 20px">
+        <div class="label">Session</div>
+        <div class="value" id="session-change">---</div>
+      </div>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+      const isPreview = urlParams.get("preview") === "true";
+
+      let config = {
+        theme: "card",
+        primaryColor: "#9147ff",
+        layout: { mode: "compact", visibility: {} },
+      };
+
+      async function fetchConfig() {
+        if (!token) return;
+        try {
+          const res = await fetch(`/api/overlay/config/${token}`);
+          if (res.ok) {
+            const data = await res.json();
+            config.primaryColor = data.primaryColor || "#9147ff";
+            config.layout = data.layout || { mode: "compact", visibility: {} };
+
+            document.documentElement.style.setProperty(
+              "--card-accent",
+              config.primaryColor
+            );
+            applyVisibility();
+          }
+        } catch (e) {
+          console.error("Failed to fetch config", e);
+        }
+      }
+
+      function applyVisibility() {
+        const v = config.layout.visibility || {};
+
+        const toggleGroup = (id, hide) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (hide) {
+            el.classList.add("hidden");
+            if (
+              el.nextElementSibling &&
+              el.nextElementSibling.classList.contains("divider")
+            ) {
+              el.nextElementSibling.classList.add("hidden");
+            }
+          } else {
+            el.classList.remove("hidden");
+            if (
+              el.nextElementSibling &&
+              el.nextElementSibling.classList.contains("divider")
+            ) {
+              el.nextElementSibling.classList.remove("hidden");
+            }
+          }
+        };
+
+        toggleGroup("group-name", v.hideName);
+        toggleGroup("group-rank", v.hideRank);
+        toggleGroup("group-score", v.hideScore);
+        toggleGroup("group-wt", v.hideWT);
+        toggleGroup("group-session", v.hideSession);
+
+        // Fix separator logic
+        const container = document.getElementById("main-container");
+        const visibleChildren = Array.from(container.children).filter(
+          (c) => !c.classList.contains("hidden")
+        );
+        if (
+          visibleChildren.length > 0 &&
+          visibleChildren[visibleChildren.length - 1].classList.contains(
+            "divider"
+          )
+        ) {
+          visibleChildren[visibleChildren.length - 1].classList.add("hidden");
+        }
+      }
+
+      async function updateOverlay() {
+        if (isPreview) {
+          document.getElementById("player-name").textContent = "MOCK_USER";
+          document.getElementById("rank-value").textContent = "D1";
+          document.getElementById("score-value").textContent = "45.2K";
+          document.getElementById("wt-value").textContent = "#1337";
+          document.getElementById("session-change").textContent = "+250";
+          document.getElementById("session-change").className = "value val-pos";
+          return;
+        }
+
+        if (!token) return;
+
+        try {
+          const res = await fetch(`/api/overlay/data/${token}`);
+          if (!res.ok) return;
+
+          const data = await res.json();
+
+          document.getElementById("player-name").textContent =
+            data.playerName || "Unknown";
+          document.getElementById("rank-value").textContent =
+            data.league || "-";
+
+          // Format score k
+          const score = data.rankScore;
+          if (score) {
+            const formatted =
+              score >= 1000
+                ? `${(score / 1000).toFixed(1)}K`
+                : score.toString();
+            document.getElementById("score-value").textContent = formatted;
+          } else {
+            document.getElementById("score-value").textContent = "-";
+          }
+
+          document.getElementById("wt-value").textContent =
+            data.worldTourRank || "-";
+
+          const sessionEl = document.getElementById("session-change");
+          if (data.sessionChange !== undefined && data.sessionChange !== 0) {
+            const change =
+              data.sessionChange > 0
+                ? `+${data.sessionChange}`
+                : data.sessionChange;
+            sessionEl.textContent = change;
+            sessionEl.className =
+              data.sessionChange > 0 ? "value val-pos" : "value val-neg";
+          } else {
+            sessionEl.textContent = "0";
+            sessionEl.className = "value";
+          }
+        } catch (e) {
+          console.error("Error updating overlay:", e);
+        }
+      }
+
+      fetchConfig().then(() => {
+        updateOverlay();
+        if (!isPreview) {
+          setInterval(updateOverlay, 30000);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,39 @@
+import path from 'path';
+import fs from 'fs';
+
+interface CommandContext {
+    say: (message: string, replyParentId?: string) => Promise<void>;
+    user: string;
+    channel: string;
+    message: string;
+    tags?: Record<string, any>;
+}
+
+export const execute = async (
+    ctx: CommandContext,
+    _channel: string,
+    message: string,
+    args: string[]
+) => {
+    try {
+        const messageId = ctx.tags?.["id"]
+        const dropsPath = path.join(process.cwd(), 'frontend', 'public', 'drops.json');
+        const dropsData = await fs.readFileSync(dropsPath, 'utf-8');
+        const drops = JSON.parse(dropsData);
+        // list all of them and format them so they are nice (limit to 5 drops being displayed)
+        //const dropList = drops.drops.slice(0, 5).map((drop: any) => `${drop.name} - ${drop.duration}`).join('\n');
+
+        const dropList = drops.drops
+            .slice(0, 5)
+            .map((d: any) => {
+                const isSubs = d.duration.toLowerCase().includes('subs');
+                return `${d.name} ${isSubs ? '🎁' : '⏱'} ${d.duration} `
+            })
+            .join(' | ')
+        ctx.say(`Drops -> ${dropList}`, messageId);
+    } catch (error) {
+        console.error('Error reading drops file:', error);
+    }
+}
+
+export const aliases = ['drops'];

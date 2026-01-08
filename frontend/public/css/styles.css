@@ -249,6 +249,103 @@ a {
     /* Overlap */
 }
 
+.streamer-avatars .avatar {
+    margin-left: -12px; /* This creates the actual overlap */
+    border: 3px solid var(--bg-dark); /* Adds a "cutout" effect */
+    transition: transform 0.2s;
+}
+
+.streamer-avatars .avatar:hover {
+    transform: translateY(-5px);
+    z-index: 10;
+}
+
+
+.twitch-chat-mockup {
+    background: #0e0e10; /* Twitch Dark Mode Background */
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    font-family: 'Inter', sans-serif;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.chat-header {
+    padding: 12px;
+    border-bottom: 1px solid #1f1f23;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+}
+
+.chat-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 300px; /* Adjust as needed */
+    justify-content: flex-end;
+}
+
+.chat-line {
+    font-size: 0.875rem;
+    line-height: 1.4;
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+.timestamp {
+    color: #53535f;
+    margin-right: 8px;
+    font-size: 0.75rem;
+}
+
+.username {
+    font-weight: 700;
+    margin-right: 4px;
+}
+
+/* Simulated Twitch User Colors */
+.user-1 { color: #ff4500; }
+.user-2 { color: #1e90ff; }
+
+.bot-name { color: var(--brand-primary); }
+
+.bot-badge {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: 4px;
+    border-radius: 2px;
+}
+
+.mention {
+    background: rgba(217, 0, 47, 0.15);
+    color: var(--brand-primary);
+    padding: 0 4px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.rank-diamond {
+    color: #b9f2ff;
+    text-shadow: 0 0 8px rgba(185, 242, 255, 0.5);
+}
+
+.gain {
+    color: #00ff7f;
+    font-weight: 700;
+}
+
+/* Entrance Animation */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .more-count {
     margin-left: 1rem;
     font-size: 0.875rem;

@@ -201,12 +201,20 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
 
         // Return overlay data
         res.json({
-            username: stats.name || finalsName,
+            // Standard fields expected by overlays
+            playerName: stats.name || finalsName,
+            username: stats.name || finalsName, // legacy support
+            
             rank: stats.rank || 'N/A',
             league: stats.league || 'Unranked',
             rankScore: stats.rankScore || 0,
-            wtRank: wtRank,
-            goal: null, // explicit request to not include goal
+            
+            worldTourRank: wtRank,
+            wtRank: wtRank, // legacy support
+
+            sessionChange: sessionChange, // flattened for overlays
+            
+            goal: null,
             session: {
                 startRS: startRS || 0,
                 currentRS: stats.rankScore || 0,
@@ -260,19 +268,35 @@ router.post('/api/overlay/config', async (req: any, res: any) => {
         const { theme, primaryColor, layoutMode, visibility } = req.body;
         const username = req.session.twitchUsername;
 
-        const newLayoutStr = JSON.stringify({
-            mode: layoutMode || 'compact',
-            visibility: visibility || {}
-        });
+        const updateData: any = {};
+        if (theme !== undefined) updateData.overlay_theme = theme;
+        if (primaryColor !== undefined) updateData.overlay_color = primaryColor;
+        
+        // Handle layout JSON
+        if (layoutMode !== undefined || visibility !== undefined) {
+            // First fetch current to keep existing values if some are missing
+            const user: any = await Channel.findOne({ where: { username } });
+            let currentLayout: any = { mode: 'compact', visibility: {} };
+            if (user && user.get('overlay_layout')) {
+                try {
+                    currentLayout = JSON.parse(user.get('overlay_layout'));
+                } catch (e) {
+                    if (typeof user.get('overlay_layout') === 'string') {
+                        currentLayout.mode = user.get('overlay_layout');
+                    }
+                }
+            }
 
-        await Channel.update(
-            {
-                overlay_theme: theme,
-                overlay_color: primaryColor,
-                overlay_layout: newLayoutStr
-            },
-            { where: { username } }
-        );
+            const newLayout = {
+                mode: layoutMode !== undefined ? layoutMode : currentLayout.mode,
+                visibility: visibility !== undefined ? visibility : currentLayout.visibility
+            };
+            updateData.overlay_layout = JSON.stringify(newLayout);
+        }
+
+        if (Object.keys(updateData).length > 0) {
+            await Channel.update(updateData, { where: { username } });
+        }
 
         logger.info(`[Overlay] ${username} updated overlay config`);
         res.json({ success: true });

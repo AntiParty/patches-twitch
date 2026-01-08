@@ -312,19 +312,19 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        margin-bottom: 12px;
       }
 
       .card-title {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--text-main);
       }
 
       .card-subtitle {
-        font-size: 13px;
+        font-size: 12px;
         color: var(--text-muted);
-        margin-top: 4px;
+        margin-top: 3px;
       }
 
       /* Buttons & Inputs */
@@ -503,6 +503,45 @@
         line-height: 1.5;
       }
 
+      .overlay-preview-container {
+        margin-top: 10px;
+        width: 100%;
+        height: 120px;
+        background: #000;
+        border: 2px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        position: relative;
+      }
+
+      .overlay-preview-container iframe {
+        width: 800px; /* Scaled width for better visibility */
+        height: 600px; /* Scaled height */
+        border: none;
+        transform: scale(1); /* Increased scale for better visibility */
+        transform-origin: top left;
+        pointer-events: none; /* Disable interactions in preview */
+      }
+
+      .color-picker-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--bg-app);
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        border-radius: 6px;
+      }
+
+      .color-input {
+        width: 30px;
+        height: 30px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        padding: 0;
+      }
+
       /* Chat Preview */
       .chat-preview {
         background: #18181b;
@@ -614,110 +653,155 @@
 
       /* Responsive */
       /* Toasts */
-    .toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      z-index: 9999;
-    }
+      .toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 9999;
+      }
 
-    .toast {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 20px;
-      min-width: 280px;
-      max-width: 400px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      animation: slideIn 0.3s ease;
-      color: var(--text-main);
-    }
+      .toast {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 20px;
+        min-width: 280px;
+        max-width: 400px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        animation: slideIn 0.3s ease;
+        color: var(--text-main);
+      }
 
-    .toast-success { border-left: 4px solid var(--success); }
-    .toast-danger { border-left: 4px solid var(--danger); }
-    .toast-warning { border-left: 4px solid var(--warning); }
-    .toast-info { border-left: 4px solid var(--info); }
+      .toast-success {
+        border-left: 4px solid var(--success);
+      }
+      .toast-danger {
+        border-left: 4px solid var(--danger);
+      }
+      .toast-warning {
+        border-left: 4px solid var(--warning);
+      }
+      .toast-info {
+        border-left: 4px solid var(--info);
+      }
 
-    .toast i { font-size: 18px; }
-    .toast-success i { color: var(--success); }
-    .toast-danger i { color: var(--danger); }
-    .toast-warning i { color: var(--warning); }
-    .toast-info i { color: var(--info); }
+      .toast i {
+        font-size: 18px;
+      }
+      .toast-success i {
+        color: var(--success);
+      }
+      .toast-danger i {
+        color: var(--danger);
+      }
+      .toast-warning i {
+        color: var(--warning);
+      }
+      .toast-info i {
+        color: var(--info);
+      }
 
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
 
-    .toast.fade-out {
-      animation: slideOut 0.3s ease forwards;
-    }
+      .toast.fade-out {
+        animation: slideOut 0.3s ease forwards;
+      }
 
-    @keyframes slideOut {
-      from { transform: translateX(0); opacity: 1; }
-      to { transform: translateX(100%); opacity: 0; }
-    }
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
 
-    /* Confirm Modal */
-    .confirm-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.75);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      backdrop-filter: blur(4px);
-    }
+      /* Confirm Modal */
+      .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(4px);
+      }
 
-    .confirm-modal {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      width: 100%;
-      max-width: 400px;
-      padding: 24px;
-      animation: modalFadeIn 0.2s ease;
-    }
+      .confirm-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        width: 100%;
+        max-width: 400px;
+        padding: 24px;
+        animation: modalFadeIn 0.2s ease;
+      }
 
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
+      @keyframes modalFadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
 
-    .confirm-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
+      .confirm-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
 
-    .confirm-body {
-      color: var(--text-muted);
-      font-size: 14px;
-      line-height: 1.5;
-      margin-bottom: 24px;
-    }
+      .confirm-body {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 24px;
+      }
 
-    .confirm-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
+      .confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+      }
 
-    @media (max-width: 900px) {
+      @media (max-width: 1200px) {
+        .grid-3 {
+          grid-template-columns: repeat(2, 1fr);
+        }
 
+        .main-content {
+          padding: 16px;
+        }
+      }
+
+      @media (max-width: 900px) {
         .app-container {
-          grid-template-columns: 80px 1fr;
+          grid-template-columns: 70px 1fr;
         }
 
         .sidebar {
-          padding: 16px 12px;
+          padding: 12px 8px;
           align-items: center;
         }
 
@@ -729,16 +813,28 @@
 
         .nav-item {
           justify-content: center;
-          padding: 12px;
+          padding: 10px;
         }
 
         .nav-item i {
           margin: 0;
-          font-size: 20px;
+          font-size: 18px;
         }
 
         .logo {
-          margin-bottom: 20px;
+          margin-bottom: 16px;
+        }
+
+        .grid-2 {
+          gap: 12px;
+        }
+
+        .card {
+          padding: 12px;
+        }
+
+        .page-title {
+          font-size: 18px;
         }
       }
 
@@ -755,10 +851,50 @@
         .grid-3,
         .grid-1-2 {
           grid-template-columns: 1fr;
+          gap: 12px;
         }
 
         .main-content {
-          padding: 20px;
+          padding: 12px;
+        }
+
+        .header {
+          margin-bottom: 12px;
+        }
+
+        .page-title {
+          font-size: 18px;
+        }
+
+        .card {
+          padding: 12px;
+        }
+
+        .overlay-preview-container {
+          height: 100px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .main-content {
+          padding: 8px;
+        }
+
+        .card {
+          padding: 10px;
+        }
+
+        .card-title {
+          font-size: 14px;
+        }
+
+        .btn {
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+
+        .overlay-preview-container {
+          height: 80px;
         }
       }
     </style>
@@ -1365,80 +1501,189 @@
             </button>
           </div>
 
-          <div class="grid-1-2">
-            <!-- Card 1: Link & Preview -->
-            <div class="card">
-              <div class="card-title">Overlay Link</div>
-              <div class="card-subtitle">
-                Use this URL in your OBS Browser Source.
-              </div>
+          <!-- Single Card Layout -->
+          <div class="card">
+            <div class="card-title">Overlay Setup</div>
 
-              <div style="margin-top: 15px; display: flex; gap: 10px">
+            <!-- URL Input -->
+            <div style="margin-top: 12px">
+              <label
+                style="
+                  display: block;
+                  font-size: 12px;
+                  color: var(--text-muted);
+                  margin-bottom: 6px;
+                "
+                >Overlay URL</label
+              >
+              <div style="display: flex; gap: 8px">
                 <input
                   type="text"
                   id="overlay-url-input"
                   class="input"
                   readonly
                   value=""
+                  style="flex: 1"
                 />
                 <button class="btn btn-primary" onclick="copyOverlayUrl()">
                   <i class="fas fa-copy"></i>
                 </button>
-              </div>
-
-              <div style="margin-top: 20px">
                 <button
                   class="btn btn-ghost"
                   onclick="window.open(document.getElementById('overlay-url-input').value, '_blank')"
                 >
-                  <i class="fas fa-external-link-alt"></i> Open in Browser
+                  <i class="fas fa-external-link-alt"></i>
                 </button>
-              </div>
-
-              <div
-                style="
-                  margin-top: 20px;
-                  padding: 15px;
-                  background: rgba(255, 193, 7, 0.1);
-                  border: 1px solid rgba(255, 193, 7, 0.3);
-                  border-radius: 6px;
-                "
-              >
-                <strong style="color: #ffc107; font-size: 13px">Note:</strong>
-                <p
-                  style="
-                    font-size: 12px;
-                    color: var(--text-muted);
-                    margin-top: 4px;
-                  "
-                >
-                  Changes to Appearance Settings below are saved automatically
-                  and will update your overlay in real-time.
-                </p>
               </div>
             </div>
 
-            <!-- Card 2: Configuration -->
-            <div class="card">
-              <div class="card-title">Appearance Settings</div>
-              <div class="card-subtitle">
-                Customize what appears on your overlay.
-              </div>
-
+            <!-- Preview -->
+            <div style="margin-top: 16px">
               <div
                 style="
-                  margin-top: 20px;
                   display: flex;
-                  flex-direction: column;
-                  gap: 15px;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 8px;
                 "
               >
-                <!-- Toggle Name -->
+                <label style="font-size: 12px; color: var(--text-muted)"
+                  >Live Preview</label
+                >
+                <button
+                  class="btn btn-ghost btn-sm"
+                  onclick="updateOverlayUrlDisplay()"
+                  style="padding: 4px 8px"
+                >
+                  <i class="fas fa-sync"></i> Refresh
+                </button>
+              </div>
+              <div class="overlay-preview-container" style="height: 200px">
+                <iframe id="overlay-preview-iframe" src="about:blank"></iframe>
+              </div>
+              <p
+                style="
+                  font-size: 11px;
+                  color: var(--text-muted);
+                  margin-top: 6px;
+                  text-align: center;
+                "
+              >
+                Use 400x300 in OBS for best results
+              </p>
+            </div>
+
+            <!-- Divider -->
+            <div
+              style="height: 1px; background: var(--border); margin: 20px 0"
+            ></div>
+
+            <!-- Appearance Settings -->
+            <div class="card-title" style="margin-bottom: 12px">
+              Appearance Settings
+            </div>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 16px;
+              "
+            >
+              <!-- Theme & Color -->
+              <div>
+                <label
+                  style="
+                    display: block;
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    margin-bottom: 6px;
+                  "
+                  >Theme</label
+                >
+                <select
+                  id="overlay-theme-select"
+                  class="input"
+                  onchange="saveOverlayConfig()"
+                >
+                  <option value="minimal">Minimal Shard</option>
+                  <option value="neon">Neon Glow</option>
+                  <option value="glass">Glass Morphism</option>
+                  <option value="terminal">Retro Terminal</option>
+                  <option value="card">Clean Card</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  style="
+                    display: block;
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    margin-bottom: 6px;
+                  "
+                  >Accent Color</label
+                >
+                <div class="color-picker-wrapper">
+                  <input
+                    type="color"
+                    id="overlay-color-input"
+                    class="color-input"
+                    value="#9147ff"
+                    onchange="saveOverlayConfig()"
+                  />
+                  <span
+                    id="color-value"
+                    style="font-size: 12px; font-family: monospace"
+                    >#9147FF</span
+                  >
+                </div>
+              </div>
+
+              <div>
+                <label
+                  style="
+                    display: block;
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    margin-bottom: 6px;
+                  "
+                  >Layout Mode</label
+                >
+                <select
+                  id="overlay-layout-select"
+                  class="input"
+                  onchange="saveOverlayConfig()"
+                >
+                  <option value="compact">Compact (Horizontal)</option>
+                  <option value="wide">Wide (Spaced Out)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Visibility Toggles -->
+            <div style="margin-top: 16px">
+              <label
+                style="
+                  display: block;
+                  font-size: 12px;
+                  color: var(--text-muted);
+                  margin-bottom: 8px;
+                "
+                >Visibility Options</label
+              >
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                  gap: 10px;
+                "
+              >
                 <label
                   style="
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                     cursor: pointer;
                   "
                 >
@@ -1447,15 +1692,13 @@
                     id="check-hide-name"
                     onchange="saveOverlayConfig()"
                   />
-                  <span style="font-size: 14px">Hide Contestant Name</span>
+                  <span style="font-size: 13px">Hide Name</span>
                 </label>
-
-                <!-- Toggle Rank -->
                 <label
                   style="
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                     cursor: pointer;
                   "
                 >
@@ -1464,15 +1707,13 @@
                     id="check-hide-rank"
                     onchange="saveOverlayConfig()"
                   />
-                  <span style="font-size: 14px">Hide Current Rank</span>
+                  <span style="font-size: 13px">Hide Rank</span>
                 </label>
-
-                <!-- Toggle Score -->
                 <label
                   style="
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                     cursor: pointer;
                   "
                 >
@@ -1481,15 +1722,13 @@
                     id="check-hide-score"
                     onchange="saveOverlayConfig()"
                   />
-                  <span style="font-size: 14px">Hide Rank Score</span>
+                  <span style="font-size: 13px">Hide Score</span>
                 </label>
-
-                <!-- Toggle WT -->
                 <label
                   style="
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                     cursor: pointer;
                   "
                 >
@@ -1498,15 +1737,13 @@
                     id="check-hide-wt"
                     onchange="saveOverlayConfig()"
                   />
-                  <span style="font-size: 14px">Hide World Tour Rank</span>
+                  <span style="font-size: 13px">Hide WT Rank</span>
                 </label>
-
-                <!-- Toggle Session -->
                 <label
                   style="
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 8px;
                     cursor: pointer;
                   "
                 >
@@ -1515,43 +1752,39 @@
                     id="check-hide-session"
                     onchange="saveOverlayConfig()"
                   />
-                  <span style="font-size: 14px">Hide Session Change</span>
+                  <span style="font-size: 13px">Hide Session</span>
                 </label>
               </div>
-              <div
-                id="save-status"
-                style="
-                  margin-top: 15px;
-                  font-size: 12px;
-                  color: var(--text-muted);
-                  min-height: 20px;
-                "
-              ></div>
+            </div>
 
-              <div class="card" style="margin-top: 24px">
-                <div class="card-title" style="margin-bottom: 16px">
-                  📖 Setup Instructions
-                </div>
-                <ol
-                  style="
-                    color: var(--text-muted);
-                    line-height: 1.8;
-                    padding-left: 20px;
-                  "
-                >
-                  <li>Copy your overlay URL above</li>
-                  <li>Open OBS Studio or Streamlabs OBS</li>
-                  <li>
-                    Add a new <strong>Browser Source</strong> to your scene
-                  </li>
-                  <li>
-                    Paste the URL and set dimensions to
-                    <strong>400x300</strong> pixels
-                  </li>
-                  <li>Position and resize the overlay on your stream</li>
-                  <li>The overlay auto-updates every 30 seconds</li>
-                </ol>
-              </div>
+            <!-- Save Status -->
+            <div
+              id="save-status"
+              style="
+                margin-top: 12px;
+                font-size: 12px;
+                color: var(--text-muted);
+                min-height: 20px;
+                text-align: right;
+              "
+            ></div>
+
+            <!-- Pro Tip -->
+            <div
+              class="feature-item"
+              style="
+                margin-top: 12px;
+                background: rgba(145, 71, 255, 0.05);
+                padding: 12px;
+              "
+            >
+              <h3 style="font-size: 13px; margin-bottom: 4px">
+                <i class="fas fa-magic"></i> Pro Tip
+              </h3>
+              <p style="margin: 0; font-size: 12px">
+                Changes reflect instantly on your stream! No need to refresh
+                OBS.
+              </p>
             </div>
           </div>
         </div>
@@ -1700,7 +1933,9 @@
     <div id="confirm-modal" class="confirm-overlay">
       <div class="confirm-modal">
         <div id="confirm-title" class="confirm-title">Confirm Action</div>
-        <div id="confirm-body" class="confirm-body">Are you sure you want to proceed?</div>
+        <div id="confirm-body" class="confirm-body">
+          Are you sure you want to proceed?
+        </div>
         <div class="confirm-actions">
           <button id="confirm-cancel" class="btn btn-ghost">Cancel</button>
           <button id="confirm-ok" class="btn btn-primary">Confirm</button>
@@ -1708,72 +1943,67 @@
       </div>
     </div>
 
-
     <script>
       /* --- UI HELPERS --- */
-      function showToast(message, type = 'info') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
+      function showToast(message, type = "info") {
+        const container = document.getElementById("toast-container");
+        const toast = document.createElement("div");
         toast.className = `toast toast-${type}`;
-        
+
         const icons = {
-          success: 'fa-check-circle',
-          danger: 'fa-exclamation-circle',
-          warning: 'fa-exclamation-triangle',
-          info: 'fa-info-circle'
+          success: "fa-check-circle",
+          danger: "fa-exclamation-circle",
+          warning: "fa-exclamation-triangle",
+          info: "fa-info-circle",
         };
-        
+
         toast.innerHTML = `
-          <i class="fas ${icons[type]}"></i>
-          <span>${message}</span>
-        `;
-        
+      <i class="fas ${icons[type]}"></i>
+      <span>${message}</span>
+    `;
+
         container.appendChild(toast);
-        
+
         setTimeout(() => {
-          toast.classList.add('fade-out');
+          toast.classList.add("fade-out");
           setTimeout(() => toast.remove(), 300);
         }, 4000);
       }
-
       function showConfirm(title, body) {
         return new Promise((resolve) => {
-          const modal = document.getElementById('confirm-modal');
-          const titleEl = document.getElementById('confirm-title');
-          const bodyEl = document.getElementById('confirm-body');
-          const cancelBtn = document.getElementById('confirm-cancel');
-          const okBtn = document.getElementById('confirm-ok');
-          
+          const modal = document.getElementById("confirm-modal");
+          const titleEl = document.getElementById("confirm-title");
+          const bodyEl = document.getElementById("confirm-body");
+          const cancelBtn = document.getElementById("confirm-cancel");
+          const okBtn = document.getElementById("confirm-ok");
+
           titleEl.innerText = title;
           bodyEl.innerText = body;
-          modal.style.display = 'flex';
-          
+          modal.style.display = "flex";
+
           const cleanup = (result) => {
-            modal.style.display = 'none';
-            cancelBtn.removeEventListener('click', onCancel);
-            okBtn.removeEventListener('click', onOk);
+            modal.style.display = "none";
+            cancelBtn.onclick = null;
+            okBtn.onclick = null;
             resolve(result);
           };
-          
-          const onCancel = () => cleanup(false);
-          const onOk = () => cleanup(true);
-          
-          cancelBtn.addEventListener('click', onCancel);
-          okBtn.addEventListener('click', onOk);
+
+          cancelBtn.onclick = () => cleanup(false);
+          okBtn.onclick = () => cleanup(true);
         });
       }
-
       function getCsrfHeaders() {
-        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const token = document
+          .querySelector('meta[name="csrf-token"]')
+          .getAttribute("content");
         return {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': token
+          "Content-Type": "application/json",
+          "X-CSRF-Token": token,
         };
       }
 
       /* --- CLIENT STATE --- */
       const GS_KEY = "finalsrs_getting_started_seen";
-
 
       // --- State ---
       let overlayToken = null;
@@ -1803,13 +2033,37 @@
               if (cfgRes.ok) {
                 const cfgJson = await cfgRes.json();
                 overlayLayoutObj = cfgJson.layout || null;
+
+                // Initialize new inputs
+                if (cfgJson.theme) {
+                  const themeSelect = document.getElementById(
+                    "overlay-theme-select"
+                  );
+                  if (themeSelect) themeSelect.value = cfgJson.theme;
+                }
+                if (cfgJson.primaryColor) {
+                  const colorInput = document.getElementById(
+                    "overlay-color-input"
+                  );
+                  if (colorInput) {
+                    colorInput.value = cfgJson.primaryColor;
+                    document.getElementById("color-value").innerText =
+                      cfgJson.primaryColor.toUpperCase();
+                  }
+                }
+                if (overlayLayoutObj && overlayLayoutObj.mode) {
+                  const layoutSelect = document.getElementById(
+                    "overlay-layout-select"
+                  );
+                  if (layoutSelect) layoutSelect.value = overlayLayoutObj.mode;
+                }
               }
             } catch (e) {
               console.error("Failed to fetch overlay config", e);
             }
           }
 
-          // Initialize Checkboxes from fetched layout
+          // Initialize Visibility from fetched layout
           if (overlayLayoutObj && overlayLayoutObj.visibility) {
             const v = overlayLayoutObj.visibility;
             if (v.hideName)
@@ -1823,6 +2077,9 @@
             if (v.hideSession)
               document.getElementById("check-hide-session").checked = true;
           }
+
+          // Final refresh of preview once everything is set
+          updateOverlayUrlDisplay();
         })();
 
         if (!localStorage.getItem(GS_KEY)) {
@@ -1846,9 +2103,18 @@
       // --- Overlay Functions ---
       function updateOverlayUrlDisplay() {
         const urlInput = document.getElementById("overlay-url-input");
+        const iframe = document.getElementById("overlay-preview-iframe");
+        const themeSelect = document.getElementById("overlay-theme-select");
+
         if (urlInput) {
           const origin = window.location.origin;
-          urlInput.value = `${origin}/overlays/overlay.html?token=${overlayToken}`;
+          const theme = themeSelect ? themeSelect.value : "minimal";
+          const overlayFile =
+            theme === "minimal" ? "overlay.html" : `${theme}.html`;
+
+          const url = `${origin}/overlays/${overlayFile}?token=${overlayToken}&preview=true&t=${Date.now()}`;
+          urlInput.value = `${origin}/overlays/${overlayFile}?token=${overlayToken}`;
+          if (iframe) iframe.src = url;
         }
       }
 
@@ -1865,12 +2131,22 @@
         setTimeout(() => (btn.innerHTML = originalHtml), 2000);
       }
 
+      let saveTimeout = null;
       async function saveOverlayConfig() {
         const statusEl = document.getElementById("save-status");
         statusEl.innerText = "Saving...";
 
+        // Update color value text
+        const colorInput = document.getElementById("overlay-color-input");
+        if (colorInput) {
+          document.getElementById("color-value").innerText =
+            colorInput.value.toUpperCase();
+        }
+
         const config = {
-          layoutMode: "compact", // Default or fetch from dropdown if added back
+          theme: document.getElementById("overlay-theme-select").value,
+          primaryColor: document.getElementById("overlay-color-input").value,
+          layoutMode: document.getElementById("overlay-layout-select").value,
           visibility: {
             hideName: document.getElementById("check-hide-name").checked,
             hideRank: document.getElementById("check-hide-rank").checked,
@@ -1891,6 +2167,12 @@
             statusEl.innerHTML =
               '<span style="color: var(--success);"><i class="fas fa-check"></i> Saved</span>';
             setTimeout(() => (statusEl.innerText = ""), 2000);
+
+            // Refresh preview after a small delay to allow server to update
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+              updateOverlayUrlDisplay();
+            }, 500);
           } else {
             statusEl.innerText = "Failed to save.";
             showToast("Failed to save overlay configuration", "danger");
@@ -2291,7 +2573,10 @@
           });
           const data = await response.json();
 
-          showToast(`Session reset! Starting RS: ${data.sessionRS.toLocaleString()}`, "success");
+          showToast(
+            `Session reset! Starting RS: ${data.sessionRS.toLocaleString()}`,
+            "success"
+          );
           updateOverlayPreview();
         } catch (error) {
           showToast("Failed to reset session", "danger");
@@ -2553,7 +2838,7 @@
 
               if (data.success) {
                 showToast("Disconnected successfully.", "success");
-                setTimeout(() => window.location.href = "/", 1000);
+                setTimeout(() => (window.location.href = "/"), 1000);
               } else {
                 showToast(data.error || "Failed", "danger");
                 btn.disabled = false;
@@ -2564,7 +2849,6 @@
               btn.disabled = false;
               btn.innerText = "Disconnect Bot";
             }
-
           });
         }
       });
@@ -2608,7 +2892,7 @@
               ? "indicator-success"
               : "indicator-danger";
 
-            showToast(`Bot turned ${isEnabled ? 'on' : 'off'}`, "success");
+            showToast(`Bot turned ${isEnabled ? "on" : "off"}`, "success");
             btn.disabled = false;
           } else {
             showToast("Failed to toggle bot status.", "danger");
@@ -2621,7 +2905,6 @@
           text.innerText = originalText;
           btn.disabled = false;
         }
-
       }
     </script>
   </body>

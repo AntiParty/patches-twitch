@@ -112,6 +112,7 @@ export function getNextCacheUpdateInfo(intervalMs = 45 * 60 * 1000) {
   const msLeft = Math.max(0, nextUpdateAt - now);
   return { nextUpdateAt, msLeft };
 }
+
 function getRegularCachePath(season: number) {
   return path.resolve(__dirname, `../../cache/regular_s${season}.json`);
 }

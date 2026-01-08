@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Finals - Terminal Overlay</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --terminal-green: #00ff41;
+        --terminal-bg: rgba(0, 0, 0, 0.85);
+        --terminal-accent: #9147ff;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: transparent;
+        font-family: "JetBrains Mono", monospace;
+        overflow: hidden;
+        color: var(--terminal-green);
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      .terminal-bar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 8px 15px;
+        background: var(--terminal-bg);
+        border: 1px solid var(--terminal-green);
+        border-radius: 2px;
+
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8);
+      }
+
+      .stat-cluster {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+      }
+
+      .prompt {
+        color: var(--terminal-accent);
+        font-weight: 700;
+        margin-right: 2px;
+      }
+
+      .key {
+        color: #888;
+        font-size: 12px;
+      }
+
+      .value {
+        color: var(--terminal-green);
+        font-weight: 700;
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 8px;
+        height: 14px;
+        background: var(--terminal-green);
+        animation: cursor-blink 1s step-end infinite;
+      }
+
+      @keyframes cursor-blink {
+        0%,
+        50% {
+          opacity: 1;
+        }
+        51%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .separator {
+        color: #444;
+      }
+
+      .val-pos {
+        color: #00ff88;
+      }
+      .val-neg {
+        color: #ff4444;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="terminal-bar" id="main-container">
+      <div class="stat-cluster" id="group-name">
+        <span class="prompt">></span>
+        <span class="value" id="player-name">---</span>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="stat-cluster" id="group-rank">
+        <span class="key">rank:</span>
+        <span class="value" id="rank-value">---</span>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="stat-cluster" id="group-score">
+        <span class="key">rs:</span>
+        <span class="value" id="score-value">---</span>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="stat-cluster" id="group-wt">
+        <span class="key">wt:</span>
+        <span class="value" id="wt-value">---</span>
+      </div>
+
+      <div class="separator">|</div>
+
+      <div class="stat-cluster" id="group-session">
+        <span class="key">Δ:</span>
+        <span class="value" id="session-change">---</span>
+        <span class="cursor"></span>
+      </div>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+      const isPreview = urlParams.get("preview") === "true";
+
+      let config = {
+        theme: "terminal",
+        primaryColor: "#9147ff",
+        layout: { mode: "compact", visibility: {} },
+      };
+
+      async function fetchConfig() {
+        if (!token) return;
+        try {
+          const res = await fetch(`/api/overlay/config/${token}`);
+          if (res.ok) {
+            const data = await res.json();
+            config.primaryColor = data.primaryColor || "#9147ff";
+            config.layout = data.layout || { mode: "compact", visibility: {} };
+
+            // Adjust accent color for the prompt
+            document.documentElement.style.setProperty(
+              "--terminal-accent",
+              config.primaryColor
+            );
+            applyVisibility();
+          }
+        } catch (e) {
+          console.error("Failed to fetch config", e);
+        }
+      }
+
+      function applyVisibility() {
+        const v = config.layout.visibility || {};
+
+        const toggleGroup = (id, hide) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (hide) {
+            el.classList.add("hidden");
+            if (
+              el.nextElementSibling &&
+              el.nextElementSibling.classList.contains("separator")
+            ) {
+              el.nextElementSibling.classList.add("hidden");
+            }
+          } else {
+            el.classList.remove("hidden");
+            if (
+              el.nextElementSibling &&
+              el.nextElementSibling.classList.contains("separator")
+            ) {
+              el.nextElementSibling.classList.remove("hidden");
+            }
+          }
+        };
+
+        toggleGroup("group-name", v.hideName);
+        toggleGroup("group-rank", v.hideRank);
+        toggleGroup("group-score", v.hideScore);
+        toggleGroup("group-wt", v.hideWT);
+        toggleGroup("group-session", v.hideSession);
+
+        // Fix separator logic (hide last separator)
+        const container = document.getElementById("main-container");
+        const visibleChildren = Array.from(container.children).filter(
+          (c) => !c.classList.contains("hidden")
+        );
+        if (
+          visibleChildren.length > 0 &&
+          visibleChildren[visibleChildren.length - 1].classList.contains(
+            "separator"
+          )
+        ) {
+          visibleChildren[visibleChildren.length - 1].classList.add("hidden");
+        }
+      }
+
+      async function updateOverlay() {
+        if (isPreview) {
+          document.getElementById("player-name").textContent = "MOCK_USER";
+          document.getElementById("rank-value").textContent = "D1";
+          document.getElementById("score-value").textContent = "45250";
+          document.getElementById("wt-value").textContent = "#1337";
+          document.getElementById("session-change").textContent = "+250";
+          document.getElementById("session-change").className = "value val-pos";
+          return;
+        }
+
+        if (!token) return;
+
+        try {
+          const res = await fetch(`/api/overlay/data/${token}`);
+          if (!res.ok) return;
+
+          const data = await res.json();
+
+          document.getElementById("player-name").textContent =
+            data.playerName || "USER";
+          document.getElementById("rank-value").textContent =
+            data.league || "?";
+          document.getElementById("score-value").textContent =
+            data.rankScore || "0";
+          document.getElementById("wt-value").textContent =
+            data.worldTourRank || "-";
+
+          const sessionEl = document.getElementById("session-change");
+          if (data.sessionChange !== undefined && data.sessionChange !== 0) {
+            const change =
+              data.sessionChange > 0
+                ? `+${data.sessionChange}`
+                : data.sessionChange;
+            sessionEl.textContent = change;
+            sessionEl.className =
+              data.sessionChange > 0 ? "value val-pos" : "value val-neg";
+          } else {
+            sessionEl.textContent = "0";
+            sessionEl.className = "value";
+          }
+        } catch (e) {
+          console.error("Error updating overlay:", e);
+        }
+      }
+
+      fetchConfig().then(() => {
+        updateOverlay();
+        if (!isPreview) {
+          setInterval(updateOverlay, 30000);
+        }
+      });
+    </script>
+  </body>
+</html>

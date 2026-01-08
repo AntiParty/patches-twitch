@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Finals - Glass Overlay</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --glass-accent: #9147ff;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: transparent;
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+        color: #fff;
+        display: flex;
+        justify-content: flex-start;
+        align-items: flex-start;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      .glass-shard {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 10px 20px;
+
+        /* Frosted Glass Effect */
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50px; /* Pill shape */
+
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+
+        position: absolute;
+        top: 20px;
+        left: 20px;
+      }
+
+      .stat-group {
+        display: flex;
+        flex-direction: column;
+        line-height: 1;
+        justify-content: center;
+      }
+
+      .stat-label {
+        font-size: 9px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.7);
+        text-transform: uppercase;
+        margin-bottom: 2px;
+        letter-spacing: 0.5px;
+      }
+
+      .stat-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+
+      .glass-divider {
+        width: 1px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .accent-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--glass-accent);
+        box-shadow: 0 0 8px var(--glass-accent);
+        margin-right: 2px;
+        display: inline-block;
+      }
+
+      .session-val.positive {
+        color: #00ff88;
+      }
+
+      .session-val.negative {
+        color: #ff4444;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="glass-shard" id="main-container">
+      <!-- Optional Accent Dot at Start -->
+      <div class="accent-dot"></div>
+
+      <div class="stat-group" id="group-name">
+        <div class="stat-label">Player</div>
+        <div class="stat-value" id="player-name">---</div>
+      </div>
+
+      <div class="glass-divider"></div>
+
+      <div class="stat-group" id="group-rank">
+        <div class="stat-label">Rank</div>
+        <div class="stat-value" id="rank-value">---</div>
+      </div>
+
+      <div class="glass-divider"></div>
+
+      <div class="stat-group" id="group-score">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="score-value">---</div>
+      </div>
+
+      <div class="glass-divider"></div>
+
+      <div class="stat-group" id="group-wt">
+        <div class="stat-label">WT Rank</div>
+        <div class="stat-value" id="wt-value">---</div>
+      </div>
+
+      <div class="glass-divider"></div>
+
+      <div class="stat-group" id="group-session">
+        <div class="stat-label">Session</div>
+        <div class="stat-value session-val" id="session-change">---</div>
+      </div>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get("token");
+      const isPreview = urlParams.get("preview") === "true";
+
+      let config = {
+        theme: "glass",
+        primaryColor: "#9147ff",
+        layout: { mode: "compact", visibility: {} },
+      };
+
+      async function fetchConfig() {
+        if (!token) return;
+        try {
+          const res = await fetch(`/api/overlay/config/${token}`);
+          if (res.ok) {
+            const data = await res.json();
+            config.primaryColor = data.primaryColor || "#9147ff";
+            config.layout = data.layout || { mode: "compact", visibility: {} };
+
+            document.documentElement.style.setProperty(
+              "--glass-accent",
+              config.primaryColor
+            );
+            applyVisibility();
+          }
+        } catch (e) {
+          console.error("Failed to fetch config", e);
+        }
+      }
+
+      function applyVisibility() {
+        const v = config.layout.visibility || {};
+
+        const toggleGroup = (id, hide) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (hide) {
+            el.classList.add("hidden");
+            if (
+              el.nextElementSibling &&
+              el.nextElementSibling.classList.contains("glass-divider")
+            ) {
+              el.nextElementSibling.classList.add("hidden");
+            }
+          } else {
+            el.classList.remove("hidden");
+            if (
+              el.nextElementSibling &&
+              el.nextElementSibling.classList.contains("glass-divider")
+            ) {
+              el.nextElementSibling.classList.remove("hidden");
+            }
+          }
+        };
+
+        toggleGroup("group-name", v.hideName);
+        toggleGroup("group-rank", v.hideRank);
+        toggleGroup("group-score", v.hideScore);
+        toggleGroup("group-wt", v.hideWT);
+        toggleGroup("group-session", v.hideSession);
+
+        // Clean up trailing dividers
+        const container = document.getElementById("main-container");
+        const visibleChildren = Array.from(container.children).filter(
+          (c) => !c.classList.contains("hidden")
+        );
+        if (
+          visibleChildren.length > 0 &&
+          visibleChildren[visibleChildren.length - 1].classList.contains(
+            "glass-divider"
+          )
+        ) {
+          visibleChildren[visibleChildren.length - 1].classList.add("hidden");
+        }
+      }
+
+      async function updateOverlay() {
+        if (isPreview) {
+          document.getElementById("player-name").textContent = "MOCK_USER";
+          document.getElementById("rank-value").textContent = "D1 #420";
+          document.getElementById("score-value").textContent = "45.2K";
+          document.getElementById("wt-value").textContent = "#1337";
+          document.getElementById("session-change").textContent = "+250";
+          document.getElementById("session-change").className =
+            "stat-value session-val positive";
+          return;
+        }
+
+        if (!token) return;
+
+        try {
+          const res = await fetch(`/api/overlay/data/${token}`);
+          if (!res.ok) return;
+
+          const data = await res.json();
+
+          document.getElementById("player-name").textContent =
+            data.playerName || "Unknown";
+
+          let rankStr = data.league || "-";
+          if (data.rank && data.rank !== "N/A") rankStr += ` #${data.rank}`;
+          document.getElementById("rank-value").textContent = rankStr;
+
+          // Format score k
+          const score = data.rankScore;
+          if (score) {
+            const formatted =
+              score >= 1000
+                ? `${(score / 1000).toFixed(1)}K`
+                : score.toString();
+            document.getElementById("score-value").textContent = formatted;
+          } else {
+            document.getElementById("score-value").textContent = "-";
+          }
+
+          document.getElementById("wt-value").textContent =
+            data.worldTourRank || "-";
+
+          const sessionEl = document.getElementById("session-change");
+          if (data.sessionChange !== undefined && data.sessionChange !== 0) {
+            const change =
+              data.sessionChange > 0
+                ? `+${data.sessionChange}`
+                : data.sessionChange;
+            sessionEl.textContent = `${change}`;
+            sessionEl.className =
+              data.sessionChange > 0
+                ? "stat-value session-val positive"
+                : "stat-value session-val negative";
+          } else {
+            sessionEl.textContent = "0";
+            sessionEl.className = "stat-value session-val";
+          }
+        } catch (e) {
+          console.error("Error updating overlay:", e);
+        }
+      }
+
+      fetchConfig().then(() => {
+        updateOverlay();
+        if (!isPreview) {
+          setInterval(updateOverlay, 30000);
+        }
+      });
+    </script>
+  </body>
+</html>

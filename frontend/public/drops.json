@@ -3,33 +3,9 @@
   "featuredImage": "./assets/drops/drops.jfif",
   "drops": [
     {
-      "name": "Calvin's Tag",
-      "category": "Sticker",
-      "duration": "1 hour",
-      "icon": "circle"
-    },
-    {
-      "name": "Calvin's Plate",
-      "category": "Screen",
-      "duration": "2 hours",
-      "icon": "circle"
-    },
-    {
-      "name": "Calvin the Cube",
-      "category": "Skin - Anti-Gravity Cube",
-      "duration": "4 hours",
-      "icon": "circle"
-    },
-    {
-      "name": "Charmalure Pack",
-      "category": "BUNDLE",
-      "duration": "3 Gifted Subs (total)",
-      "icon": "circle"
-    },
-    {
-      "name": "Bass Unit 86",
-      "category": "HeadWear",
-      "duration": "5 Gifted Subs (total)",
+      "name": "No Drops Active",
+      "category": "",
+      "duration": "",
       "icon": "circle"
     }
   ]

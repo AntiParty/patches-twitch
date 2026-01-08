@@ -195,8 +195,21 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
 
         // Calculate session change
         let startRS = user.get('session_start_rs');
-        const sessionChange = startRS
-            ? (stats.rankScore || 0) - startRS
+
+        // Auto-initialize session start if not set
+        if (startRS === null || startRS === undefined) {
+            startRS = stats.rankScore || 0;
+            // Only update if we have actual stats to init with
+            if (stats.rankScore !== undefined) {
+                // We don't await this to keep response fast, but catch errors
+                user.update({ session_start_rs: startRS }).catch((e: any) => 
+                    logger.error(`[Overlay] Failed to auto-init session for ${finalsName}`, e)
+                );
+            }
+        }
+
+        const sessionChange = (stats.rankScore !== undefined && startRS !== undefined)
+            ? (stats.rankScore - startRS)
             : 0;
 
         // Return overlay data

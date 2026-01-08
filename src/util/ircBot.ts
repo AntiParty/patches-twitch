@@ -58,7 +58,8 @@ async function handleReconnect(username: string, commandHandler: Record<string, 
 export async function sendChatMessage(
   broadcasterId: string,
   message: string,
-  replyParentId?: string
+  replyParentId?: string,
+  bypassFilter: boolean = false
 ) {
   let appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
 
@@ -87,83 +88,87 @@ export async function sendChatMessage(
   }
 
   // Runtime message filtering to protect bot from sending banned content
-  try {
-    const { containsBlockedWord, containsBlockedPhrase, matchesBlockRegex, sanitizeMessage } = await import('./messageFilter');
+  let outMessage = message;
+  
+  if (!bypassFilter) {
+    try {
+      const { containsBlockedWord, containsBlockedPhrase, matchesBlockRegex, sanitizeMessage } = await import('./messageFilter');
 
-    // If regex or phrase match -> suppress message entirely
-    if (matchesBlockRegex(message) || containsBlockedPhrase(message)) {
-      logger.warn(`[filter] Suppressing message to broadcaster ${broadcasterId} due to blocked phrase/regex. Message: ${message}`);
-      try {
-        const { sendWarningToDiscord } = await import('../handlers/discordHandler');
-        // Note: broadcasterId is numeric user id; try to include channel name if available
-        await sendWarningToDiscord(`${broadcasterId} has tried to use a blocked term`, `Suppressed outgoing message: ${message}`);
-      } catch (e) {
-        logger.warn('[filter] Failed to send Discord warning for suppressed message:', e);
+      // If regex or phrase match -> suppress message entirely
+      if (matchesBlockRegex(message) || containsBlockedPhrase(message)) {
+        logger.warn(`[filter] Suppressing message to broadcaster ${broadcasterId} due to blocked phrase/regex. Message: ${message}`);
+        try {
+          const { sendWarningToDiscord } = await import('../handlers/discordHandler');
+          // Note: broadcasterId is numeric user id; try to include channel name if available
+          await sendWarningToDiscord(`${broadcasterId} has tried to use a blocked term`, `Suppressed outgoing message: ${message}`);
+        } catch (e) {
+          logger.warn('[filter] Failed to send Discord warning for suppressed message:', e);
+        }
+        return;
       }
+
+      // If the message contains blocked words -> redact them, then send
+      if (containsBlockedWord(message)) {
+        outMessage = sanitizeMessage(message);
+        logger.info(`[filter] Redacted blocked words in message to ${broadcasterId}.`);
+      }
+    } catch (err: any) {
+      // If anything goes wrong with filtering or sending, log and avoid sending potentially unsafe content
+      logger.error("[ERROR] Failed to send chat message or message was filtered:", err?.response?.data || err);
       return;
     }
+  }
 
-    // If the message contains blocked words -> redact them, then send
-    let outMessage = message;
-    if (containsBlockedWord(message)) {
-      outMessage = sanitizeMessage(message);
-      logger.info(`[filter] Redacted blocked words in message to ${broadcasterId}.`);
-    }
+  const body: any = {
+    broadcaster_id: broadcasterId,
+    sender_id: botUserId,
+    message: outMessage,
+  };
 
-    const body: any = {
-      broadcaster_id: broadcasterId,
-      sender_id: botUserId,
-      message: outMessage,
-    };
+  if (replyParentId) {
+    body.reply_parent_message_id = replyParentId; // 👈 important
+  }
 
-    if (replyParentId) {
-      body.reply_parent_message_id = replyParentId; // 👈 important
-    }
-
-    try {
-      const resp = await axios.post(
-        "https://api.twitch.tv/helix/chat/messages",
-        body,
-        {
-          headers: {
-            Authorization: `Bearer ${appAccessToken}`,
-            "Client-Id": clientId,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      logger.info("[DEBUG] Helix API response:", resp.data);
-    } catch (err: any) {
-      // If 401 Unauthorized, try refreshing the token once
-      if (err.response && err.response.status === 401) {
-        logger.warn("[DEBUG] App Access Token expired or invalid (401). Refreshing...");
-        try {
-          const newAccessToken = await getAppAccessToken();
-          if (newAccessToken) {
-            const resp = await axios.post(
-              "https://api.twitch.tv/helix/chat/messages",
-              body,
-              {
-                headers: {
-                  Authorization: `Bearer ${newAccessToken}`,
-                  "Client-Id": clientId,
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            logger.info("[DEBUG] Helix API response (after refresh):", resp.data);
-            return;
-          }
-        } catch (retryErr: any) {
-          logger.error("[ERROR] Failed to retry sendChatMessage after token refresh:", retryErr?.response?.data || retryErr);
+  try {
+    const resp = await axios.post(
+      "https://api.twitch.tv/helix/chat/messages",
+      body,
+      {
+        headers: {
+          Authorization: `Bearer ${appAccessToken}`,
+          "Client-Id": clientId,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    logger.info("[DEBUG] Helix API response:", resp.data);
+  } catch (err: any) {
+    // If 401 Unauthorized, try refreshing the token once
+    if (err.response && err.response.status === 401) {
+      logger.warn("[DEBUG] App Access Token expired or invalid (401). Refreshing...");
+      try {
+        const newAccessToken = await getAppAccessToken();
+        if (newAccessToken) {
+          const resp = await axios.post(
+            "https://api.twitch.tv/helix/chat/messages",
+            body,
+            {
+              headers: {
+                Authorization: `Bearer ${newAccessToken}`,
+                "Client-Id": clientId,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          logger.info("[DEBUG] Helix API response (after refresh):", resp.data);
           return;
         }
+      } catch (retryErr: any) {
+        logger.error("[ERROR] Failed to retry sendChatMessage after token refresh:", retryErr?.response?.data || retryErr);
+        return;
       }
-      throw err; // Re-throw to be caught by outer catch
     }
-  } catch (err: any) {
-    // If anything goes wrong with filtering or sending, log and avoid sending potentially unsafe content
-    logger.error("[ERROR] Failed to send chat message or message was filtered:", err?.response?.data || err);
+    throw err; // Re-throw to be caught by outer catch
   }
 }
 
@@ -316,11 +321,6 @@ export const startChatBot = async (
         continue;
       }
 
-      // Log raw IRC line and parsed tags (keys + values) for debugging (always log)
-      //logger.info(`[RAW IRC] ${line.replace(/\r\n/g, '')}`);
-      //logger.info(`[RAW TAGS] ${user} in #${channelName} -> ${JSON.stringify(tags)}`);
-      //logger.info(`[DEBUG] IRC message from ${user} in #${channelName}: ${message}`);
-
       // Only process messages that start with '!'
       if (!message.trim().startsWith("!")) {
         continue;
@@ -368,13 +368,13 @@ export const startChatBot = async (
 
         commandEntry(
           {
-            say: async (msg: string, replyToId?: string) => {
+            say: async (msg: string, replyToId?: string, bypassFilter: boolean = false) => {
               if (!broadcasterId) {
                 logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
                 return;
               }
               logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
-              await sendChatMessage(broadcasterId, msg, replyToId || undefined);
+              await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter);
             },
             raw: (line: string) =>
               socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),

@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 
 interface CommandContext {
-    say: (message: string, replyParentId?: string) => Promise<void>;
+    say: (message: string, replyParentId?: string, bypassFilter?: boolean) => Promise<void>;
     user: string;
     channel: string;
     message: string;
@@ -30,10 +30,11 @@ export const execute = async (
                 return `${d.name} ${isSubs ? '' : ''} (${d.duration}) `
             })
             .join(' | ')
-        ctx.say(`Current Finals Drops: ${dropList}`, messageId);
+        // Bypass filter for trusted drops message
+        ctx.say(`Current Finals Drops: ${dropList} | Be sure to Link your account to get drops here: https://id.embark.games/id/connected-platforms`, messageId, true);
     } catch (error) {
         console.error('Error reading drops file:', error);
     }
 }
 
-export const aliases = ['drops'];
+export const aliases = ['drops', 'drop', 'dropsinfo'];

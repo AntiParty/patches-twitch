@@ -27,10 +27,10 @@ export const execute = async (
             .slice(0, 5)
             .map((d: any) => {
                 const isSubs = d.duration.toLowerCase().includes('subs');
-                return `${d.name} ${isSubs ? '🎁' : '⏱'} ${d.duration} `
+                return `${d.name} ${isSubs ? '' : ''} (${d.duration}) `
             })
             .join(' | ')
-        ctx.say(`Drops -> ${dropList}`, messageId);
+        ctx.say(`Current Finals Drops: ${dropList}`, messageId);
     } catch (error) {
         console.error('Error reading drops file:', error);
     }

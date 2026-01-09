@@ -27,11 +27,15 @@ export const execute = async (
             .slice(0, 5)
             .map((d: any) => {
                 const isSubs = d.duration.toLowerCase().includes('subs');
-                return `${d.name} ${isSubs ? '' : ''} (${d.duration}) `
+                return `${d.name} ${isSubs ? '' : ''} (${d.duration})`
             })
             .join(' | ')
+        
+        // Get end date from first drop (assuming all drops end at the same time)
+        const endDate = drops.drops[0]?.endDate ? ` | Ends: ${drops.drops[0].endDate}` : '';
+        
         // Bypass filter for trusted drops message
-        ctx.say(`Current Finals Drops: ${dropList} | Be sure to Link your account to get drops here: https://id.embark.games/id/connected-platforms`, messageId, true);
+        ctx.say(`Current Finals Drops: ${dropList}${endDate} | Be sure to Link your account to get drops here: https://id.embark.games/id/connected-platforms`, messageId, true);
     } catch (error) {
         console.error('Error reading drops file:', error);
     }

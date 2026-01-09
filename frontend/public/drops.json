@@ -6,18 +6,21 @@
       "name": "Tangerine LH1",
       "category": "WEAPON",
       "duration": "1 hour",
+      "endDate": "January 22nd, 2026",
       "icon": "circle"
     },
     {
       "name": "Tangerine Flamethrower",
       "category": "WEAPON",
       "duration": "2 hours",
+      "endDate": "January 22nd, 2026",
       "icon": "circle"
     },
     {
       "name": "Tangerine R.357",
       "category": "WEAPON ",
       "duration": "3 hours",
+      "endDate": "January 22nd, 2026",
       "icon": "circle"
     }
   ]

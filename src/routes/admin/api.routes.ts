@@ -17,6 +17,7 @@ import { requireAdminAPI, isAdmin, requireApiKey } from '@/middleware/auth.middl
 import { csrfProtection } from '@/middleware/csrf.middleware';
 import { isDashboardEnabled, setDashboardEnabled } from '@/routes/user/dashboard.routes';
 import { sendWarningToDiscord } from '@/handlers/discordHandler';
+import { getCommandAnalytics } from '@/util/commandAnalytics';
 
 const router = Router();
 
@@ -343,6 +344,33 @@ router.post('/api/drops', requireAdminAPI, (req: any, res: any) => {
         logger.info(`[Admin] Updated drops configuration`);
         res.json({ success: true });
     });
+});
+
+/**
+ * GET /admin/api/analytics
+ * Get global command analytics
+ */
+router.get('/api/analytics', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        // Parse query parameters
+        const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+        const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+        const command = req.query.command as string | undefined;
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+
+        // Get analytics (no channel specified = global)
+        const analytics = await getCommandAnalytics(null as any, {
+            startDate,
+            endDate,
+            command,
+            limit,
+        });
+
+        res.json(analytics);
+    } catch (err) {
+        logger.error('Error fetching global analytics:', err);
+        res.status(500).json({ error: 'Failed to fetch global analytics.' });
+    }
 });
 
 export default router;

@@ -366,28 +366,55 @@ export const startChatBot = async (
         });
         const broadcasterId = String(channelRow?.get("twitch_user_id") || "");
 
-        commandEntry(
-          {
-            say: async (msg: string, replyToId?: string, bypassFilter: boolean = false) => {
-              if (!broadcasterId) {
-                logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
-                return;
-              }
-              logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
-              await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter);
+        // Track command execution for analytics
+        const startTime = Date.now();
+        let commandSuccess = true;
+        let errorMessage: string | undefined;
+
+        try {
+          await commandEntry(
+            {
+              say: async (msg: string, replyToId?: string, bypassFilter: boolean = false) => {
+                if (!broadcasterId) {
+                  logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
+                  return;
+                }
+                logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
+                await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter);
+              },
+              raw: (line: string) =>
+                socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
+              user,
+              channel: channelName,
+              message,
+              tags,
             },
-            raw: (line: string) =>
-              socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
-            user,
-            channel: channelName,
+            `#${channelName}`,
             message,
             tags,
-          },
-          `#${channelName}`,
-          message,
-          tags,
-          args
-        );
+            args
+          );
+        } catch (err: any) {
+          commandSuccess = false;
+          errorMessage = err?.message || 'Unknown error';
+          logger.error(`[ERROR] Command execution failed for ${commandKey}:`, err);
+        } finally {
+          // Track command usage asynchronously (don't block command execution)
+          const responseTime = Date.now() - startTime;
+          const { trackCommandUsage } = await import('./commandAnalytics');
+          trackCommandUsage({
+            channel: channelName,
+            command: rawCommand,
+            user: user,
+            user_id: tags?.['user-id'] || undefined,
+            success: commandSuccess,
+            response_time_ms: responseTime,
+            error_message: errorMessage,
+          }).catch((err) => {
+            // Silently fail analytics tracking
+            logger.debug('Failed to track command usage:', err);
+          });
+        }
       } else {
         logger.warn(`[DEBUG] Command not found or not a function: ${commandKey}`);
       }

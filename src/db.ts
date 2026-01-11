@@ -247,6 +247,64 @@ RankGoal.init(
   }
 );
 
+// CommandUsage model - Track command analytics
+class CommandUsage extends Model { }
+CommandUsage.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    command: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    user: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    user_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    success: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    response_time_ms: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    error_message: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    timestamp: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'CommandUsage',
+    tableName: 'CommandUsage',
+    timestamps: false,
+    indexes: [
+      { fields: ['channel', 'timestamp'] },
+      { fields: ['command', 'timestamp'] },
+      { fields: ['user', 'timestamp'] },
+      { fields: ['timestamp'] },
+    ]
+  }
+);
+
 /**
  * Simple migration runner to add missing columns without wiping the DB.
  */
@@ -329,4 +387,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, dbReady, getCustomResponse, setCustomResponse };

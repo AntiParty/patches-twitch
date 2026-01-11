@@ -1,1288 +1,1947 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Twitch Bot Admin</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      --bg-app: #0f0f13;
-      --bg-sidebar: #18181b;
-      --bg-card: #1f1f23;
-      --bg-hover: #2d2d35;
-      --primary: #9147ff;
-      --primary-hover: #772ce8;
-      --text-main: #efeff1;
-      --text-muted: #adadb8;
-      --border: #2d2d35;
-      --success: #00b35f;
-      --danger: #e91916;
-      --warning: #f5a524;
-      --info: #3b82f6;
-      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --radius: 8px;
-      --font-main: 'Inter', sans-serif;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      background-color: var(--bg-app);
-      color: var(--text-main);
-      font-family: var(--font-main);
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* Layout */
-    .app-container {
-      display: grid;
-      grid-template-columns: 250px 1fr;
-      height: 100vh;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 20px;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 40px;
-      padding: 0 10px;
-    }
-
-    .logo i {
-      font-size: 28px;
-      color: var(--primary);
-    }
-
-    .logo h1 {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .nav-menu {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .nav-item {
-      padding: 12px 15px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      color: var(--text-muted);
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 500;
-    }
-
-    .nav-item:hover {
-      background-color: var(--bg-hover);
-      color: var(--text-main);
-    }
-
-    .nav-item.active {
-      background-color: rgba(145, 71, 255, 0.15);
-      color: var(--primary);
-    }
-
-    .nav-item i {
-      width: 20px;
-      text-align: center;
-    }
-
-    .sidebar-footer {
-      margin-top: auto;
-      padding-top: 20px;
-      border-top: 1px solid var(--border);
-    }
-
-    .user-profile {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px;
-      border-radius: var(--radius);
-      background-color: var(--bg-hover);
-    }
-
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background-color: var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-    }
-
-    /* Main Content */
-    .main-content {
-      overflow-y: auto;
-      padding: 30px;
-      position: relative;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30px;
-    }
-
-    .page-title {
-      font-size: 24px;
-      font-weight: 700;
-    }
-
-    .global-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    /* Views */
-    .view-section {
-      display: none;
-      animation: fadeIn 0.3s ease;
-    }
-
-    .view-section.active {
-      display: block;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Twitch Bot Admin</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        --bg-app: #0f0f13;
+        --bg-sidebar: #18181b;
+        --bg-card: #1f1f23;
+        --bg-hover: #2d2d35;
+        --primary: #9147ff;
+        --primary-hover: #772ce8;
+        --text-main: #efeff1;
+        --text-muted: #adadb8;
+        --border: #2d2d35;
+        --success: #00b35f;
+        --danger: #e91916;
+        --warning: #f5a524;
+        --info: #3b82f6;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --radius: 8px;
+        --font-main: "Inter", sans-serif;
       }
 
-      to {
-        opacity: 1;
-        transform: translateY(0);
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-    }
 
-    /* Cards & Grid */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
-    }
+      body {
+        background-color: var(--bg-app);
+        color: var(--text-main);
+        font-family: var(--font-main);
+        height: 100vh;
+        overflow: hidden;
+      }
 
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-
-    .grid-4 {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-    }
-
-    .card {
-      background-color: var(--bg-card);
-      border-radius: var(--radius);
-      padding: 20px;
-      border: 1px solid var(--border);
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-
-    .card-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    /* Metrics */
-    .metric-value {
-      font-size: 28px;
-      font-weight: 700;
-      margin: 10px 0;
-    }
-
-    .metric-label {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
-    .progress-bg {
-      background-color: rgba(255, 255, 255, 0.1);
-      height: 6px;
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.5s ease;
-    }
-
-    /* Buttons & Inputs */
-    .btn {
-      padding: 8px 16px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-      font-size: 14px;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-primary {
-      background-color: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background-color: var(--primary-hover);
-    }
-
-    .btn-danger {
-      background-color: rgba(233, 25, 22, 0.1);
-      color: var(--danger);
-      border: 1px solid rgba(233, 25, 22, 0.2);
-    }
-
-    .btn-danger:hover {
-      background-color: rgba(233, 25, 22, 0.2);
-    }
-
-    .btn-success {
-      background-color: rgba(0, 179, 95, 0.1);
-      color: var(--success);
-      border: 1px solid rgba(0, 179, 95, 0.2);
-    }
-
-    .btn-success:hover {
-      background-color: rgba(0, 179, 95, 0.2);
-    }
-
-    .btn-ghost {
-      background-color: transparent;
-      color: var(--text-muted);
-    }
-
-    .btn-ghost:hover {
-      background-color: var(--bg-hover);
-      color: var(--text-main);
-    }
-
-    .input {
-      background-color: var(--bg-app);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      padding: 8px 12px;
-      border-radius: 6px;
-      width: 100%;
-      font-size: 14px;
-    }
-
-    .input:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    /* Tables & Lists */
-    .table-container {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    th {
-      text-align: left;
-      padding: 12px;
-      color: var(--text-muted);
-      font-weight: 500;
-      border-bottom: 1px solid var(--border);
-    }
-
-    td {
-      padding: 12px;
-      border-bottom: 1px solid var(--border);
-      color: var(--text-main);
-    }
-
-    tr:last-child td {
-      border-bottom: none;
-    }
-
-    .log-container {
-      background-color: #000;
-      font-family: 'JetBrains Mono', monospace;
-      padding: 15px;
-      border-radius: var(--radius);
-      height: 400px;
-      overflow-y: auto;
-      font-size: 13px;
-    }
-
-    .log-entry {
-      margin-bottom: 4px;
-      border-bottom: 1px solid #111;
-      padding-bottom: 2px;
-    }
-
-    .log-time {
-      color: #666;
-      margin-right: 8px;
-    }
-
-    .log-info {
-      color: var(--info);
-    }
-
-    .log-warn {
-      color: var(--warning);
-    }
-
-    .log-error {
-      color: var(--danger);
-    }
-
-    /* Channels Grid */
-    .channels-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 15px;
-    }
-
-    .channel-card {
-      background-color: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .channel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--success);
-      display: inline-block;
-      margin-right: 6px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
+      /* Layout */
       .app-container {
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        height: 100vh;
       }
 
+      /* Sidebar */
       .sidebar {
+        background-color: var(--bg-sidebar);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 40px;
+        padding: 0 10px;
+      }
+
+      .logo i {
+        font-size: 28px;
+        color: var(--primary);
+      }
+
+      .logo h1 {
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+
+      .nav-menu {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .nav-item {
+        padding: 12px 15px;
+        border-radius: var(--radius);
+        cursor: pointer;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 500;
+      }
+
+      .nav-item:hover {
+        background-color: var(--bg-hover);
+        color: var(--text-main);
+      }
+
+      .nav-item.active {
+        background-color: rgba(145, 71, 255, 0.15);
+        color: var(--primary);
+      }
+
+      .nav-item i {
+        width: 20px;
+        text-align: center;
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+      }
+
+      .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        border-radius: var(--radius);
+        background-color: var(--bg-hover);
+      }
+
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+
+      /* Main Content */
+      .main-content {
+        overflow-y: auto;
+        padding: 30px;
+        position: relative;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+
+      .page-title {
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .global-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* Views */
+      .view-section {
         display: none;
+        animation: fadeIn 0.3s ease;
       }
 
-      /* Mobile menu needed in real app */
-      .grid-2,
-      .grid-3,
-      .grid-4 {
-        grid-template-columns: 1fr;
+      .view-section.active {
+        display: block;
       }
-    }
-  </style>
-</head>
 
-<body>
-  <div class="app-container">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="logo">
-        <i class="fab fa-twitch"></i>
-        <h1>FinalsRS Admin</h1>
-      </div>
-
-      <ul class="nav-menu">
-        <li class="nav-item active" onclick="switchView('dashboard')">
-          <i class="fas fa-home"></i> Dashboard
-        </li>
-        <li class="nav-item" onclick="switchView('channels')">
-          <i class="fas fa-users"></i> Channels
-        </li>
-        <li class="nav-item" onclick="switchView('broadcast')">
-          <i class="fas fa-bullhorn"></i> Broadcast
-        </li>
-        <li class="nav-item" onclick="switchView('drops')">
-          <i class="fas fa-gift"></i> Drops
-        </li>
-        <li class="nav-item" onclick="switchView('commands')">
-          <i class="fas fa-terminal"></i> Commands
-        </li>
-        <li class="nav-item" onclick="switchView('database')">
-          <i class="fas fa-database"></i> Database
-        </li>
-        <li class="nav-item" onclick="switchView('logs')">
-          <i class="fas fa-file-code"></i> System Logs
-        </li>
-        <li class="nav-item" onclick="switchView('settings')">
-          <i class="fas fa-cog"></i> Settings
-        </li>
-      </ul>
-
-      <div class="sidebar-footer">
-        <div class="user-profile">
-          <div class="user-avatar">A</div>
-          <div>
-            <div style="font-weight: 600; font-size: 14px;">Admin User</div>
-            <div style="font-size: 12px; color: var(--text-muted);">Online</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
-
-      <!-- Dashboard View -->
-      <div id="view-dashboard" class="view-section active">
-        <div class="header">
-          <h2 class="page-title">Dashboard Overview</h2>
-          <div class="global-actions">
-            <button class="btn btn-primary" onclick="refreshAll()"><i class="fas fa-sync-alt"></i> Refresh</button>
-          </div>
-        </div>
-
-        <div class="grid-4" style="margin-bottom: 30px;">
-          <div class="card">
-            <div class="card-title">Connected Channels</div>
-            <div class="metric-value" id="dash-channels">0</div>
-            <div class="metric-label">Active connections</div>
-          </div>
-          <div class="card">
-            <div class="card-title">Commands Processed</div>
-            <div class="metric-value" id="dash-commands">0</div>
-            <div class="metric-label">Total interactions</div>
-          </div>
-          <div class="card">
-            <div class="card-title">Uptime</div>
-            <div class="metric-value" id="dash-uptime" style="font-size: 20px;">0h 0m</div>
-            <div class="metric-label">Since last restart</div>
-          </div>
-          <div class="card">
-            <div class="card-title">System Status</div>
-            <div class="metric-value" style="color: var(--success); font-size: 20px;"><i
-                class="fas fa-check-circle"></i> Healthy</div>
-            <div class="metric-label">All systems operational</div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">System Performance</div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-              <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                  <span class="metric-label">CPU Usage</span>
-                  <span id="cpu-val">0%</span>
-                </div>
-                <div class="progress-bg">
-                  <div id="cpu-bar" class="progress-fill" style="width: 0%; background-color: var(--primary);"></div>
-                </div>
-              </div>
-              <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                  <span class="metric-label">Memory Usage</span>
-                  <span id="mem-val">0MB</span>
-                </div>
-                <div class="progress-bg">
-                  <div id="mem-bar" class="progress-fill" style="width: 0%; background-color: var(--info);"></div>
-                </div>
-              </div>
-              <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                  <span class="metric-label">Bot Latency</span>
-                  <span id="lat-val">0ms</span>
-                </div>
-                <div class="progress-bg">
-                  <div id="lat-bar" class="progress-fill" style="width: 0%; background-color: var(--warning);"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Quick Actions
-                <button class="btn btn-primary" onclick="restartBot()"><i class="fas fa-power-off"></i> Restart
-                  Bot</button>
-                <button class="btn btn-primary" onclick="refreshBotToken()"><i class="fas fa-key"></i> Refresh
-                  Token</button>
-                <button class="btn btn-danger" onclick="pauseBot()"><i class="fas fa-pause"></i> Pause All Bots</button>
-                <button class="btn btn-success" onclick="resumeBot()"><i class="fas fa-play"></i> Resume All
-                  Bots</button>
-                <button class="btn" style="background-color: var(--info); color: white; grid-column: span 2;"
-                  onclick="triggerDeploy()"><i class="fas fa-cloud-upload-alt"></i> Update System (Git Pull +
-                  Restart)</button>
-              </div>
-            </div>
-            <div id="action-status" style="margin-top: 15px; font-size: 14px; color: var(--text-muted);"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Channels View -->
-      <div id="view-channels" class="view-section">
-        <div class="header">
-          <h2 class="page-title">Connected Channels</h2>
-          <button class="btn btn-ghost" onclick="fetchChannels()"><i class="fas fa-sync"></i> Refresh</button>
-        </div>
-        <div id="channels-list" class="channels-grid">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Broadcast View -->
-      <div id="view-broadcast" class="view-section">
-        <div class="header">
-          <h2 class="page-title">Broadcast Message</h2>
-        </div>
-        <div class="card" style="max-width: 800px;">
-          <div style="margin-bottom: 20px;">
-            <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Target Channels</label>
-            <div id="broadcast-targets"
-              style="padding:10px; border:1px solid var(--border); border-radius:var(--radius); min-height:40px; display:flex; flex-wrap:wrap; gap:5px;">
-              <span style="color:var(--text-muted); font-style:italic; padding:5px;">Select channels from the 'Channels'
-                tab
-                or leave empty for ALL.</span>
-            </div>
-          </div>
-          <div style="margin-bottom: 20px;">
-            <label style="display:block; margin-bottom:8px; color:var(--text-muted);">Message</label>
-            <textarea id="broadcast-msg" class="input" style="min-height: 120px; resize: vertical;"
-              placeholder="Type your announcement..."></textarea>
-          </div>
-          <div style="display:flex; justify-content:flex-end;">
-            <button class="btn btn-primary" onclick="sendBroadcast()"><i class="fas fa-paper-plane"></i> Send
-              Broadcast</button>
-          </div>
-          <div id="broadcast-status" style="margin-top:15px;"></div>
-        </div>
-      </div>
-
-      <!-- Drops View -->
-      <div id="view-drops" class="view-section">
-        <div class="header">
-          <h2 class="page-title">Manage Twitch Drops</h2>
-          <button class="btn btn-primary" onclick="saveDropsConfig()"><i class="fas fa-save"></i> Save Changes</button>
-        </div>
-
-        <!-- Global Settings -->
-        <div class="card" style="margin-bottom: 20px;">
-          <div class="card-title" style="margin-bottom: 15px;">Global Settings</div>
-          <div class="grid-2">
-            <div>
-              <label style="display:block; margin-bottom:5px; color:var(--text-muted);">Last Updated Text</label>
-              <input id="drop-last-updated" class="input" placeholder="e.g. November 28, 2026">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; color:var(--text-muted);">Featured Image URL</label>
-              <input id="drop-featured-image" class="input" placeholder="Path to image">
-            </div>
-          </div>
-        </div>
-
-        <!-- Drops List -->
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">Active Drops List</div>
-            <button class="btn btn-success" onclick="addDropItem()"><i class="fas fa-plus"></i> Add Item</button>
-          </div>
-          <div id="drops-items-container" style="display:flex; flex-direction:column; gap:10px;">
-            <!-- Rendered via JS -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Commands View -->
-      <div id="view-commands" class="view-section">
-        <div class="header">
-          <h2 class="page-title">Custom Commands</h2>
-          <button class="btn btn-success" onclick="showAddCommandModal()"><i class="fas fa-plus"></i> Add
-            Command</button>
-        </div>
-        <div class="card">
-          <div class="table-container">
-            <table id="commands-table">
-              <thead>
-                <tr>
-                  <th>Trigger</th>
-                  <th>Response</th>
-                  <th style="width: 100px;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="commands-body">
-                <!-- Populated by JS -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <!-- Add Command Form (Inline for simplicity) -->
-        <div id="add-command-panel" class="card" style="margin-top: 20px; display: none;">
-          <div class="card-title" style="margin-bottom: 15px;">Add New Command</div>
-          <div style="display: flex; gap: 10px;">
-            <input id="new-cmd-name" class="input" placeholder="!command" style="flex:1;">
-            <input id="new-cmd-resp" class="input" placeholder="Response text" style="flex:2;">
-            <button class="btn btn-success" onclick="addNewCommand()">Save</button>
-            <button class="btn btn-ghost"
-              onclick="document.getElementById('add-command-panel').style.display='none'">Cancel</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Database View -->
-      <div id="view-database" class="view-section">
-        <div class="header">
-          <h2 class="page-title">Database Editor</h2>
-          <select id="db-table-select" class="input" style="width: 200px;" onchange="loadDbTable()">
-            <option value="StreamSessions">StreamSessions</option>
-            <option value="Channels">Channels</option>
-            <option value="CustomResponse">CustomResponse</option>
-            <option value="RankGoals">RankGoals</option>
-          </select>
-        </div>
-        <div id="db-editor-container">
-          <!-- Table content goes here -->
-        </div>
-      </div>
-
-      <!-- Logs View -->
-      <div id="view-logs" class="view-section">
-        <div class="header">
-          <h2 class="page-title">System Logs</h2>
-          <div style="display:flex; gap:10px;">
-            <button class="btn btn-ghost" onclick="fetchLogs()"><i class="fas fa-sync"></i> Refresh</button>
-            <span style="font-size:12px; color:var(--text-muted); align-self:center;">Auto-refreshing every 20s</span>
-          </div>
-        </div>
-        <div id="logs-viewer" class="log-container">
-          <!-- Logs go here -->
-        </div>
-      </div>
-
-      <!-- Settings View -->
-      <div id="view-settings" class="view-section">
-        <div class="header">
-          <h2 class="page-title">Settings</h2>
-        </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title" style="margin-bottom: 15px;">API Configuration</div>
-            <div style="margin-bottom: 15px;">
-              <label style="display:block; margin-bottom:5px; color:var(--text-muted);">Admin API Key</label>
-              <input id="settings-api-key" type="password" class="input" placeholder="Enter API Key">
-              <div style="font-size:12px; color:var(--text-muted); margin-top:5px;">Required for sensitive actions
-                (Restart,
-                Broadcast).</div>
-            </div>
-            <button class="btn btn-primary" onclick="saveSettings()">Save Key</button>
-          </div>
-
-          <div class="card">
-            <div class="card-title" style="margin-bottom: 15px;">Feature Flags</div>
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-              <span>User Dashboard Access</span>
-              <button id="toggle-dashboard-btn" class="btn btn-success" onclick="toggleUserDashboard()">Enabled</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </main>
-  </div>
-
-  <script>
-    // --- State & Config ---
-    let CSRF_TOKEN = null;
-    const API_KEY_STORAGE = 'twitch_bot_api_key';
-    let selectedChannels = new Set();
-    let performanceInterval = null;
-
-    // --- Initialization ---
-    document.addEventListener('DOMContentLoaded', () => {
-      ensureCsrfToken();
-      loadSettings();
-
-      // Initial Data Load
-      refreshAll();
-
-      // Start polling
-      startPolling();
-
-      // Setup DB listener
-      document.getElementById('db-table-select').addEventListener('change', loadDbTable);
-    });
-
-    function switchView(viewId) {
-      // Update Sidebar
-      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      event.currentTarget.classList.add('active');
-
-      // Update Main Content
-      document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-      document.getElementById(`view-${viewId}`).classList.add('active');
-
-      // Trigger specific loads
-      if (viewId === 'database') loadDbTable();
-      if (viewId === 'logs') fetchLogs();
-      if (viewId === 'channels') fetchChannels();
-      if (viewId === 'drops') loadDropsConfig();
-    }
-
-    function refreshAll() {
-      fetchBotStatus();
-      fetchChannels();
-      fetchLogs();
-      fetchCommands();
-      fetchPerformance();
-    }
-
-
-    // --- Drops Management ---
-    async function loadDropsConfig() {
-        const container = document.getElementById('drops-items-container');
-        container.innerHTML = '<div style="padding:20px; text-align:center;">Loading...</div>';
-        try {
-            const res = await fetch('/admin/api/drops');
-            if (!res.ok) throw new Error('Failed to load');
-            const data = await res.json();
-            
-            // Globals
-            document.getElementById('drop-last-updated').value = data.lastUpdated || '';
-            document.getElementById('drop-featured-image').value = data.featuredImage || '';
-
-            // Items
-            container.innerHTML = '';
-            if (data.drops && Array.isArray(data.drops)) {
-                data.drops.forEach(drop => addDropItem(drop));
-            }
-        } catch (err) {
-            container.innerHTML = `<div style="color:var(--danger)">Error: ${err.message}</div>`;
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
         }
-    }
 
-    function addDropItem(data = {}) {
-        const container = document.getElementById('drops-items-container');
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Cards & Grid */
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+
+      .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+
+      .card {
+        background-color: var(--bg-card);
+        border-radius: var(--radius);
+        padding: 20px;
+        border: 1px solid var(--border);
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+
+      /* Metrics */
+      .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin: 10px 0;
+      }
+
+      .metric-label {
+        font-size: 14px;
+        color: var(--text-muted);
+      }
+
+      .progress-bg {
+        background-color: rgba(255, 255, 255, 0.1);
+        height: 6px;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.5s ease;
+      }
+
+      /* Buttons & Inputs */
+      .btn {
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-primary {
+        background-color: var(--primary);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background-color: var(--primary-hover);
+      }
+
+      .btn-danger {
+        background-color: rgba(233, 25, 22, 0.1);
+        color: var(--danger);
+        border: 1px solid rgba(233, 25, 22, 0.2);
+      }
+
+      .btn-danger:hover {
+        background-color: rgba(233, 25, 22, 0.2);
+      }
+
+      .btn-success {
+        background-color: rgba(0, 179, 95, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(0, 179, 95, 0.2);
+      }
+
+      .btn-success:hover {
+        background-color: rgba(0, 179, 95, 0.2);
+      }
+
+      .btn-ghost {
+        background-color: transparent;
+        color: var(--text-muted);
+      }
+
+      .btn-ghost:hover {
+        background-color: var(--bg-hover);
+        color: var(--text-main);
+      }
+
+      .input {
+        background-color: var(--bg-app);
+        border: 1px solid var(--border);
+        color: var(--text-main);
+        padding: 8px 12px;
+        border-radius: 6px;
+        width: 100%;
+        font-size: 14px;
+      }
+
+      .input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+
+      /* Tables & Lists */
+      .table-container {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th {
+        text-align: left;
+        padding: 12px;
+        color: var(--text-muted);
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+      }
+
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-main);
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .log-container {
+        background-color: #000;
+        font-family: "JetBrains Mono", monospace;
+        padding: 15px;
+        border-radius: var(--radius);
+        height: 400px;
+        overflow-y: auto;
+        font-size: 13px;
+      }
+
+      .log-entry {
+        margin-bottom: 4px;
+        border-bottom: 1px solid #111;
+        padding-bottom: 2px;
+      }
+
+      .log-time {
+        color: #666;
+        margin-right: 8px;
+      }
+
+      .log-info {
+        color: var(--info);
+      }
+
+      .log-warn {
+        color: var(--warning);
+      }
+
+      .log-error {
+        color: var(--danger);
+      }
+
+      /* Channels Grid */
+      .channels-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+      }
+
+      .channel-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .channel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--success);
+        display: inline-block;
+        margin-right: 6px;
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .app-container {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        /* Mobile menu needed in real app */
+        .grid-2,
+        .grid-3,
+        .grid-4 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="logo">
+          <i class="fab fa-twitch"></i>
+          <h1>FinalsRS Admin</h1>
+        </div>
+
+        <ul class="nav-menu">
+          <li class="nav-item active" onclick="switchView('dashboard')">
+            <i class="fas fa-home"></i> Dashboard
+          </li>
+          <li class="nav-item" onclick="switchView('channels')">
+            <i class="fas fa-users"></i> Channels
+          </li>
+          <li class="nav-item" onclick="switchView('broadcast')">
+            <i class="fas fa-bullhorn"></i> Broadcast
+          </li>
+          <li class="nav-item" onclick="switchView('drops')">
+            <i class="fas fa-gift"></i> Drops
+          </li>
+          <li class="nav-item" onclick="switchView('commands')">
+            <i class="fas fa-terminal"></i> Commands
+          </li>
+          <li class="nav-item" onclick="switchView('database')">
+            <i class="fas fa-database"></i> Database
+          </li>
+          <li class="nav-item" onclick="switchView('analytics')">
+            <i class="fas fa-chart-bar"></i> Analytics
+          </li>
+          <li class="nav-item" onclick="switchView('logs')">
+            <i class="fas fa-file-code"></i> System Logs
+          </li>
+          <li class="nav-item" onclick="switchView('settings')">
+            <i class="fas fa-cog"></i> Settings
+          </li>
+        </ul>
+
+        <div class="sidebar-footer">
+          <div class="user-profile">
+            <div class="user-avatar">A</div>
+            <div>
+              <div style="font-weight: 600; font-size: 14px">Admin User</div>
+              <div style="font-size: 12px; color: var(--text-muted)">
+                Online
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view-section active">
+          <div class="header">
+            <h2 class="page-title">Dashboard Overview</h2>
+            <div class="global-actions">
+              <button class="btn btn-primary" onclick="refreshAll()">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+          </div>
+
+          <div class="grid-4" style="margin-bottom: 30px">
+            <div class="card">
+              <div class="card-title">Connected Channels</div>
+              <div class="metric-value" id="dash-channels">0</div>
+              <div class="metric-label">Active connections</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Commands Processed</div>
+              <div class="metric-value" id="dash-commands">0</div>
+              <div class="metric-label">Total interactions</div>
+            </div>
+            <div class="card">
+              <div class="card-title">Uptime</div>
+              <div
+                class="metric-value"
+                id="dash-uptime"
+                style="font-size: 20px"
+              >
+                0h 0m
+              </div>
+              <div class="metric-label">Since last restart</div>
+            </div>
+            <div class="card">
+              <div class="card-title">System Status</div>
+              <div
+                class="metric-value"
+                style="color: var(--success); font-size: 20px"
+              >
+                <i class="fas fa-check-circle"></i> Healthy
+              </div>
+              <div class="metric-label">All systems operational</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">System Performance</div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 20px">
+                <div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 5px;
+                    "
+                  >
+                    <span class="metric-label">CPU Usage</span>
+                    <span id="cpu-val">0%</span>
+                  </div>
+                  <div class="progress-bg">
+                    <div
+                      id="cpu-bar"
+                      class="progress-fill"
+                      style="width: 0%; background-color: var(--primary)"
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 5px;
+                    "
+                  >
+                    <span class="metric-label">Memory Usage</span>
+                    <span id="mem-val">0MB</span>
+                  </div>
+                  <div class="progress-bg">
+                    <div
+                      id="mem-bar"
+                      class="progress-fill"
+                      style="width: 0%; background-color: var(--info)"
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 5px;
+                    "
+                  >
+                    <span class="metric-label">Bot Latency</span>
+                    <span id="lat-val">0ms</span>
+                  </div>
+                  <div class="progress-bg">
+                    <div
+                      id="lat-bar"
+                      class="progress-fill"
+                      style="width: 0%; background-color: var(--warning)"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  Quick Actions
+                  <button class="btn btn-primary" onclick="restartBot()">
+                    <i class="fas fa-power-off"></i> Restart Bot
+                  </button>
+                  <button class="btn btn-primary" onclick="refreshBotToken()">
+                    <i class="fas fa-key"></i> Refresh Token
+                  </button>
+                  <button class="btn btn-danger" onclick="pauseBot()">
+                    <i class="fas fa-pause"></i> Pause All Bots
+                  </button>
+                  <button class="btn btn-success" onclick="resumeBot()">
+                    <i class="fas fa-play"></i> Resume All Bots
+                  </button>
+                  <button
+                    class="btn"
+                    style="
+                      background-color: var(--info);
+                      color: white;
+                      grid-column: span 2;
+                    "
+                    onclick="triggerDeploy()"
+                  >
+                    <i class="fas fa-cloud-upload-alt"></i> Update System (Git
+                    Pull + Restart)
+                  </button>
+                </div>
+              </div>
+              <div
+                id="action-status"
+                style="
+                  margin-top: 15px;
+                  font-size: 14px;
+                  color: var(--text-muted);
+                "
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Channels View -->
+        <div id="view-channels" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Connected Channels</h2>
+            <button class="btn btn-ghost" onclick="fetchChannels()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+          <div id="channels-list" class="channels-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Broadcast View -->
+        <div id="view-broadcast" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Broadcast Message</h2>
+          </div>
+          <div class="card" style="max-width: 800px">
+            <div style="margin-bottom: 20px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 8px;
+                  color: var(--text-muted);
+                "
+                >Target Channels</label
+              >
+              <div
+                id="broadcast-targets"
+                style="
+                  padding: 10px;
+                  border: 1px solid var(--border);
+                  border-radius: var(--radius);
+                  min-height: 40px;
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 5px;
+                "
+              >
+                <span
+                  style="
+                    color: var(--text-muted);
+                    font-style: italic;
+                    padding: 5px;
+                  "
+                  >Select channels from the 'Channels' tab or leave empty for
+                  ALL.</span
+                >
+              </div>
+            </div>
+            <div style="margin-bottom: 20px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 8px;
+                  color: var(--text-muted);
+                "
+                >Message</label
+              >
+              <textarea
+                id="broadcast-msg"
+                class="input"
+                style="min-height: 120px; resize: vertical"
+                placeholder="Type your announcement..."
+              ></textarea>
+            </div>
+            <div style="display: flex; justify-content: flex-end">
+              <button class="btn btn-primary" onclick="sendBroadcast()">
+                <i class="fas fa-paper-plane"></i> Send Broadcast
+              </button>
+            </div>
+            <div id="broadcast-status" style="margin-top: 15px"></div>
+          </div>
+        </div>
+
+        <!-- Drops View -->
+        <div id="view-drops" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Manage Twitch Drops</h2>
+            <button class="btn btn-primary" onclick="saveDropsConfig()">
+              <i class="fas fa-save"></i> Save Changes
+            </button>
+          </div>
+
+          <!-- Global Settings -->
+          <div class="card" style="margin-bottom: 20px">
+            <div class="card-title" style="margin-bottom: 15px">
+              Global Settings
+            </div>
+            <div class="grid-2">
+              <div>
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 5px;
+                    color: var(--text-muted);
+                  "
+                  >Last Updated Text</label
+                >
+                <input
+                  id="drop-last-updated"
+                  class="input"
+                  placeholder="e.g. November 28, 2026"
+                />
+              </div>
+              <div>
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 5px;
+                    color: var(--text-muted);
+                  "
+                  >Featured Image URL</label
+                >
+                <input
+                  id="drop-featured-image"
+                  class="input"
+                  placeholder="Path to image"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Drops List -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Active Drops List</div>
+              <button class="btn btn-success" onclick="addDropItem()">
+                <i class="fas fa-plus"></i> Add Item
+              </button>
+            </div>
+            <div
+              id="drops-items-container"
+              style="display: flex; flex-direction: column; gap: 10px"
+            >
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Commands View -->
+        <div id="view-commands" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Custom Commands</h2>
+            <button class="btn btn-success" onclick="showAddCommandModal()">
+              <i class="fas fa-plus"></i> Add Command
+            </button>
+          </div>
+          <div class="card">
+            <div class="table-container">
+              <table id="commands-table">
+                <thead>
+                  <tr>
+                    <th>Trigger</th>
+                    <th>Response</th>
+                    <th style="width: 100px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="commands-body">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- Add Command Form (Inline for simplicity) -->
+          <div
+            id="add-command-panel"
+            class="card"
+            style="margin-top: 20px; display: none"
+          >
+            <div class="card-title" style="margin-bottom: 15px">
+              Add New Command
+            </div>
+            <div style="display: flex; gap: 10px">
+              <input
+                id="new-cmd-name"
+                class="input"
+                placeholder="!command"
+                style="flex: 1"
+              />
+              <input
+                id="new-cmd-resp"
+                class="input"
+                placeholder="Response text"
+                style="flex: 2"
+              />
+              <button class="btn btn-success" onclick="addNewCommand()">
+                Save
+              </button>
+              <button
+                class="btn btn-ghost"
+                onclick="document.getElementById('add-command-panel').style.display='none'"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Database View -->
+        <div id="view-database" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Database Editor</h2>
+            <select
+              id="db-table-select"
+              class="input"
+              style="width: 200px"
+              onchange="loadDbTable()"
+            >
+              <option value="StreamSessions">StreamSessions</option>
+              <option value="Channels">Channels</option>
+              <option value="CustomResponse">CustomResponse</option>
+              <option value="RankGoals">RankGoals</option>
+            </select>
+          </div>
+          <div id="db-editor-container">
+            <!-- Table content goes here -->
+          </div>
+        </div>
+
+        <!-- Logs View -->
+        <div id="view-logs" class="view-section">
+          <div class="header">
+            <h2 class="page-title">System Logs</h2>
+            <div style="display: flex; gap: 10px">
+              <button class="btn btn-ghost" onclick="fetchLogs()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+              <span
+                style="
+                  font-size: 12px;
+                  color: var(--text-muted);
+                  align-self: center;
+                "
+                >Auto-refreshing every 20s</span
+              >
+            </div>
+          </div>
+          <div id="logs-viewer" class="log-container">
+            <!-- Logs go here -->
+          </div>
+        </div>
+
+        <!-- Analytics View -->
+        <div id="view-analytics" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Command Analytics</h2>
+            <button class="btn btn-ghost" onclick="loadAnalytics()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <!-- Summary Cards -->
+          <div class="grid-3" style="margin-bottom: 30px">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Total Commands</div>
+                <i class="fas fa-terminal" style="color: var(--text-muted)"></i>
+              </div>
+              <div
+                style="font-size: 32px; font-weight: 700"
+                id="analytics-total"
+              >
+                -
+              </div>
+              <div class="card-subtitle">All time</div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Unique Users</div>
+                <i class="fas fa-users" style="color: var(--text-muted)"></i>
+              </div>
+              <div
+                style="font-size: 32px; font-weight: 700"
+                id="analytics-unique"
+              >
+                -
+              </div>
+              <div class="card-subtitle">Used the bot</div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Success Rate</div>
+                <i
+                  class="fas fa-check-circle"
+                  style="color: var(--text-muted)"
+                ></i>
+              </div>
+              <div
+                style="font-size: 32px; font-weight: 700"
+                id="analytics-success"
+              >
+                -
+              </div>
+              <div class="card-subtitle">Commands executed</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <!-- Command Usage Chart -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 20px">
+                Command Usage (Last 24 Hours)
+              </div>
+              <div
+                id="hourly-chart-container"
+                style="
+                  height: 200px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: var(--text-muted);
+                "
+              >
+                Loading chart...
+              </div>
+            </div>
+
+            <!-- Top Commands -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 20px">
+                Top Commands
+              </div>
+              <div
+                id="top-commands-list"
+                style="display: flex; flex-direction: column; gap: 12px"
+              >
+                <div
+                  style="
+                    text-align: center;
+                    padding: 20px;
+                    color: var(--text-muted);
+                  "
+                >
+                  Loading...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Command Details Table -->
+          <div class="card" style="margin-top: 24px">
+            <div class="card-title" style="margin-bottom: 20px">
+              Command Statistics
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Command</th>
+                    <th>Usage</th>
+                    <th>Success Rate</th>
+                    <th>Avg Response Time</th>
+                  </tr>
+                </thead>
+                <tbody id="command-stats-table">
+                  <tr>
+                    <td
+                      colspan="4"
+                      style="
+                        text-align: center;
+                        padding: 20px;
+                        color: var(--text-muted);
+                      "
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recent Commands -->
+          <div class="card" style="margin-top: 24px">
+            <div class="card-title" style="margin-bottom: 20px">
+              Recent Commands
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Command</th>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Response Time</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-commands-table">
+                  <tr>
+                    <td
+                      colspan="5"
+                      style="
+                        text-align: center;
+                        padding: 20px;
+                        color: var(--text-muted);
+                      "
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="view-settings" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Settings</h2>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 15px">
+                API Configuration
+              </div>
+              <div style="margin-bottom: 15px">
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 5px;
+                    color: var(--text-muted);
+                  "
+                  >Admin API Key</label
+                >
+                <input
+                  id="settings-api-key"
+                  type="password"
+                  class="input"
+                  placeholder="Enter API Key"
+                />
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--text-muted);
+                    margin-top: 5px;
+                  "
+                >
+                  Required for sensitive actions (Restart, Broadcast).
+                </div>
+              </div>
+              <button class="btn btn-primary" onclick="saveSettings()">
+                Save Key
+              </button>
+            </div>
+
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 15px">
+                Feature Flags
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  margin-bottom: 10px;
+                "
+              >
+                <span>User Dashboard Access</span>
+                <button
+                  id="toggle-dashboard-btn"
+                  class="btn btn-success"
+                  onclick="toggleUserDashboard()"
+                >
+                  Enabled
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // --- State & Config ---
+      let CSRF_TOKEN = null;
+      const API_KEY_STORAGE = "twitch_bot_api_key";
+      let selectedChannels = new Set();
+      let performanceInterval = null;
+
+      // --- Initialization ---
+      document.addEventListener("DOMContentLoaded", () => {
+        ensureCsrfToken();
+        loadSettings();
+
+        // Initial Data Load
+        refreshAll();
+
+        // Start polling
+        startPolling();
+
+        // Setup DB listener
+        document
+          .getElementById("db-table-select")
+          .addEventListener("change", loadDbTable);
+      });
+
+      function switchView(viewId) {
+        // Update Sidebar
+        document
+          .querySelectorAll(".nav-item")
+          .forEach((el) => el.classList.remove("active"));
+        event.currentTarget.classList.add("active");
+
+        // Update Main Content
+        document
+          .querySelectorAll(".view-section")
+          .forEach((el) => el.classList.remove("active"));
+        document.getElementById(`view-${viewId}`).classList.add("active");
+
+        // Trigger specific loads
+        if (viewId === "database") loadDbTable();
+        if (viewId === "logs") fetchLogs();
+        if (viewId === "channels") fetchChannels();
+        if (viewId === "drops") loadDropsConfig();
+        if (viewId === "analytics") loadAnalytics();
+      }
+
+      function refreshAll() {
+        fetchBotStatus();
+        fetchChannels();
+        fetchLogs();
+        fetchCommands();
+        fetchPerformance();
+      }
+
+      // --- Drops Management ---
+      async function loadDropsConfig() {
+        const container = document.getElementById("drops-items-container");
+        container.innerHTML =
+          '<div style="padding:20px; text-align:center;">Loading...</div>';
+        try {
+          const res = await fetch("/admin/api/drops");
+          if (!res.ok) throw new Error("Failed to load");
+          const data = await res.json();
+
+          // Globals
+          document.getElementById("drop-last-updated").value =
+            data.lastUpdated || "";
+          document.getElementById("drop-featured-image").value =
+            data.featuredImage || "";
+
+          // Items
+          container.innerHTML = "";
+          if (data.drops && Array.isArray(data.drops)) {
+            data.drops.forEach((drop) => addDropItem(drop));
+          }
+        } catch (err) {
+          container.innerHTML = `<div style="color:var(--danger)">Error: ${err.message}</div>`;
+        }
+      }
+
+      // --- Analytics ---
+      async function loadAnalytics() {
+        try {
+          const res = await fetch("/admin/api/analytics");
+          const data = await res.json();
+
+          // Update summary cards
+          const totalEl = document.getElementById("analytics-total");
+          const uniqueEl = document.getElementById("analytics-unique");
+          const successEl = document.getElementById("analytics-success");
+
+          if (totalEl)
+            totalEl.innerText = data.totalUsage?.toLocaleString() || "0";
+          if (uniqueEl)
+            uniqueEl.innerText = data.uniqueUsers?.toLocaleString() || "0";
+
+          // Calculate overall success rate
+          const totalCommands =
+            data.usageByCommand?.reduce((sum, cmd) => sum + cmd.count, 0) || 0;
+          const totalSuccess =
+            data.usageByCommand?.reduce(
+              (sum, cmd) => sum + cmd.successCount,
+              0
+            ) || 0;
+          const successRate =
+            totalCommands > 0
+              ? ((totalSuccess / totalCommands) * 100).toFixed(1)
+              : "0";
+
+          if (successEl) successEl.innerText = successRate + "%";
+
+          // Update top commands list
+          const topCommandsList = document.getElementById("top-commands-list");
+          if (topCommandsList) {
+            if (data.usageByCommand?.length) {
+              topCommandsList.innerHTML = data.usageByCommand
+                .slice(0, 5)
+                .map(
+                  (cmd, idx) => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-hover);border-radius:var(--radius)">
+                  <div style="display:flex;align-items:center;gap:12px">
+                    <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">
+                      ${idx + 1}
+                    </div>
+                    <div>
+                      <div style="font-weight:600;color:var(--primary)">!${
+                        cmd.command
+                      }</div>
+                      <div style="font-size:12px;color:var(--text-muted)">${
+                        cmd.count
+                      } uses</div>
+                    </div>
+                  </div>
+                  <div style="text-align:right">
+                    <div style="font-size:12px;color:var(--text-muted)">
+                      ${cmd.successRate.toFixed(1)}% success
+                    </div>
+                  </div>
+                </div>
+              `
+                )
+                .join("");
+            } else {
+              topCommandsList.innerHTML =
+                '<div style="text-align:center;padding:20px;color:var(--text-muted)">No commands used yet</div>';
+            }
+          }
+
+          // Update command stats table
+          const statsTable = document.getElementById("command-stats-table");
+          if (statsTable) {
+            if (data.usageByCommand?.length) {
+              statsTable.innerHTML = data.usageByCommand
+                .map(
+                  (cmd) => `
+                <tr>
+                  <td><strong style="color:var(--primary)">!${
+                    cmd.command
+                  }</strong></td>
+                  <td>${cmd.count.toLocaleString()}</td>
+                  <td>
+                    <span style="color:${
+                      cmd.successRate >= 95
+                        ? "var(--success)"
+                        : cmd.successRate >= 80
+                        ? "var(--warning)"
+                        : "var(--danger)"
+                    }">
+                      ${cmd.successRate.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td>${cmd.avgResponseTime || 0}ms</td>
+                </tr>
+              `
+                )
+                .join("");
+            } else {
+              statsTable.innerHTML =
+                '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">No command data available</td></tr>';
+            }
+          }
+
+          // Update recent commands table
+          const recentTable = document.getElementById("recent-commands-table");
+          if (recentTable) {
+            if (data.recentCommands?.length) {
+              recentTable.innerHTML = data.recentCommands
+                .slice(0, 20)
+                .map((cmd) => {
+                  const date = new Date(cmd.timestamp);
+                  const timeStr = date.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  return `
+                  <tr>
+                    <td>${timeStr}</td>
+                    <td><strong>!${cmd.command}</strong></td>
+                    <td>${cmd.user}</td>
+                    <td>
+                      <span style="color:${
+                        cmd.success ? "var(--success)" : "var(--danger)"
+                      }">
+                        ${cmd.success ? "✓ Success" : "✗ Failed"}
+                      </span>
+                    </td>
+                    <td>${cmd.responseTime || 0}ms</td>
+                  </tr>
+                `;
+                })
+                .join("");
+            } else {
+              recentTable.innerHTML =
+                '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No recent commands</td></tr>';
+            }
+          }
+
+          // Update hourly chart
+          const chartContainer = document.getElementById(
+            "hourly-chart-container"
+          );
+          if (chartContainer) {
+            if (data.hourlyUsage?.length) {
+              const maxCount = Math.max(
+                ...data.hourlyUsage.map((h) => h.count)
+              );
+              chartContainer.innerHTML = `
+              <div style="width:100%;display:flex;align-items:flex-end;gap:4px;height:180px;padding:10px 0">
+                ${data.hourlyUsage
+                  .map((h) => {
+                    const height = maxCount ? (h.count / maxCount) * 100 : 0;
+                    const hour = new Date(h.hour).getHours();
+                    return `
+                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                        <div style="width:100%;background:var(--bg-hover);border-radius:4px 4px 0 0;position:relative;min-height:100px">
+                          <div style="width:100%;background:linear-gradient(180deg,var(--primary),var(--primary-hover));height:${height}%;border-radius:4px 4px 0 0"></div>
+                          <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600">
+                            ${h.count}
+                          </div>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted)">${hour}:00</div>
+                      </div>
+                    `;
+                  })
+                  .join("")}
+              </div>
+            `;
+            } else {
+              chartContainer.innerHTML =
+                '<div style="text-align:center;color:var(--text-muted)">No data for the last 24 hours</div>';
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load analytics:", err);
+        }
+      }
+
+      function addDropItem(data = {}) {
+        const container = document.getElementById("drops-items-container");
         const id = Date.now() + Math.random().toString().slice(2, 5);
-        
-        const div = document.createElement('div');
-        div.className = 'drop-edit-row';
+
+        const div = document.createElement("div");
+        div.className = "drop-edit-row";
         div.id = `drop-row-${id}`;
-        div.style.cssText = 'display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:10px; align-items:center; background:var(--bg-app); padding:10px; border-radius:6px; border:1px solid var(--border);';
-        
+        div.style.cssText =
+          "display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:10px; align-items:center; background:var(--bg-app); padding:10px; border-radius:6px; border:1px solid var(--border);";
+
         div.innerHTML = `
-            <div>
-                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Name</label>
-                <input class="input drop-name" value="${escapeHtml(data.name || '')}" placeholder="Item Name">
-            </div>
-            <div>
-                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Category</label>
-                <input class="input drop-cat" value="${escapeHtml(data.category || '')}" placeholder="Category">
-            </div>
-            <div>
-                <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Duration</label>
-                <input class="input drop-dur" value="${escapeHtml(data.duration || '')}" placeholder="e.g. 1 hour">
-            </div>
-            <div style="display:flex; align-items:flex-end; height:100%;">
-                <button class="btn btn-danger" style="padding:8px;" onclick="removeDropItem('${id}')"><i class="fas fa-trash"></i></button>
-            </div>
-        `;
+              <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Name</label>
+                  <input class="input drop-name" value="${escapeHtml(
+                    data.name || ""
+                  )}" placeholder="Item Name">
+              </div>
+              <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Category</label>
+                  <input class="input drop-cat" value="${escapeHtml(
+                    data.category || ""
+                  )}" placeholder="Category">
+              </div>
+              <div>
+                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Duration</label>
+                  <input class="input drop-dur" value="${escapeHtml(
+                    data.duration || ""
+                  )}" placeholder="e.g. 1 hour">
+              </div>
+              <div style="display:flex; align-items:flex-end; height:100%;">
+                  <button class="btn btn-danger" style="padding:8px;" onclick="removeDropItem('${id}')"><i class="fas fa-trash"></i></button>
+              </div>
+          `;
         container.appendChild(div);
-    }
+      }
 
-    function removeDropItem(id) {
+      function removeDropItem(id) {
         const el = document.getElementById(`drop-row-${id}`);
-        if(el) el.remove();
-    }
+        if (el) el.remove();
+      }
 
-    async function saveDropsConfig() {
-        const lastUpdated = document.getElementById('drop-last-updated').value;
-        const featuredImage = document.getElementById('drop-featured-image').value;
-        
+      async function saveDropsConfig() {
+        const lastUpdated = document.getElementById("drop-last-updated").value;
+        const featuredImage = document.getElementById(
+          "drop-featured-image"
+        ).value;
+
         const drops = [];
-        document.querySelectorAll('.drop-edit-row').forEach(row => {
-            drops.push({
-                name: row.querySelector('.drop-name').value,
-                category: row.querySelector('.drop-cat').value,
-                duration: row.querySelector('.drop-dur').value,
-                icon: 'circle' // Default
-            });
+        document.querySelectorAll(".drop-edit-row").forEach((row) => {
+          drops.push({
+            name: row.querySelector(".drop-name").value,
+            category: row.querySelector(".drop-cat").value,
+            duration: row.querySelector(".drop-dur").value,
+            icon: "circle", // Default
+          });
         });
 
         const config = { lastUpdated, featuredImage, drops };
 
         try {
-            await ensureCsrfToken();
-            const res = await fetch('/admin/api/drops', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-                body: JSON.stringify(config)
-            });
-            const data = await res.json();
-            if (data.success) alert('Saved!');
-            else alert('Error: ' + data.error);
+          await ensureCsrfToken();
+          const res = await fetch("/admin/api/drops", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": CSRF_TOKEN,
+            },
+            body: JSON.stringify(config),
+          });
+          const data = await res.json();
+          if (data.success) alert("Saved!");
+          else alert("Error: " + data.error);
         } catch (err) {
-            alert('Error: ' + err.message);
+          alert("Error: " + err.message);
         }
-    }
+      }
 
-    function escapeHtml(text) {
-        if (!text) return '';
+      function escapeHtml(text) {
+        if (!text) return "";
         return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
 
-    // Initial check for dashboard state
+      // Initial check for dashboard state
 
-    function startPolling() {
-      setInterval(fetchPerformance, 5000);
-      setInterval(fetchLogs, 20000);
-    }
+      function startPolling() {
+        setInterval(fetchPerformance, 5000);
+        setInterval(fetchLogs, 20000);
+      }
 
-    // --- API Helpers ---
-    async function ensureCsrfToken() {
-      if (CSRF_TOKEN) return CSRF_TOKEN;
-      try {
-        const res = await fetch('/admin/api/csrf');
-        const data = await res.json();
-        CSRF_TOKEN = data?.csrfToken || null;
-      } catch { }
-      return CSRF_TOKEN;
-    }
+      // --- API Helpers ---
+      async function ensureCsrfToken() {
+        if (CSRF_TOKEN) return CSRF_TOKEN;
+        try {
+          const res = await fetch("/admin/api/csrf");
+          const data = await res.json();
+          CSRF_TOKEN = data?.csrfToken || null;
+        } catch {}
+        return CSRF_TOKEN;
+      }
 
-    function getApiKey() {
-      return document.getElementById('settings-api-key').value || localStorage.getItem(API_KEY_STORAGE);
-    }
+      function getApiKey() {
+        return (
+          document.getElementById("settings-api-key").value ||
+          localStorage.getItem(API_KEY_STORAGE)
+        );
+      }
 
-    function loadSettings() {
-      const key = localStorage.getItem(API_KEY_STORAGE);
-      if (key) document.getElementById('settings-api-key').value = key;
-    }
+      function loadSettings() {
+        const key = localStorage.getItem(API_KEY_STORAGE);
+        if (key) document.getElementById("settings-api-key").value = key;
+      }
 
-    function saveSettings() {
-      const key = document.getElementById('settings-api-key').value;
-      localStorage.setItem(API_KEY_STORAGE, key);
-      alert('Settings Saved');
-    }
+      function saveSettings() {
+        const key = document.getElementById("settings-api-key").value;
+        localStorage.setItem(API_KEY_STORAGE, key);
+        alert("Settings Saved");
+      }
 
-    // --- Dashboard & Metrics ---
-    async function fetchPerformance() {
-      try {
-        const res = await fetch('/admin/api/performance');
-        const metrics = await res.json();
+      // --- Dashboard & Metrics ---
+      async function fetchPerformance() {
+        try {
+          const res = await fetch("/admin/api/performance");
+          const metrics = await res.json();
 
-        if (metrics && metrics.cpu) {
-          document.getElementById('cpu-val').textContent = metrics.cpu.usage.toFixed(1) + '%';
-          document.getElementById('cpu-bar').style.width = metrics.cpu.usage + '%';
+          if (metrics && metrics.cpu) {
+            document.getElementById("cpu-val").textContent =
+              metrics.cpu.usage.toFixed(1) + "%";
+            document.getElementById("cpu-bar").style.width =
+              metrics.cpu.usage + "%";
 
-          const memUsed = (metrics.memory.used / 1024 / 1024).toFixed(0);
-          const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
-          const memPercent = (metrics.memory.used / metrics.memory.total * 100);
-          document.getElementById('mem-val').textContent = `${memUsed}MB / ${memTotal}MB`;
-          document.getElementById('mem-bar').style.width = memPercent + '%';
+            const memUsed = (metrics.memory.used / 1024 / 1024).toFixed(0);
+            const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
+            const memPercent =
+              (metrics.memory.used / metrics.memory.total) * 100;
+            document.getElementById(
+              "mem-val"
+            ).textContent = `${memUsed}MB / ${memTotal}MB`;
+            document.getElementById("mem-bar").style.width = memPercent + "%";
 
-          if (metrics.botLatency) {
-            document.getElementById('lat-val').textContent = metrics.botLatency.toFixed(0) + 'ms';
-            document.getElementById('lat-bar').style.width = Math.min(metrics.botLatency, 100) + '%';
+            if (metrics.botLatency) {
+              document.getElementById("lat-val").textContent =
+                metrics.botLatency.toFixed(0) + "ms";
+              document.getElementById("lat-bar").style.width =
+                Math.min(metrics.botLatency, 100) + "%";
+            }
           }
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) { console.error(e); }
-    }
+      }
 
-    async function fetchBotStatus() {
-      try {
-        const res = await fetch('/admin/api/stats');
-        const data = await res.json();
-        if (data.stats) {
-          document.getElementById('dash-commands').textContent = data.stats.commandsProcessed.toLocaleString();
-          document.getElementById('dash-uptime').textContent = formatUptime(data.stats.uptime);
+      async function fetchBotStatus() {
+        try {
+          const res = await fetch("/admin/api/stats");
+          const data = await res.json();
+          if (data.stats) {
+            document.getElementById("dash-commands").textContent =
+              data.stats.commandsProcessed.toLocaleString();
+            document.getElementById("dash-uptime").textContent = formatUptime(
+              data.stats.uptime
+            );
+          }
+        } catch (e) {}
+      }
+
+      function formatUptime(seconds) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return `${h}h ${m}m`;
+      }
+
+      // --- Channels ---
+      async function fetchChannels() {
+        try {
+          const res = await fetch("/admin/api/channels");
+          const data = await res.json();
+          const list = document.getElementById("channels-list");
+          list.innerHTML = "";
+
+          let count = 0;
+          if (data.channels) {
+            count = data.channels.length;
+            data.channels.forEach((ch) => {
+              list.innerHTML += `
+                <div class="channel-card">
+                  <div class="channel-header">
+                    <div style="font-weight:600;"><span class="status-dot"></span>${ch}</div>
+                    <button class="btn btn-ghost" style="padding:4px;" onclick="toggleChannelSelection('${ch}')">
+                      <i class="fas ${
+                        selectedChannels.has(ch)
+                          ? "fa-check-square"
+                          : "fa-plus-square"
+                      }"></i>
+                    </button>
+                  </div>
+                  <div style="display:flex; gap:5px;">
+                    <input id="msg-${ch}" class="input" placeholder="Message..." style="padding:4px 8px; font-size:12px;">
+                    <button class="btn btn-primary" style="padding:4px 8px;" onclick="sendToChannel('${ch}')"><i class="fas fa-paper-plane"></i></button>
+                  </div>
+                </div>
+              `;
+            });
+          }
+          document.getElementById("dash-channels").textContent = count;
+        } catch (e) {
+          document.getElementById("channels-list").innerHTML =
+            '<div style="color:var(--danger)">Failed to load channels</div>';
         }
-      } catch (e) { }
-    }
+      }
 
-    function formatUptime(seconds) {
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      return `${h}h ${m}m`;
-    }
+      function toggleChannelSelection(ch) {
+        if (selectedChannels.has(ch)) selectedChannels.delete(ch);
+        else selectedChannels.add(ch);
+        fetchChannels(); // Re-render to update icons
+        updateBroadcastTargets();
+      }
 
-    // --- Channels ---
-    async function fetchChannels() {
-      try {
-        const res = await fetch('/admin/api/channels');
+      function updateBroadcastTargets() {
+        const container = document.getElementById("broadcast-targets");
+        if (selectedChannels.size === 0) {
+          container.innerHTML =
+            "<span style=\"color:var(--text-muted); font-style:italic; padding:5px;\">Select channels from the 'Channels' tab or leave empty for ALL.</span>";
+          return;
+        }
+        container.innerHTML = "";
+        selectedChannels.forEach((ch) => {
+          container.innerHTML += `<span style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:12px;">${ch}</span>`;
+        });
+      }
+
+      async function sendToChannel(ch) {
+        const msg = document.getElementById(`msg-${ch}`).value;
+        if (!msg) return;
+        const key = getApiKey();
+        if (!key) return alert("API Key required in Settings");
+
+        try {
+          await ensureCsrfToken();
+          await fetch("/admin/api/message", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": CSRF_TOKEN,
+            },
+            body: JSON.stringify({ channel: ch, message: msg, key }),
+          });
+          document.getElementById(`msg-${ch}`).value = "";
+          alert(`Sent to ${ch}`);
+        } catch (e) {
+          alert("Failed to send");
+        }
+      }
+
+      // --- Broadcast ---
+      async function sendBroadcast() {
+        const msg = document.getElementById("broadcast-msg").value;
+        const key = getApiKey();
+        if (!msg || !key) return alert("Message and API Key required");
+
+        const targets =
+          selectedChannels.size > 0 ? Array.from(selectedChannels) : null; // null means all
+
+        try {
+          await ensureCsrfToken();
+          // If targets is null, we might need a loop or a backend endpoint that handles "all".
+          // The current backend /admin/api/message takes a single channel.
+          // Wait, the backend logic I saw earlier:
+          // app.post("/admin/api/message", ... { channel, message } ... axios.post(..., { channel, message })
+          // And botManager.sendMessage(message, channel) handles "all" if channel is undefined.
+          // So if I send channel: undefined (or null), it should broadcast.
+
+          if (targets) {
+            // Send to specific list
+            for (const ch of targets) {
+              await fetch("/admin/api/message", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "CSRF-Token": CSRF_TOKEN,
+                },
+                body: JSON.stringify({ channel: ch, message: msg, key }),
+              });
+            }
+          } else {
+            // Send to all
+            await fetch("/admin/api/message", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "CSRF-Token": CSRF_TOKEN,
+              },
+              body: JSON.stringify({ message: msg, key }), // channel undefined
+            });
+          }
+
+          document.getElementById("broadcast-msg").value = "";
+          document.getElementById("broadcast-status").innerHTML =
+            '<span style="color:var(--success)">Broadcast Sent!</span>';
+          setTimeout(
+            () => (document.getElementById("broadcast-status").innerHTML = ""),
+            3000
+          );
+        } catch (e) {
+          document.getElementById("broadcast-status").innerHTML =
+            '<span style="color:var(--danger)">Broadcast Failed</span>';
+        }
+      }
+
+      // --- Commands ---
+      async function fetchCommands() {
+        const res = await fetch("/admin/api/commands");
         const data = await res.json();
-        const list = document.getElementById('channels-list');
-        list.innerHTML = '';
-
-        let count = 0;
-        if (data.channels) {
-          count = data.channels.length;
-          data.channels.forEach(ch => {
-            list.innerHTML += `
-              <div class="channel-card">
-                <div class="channel-header">
-                  <div style="font-weight:600;"><span class="status-dot"></span>${ch}</div>
-                  <button class="btn btn-ghost" style="padding:4px;" onclick="toggleChannelSelection('${ch}')">
-                    <i class="fas ${selectedChannels.has(ch) ? 'fa-check-square' : 'fa-plus-square'}"></i>
-                  </button>
-                </div>
-                <div style="display:flex; gap:5px;">
-                  <input id="msg-${ch}" class="input" placeholder="Message..." style="padding:4px 8px; font-size:12px;">
-                  <button class="btn btn-primary" style="padding:4px 8px;" onclick="sendToChannel('${ch}')"><i class="fas fa-paper-plane"></i></button>
-                </div>
-              </div>
+        const tbody = document.getElementById("commands-body");
+        tbody.innerHTML = "";
+        if (data.commands) {
+          data.commands.forEach((cmd) => {
+            tbody.innerHTML += `
+              <tr>
+                <td style="font-weight:600; color:var(--primary);">${cmd.command}</td>
+                <td>${cmd.response}</td>
+                <td>
+                  <button class="btn btn-ghost" style="padding:4px;" onclick="deleteCommand('${cmd.command}')"><i class="fas fa-trash"></i></button>
+                </td>
+              </tr>
             `;
           });
         }
-        document.getElementById('dash-channels').textContent = count;
-      } catch (e) {
-        document.getElementById('channels-list').innerHTML = '<div style="color:var(--danger)">Failed to load channels</div>';
       }
-    }
 
-    function toggleChannelSelection(ch) {
-      if (selectedChannels.has(ch)) selectedChannels.delete(ch);
-      else selectedChannels.add(ch);
-      fetchChannels(); // Re-render to update icons
-      updateBroadcastTargets();
-    }
-
-    function updateBroadcastTargets() {
-      const container = document.getElementById('broadcast-targets');
-      if (selectedChannels.size === 0) {
-        container.innerHTML = '<span style="color:var(--text-muted); font-style:italic; padding:5px;">Select channels from the \'Channels\' tab or leave empty for ALL.</span>';
-        return;
+      function showAddCommandModal() {
+        document.getElementById("add-command-panel").style.display = "block";
       }
-      container.innerHTML = '';
-      selectedChannels.forEach(ch => {
-        container.innerHTML += `<span style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:12px;">${ch}</span>`;
-      });
-    }
 
-    async function sendToChannel(ch) {
-      const msg = document.getElementById(`msg-${ch}`).value;
-      if (!msg) return;
-      const key = getApiKey();
-      if (!key) return alert('API Key required in Settings');
+      async function addNewCommand() {
+        const name = document.getElementById("new-cmd-name").value;
+        const resp = document.getElementById("new-cmd-resp").value;
+        if (!name || !resp) return;
 
-      try {
         await ensureCsrfToken();
-        await fetch('/admin/api/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-          body: JSON.stringify({ channel: ch, message: msg, key })
+        await fetch("/admin/api/commands", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": CSRF_TOKEN,
+          },
+          body: JSON.stringify({ name, response: resp }),
         });
-        document.getElementById(`msg-${ch}`).value = '';
-        alert(`Sent to ${ch}`);
-      } catch (e) { alert('Failed to send'); }
-    }
 
-    // --- Broadcast ---
-    async function sendBroadcast() {
-      const msg = document.getElementById('broadcast-msg').value;
-      const key = getApiKey();
-      if (!msg || !key) return alert('Message and API Key required');
+        document.getElementById("new-cmd-name").value = "";
+        document.getElementById("new-cmd-resp").value = "";
+        document.getElementById("add-command-panel").style.display = "none";
+        fetchCommands();
+      }
 
-      const targets = selectedChannels.size > 0 ? Array.from(selectedChannels) : null; // null means all
-
-      try {
+      async function deleteCommand(name) {
+        if (!confirm("Delete " + name + "?")) return;
         await ensureCsrfToken();
-        // If targets is null, we might need a loop or a backend endpoint that handles "all".
-        // The current backend /admin/api/message takes a single channel.
-        // Wait, the backend logic I saw earlier:
-        // app.post("/admin/api/message", ... { channel, message } ... axios.post(..., { channel, message })
-        // And botManager.sendMessage(message, channel) handles "all" if channel is undefined.
-        // So if I send channel: undefined (or null), it should broadcast.
+        await fetch("/admin/api/commands/" + encodeURIComponent(name), {
+          method: "DELETE",
+          headers: { "CSRF-Token": CSRF_TOKEN },
+        });
+        fetchCommands();
+      }
 
-        if (targets) {
-          // Send to specific list
-          for (const ch of targets) {
-            await fetch('/admin/api/message', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ channel: ch, message: msg, key })
-            });
-          }
-        } else {
-          // Send to all
-          await fetch('/admin/api/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ message: msg, key }) // channel undefined
-          });
+      // --- Database ---
+      async function loadDbTable() {
+        const table = document.getElementById("db-table-select").value;
+        const container = document.getElementById("db-editor-container");
+        container.innerHTML =
+          '<div style="color:var(--text-muted)">Loading...</div>';
+
+        const res = await fetch(`/admin/api/db/${table}`);
+        const data = await res.json();
+        const rows = data.rows || [];
+
+        if (rows.length === 0) {
+          container.innerHTML =
+            '<div style="padding:20px; text-align:center; color:var(--text-muted)">No records found</div>';
+          return;
         }
 
-        document.getElementById('broadcast-msg').value = '';
-        document.getElementById('broadcast-status').innerHTML = '<span style="color:var(--success)">Broadcast Sent!</span>';
-        setTimeout(() => document.getElementById('broadcast-status').innerHTML = '', 3000);
-      } catch (e) {
-        document.getElementById('broadcast-status').innerHTML = '<span style="color:var(--danger)">Broadcast Failed</span>';
-      }
-    }
+        const keys = Object.keys(rows[0]);
+        let html = '<div class="table-container"><table><thead><tr>';
+        keys.forEach((k) => (html += `<th>${k}</th>`));
+        html += "<th>Actions</th></tr></thead><tbody>";
 
-    // --- Commands ---
-    async function fetchCommands() {
-      const res = await fetch('/admin/api/commands');
-      const data = await res.json();
-      const tbody = document.getElementById('commands-body');
-      tbody.innerHTML = '';
-      if (data.commands) {
-        data.commands.forEach(cmd => {
-          tbody.innerHTML += `
-            <tr>
-              <td style="font-weight:600; color:var(--primary);">${cmd.command}</td>
-              <td>${cmd.response}</td>
-              <td>
-                <button class="btn btn-ghost" style="padding:4px;" onclick="deleteCommand('${cmd.command}')"><i class="fas fa-trash"></i></button>
-              </td>
-            </tr>
-          `;
+        rows.forEach((row) => {
+          html += "<tr>";
+          keys.forEach((k) => {
+            let val = row[k] !== null ? row[k] : "";
+            if (table === "Channels" && k.includes("token")) val = "••••••";
+            html += `<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${val}</td>`;
+          });
+          // Use first key as ID
+          const id = row[keys[0]];
+          html += `<td>
+            <button class="btn btn-ghost" onclick='deleteDbRow("${table}", "${id}")'><i class="fas fa-trash"></i></button>
+          </td></tr>`;
         });
-      }
-    }
-
-    function showAddCommandModal() {
-      document.getElementById('add-command-panel').style.display = 'block';
-    }
-
-    async function addNewCommand() {
-      const name = document.getElementById('new-cmd-name').value;
-      const resp = document.getElementById('new-cmd-resp').value;
-      if (!name || !resp) return;
-
-      await ensureCsrfToken();
-      await fetch('/admin/api/commands', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify({ name, response: resp })
-      });
-
-      document.getElementById('new-cmd-name').value = '';
-      document.getElementById('new-cmd-resp').value = '';
-      document.getElementById('add-command-panel').style.display = 'none';
-      fetchCommands();
-    }
-
-    async function deleteCommand(name) {
-      if (!confirm('Delete ' + name + '?')) return;
-      await ensureCsrfToken();
-      await fetch('/admin/api/commands/' + encodeURIComponent(name), {
-        method: 'DELETE',
-        headers: { 'CSRF-Token': CSRF_TOKEN }
-      });
-      fetchCommands();
-    }
-
-    // --- Database ---
-    async function loadDbTable() {
-      const table = document.getElementById('db-table-select').value;
-      const container = document.getElementById('db-editor-container');
-      container.innerHTML = '<div style="color:var(--text-muted)">Loading...</div>';
-
-      const res = await fetch(`/admin/api/db/${table}`);
-      const data = await res.json();
-      const rows = data.rows || [];
-
-      if (rows.length === 0) {
-        container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted)">No records found</div>';
-        return;
+        html += "</tbody></table></div>";
+        container.innerHTML = html;
       }
 
-      const keys = Object.keys(rows[0]);
-      let html = '<div class="table-container"><table><thead><tr>';
-      keys.forEach(k => html += `<th>${k}</th>`);
-      html += '<th>Actions</th></tr></thead><tbody>';
+      async function deleteDbRow(table, id) {
+        if (!confirm("Delete row?")) return;
+        await fetch(`/admin/api/db/${table}/${id}`, { method: "DELETE" });
+        loadDbTable();
+      }
 
-      rows.forEach(row => {
-        html += '<tr>';
-        keys.forEach(k => {
-          let val = row[k] !== null ? row[k] : '';
-          if (table === 'Channels' && (k.includes('token'))) val = '••••••';
-          html += `<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${val}</td>`;
+      // --- Logs ---
+      async function fetchLogs() {
+        const res = await fetch("/admin/api/logs");
+        const logs = await res.json();
+        const viewer = document.getElementById("logs-viewer");
+        viewer.innerHTML = "";
+        if (logs.entries) {
+          logs.entries.forEach((entry) => {
+            const time = new Date(entry.timestamp).toLocaleTimeString();
+            const levelClass =
+              entry.level === "info"
+                ? "log-info"
+                : entry.level === "warn"
+                ? "log-warn"
+                : "log-error";
+            viewer.innerHTML += `
+              <div class="log-entry">
+                <span class="log-time">[${time}]</span>
+                <span class="${levelClass}">${entry.message}</span>
+              </div>
+            `;
+          });
+          viewer.scrollTop = viewer.scrollHeight;
+        }
+      }
+
+      // --- Actions ---
+      async function restartBot() {
+        const key = getApiKey();
+        if (!key) return alert("API Key required");
+        await ensureCsrfToken();
+        const res = await fetch("/admin/api/restart-bot", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": CSRF_TOKEN,
+          },
+          body: JSON.stringify({ key }),
         });
-        // Use first key as ID
-        const id = row[keys[0]];
-        html += `<td>
-          <button class="btn btn-ghost" onclick='deleteDbRow("${table}", "${id}")'><i class="fas fa-trash"></i></button>
-        </td></tr>`;
-      });
-      html += '</tbody></table></div>';
-      container.innerHTML = html;
-    }
-
-    async function deleteDbRow(table, id) {
-      if (!confirm('Delete row?')) return;
-      await fetch(`/admin/api/db/${table}/${id}`, { method: 'DELETE' });
-      loadDbTable();
-    }
-
-    // --- Logs ---
-    async function fetchLogs() {
-      const res = await fetch('/admin/api/logs');
-      const logs = await res.json();
-      const viewer = document.getElementById('logs-viewer');
-      viewer.innerHTML = '';
-      if (logs.entries) {
-        logs.entries.forEach(entry => {
-          const time = new Date(entry.timestamp).toLocaleTimeString();
-          const levelClass = entry.level === 'info' ? 'log-info' : entry.level === 'warn' ? 'log-warn' : 'log-error';
-          viewer.innerHTML += `
-            <div class="log-entry">
-              <span class="log-time">[${time}]</span>
-              <span class="${levelClass}">${entry.message}</span>
-            </div>
-          `;
-        });
-        viewer.scrollTop = viewer.scrollHeight;
+        const data = await res.json();
+        alert(data.success ? "Restarting..." : "Failed");
       }
-    }
 
-    // --- Actions ---
-    async function restartBot() {
-      const key = getApiKey();
-      if (!key) return alert('API Key required');
-      await ensureCsrfToken();
-      const res = await fetch('/admin/api/restart-bot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify({ key })
-      });
-      const data = await res.json();
-      alert(data.success ? 'Restarting...' : 'Failed');
-    }
+      async function pauseBot() {
+        const key = getApiKey();
+        if (!key) return alert("API Key required");
+        await ensureCsrfToken();
+        const res = await fetch("/admin/api/pause-bot", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": CSRF_TOKEN,
+          },
+          body: JSON.stringify({ key }),
+        });
+        alert("Pause requested");
+      }
 
-    async function pauseBot() {
-      const key = getApiKey();
-      if (!key) return alert('API Key required');
-      await ensureCsrfToken();
-      const res = await fetch('/admin/api/pause-bot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify({ key })
-      });
-      alert('Pause requested');
-    }
+      async function resumeBot() {
+        const key = getApiKey();
+        if (!key) return alert("API Key required");
+        await ensureCsrfToken();
+        const res = await fetch("/admin/api/resume-bot", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": CSRF_TOKEN,
+          },
+          body: JSON.stringify({ key }),
+        });
+        alert("Resume requested");
+      }
 
-    async function resumeBot() {
-      const key = getApiKey();
-      if (!key) return alert('API Key required');
-      await ensureCsrfToken();
-      const res = await fetch('/admin/api/resume-bot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify({ key })
-      });
-      alert('Resume requested');
-    }
+      async function refreshBotToken() {
+        await ensureCsrfToken();
+        await fetch("/admin/api/refresh-bot-token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": CSRF_TOKEN,
+          },
+          body: JSON.stringify({}),
+        });
+        alert("Token refresh requested");
+      }
 
-    async function refreshBotToken() {
-      await ensureCsrfToken();
-      await fetch('/admin/api/refresh-bot-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify({})
-      });
-      alert('Token refresh requested');
-    }
+      async function triggerDeploy() {
+        const key = getApiKey();
+        if (!key) return alert("API Key required");
+        if (
+          !confirm(
+            "This will pull the latest code from Git and restart the bot. Continue?"
+          )
+        )
+          return;
+        await ensureCsrfToken();
+        try {
+          const res = await fetch("/admin/api/deploy", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": CSRF_TOKEN,
+              "x-deploy-token": "supersecret",
+            },
+            body: JSON.stringify({ key }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById("action-status").innerHTML =
+              '<span style="color:var(--success)">Deploy initiated. Bot restarting...</span>';
+            const msg =
+              data.message || data.error || data.details || "Unknown error";
+            document.getElementById("action-status").innerHTML =
+              '<span style="color:var(--danger)">Deploy failed: ' +
+              msg +
+              "</span>";
+          }
+        } catch (e) {
+          document.getElementById("action-status").innerHTML =
+            '<span style="color:var(--danger)">Deploy request failed</span>';
+        }
+      }
 
-    async function triggerDeploy() {
-      const key = getApiKey();
-      if (!key) return alert('API Key required');
-      if (!confirm('This will pull the latest code from Git and restart the bot. Continue?')) return;
-      await ensureCsrfToken();
-      try {
-        const res = await fetch('/admin/api/deploy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN, 'x-deploy-token': "supersecret" },
-          body: JSON.stringify({ key })
+      async function toggleUserDashboard() {
+        // Check current state
+        const btn = document.getElementById("toggle-dashboard-btn");
+        const isEnabled = btn.innerText === "Enabled";
+        const newState = !isEnabled;
+
+        await ensureCsrfToken();
+        const res = await fetch("/admin/api/user-dashboard-access", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "CSRF-Token": CSRF_TOKEN,
+          },
+          body: JSON.stringify({ enabled: newState }),
         });
         const data = await res.json();
         if (data.success) {
-          document.getElementById('action-status').innerHTML = '<span style="color:var(--success)">Deploy initiated. Bot restarting...</span>';
-          const msg = data.message || data.error || data.details || "Unknown error";
-          document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy failed: ' + msg + '</span>';
+          btn.innerText = newState ? "Enabled" : "Disabled";
+          btn.className = newState ? "btn btn-success" : "btn btn-danger";
         }
-      } catch (e) {
-        document.getElementById('action-status').innerHTML = '<span style="color:var(--danger)">Deploy request failed</span>';
       }
-    }
 
-    async function toggleUserDashboard() {
-      // Check current state
-      const btn = document.getElementById('toggle-dashboard-btn');
-      const isEnabled = btn.innerText === 'Enabled';
-      const newState = !isEnabled;
-
-      await ensureCsrfToken();
-      const res = await fetch('/admin/api/user-dashboard-access', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-        body: JSON.stringify({ enabled: newState })
-      });
-      const data = await res.json();
-      if (data.success) {
-        btn.innerText = newState ? 'Enabled' : 'Disabled';
-        btn.className = newState ? 'btn btn-success' : 'btn btn-danger';
-      }
-    }
-
-    // Initial check for dashboard state
-    fetch('/admin/api/user-dashboard-access').then(r => r.json()).then(d => {
-      const btn = document.getElementById('toggle-dashboard-btn');
-      btn.innerText = d.enabled ? 'Enabled' : 'Disabled';
-      btn.className = d.enabled ? 'btn btn-success' : 'btn btn-danger';
-    });
-
-  </script>
-</body>
+      // Initial check for dashboard state
+      fetch("/admin/api/user-dashboard-access")
+        .then((r) => r.json())
+        .then((d) => {
+          const btn = document.getElementById("toggle-dashboard-btn");
+          btn.innerText = d.enabled ? "Enabled" : "Disabled";
+          btn.className = d.enabled ? "btn btn-success" : "btn btn-danger";
+        });
+    </script>
+  </body>
 </html>

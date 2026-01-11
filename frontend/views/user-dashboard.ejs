@@ -189,83 +189,382 @@
         display: block;
       }
 
+      /* Onboarding Modal */
       .gs-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.65);
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
         display: none;
         align-items: center;
         justify-content: center;
-        z-index: 1000;
+        z-index: 10000;
+        animation: fadeIn 0.2s ease;
       }
 
       .gs-modal {
         background: var(--bg-card);
-        border-radius: var(--radius);
+        border-radius: 12px;
         width: 100%;
-        max-width: 520px;
+        max-width: 600px;
         border: 1px solid var(--border);
-        padding: 24px;
-        animation: fadeIn 0.25s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        animation: slideUp 0.3s ease;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
       }
 
       .gs-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        padding: 24px;
+        border-bottom: 1px solid var(--border);
       }
 
       .gs-header h2 {
-        font-size: 20px;
+        font-size: 24px;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .gs-header h2 i {
+        color: var(--primary);
       }
 
       .gs-close {
         background: transparent;
         border: none;
         color: var(--text-muted);
-        font-size: 18px;
+        font-size: 20px;
         cursor: pointer;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s;
       }
 
-      .gs-steps {
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-
-      .gs-step {
-        display: flex;
-        gap: 12px;
+      .gs-close:hover {
         background: var(--bg-hover);
-        padding: 14px;
-        border-radius: var(--radius);
+        color: var(--text-main);
       }
 
-      .gs-step span {
-        background: var(--primary);
+      .gs-progress {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-hover);
+      }
+
+      .gs-progress-bar {
+        width: 100%;
+        height: 6px;
+        background: var(--bg-app);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 12px;
+      }
+
+      .gs-progress-fill {
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          var(--primary),
+          var(--primary-hover)
+        );
+        border-radius: 3px;
+        transition: width 0.3s ease;
+        width: 0%;
+      }
+
+      .gs-progress-text {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .gs-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+      }
+
+      .gs-step-container {
+        display: none;
+      }
+
+      .gs-step-container.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .gs-step-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-hover)
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 28px;
         color: white;
+        box-shadow: 0 8px 20px rgba(145, 71, 255, 0.3);
+      }
+
+      .gs-step-icon.completed {
+        background: linear-gradient(135deg, var(--success), #00b35f);
+      }
+
+      .gs-step-title {
+        font-size: 22px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 8px;
+      }
+
+      .gs-step-description {
+        font-size: 14px;
+        color: var(--text-muted);
+        text-align: center;
+        line-height: 1.6;
+        margin-bottom: 24px;
+      }
+
+      .gs-step-action {
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .gs-step-action.completed {
+        border-color: var(--success);
+        background: rgba(0, 179, 95, 0.05);
+      }
+
+      .gs-step-action-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .gs-step-action-title {
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .gs-step-action-title i {
+        color: var(--primary);
+      }
+
+      .gs-step-action.completed .gs-step-action-title i {
+        color: var(--success);
+      }
+
+      .gs-step-action-status {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: var(--bg-app);
+        color: var(--text-muted);
+      }
+
+      .gs-step-action.completed .gs-step-action-status {
+        background: var(--success);
+        color: white;
+      }
+
+      .gs-step-action-description {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+
+      .gs-step-action-button {
+        width: 100%;
+        margin-top: 8px;
+      }
+
+      .gs-footer {
+        padding: 20px 24px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-hover);
+      }
+
+      .gs-nav-buttons {
+        display: flex;
+        gap: 10px;
+      }
+
+      .gs-skip {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 14px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.2s;
+      }
+
+      .gs-skip:hover {
+        background: var(--bg-app);
+        color: var(--text-main);
+      }
+
+      /* Onboarding Checklist Widget */
+      .onboarding-checklist {
+        background: linear-gradient(
+          135deg,
+          rgba(145, 71, 255, 0.1),
+          rgba(119, 44, 232, 0.05)
+        );
+        border: 1px solid rgba(145, 71, 255, 0.2);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 24px;
+      }
+
+      .onboarding-checklist.hidden {
+        display: none;
+      }
+
+      .onboarding-checklist-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .onboarding-checklist-title {
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--primary);
+      }
+
+      .onboarding-checklist-close {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 18px;
         width: 24px;
         height: 24px;
-        font-size: 13px;
-        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .onboarding-checklist-close:hover {
+        background: var(--bg-hover);
+        color: var(--text-main);
+      }
+
+      .onboarding-checklist-items {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .onboarding-checklist-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        background: var(--bg-card);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        transition: all 0.2s;
+      }
+
+      .onboarding-checklist-item:hover {
+        border-color: var(--primary);
+        background: var(--bg-hover);
+      }
+
+      .onboarding-checklist-item.completed {
+        opacity: 0.6;
+      }
+
+      .onboarding-checklist-item.completed .onboarding-checklist-item-text {
+        text-decoration: line-through;
+        color: var(--text-muted);
+      }
+
+      .onboarding-checklist-item-icon {
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
+        border: 2px solid var(--border);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        transition: all 0.2s;
       }
 
-      .gs-step p {
-        font-size: 13px;
-        color: var(--text-muted);
-        margin-top: 2px;
+      .onboarding-checklist-item.completed .onboarding-checklist-item-icon {
+        background: var(--success);
+        border-color: var(--success);
+        color: white;
       }
 
-      .gs-footer {
-        margin-top: 24px;
-        text-align: right;
+      .onboarding-checklist-item-text {
+        flex: 1;
+        font-size: 14px;
+        color: var(--text-main);
+      }
+
+      .onboarding-checklist-item-action {
+        font-size: 12px;
+        color: var(--primary);
+        cursor: pointer;
+        font-weight: 500;
+        transition: color 0.2s;
+      }
+
+      .onboarding-checklist-item-action:hover {
+        color: var(--primary-hover);
+      }
+
+      .onboarding-checklist-item.completed .onboarding-checklist-item-action {
+        display: none;
       }
 
       @keyframes fadeIn {
@@ -971,6 +1270,79 @@
             <a href="/" class="btn btn-ghost"
               ><i class="fas fa-external-link-alt"></i> Home Page</a
             >
+          </div>
+
+          <!-- Onboarding Checklist -->
+          <div
+            id="onboarding-checklist"
+            class="onboarding-checklist"
+            style="display: none"
+          >
+            <div class="onboarding-checklist-header">
+              <div class="onboarding-checklist-title">
+                <i class="fas fa-tasks"></i> Getting Started Checklist
+              </div>
+              <button
+                class="onboarding-checklist-close"
+                onclick="hideOnboardingChecklist()"
+              >
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="onboarding-checklist-items">
+              <div class="onboarding-checklist-item" id="checklist-item-1">
+                <div class="onboarding-checklist-item-icon">
+                  <i class="fas fa-check" style="display: none"></i>
+                </div>
+                <div class="onboarding-checklist-item-text">
+                  Enable your bot
+                </div>
+                <span
+                  class="onboarding-checklist-item-action"
+                  onclick="goToStepAction(1)"
+                  >Do this →</span
+                >
+              </div>
+              <div class="onboarding-checklist-item" id="checklist-item-2">
+                <div class="onboarding-checklist-item-icon">
+                  <i class="fas fa-check" style="display: none"></i>
+                </div>
+                <div class="onboarding-checklist-item-text">
+                  Link your game account
+                </div>
+                <span
+                  class="onboarding-checklist-item-action"
+                  onclick="goToStepAction(2)"
+                  >Do this →</span
+                >
+              </div>
+              <div class="onboarding-checklist-item" id="checklist-item-3">
+                <div class="onboarding-checklist-item-icon">
+                  <i class="fas fa-check" style="display: none"></i>
+                </div>
+                <div class="onboarding-checklist-item-text">
+                  Customize commands (optional)
+                </div>
+                <span
+                  class="onboarding-checklist-item-action"
+                  onclick="goToStepAction(3)"
+                  >Do this →</span
+                >
+              </div>
+              <div class="onboarding-checklist-item" id="checklist-item-4">
+                <div class="onboarding-checklist-item-icon">
+                  <i class="fas fa-check" style="display: none"></i>
+                </div>
+                <div class="onboarding-checklist-item-text">
+                  Add stream overlay (optional)
+                </div>
+                <span
+                  class="onboarding-checklist-item-action"
+                  onclick="goToStepAction(4)"
+                  >Do this →</span
+                >
+              </div>
+            </div>
           </div>
 
           <div class="grid-3" style="margin-bottom: 30px">
@@ -1788,6 +2160,7 @@
             </div>
           </div>
         </div>
+
         <!-- Settings View -->
         <div id="view-settings" class="view-section">
           <div class="header">
@@ -1864,64 +2237,188 @@
             </div>
           </div>
         </div>
-        <div id="getting-started-modal" class="gs-overlay">
+        <!-- Onboarding Modal -->
+        <div
+          id="getting-started-modal"
+          class="gs-overlay"
+          onclick="if(event.target === this) closeGettingStarted()"
+        >
           <div class="gs-modal">
             <div class="gs-header">
-              <h2>Getting Started</h2>
+              <h2><i class="fas fa-rocket"></i> Welcome to FinalsRS!</h2>
               <button class="gs-close" onclick="closeGettingStarted()">
-                ✕
+                <i class="fas fa-times"></i>
               </button>
             </div>
 
-            <div class="gs-steps">
-              <div class="gs-step">
-                <span>1</span>
-                <div>
-                  <strong>Check if the bot is on</strong>
-                  <p>
-                    Check if the bot is on so it can connect to your Twitch
+            <div class="gs-progress">
+              <div class="gs-progress-bar">
+                <div id="gs-progress-fill" class="gs-progress-fill"></div>
+              </div>
+              <div class="gs-progress-text" id="gs-progress-text">
+                Step 1 of 4
+              </div>
+            </div>
+
+            <div class="gs-content">
+              <!-- Step 1: Enable Bot -->
+              <div id="gs-step-1" class="gs-step-container active">
+                <div class="gs-step-icon" id="gs-icon-1">
+                  <i class="fas fa-power-off"></i>
+                </div>
+                <h3 class="gs-step-title">Enable Your Bot</h3>
+                <p class="gs-step-description">
+                  Turn on the bot so it can connect to your Twitch chat and
+                  respond to commands.
+                </p>
+                <div class="gs-step-action" id="gs-action-1">
+                  <div class="gs-step-action-header">
+                    <div class="gs-step-action-title">
+                      <i class="fas fa-robot"></i> Bot Status
+                    </div>
+                    <span class="gs-step-action-status" id="gs-status-1"
+                      >Pending</span
+                    >
+                  </div>
+                  <div class="gs-step-action-description">
+                    Make sure the bot is active to start using commands in your
                     chat.
-                  </p>
+                  </div>
+                  <button
+                    class="btn btn-primary gs-step-action-button"
+                    onclick="goToStepAction(1)"
+                  >
+                    <i class="fas fa-arrow-right"></i> Go to Overview
+                  </button>
                 </div>
               </div>
 
-              <div class="gs-step">
-                <span>2</span>
-                <div>
-                  <strong>Link your game account</strong>
-                  <p>
-                    Add your Embark ID in <em>Settings</em> to enable stat
+              <!-- Step 2: Link Account -->
+              <div id="gs-step-2" class="gs-step-container">
+                <div class="gs-step-icon" id="gs-icon-2">
+                  <i class="fas fa-link"></i>
+                </div>
+                <h3 class="gs-step-title">Link Your Game Account</h3>
+                <p class="gs-step-description">
+                  Connect your Embark ID to enable automatic stat tracking and
+                  personalized responses.
+                </p>
+                <div class="gs-step-action" id="gs-action-2">
+                  <div class="gs-step-action-header">
+                    <div class="gs-step-action-title">
+                      <i class="fas fa-gamepad"></i> Game Account
+                    </div>
+                    <span class="gs-step-action-status" id="gs-status-2"
+                      >Pending</span
+                    >
+                  </div>
+                  <div class="gs-step-action-description">
+                    Add your Embark ID (e.g., PlayerName#1234) to enable stat
                     tracking.
-                  </p>
+                  </div>
+                  <button
+                    class="btn btn-primary gs-step-action-button"
+                    onclick="goToStepAction(2)"
+                  >
+                    <i class="fas fa-arrow-right"></i> Go to Settings
+                  </button>
                 </div>
               </div>
 
-              <div class="gs-step">
-                <span>3</span>
-                <div>
-                  <strong>Customize commands (optional)</strong>
-                  <p>
-                    Edit your !rank and other commands in <em>My Commands</em>.
-                  </p>
+              <!-- Step 3: Customize Commands -->
+              <div id="gs-step-3" class="gs-step-container">
+                <div class="gs-step-icon" id="gs-icon-3">
+                  <i class="fas fa-terminal"></i>
+                </div>
+                <h3 class="gs-step-title">Customize Commands (Optional)</h3>
+                <p class="gs-step-description">
+                  Personalize your bot's responses to match your style and
+                  branding.
+                </p>
+                <div class="gs-step-action" id="gs-action-3">
+                  <div class="gs-step-action-header">
+                    <div class="gs-step-action-title">
+                      <i class="fas fa-code"></i> Custom Commands
+                    </div>
+                    <span class="gs-step-action-status" id="gs-status-3"
+                      >Optional</span
+                    >
+                  </div>
+                  <div class="gs-step-action-description">
+                    Edit !rank, !record, and !peak command responses with custom
+                    messages and variables.
+                  </div>
+                  <button
+                    class="btn btn-primary gs-step-action-button"
+                    onclick="goToStepAction(3)"
+                  >
+                    <i class="fas fa-arrow-right"></i> Go to Commands
+                  </button>
                 </div>
               </div>
 
-              <div class="gs-step">
-                <span>4</span>
-                <div>
-                  <strong>Add your overlay (optional)</strong>
-                  <p>
-                    Copy your overlay link and add it as a Browser Source in
-                    OBS.
-                  </p>
+              <!-- Step 4: Add Overlay -->
+              <div id="gs-step-4" class="gs-step-container">
+                <div class="gs-step-icon" id="gs-icon-4">
+                  <i class="fas fa-tv"></i>
+                </div>
+                <h3 class="gs-step-title">Add Stream Overlay (Optional)</h3>
+                <p class="gs-step-description">
+                  Display your stats on stream with a customizable overlay that
+                  updates in real-time.
+                </p>
+                <div class="gs-step-action" id="gs-action-4">
+                  <div class="gs-step-action-header">
+                    <div class="gs-step-action-title">
+                      <i class="fas fa-broadcast-tower"></i> Stream Overlay
+                    </div>
+                    <span class="gs-step-action-status" id="gs-status-4"
+                      >Optional</span
+                    >
+                  </div>
+                  <div class="gs-step-action-description">
+                    Copy your overlay URL and add it as a Browser Source in OBS
+                    Studio.
+                  </div>
+                  <button
+                    class="btn btn-primary gs-step-action-button"
+                    onclick="goToStepAction(4)"
+                  >
+                    <i class="fas fa-arrow-right"></i> Go to Overlays
+                  </button>
                 </div>
               </div>
             </div>
 
             <div class="gs-footer">
-              <button class="btn btn-primary" onclick="finishGettingStarted()">
-                Got it, let’s go 🔥
+              <button class="gs-skip" onclick="skipOnboarding()">
+                Skip for now
               </button>
+              <div class="gs-nav-buttons">
+                <button
+                  id="gs-prev-btn"
+                  class="btn btn-ghost"
+                  onclick="previousStep()"
+                  style="display: none"
+                >
+                  <i class="fas fa-arrow-left"></i> Previous
+                </button>
+                <button
+                  id="gs-next-btn"
+                  class="btn btn-primary"
+                  onclick="nextStep()"
+                >
+                  Next <i class="fas fa-arrow-right"></i>
+                </button>
+                <button
+                  id="gs-finish-btn"
+                  class="btn btn-success-solid"
+                  onclick="finishGettingStarted()"
+                  style="display: none"
+                >
+                  <i class="fas fa-check"></i> Get Started!
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2004,10 +2501,221 @@
 
       /* --- CLIENT STATE --- */
       const GS_KEY = "finalsrs_getting_started_seen";
+      const GS_CHECKLIST_KEY = "finalsrs_checklist_hidden";
+      const GS_COMPLETED_KEY = "finalsrs_onboarding_completed";
 
       // --- State ---
       let overlayToken = null;
       let overlayLayoutObj = null;
+      let currentOnboardingStep = 1;
+      const totalSteps = 4;
+
+      // --- Onboarding Functions ---
+      function openGettingStarted() {
+        document.getElementById("getting-started-modal").style.display = "flex";
+        currentOnboardingStep = 1;
+        updateOnboardingStep();
+        checkOnboardingProgress();
+      }
+
+      function closeGettingStarted() {
+        document.getElementById("getting-started-modal").style.display = "none";
+      }
+
+      function skipOnboarding() {
+        localStorage.setItem(GS_KEY, "true");
+        closeGettingStarted();
+        showOnboardingChecklist();
+      }
+
+      function finishGettingStarted() {
+        localStorage.setItem(GS_KEY, "true");
+        localStorage.setItem(GS_COMPLETED_KEY, "true");
+        closeGettingStarted();
+        hideOnboardingChecklist();
+        showToast("Welcome aboard! You're all set! 🎉", "success");
+      }
+
+      function nextStep() {
+        if (currentOnboardingStep < totalSteps) {
+          currentOnboardingStep++;
+          updateOnboardingStep();
+        }
+      }
+
+      function previousStep() {
+        if (currentOnboardingStep > 1) {
+          currentOnboardingStep--;
+          updateOnboardingStep();
+        }
+      }
+
+      function updateOnboardingStep() {
+        // Hide all steps
+        for (let i = 1; i <= totalSteps; i++) {
+          document.getElementById(`gs-step-${i}`).classList.remove("active");
+        }
+
+        // Show current step
+        document
+          .getElementById(`gs-step-${currentOnboardingStep}`)
+          .classList.add("active");
+
+        // Update progress
+        const progress = (currentOnboardingStep / totalSteps) * 100;
+        document.getElementById("gs-progress-fill").style.width =
+          progress + "%";
+        document.getElementById(
+          "gs-progress-text"
+        ).innerText = `Step ${currentOnboardingStep} of ${totalSteps}`;
+
+        // Update navigation buttons
+        const prevBtn = document.getElementById("gs-prev-btn");
+        const nextBtn = document.getElementById("gs-next-btn");
+        const finishBtn = document.getElementById("gs-finish-btn");
+
+        prevBtn.style.display =
+          currentOnboardingStep > 1 ? "inline-flex" : "none";
+        nextBtn.style.display =
+          currentOnboardingStep < totalSteps ? "inline-flex" : "none";
+        finishBtn.style.display =
+          currentOnboardingStep === totalSteps ? "inline-flex" : "none";
+
+        // Check progress for current step
+        checkOnboardingProgress();
+      }
+
+      function goToStepAction(step) {
+        closeGettingStarted();
+        const viewMap = {
+          1: "overview",
+          2: "settings",
+          3: "commands",
+          4: "overlays",
+        };
+        switchView(viewMap[step]);
+        setTimeout(() => {
+          if (step === 1) {
+            // Scroll to bot status card
+            const botCard = document.querySelector(".card");
+            if (botCard)
+              botCard.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 300);
+      }
+
+      async function checkOnboardingProgress() {
+        // Check step 1: Bot enabled
+        try {
+          // Check bot status by looking at the status indicator or text
+          const statusText = document.getElementById("bot-status-text");
+          const indicator = document.getElementById("bot-status-indicator");
+          const botEnabled =
+            (statusText &&
+              statusText.innerText.trim().toLowerCase() === "active") ||
+            (indicator && indicator.classList.contains("indicator-success"));
+          updateStepStatus(1, botEnabled);
+        } catch (e) {
+          console.error("Failed to check bot status", e);
+        }
+
+        // Check step 2: Account linked
+        try {
+          // Check multiple sources for account link status
+          const playerIdInput = document.getElementById("player-id-input");
+          const playerIdFromInput = playerIdInput
+            ? playerIdInput.value.trim()
+            : "";
+
+          // Check if the linked account card shows a player ID (not "No Account Linked")
+          const linkedAccountSection = document.querySelector(
+            "#view-overview .grid-3 .card:nth-child(2)"
+          );
+          const hasLinkedAccountInCard =
+            linkedAccountSection &&
+            !linkedAccountSection.textContent.includes("No Account Linked") &&
+            linkedAccountSection.textContent.includes("Tracking stats");
+
+          const hasLinkedAccount =
+            playerIdFromInput !== "" || hasLinkedAccountInCard;
+          updateStepStatus(2, hasLinkedAccount);
+        } catch (e) {
+          console.error("Failed to check account link status", e);
+        }
+
+        // Check step 3: Commands customized (optional, always show as optional)
+        // This is optional, so we don't mark it as required
+        updateStepStatus(3, false, true);
+
+        // Check step 4: Overlay setup (optional, always show as optional)
+        // Check if overlay token exists and URL is set
+        const overlayUrlInput = document.getElementById("overlay-url-input");
+        const hasOverlaySetup =
+          (overlayToken && overlayToken.trim() !== "") ||
+          (overlayUrlInput &&
+            overlayUrlInput.value &&
+            overlayUrlInput.value !== "");
+        updateStepStatus(4, hasOverlaySetup, true);
+      }
+
+      function updateStepStatus(step, completed, optional = false) {
+        const icon = document.getElementById(`gs-icon-${step}`);
+        const action = document.getElementById(`gs-action-${step}`);
+        const status = document.getElementById(`gs-status-${step}`);
+        const checklistItem = document.getElementById(`checklist-item-${step}`);
+
+        if (completed) {
+          icon.classList.add("completed");
+          icon.innerHTML = '<i class="fas fa-check"></i>';
+          action.classList.add("completed");
+          status.innerText = "Completed";
+          status.style.background = "var(--success)";
+          status.style.color = "white";
+          if (checklistItem) {
+            checklistItem.classList.add("completed");
+            const checkIcon = checklistItem.querySelector(
+              ".onboarding-checklist-item-icon i"
+            );
+            if (checkIcon) checkIcon.style.display = "block";
+          }
+        } else {
+          icon.classList.remove("completed");
+          action.classList.remove("completed");
+          if (optional) {
+            status.innerText = "Optional";
+            status.style.background = "var(--bg-app)";
+            status.style.color = "var(--text-muted)";
+          } else {
+            status.innerText = "Pending";
+            status.style.background = "var(--bg-app)";
+            status.style.color = "var(--text-muted)";
+          }
+          if (checklistItem) {
+            checklistItem.classList.remove("completed");
+            const checkIcon = checklistItem.querySelector(
+              ".onboarding-checklist-item-icon i"
+            );
+            if (checkIcon) checkIcon.style.display = "none";
+          }
+        }
+      }
+
+      function showOnboardingChecklist() {
+        const checklist = document.getElementById("onboarding-checklist");
+        const checklistHidden = localStorage.getItem(GS_CHECKLIST_KEY);
+        const onboardingCompleted = localStorage.getItem(GS_COMPLETED_KEY);
+
+        if (!checklistHidden && !onboardingCompleted) {
+          checklist.style.display = "block";
+          checkOnboardingProgress();
+        }
+      }
+
+      function hideOnboardingChecklist() {
+        const checklist = document.getElementById("onboarding-checklist");
+        checklist.style.display = "none";
+        localStorage.setItem(GS_CHECKLIST_KEY, "true");
+      }
 
       // --- On Load ---
       document.addEventListener("DOMContentLoaded", () => {
@@ -2082,23 +2790,16 @@
           updateOverlayUrlDisplay();
         })();
 
+        // Initialize onboarding
         if (!localStorage.getItem(GS_KEY)) {
           openGettingStarted();
+        } else {
+          showOnboardingChecklist();
         }
+
+        // Check progress periodically
+        setInterval(checkOnboardingProgress, 5000);
       });
-
-      function openGettingStarted() {
-        document.getElementById("getting-started-modal").style.display = "flex";
-      }
-
-      function closeGettingStarted() {
-        document.getElementById("getting-started-modal").style.display = "none";
-      }
-
-      function finishGettingStarted() {
-        localStorage.setItem(GS_KEY, "true");
-        closeGettingStarted();
-      }
 
       // --- Overlay Functions ---
       function updateOverlayUrlDisplay() {
@@ -2248,7 +2949,8 @@
           commands: 1,
           "rank-tracker": 2,
           overlays: 3,
-          settings: 4,
+          analytics: 4,
+          settings: 5,
         };
 
         const navItems = document.querySelectorAll(".nav-item");
@@ -2262,6 +2964,10 @@
 
         if (viewId === "commands") fetchCommands();
         if (viewId === "rank-tracker") loadRankGoal();
+        if (viewId === "analytics") loadAnalytics();
+
+        // Refresh onboarding checklist when switching views
+        setTimeout(checkOnboardingProgress, 500);
       }
 
       // --- Commands & Preview ---
@@ -2778,6 +3484,8 @@
               if (data.success) {
                 status.innerHTML =
                   '<span style="color:var(--success)">Successfully linked! Reloading...</span>';
+                // Refresh onboarding progress before reload
+                setTimeout(checkOnboardingProgress, 300);
                 setTimeout(() => window.location.reload(), 1000);
               } else {
                 status.innerHTML = `<span style="color:var(--danger)">${
@@ -2894,6 +3602,9 @@
 
             showToast(`Bot turned ${isEnabled ? "on" : "off"}`, "success");
             btn.disabled = false;
+
+            // Refresh onboarding progress
+            setTimeout(checkOnboardingProgress, 500);
           } else {
             showToast("Failed to toggle bot status.", "danger");
             text.innerText = originalText;

@@ -6,6 +6,7 @@ import { Router } from 'express';
 import dashboardRoutes from './dashboard.routes';
 import commandsRoutes from './commands.routes';
 import rankGoalRoutes from './rankgoal.routes';
+import analyticsRoutes from './analytics.routes';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ const router = Router();
 router.use(dashboardRoutes);
 router.use(commandsRoutes);
 router.use(rankGoalRoutes);
+router.use(analyticsRoutes);
 
 export default router;

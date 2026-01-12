@@ -18,7 +18,7 @@ let userDashboardEnabled = true;
  * GET /dashboard
  * Render user dashboard with personalized data
  */
-router.get("/dashboard", async (req: any, res: any) => {
+router.get("/dashboard", requireUser, async (req: any, res: any) => {
     if (!userDashboardEnabled) {
         // Render auth.ejs with a message about dashboard being disabled
         return res.render("auth", {
@@ -28,10 +28,6 @@ router.get("/dashboard", async (req: any, res: any) => {
             botUsername: "FinalsRS",
             message: "User dashboard is currently disabled by admin."
         });
-    }
-
-    if (!req.session || !req.session.isUser || !req.session.twitchUsername) {
-        return res.redirect("/login");
     }
 
     // Fetch personalized data (example: user stats)

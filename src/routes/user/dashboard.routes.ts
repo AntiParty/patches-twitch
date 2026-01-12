@@ -55,6 +55,8 @@ router.get("/dashboard", async (req: any, res: any) => {
         title: "FinalsRS - User dashboard",
         logoPath: "/assets/logo.png",
         username: req.session.twitchUsername,
+        role: req.session.role || 'Basic user',
+        isAdmin: req.session.isAdmin || false,
         userStats,
     });
 });

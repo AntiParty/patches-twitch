@@ -98,6 +98,10 @@ router.get("/callback", async (req: any, res: any) => {
             twitch_user_id: twitchUserId,
         });
 
+        // Fetch current user from DB to get their role
+        const channel = await Channel.findOne({ where: { username: twitchUsername } });
+        const userRole = channel ? channel.role : 'Basic user';
+
         // Regenerate session to prevent session fixation and then store minimal user info
         if (req.session) {
             await new Promise((resolve, reject) => {
@@ -109,6 +113,14 @@ router.get("/callback", async (req: any, res: any) => {
                     req.session.isUser = true;
                     req.session.twitchUserId = twitchUserId;
                     req.session.twitchUsername = twitchUsername;
+                    req.session.role = userRole; // Store role in session
+                    req.session.isAdmin = userRole === 'admin'; // Backward compatibility or convenience
+                    
+                    // If they have a dashboard-capable role, set the primary username for logs/admin
+                    if (userRole === 'admin' || userRole === 'Staff') {
+                        req.session.username = twitchUsername;
+                    }
+
                     req.session.save((err2: any) => {
                         if (err2) {
                             logger.error('[Auth] Session save failed', err2);

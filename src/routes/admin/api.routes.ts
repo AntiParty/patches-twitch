@@ -13,27 +13,63 @@ import { performanceMonitor } from '@/util/performanceMonitor';
 import { refreshBotToken } from '@/util/botAuth';
 import { reconnectChatBot, clients } from '@/util/ircBot';
 import { loadCommands } from '@/handlers/commands';
-import { requireAdminAPI, isAdmin, requireApiKey } from '@/middleware/auth.middleware';
+import { getCommandAnalytics } from '@/util/commandAnalytics';
+import multer from 'multer';
+import { requireAdminAPI, isAdmin, isStaff, requireApiKey, requireStaff, requireStaffAPI } from '@/middleware/auth.middleware';
 import { csrfProtection } from '@/middleware/csrf.middleware';
 import { isDashboardEnabled, setDashboardEnabled } from '@/routes/user/dashboard.routes';
-import { sendWarningToDiscord } from '@/handlers/discordHandler';
-import { getCommandAnalytics } from '@/util/commandAnalytics';
+import { logAdminAction } from '@/util/adminLogger';
 
 const router = Router();
+
+// Setup Multer for image uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(process.cwd(), 'frontend', 'public', 'uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'drop-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only images are allowed'));
+        }
+    }
+});
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
 
 /**
  * GET /admin
- * Render admin dashboard page
+ * Render admin dashboard page (Staff or Admin)
  */
-router.get('/', csrfProtection, (req: any, res: any) => {
-    if (!isAdmin(req)) {
-        return res.redirect('/admin/login');
-    }
+router.get('/', csrfProtection, requireStaff, (req: any, res: any) => {
     const viewsPath = path.join(process.cwd(), 'frontend', 'views');
     res.sendFile(path.join(viewsPath, 'admin-dashboard.html'));
+});
+
+/**
+ * GET /admin/api/me
+ * Get current user info and role
+ */
+router.get('/api/me', requireStaffAPI, (req: any, res: any) => {
+    res.json({
+        username: req.session.username,
+        role: req.session.role || (isAdmin(req) ? 'admin' : 'Staff')
+    });
 });
 
 /**
@@ -48,7 +84,7 @@ router.get('/api/csrf', csrfProtection, (req: any, res: any) => {
  * GET /admin/api/stats
  * Get server statistics summary
  */
-router.get('/api/stats', requireAdminAPI, async (req: any, res: any) => {
+router.get('/api/stats', requireStaffAPI, async (req: any, res: any) => {
     // Import dynamically to avoid circular dependencies
     const { getCommandsProcessed } = await import('@/server');
 
@@ -67,12 +103,67 @@ router.get('/api/stats', requireAdminAPI, async (req: any, res: any) => {
  */
 router.get('/api/channels', requireAdminAPI, async (req: any, res: any) => {
     try {
-        const channels = await Channel.findAll({ attributes: ['username'] });
-        const usernames = channels.map((c: any) => c.username);
-        res.status(200).json({ userCount: usernames.length, channels: usernames });
+        const channels = await Channel.findAll({ attributes: ['username', 'role'] });
+        res.status(200).json({ 
+            userCount: channels.length, 
+            channels: channels.map((c: any) => ({
+                username: c.username,
+                role: c.role
+            }))
+        });
     } catch (err) {
         logger.error("Error fetching channels list:", err);
         res.status(500).json({ error: "Failed to fetch channels" });
+    }
+});
+
+/**
+ * GET /admin/api/users
+ * List all users with their roles
+ */
+router.get('/api/users', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        const users = await Channel.findAll({
+            attributes: ['id', 'username', 'role', 'twitch_user_id']
+        });
+        res.json({ users });
+    } catch (err) {
+        logger.error('Error fetching users:', err);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+/**
+ * POST /admin/api/users/set-role
+ * Set a user's role
+ */
+router.post('/api/users/set-role', requireAdminAPI, async (req: any, res: any) => {
+    const { username, role } = req.body;
+    const validRoles = ['Basic user', 'tester', 'Staff', 'admin'];
+
+    if (!username || !role) {
+        return res.status(400).json({ error: 'Username and role are required' });
+    }
+
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+    }
+
+    try {
+        const user = await Channel.findOne({ where: { username } });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        user.role = role;
+        await user.save();
+
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'SET_USER_ROLE', { target: username, role });
+        logger.info(`[Admin] Role for user ${username} set to ${role} by ${req.session.username || 'admin'}`);
+        res.json({ success: true, message: `Role for ${username} updated to ${role}` });
+    } catch (err) {
+        logger.error('Error updating user role:', err);
+        res.status(500).json({ error: 'Failed to update user role' });
     }
 });
 
@@ -151,7 +242,7 @@ router.get('/api/commands', requireAdminAPI, async (req: any, res: any) => {
  * GET /admin/api/performance
  * Get performance metrics
  */
-router.get('/api/performance', requireAdminAPI, (req: any, res: any) => {
+router.get('/api/performance', requireStaffAPI, (req: any, res: any) => {
     const metrics = performanceMonitor.getMetrics();
     res.json(metrics);
 });
@@ -210,6 +301,7 @@ router.post('/api/refresh-bot-token', csrfProtection, requireAdminAPI, async (re
 
         await Promise.allSettled(reconnectPromises);
 
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'REFRESH_BOT_TOKEN');
         res.json({
             ok: true,
             accessTokenPreview: result.accessToken.slice(0, 6) + "…",
@@ -227,11 +319,12 @@ router.post('/api/refresh-bot-token', csrfProtection, requireAdminAPI, async (re
  */
 router.post("/api/restart-bot", requireApiKey, async (req: any, res: any) => {
     try {
-        exec("pm2 restart FinalsRS-bot", (err, stdout, stderr) => {
+        exec("pm2 restart FinalsRS-bot", async (err, stdout, stderr) => {
             if (err) {
                 logger.error("Failed to restart bot via admin API:", err);
                 return res.status(500).json({ success: false, error: "Failed to restart bot" });
             }
+            await logAdminAction(req.session?.username || 'API_USER', req.session?.role || 'admin', 'RESTART_BOT');
             logger.info(`[Admin] Restarted bot via API. Output: ${stdout}`);
             res.json({ success: true });
         });
@@ -253,6 +346,7 @@ router.post("/api/deploy", requireApiKey, async (req, res) => {
       headers: { "x-deploy-token": "supersecret" }
     });
 
+    await logAdminAction((req.session as any)?.username || 'API_USER', (req.session as any)?.role || 'admin', 'TRIGGER_DEPLOY');
     res.json({ success: true, message: "Deployment triggered" });
   } catch (err: any) {
     console.error("Deploy trigger failed:", err.response?.data || err.message || err);
@@ -265,8 +359,9 @@ router.post("/api/deploy", requireApiKey, async (req, res) => {
  * POST /admin/api/pause-bot
  * Pause bot (stub endpoint)
  */
-router.post('/api/pause-bot', requireApiKey, (req: any, res: any) => {
+router.post('/api/pause-bot', requireApiKey, async (req: any, res: any) => {
     // TODO: Implement actual pause logic
+    await logAdminAction(req.session?.username || 'API_USER', req.session?.role || 'admin', 'PAUSE_BOT');
     logger.info("[Admin] Bot pause requested.");
     res.json({ success: true, message: "Bot pause requested (not yet implemented)." });
 });
@@ -275,8 +370,9 @@ router.post('/api/pause-bot', requireApiKey, (req: any, res: any) => {
  * POST /admin/api/resume-bot
  * Resume bot (stub endpoint)
  */
-router.post('/api/resume-bot', requireApiKey, (req: any, res: any) => {
+router.post('/api/resume-bot', requireApiKey, async (req: any, res: any) => {
     // TODO: Implement actual resume logic
+    await logAdminAction(req.session?.username || 'API_USER', req.session?.role || 'admin', 'RESUME_BOT');
     logger.info("[Admin] Bot resume requested.");
     res.json({ success: true, message: "Bot resume requested (not yet implemented)." });
 });
@@ -309,7 +405,7 @@ router.post('/api/user-dashboard-access', requireAdminAPI, (req: any, res: any) 
  * GET /admin/api/drops
  * Get drops configuration
  */
-router.get('/api/drops', requireAdminAPI, (req: any, res: any) => {
+router.get('/api/drops', requireStaffAPI, (req: any, res: any) => {
     const dropsPath = path.join(process.cwd(), 'frontend', 'public', 'drops.json');
     fs.readFile(dropsPath, 'utf8', (err, data) => {
         if (err) {
@@ -328,7 +424,7 @@ router.get('/api/drops', requireAdminAPI, (req: any, res: any) => {
  * POST /admin/api/drops
  * Update drops configuration
  */
-router.post('/api/drops', requireAdminAPI, (req: any, res: any) => {
+router.post('/api/drops', requireStaffAPI, async (req: any, res: any) => {
     const dropsPath = path.join(process.cwd(), 'frontend', 'public', 'drops.json');
     const newConfig = req.body;
 
@@ -336,21 +432,35 @@ router.post('/api/drops', requireAdminAPI, (req: any, res: any) => {
         return res.status(400).json({ error: 'Invalid drops configuration' });
     }
 
-    fs.writeFile(dropsPath, JSON.stringify(newConfig, null, 2), (err) => {
+    fs.writeFile(dropsPath, JSON.stringify(newConfig, null, 2), async (err) => {
         if (err) {
             logger.error('Error writing drops file:', err);
             return res.status(500).json({ error: 'Failed to save drops config' });
         }
+        await logAdminAction(req.session.username, req.session.role || (isAdmin(req) ? 'admin' : 'Staff'), 'UPDATE_DROPS', newConfig);
         logger.info(`[Admin] Updated drops configuration`);
         res.json({ success: true });
     });
 });
 
 /**
+ * POST /admin/api/upload
+ * Upload an image for drops
+ */
+router.post('/api/upload', requireStaffAPI, upload.single('image'), async (req: any, res: any) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    await logAdminAction(req.session.username, req.session.role || (isAdmin(req) ? 'admin' : 'Staff'), 'UPLOAD_IMAGE', { filename: req.file.filename, url: fileUrl });
+    res.json({ success: true, url: fileUrl });
+});
+
+/**
  * GET /admin/api/analytics
  * Get global command analytics
  */
-router.get('/api/analytics', requireAdminAPI, async (req: any, res: any) => {
+router.get('/api/analytics', requireStaffAPI, async (req: any, res: any) => {
     try {
         // Parse query parameters
         const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;

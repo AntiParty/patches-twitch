@@ -1,26 +1,23 @@
 {
   "lastUpdated": "January 8, 2026",
-  "featuredImage": "./assets/drops/drops.webp",
+  "featuredImage": "/uploads/drop-1768243692448-515383931.jpg",
   "drops": [
     {
       "name": "Tangerine LH1",
       "category": "WEAPON",
       "duration": "1 hour",
-      "endDate": "January 22nd, 2026",
       "icon": "circle"
     },
     {
       "name": "Tangerine Flamethrower",
       "category": "WEAPON",
       "duration": "2 hours",
-      "endDate": "January 22nd, 2026",
       "icon": "circle"
     },
     {
       "name": "Tangerine R.357",
       "category": "WEAPON ",
       "duration": "3 hours",
-      "endDate": "January 22nd, 2026",
       "icon": "circle"
     }
   ]

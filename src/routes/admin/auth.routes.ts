@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import logger from '@/util/logger';
-import { isAdmin } from '@/middleware/auth.middleware';
+import { isAdmin, isStaff } from '@/middleware/auth.middleware';
 import { adminLoginMiddleware } from '@/middleware/csrf.middleware';
 
 const router = Router();
@@ -19,7 +19,7 @@ const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '';
  * Render admin login page
  */
 router.get('/login', ...adminLoginMiddleware, (req: any, res: any) => {
-    if (isAdmin(req)) {
+    if (isStaff(req)) {
         return res.redirect('/admin');
     }
 
@@ -48,6 +48,7 @@ router.post('/login', ...adminLoginMiddleware, async (req: any, res: any) => {
 
     req.session.isAdmin = true;
     req.session.username = username;
+    req.session.role = 'admin'; // Set role for consistency
     res.redirect('/admin');
     logger.info(`[Admin] ${username} logged in successfully.`);
 });
@@ -58,7 +59,8 @@ router.post('/login', ...adminLoginMiddleware, async (req: any, res: any) => {
  */
 router.post('/logout', (req: any, res: any) => {
     req.session.destroy(() => {
-        res.redirect('/admin/login');
+        // If they were a Twitch user, they might want to go back to the home page or user dashboard
+        res.redirect('/');
     });
 });
 

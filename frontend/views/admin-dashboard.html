@@ -189,6 +189,19 @@
         }
       }
 
+      /* Role-based Visibility */
+      .admin-only {
+        display: none !important;
+      }
+
+      body.is-admin .nav-item.admin-only {
+        display: flex !important;
+      }
+
+      body.is-admin .card.admin-only {
+        display: block !important;
+      }
+
       /* Cards & Grid */
       .grid-2 {
         display: grid;
@@ -447,39 +460,50 @@
           <li class="nav-item active" onclick="switchView('dashboard')">
             <i class="fas fa-home"></i> Dashboard
           </li>
-          <li class="nav-item" onclick="switchView('channels')">
+          <li class="nav-item admin-only" onclick="switchView('channels')">
             <i class="fas fa-users"></i> Channels
           </li>
-          <li class="nav-item" onclick="switchView('broadcast')">
+          <li class="nav-item admin-only" onclick="switchView('users')">
+            <i class="fas fa-user-shield"></i> Users
+          </li>
+          <li class="nav-item admin-only" onclick="switchView('broadcast')">
             <i class="fas fa-bullhorn"></i> Broadcast
           </li>
           <li class="nav-item" onclick="switchView('drops')">
             <i class="fas fa-gift"></i> Drops
           </li>
-          <li class="nav-item" onclick="switchView('commands')">
+          <li class="nav-item admin-only" onclick="switchView('commands')">
             <i class="fas fa-terminal"></i> Commands
           </li>
-          <li class="nav-item" onclick="switchView('database')">
+          <li class="nav-item admin-only" onclick="switchView('database')">
             <i class="fas fa-database"></i> Database
           </li>
           <li class="nav-item" onclick="switchView('analytics')">
             <i class="fas fa-chart-bar"></i> Analytics
           </li>
-          <li class="nav-item" onclick="switchView('logs')">
+          <li class="nav-item admin-only" onclick="switchView('logs')">
             <i class="fas fa-file-code"></i> System Logs
           </li>
-          <li class="nav-item" onclick="switchView('settings')">
+          <li class="nav-item admin-only" onclick="switchView('settings')">
             <i class="fas fa-cog"></i> Settings
           </li>
         </ul>
 
         <div class="sidebar-footer">
           <div class="user-profile">
-            <div class="user-avatar">A</div>
+            <div class="user-avatar" id="sidebar-user-avatar">?</div>
             <div>
-              <div style="font-weight: 600; font-size: 14px">Admin User</div>
-              <div style="font-size: 12px; color: var(--text-muted)">
-                Online
+              <div
+                id="sidebar-user-name"
+                style="font-weight: 600; font-size: 14px"
+              >
+                Loading...
+              </div>
+              <div
+                id="sidebar-user-role"
+                style="font-size: 12px; color: var(--text-muted)"
+              >
+                Please wait
               </div>
             </div>
           </div>
@@ -599,7 +623,7 @@
               </div>
             </div>
 
-            <div class="card">
+            <div class="card admin-only" id="quick-actions-card">
               <div class="card-header">
                 <div class="card-title">
                   Quick Actions
@@ -651,6 +675,33 @@
           </div>
           <div id="channels-list" class="channels-grid">
             <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Users View -->
+        <div id="view-users" class="view-section">
+          <div class="header">
+            <h2 class="page-title">User Management</h2>
+            <button class="btn btn-ghost" onclick="fetchUsers()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+          <div class="card">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Twitch ID</th>
+                    <th>Role</th>
+                    <th style="width: 200px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-body">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -756,11 +807,26 @@
                   "
                   >Featured Image URL</label
                 >
-                <input
-                  id="drop-featured-image"
-                  class="input"
-                  placeholder="Path to image"
-                />
+                <div style="display: flex; gap: 10px">
+                  <input
+                    id="drop-featured-image"
+                    class="input"
+                    placeholder="Path to image"
+                  />
+                  <input
+                    type="file"
+                    id="drop-image-upload"
+                    style="display: none"
+                    accept="image/*"
+                    onchange="handleImageUpload(this)"
+                  />
+                  <button
+                    class="btn btn-ghost"
+                    onclick="document.getElementById('drop-image-upload').click()"
+                  >
+                    <i class="fas fa-upload"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1127,8 +1193,12 @@
       let performanceInterval = null;
 
       // --- Initialization ---
-      document.addEventListener("DOMContentLoaded", () => {
-        ensureCsrfToken();
+      document.addEventListener("DOMContentLoaded", async () => {
+        await ensureCsrfToken();
+
+        // Check user role first to set UI state correctly
+        await checkUserRole();
+
         loadSettings();
 
         // Initial Data Load
@@ -1143,33 +1213,102 @@
           .addEventListener("change", loadDbTable);
       });
 
+      async function checkUserRole() {
+        try {
+          const res = await fetch("/admin/api/me");
+          const data = await res.json();
+          window.USER_ROLE = data.role;
+
+          // Update sidebar info
+          document.getElementById("sidebar-user-name").innerText =
+            data.username;
+          document.getElementById("sidebar-user-role").innerText = data.role;
+          document.getElementById("sidebar-user-avatar").innerText =
+            data.username.charAt(0).toUpperCase();
+
+          // Add body class for CSS-based revealing
+          if (data.role === "admin") {
+            document.body.classList.add("is-admin");
+          } else {
+            document.body.classList.remove("is-admin");
+          }
+
+          // If currently on an admin-only view, and not an admin, switch to dashboard
+          const adminOnlyViews = [
+            "channels",
+            "users",
+            "broadcast",
+            "commands",
+            "database",
+            "logs",
+            "settings",
+          ];
+
+          if (data.role !== "admin") {
+            const currentActive = document.querySelector(".nav-item.active");
+            if (currentActive) {
+              const onclickAttr = currentActive.getAttribute("onclick") || "";
+              if (adminOnlyViews.some((v) => onclickAttr.includes(`'${v}'`))) {
+                switchView("dashboard");
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to check user role:", err);
+        }
+      }
+
       function switchView(viewId) {
+        // Security check for Staff
+        const adminOnlyViews = [
+          "channels",
+          "users",
+          "broadcast",
+          "commands",
+          "database",
+          "logs",
+          "settings",
+        ];
+        if (window.USER_ROLE === "Staff" && adminOnlyViews.includes(viewId)) {
+          console.warn("Unauthorized access attempt to " + viewId);
+          return;
+        }
+
         // Update Sidebar
-        document
-          .querySelectorAll(".nav-item")
-          .forEach((el) => el.classList.remove("active"));
-        event.currentTarget.classList.add("active");
+        document.querySelectorAll(".nav-item").forEach((el) => {
+          el.classList.remove("active");
+          const onclickAttr = el.getAttribute("onclick") || "";
+          if (onclickAttr.includes(`'${viewId}'`)) {
+            el.classList.add("active");
+          }
+        });
 
         // Update Main Content
         document
           .querySelectorAll(".view-section")
           .forEach((el) => el.classList.remove("active"));
-        document.getElementById(`view-${viewId}`).classList.add("active");
+        const targetView = document.getElementById(`view-${viewId}`);
+        if (targetView) targetView.classList.add("active");
 
         // Trigger specific loads
         if (viewId === "database") loadDbTable();
         if (viewId === "logs") fetchLogs();
         if (viewId === "channels") fetchChannels();
+        if (viewId === "users") fetchUsers();
         if (viewId === "drops") loadDropsConfig();
         if (viewId === "analytics") loadAnalytics();
       }
 
       function refreshAll() {
         fetchBotStatus();
-        fetchChannels();
-        fetchLogs();
-        fetchCommands();
         fetchPerformance();
+
+        // Only fetch admin-restricted data if user is not Staff
+        if (window.USER_ROLE !== "Staff") {
+          fetchChannels();
+          fetchLogs();
+          fetchCommands();
+        }
       }
 
       // --- Drops Management ---
@@ -1480,6 +1619,33 @@
         return CSRF_TOKEN;
       }
 
+      async function handleImageUpload(input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+          await ensureCsrfToken();
+          const res = await fetch("/admin/api/upload", {
+            method: "POST",
+            headers: {
+              "CSRF-Token": CSRF_TOKEN,
+            },
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById("drop-featured-image").value = data.url;
+            alert("Image uploaded successfully!");
+          } else {
+            alert("Upload failed: " + (data.error || "Unknown error"));
+          }
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      }
+
       function getApiKey() {
         return (
           document.getElementById("settings-api-key").value ||
@@ -1552,6 +1718,91 @@
       }
 
       // --- Channels ---
+      async function fetchUsers() {
+        const body = document.getElementById("users-body");
+        body.innerHTML =
+          '<tr><td colspan="4" style="text-align:center;padding:20px;">Loading users...</td></tr>';
+
+        try {
+          const res = await fetch("/admin/api/users");
+          const data = await res.json();
+
+          if (!data.users) throw new Error("No users found");
+
+          body.innerHTML = "";
+          data.users.forEach((user) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><strong>${user.username}</strong></td>
+              <td><code style="font-size:12px; color:var(--text-muted);">${
+                user.twitch_user_id || "N/A"
+              }</code></td>
+              <td>
+                <select class="input" style="padding:4px; font-size:12px; width:auto;" onchange="setUserRole('${
+                  user.username
+                }', this.value)">
+                  <option value="Basic user" ${
+                    user.role === "Basic user" ? "selected" : ""
+                  }>Basic user</option>
+                  <option value="tester" ${
+                    user.role === "tester" ? "selected" : ""
+                  }>Tester</option>
+                  <option value="Staff" ${
+                    user.role === "Staff" ? "selected" : ""
+                  }>Staff</option>
+                  <option value="admin" ${
+                    user.role === "admin" ? "selected" : ""
+                  }>Admin</option>
+                </select>
+              </td>
+              <td>
+                <span id="role-status-${
+                  user.username
+                }" style="font-size:12px; color:var(--success);"></span>
+              </td>
+            `;
+            body.appendChild(tr);
+          });
+        } catch (err) {
+          body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--danger);">Error: ${err.message}</td></tr>`;
+        }
+      }
+
+      async function setUserRole(username, role) {
+        const statusEl = document.getElementById(`role-status-${username}`);
+        statusEl.textContent = "Saving...";
+        statusEl.style.color = "var(--text-muted)";
+
+        try {
+          await ensureCsrfToken();
+          const res = await fetch("/admin/api/users/set-role", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": CSRF_TOKEN,
+            },
+            body: JSON.stringify({ username, role }),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            statusEl.textContent = "Saved ✓";
+            statusEl.style.color = "var(--success)";
+            setTimeout(() => {
+              statusEl.textContent = "";
+            }, 2000);
+          } else {
+            statusEl.textContent = "Error ✗";
+            statusEl.style.color = "var(--danger)";
+            alert(data.error || "Failed to update role");
+          }
+        } catch (err) {
+          statusEl.textContent = "Error ✗";
+          statusEl.style.color = "var(--danger)";
+          alert("Network error: " + err.message);
+        }
+      }
+
       async function fetchChannels() {
         try {
           const res = await fetch("/admin/api/channels");
@@ -1562,11 +1813,18 @@
           let count = 0;
           if (data.channels) {
             count = data.channels.length;
-            data.channels.forEach((ch) => {
+            data.channels.forEach((chData) => {
+              const ch = typeof chData === "string" ? chData : chData.username;
+              const role = typeof chData === "string" ? "" : chData.role;
               list.innerHTML += `
                 <div class="channel-card">
                   <div class="channel-header">
-                    <div style="font-weight:600;"><span class="status-dot"></span>${ch}</div>
+                    <div style="font-weight:600;">
+                      <span class="status-dot"></span>${ch}
+                      <span style="font-size:10px; color:var(--text-muted); margin-left:5px;">[${
+                        role || "Basic user"
+                      }]</span>
+                    </div>
                     <button class="btn btn-ghost" style="padding:4px;" onclick="toggleChannelSelection('${ch}')">
                       <i class="fas ${
                         selectedChannels.has(ch)

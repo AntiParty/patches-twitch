@@ -39,6 +39,7 @@ class Channel extends Model {
   declare overlay_layout: string | null;
   declare session_start_rs: number | null;
   declare bot_enabled: boolean;
+  declare role: string;
 }
 
 
@@ -148,6 +149,11 @@ Channel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    role: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'Basic user',
     },
   },
   {
@@ -358,6 +364,17 @@ async function runMigrations() {
         allowNull: true,
         defaultValue: null,
       });
+    }
+
+    // Add role column if missing
+    if (!tableInfo.role) {
+      logger.info('[Migration] Adding role column to Channels table...');
+      await queryInterface.addColumn('Channels', 'role', {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'Basic user',
+      });
+      logger.info('[Migration] role column added successfully.');
     }
   } catch (err) {
     logger.error('[Migration] Migration error:', err);

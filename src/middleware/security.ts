@@ -4,6 +4,7 @@
  */
 import { Request, Response, NextFunction } from 'express';
 import logger from '@/util/logger';
+import { isAdmin } from '@/middleware/auth.middleware';
 
 // List of suspicious paths commonly used by bots/scanners
 const SUSPICIOUS_PATHS = [
@@ -86,6 +87,11 @@ const WINDOW_MS = 60000; // 1 minute
 export function rateLimitByIP(req: Request, res: Response, next: NextFunction): void {
     const ip = req.ip || 'unknown';
     const now = Date.now();
+    //localhost bypass
+    if (ip === '127.0.0.1' || ip === '::1') {
+        next();
+        return;
+    }
 
     const record = requestCounts.get(ip);
 

@@ -3121,16 +3121,17 @@
           // support both shapes:
           // { rubyRankThreshold: { threshold, season, player } }
           // or { unlocked: true, threshold: 47893, season: 8 }
-          if (data ? .rubyRankThreshold) return data.rubyRankThreshold;
+          // fix this error
+          if (data?.rubyRankThreshold) return data.rubyRankThreshold;
           if (
-            typeof data ? .threshold === "number" ||
-            typeof data ? .unlocked === "boolean"
+            typeof data?.threshold === "number" ||
+            typeof data?.unlocked === "boolean"
           ) {
             return {
-              threshold: data.threshold ? ? null,
-              season: data.season ? ? null,
-              player: data.player ? ? null,
-              unlocked: data.unlocked ? ? data.threshold != null,
+              threshold: data.threshold ?? null,
+              season: data.season ?? null,
+              player: data.player ?? null,
+              unlocked: data.unlocked ?? data.threshold != null,
             };
           }
           return null;
@@ -3212,13 +3213,13 @@
 
             document.getElementById("target-rank-select").value = targetRank;
             document.getElementById("current-rs-input").value =
-              startingRankScore ? ? "";
+              startingRankScore ?? "";
 
             // pass saved score (may be null) and current RS, updateRankDisplay will replace for Ruby
             await updateRankDisplay(
               targetRank,
-              targetRankScore ? ? rankThresholds[targetRank],
-              startingRankScore ? ? 0
+              targetRankScore ?? rankThresholds[targetRank],
+              startingRankScore ?? 0
             );
             return;
           }
@@ -3478,7 +3479,7 @@
         }
 
         // For Ruby, capture live cutoff as saved targetRankScore (if available)
-        let targetRankScore = rankThresholds[targetRank] ? ? 0;
+        let targetRankScore = rankThresholds[targetRank] ?? 0;
         if (targetRank === 6) {
           const ruby = await fetchRubyObject();
           if (ruby && typeof ruby.threshold === "number")
@@ -3614,7 +3615,7 @@
             const currentInputVal =
               parseNumber(document.getElementById("current-rs-input").value) ||
               0;
-            const fallbackTarget = rankThresholds[sel] ? ? 0;
+            const fallbackTarget = rankThresholds[sel] ?? 0;
             await updateRankDisplay(sel, fallbackTarget, currentInputVal);
           });
         }

@@ -11,6 +11,7 @@ import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
 import { requireApiKey } from '@/middleware/auth.middleware';
 import { getAnalytics } from '@/util/webAnalytics';
+import { log } from 'console';
 
 const router = Router();
 
@@ -26,6 +27,11 @@ const serverStartTime = Date.now();
 
 router.get("/", (req: Request, res: Response) => {
     res.sendFile(path.join(viewsPath, "index.html"));
+}); 
+
+router.get("/banned", (req: any, res: Response) => {
+    const reason = req.session?.banReason || "No reason provided.";
+    res.render("banned", { reason });
 }); 
 
 
@@ -177,6 +183,18 @@ router.get('/docs-markdown', (req: Request, res: Response) => {
     });
 });
 
+router.get("/privacy.md", (req: Request, res: Response) => {
+  res.sendFile(path.join(viewsPath, "privacy.md"));
+});
+
+/**
+ * GET /terms.md
+ * Serve terms of service markdown
+ */
+router.get("/terms.md", (req: Request, res: Response) => {
+  res.sendFile(path.join(viewsPath, "terms.md"));
+});
+
 /**
  * GET /legal
  * Serve legal page (privacy policy, ToS)
@@ -192,6 +210,60 @@ router.get('/legal', (req: Request, res: Response) => {
 router.get('/twitch-drops', (req: Request, res: Response) => {
     res.sendFile(path.join(viewsPath, 'drops.html'));
 });
+
+router.get('/drops', (req: Request, res: Response) => {
+    res.redirect('/twitch-drops');
+});
+
+function getcacheDir() {
+    return path.resolve(__dirname, "../../cache");
+    //log the path
+    logger.info(`Cache directory path: ${path.resolve(__dirname, "../../cache")}`);
+};
+
+// test api router for twitch bot integrations (api)
+// grab user input from query params
+// example: /test-api?user=carnifex&tag=7330
+//make the user take in a name and # tags so example carnifex#7330
+router.get('/test-api', (req: Request, res: Response) => {
+    //take in details such as name: carnifex, tag: 7330
+    const user = req.query.user as string;
+    const tags = req.query.tag as string;
+    // combine user and tag
+    const userAndTag = `${user}#${tags}`;
+    logger.info(`Received test-api request for user: ${userAndTag}`);
+    
+    const cacheFilePath = path.join(getcacheDir(), 'regular_s9.json');
+    fs.readFile(cacheFilePath, 'utf8', (err, data) => {
+        if (err) {
+            logger.error(`Error reading cache file: ${err}`);
+            return res.status(500).json({ error: 'Failed to read cache file' });
+        }
+
+        try {
+                    const leaderboard = JSON.parse(data);
+                    const userEntry = leaderboard.find((entry: any) => entry.name.toLowerCase() === userAndTag.toLowerCase());
+                    if (userEntry) {
+                        logger.info(`Found user entry for ${userAndTag}: ${JSON.stringify(userEntry)}`);
+
+                        // format the response (not into json)
+                        return res.status(200).send(`${userEntry.name} is Currently \nRank: ${userEntry.league}\n: ${userEntry.rankScore}RS `)
+                    } else {
+                        logger.info(`User ${userAndTag} not found in leaderboard.`);
+                        return res.status(404).json({
+                            error: 'User not found in leaderboard'
+                        });
+                    }
+                } catch (parseErr) {
+                    logger.error(`Error parsing cache file: ${parseErr}`);
+                    return res.status(500).json({
+                        error: 'Failed to parse cache file'
+                    });
+                }
+    })
+
+});
+// example endpoint: /test-api?user=testuser&message=!hello
 
 /**
  * GET /sitemap.xml

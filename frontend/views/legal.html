@@ -57,7 +57,7 @@
   <link rel="apple-touch-icon" href="./assets/logo.png" />
 
   <!-- Styles -->
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="/css/styles.css">
 
   <!-- Schema.org: Legal Page -->
   <script type="application/ld+json">
@@ -147,13 +147,8 @@
 
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="legal.js"></script>
-    <!-- Reusing script.js for mobile menu and particles if desired, but legal.js can handle specific logic. 
-         If we want the particles, we can include script.js too, but might need to adjust it to not error if elements are missing.
-         The user asked to "copy the styling of ... script.js", implying functionality too.
-         script.js has 'init', 'animate' which run on load. It also looks for .mobile-menu-btn.
-         Let's include script.js as well for the background and menu. -->
-    <script src="script.js"></script>
+    <script src="/js/script.js"></script>
+    <script src="/js/legal.js"></script>
 </body>
 
 </html>

@@ -1732,8 +1732,19 @@
           body.innerHTML = "";
           data.users.forEach((user) => {
             const tr = document.createElement("tr");
+            const banBtn = user.banned
+              ? `<button class="btn btn-success" style="padding:4px 8px; font-size:12px;" onclick="toggleBan('${user.id}', '${user.username}', true)">Unban</button>`
+              : `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="toggleBan('${user.id}', '${user.username}', false)">Ban</button>`;
+
+            const banStatus = user.banned
+              ? `<span style="color:var(--danger); font-size:12px; display:block;">(Banned)</span>`
+              : "";
+
             tr.innerHTML = `
-              <td><strong>${user.username}</strong></td>
+              <td>
+                <strong>${user.username}</strong>
+                ${banStatus}
+              </td>
               <td><code style="font-size:12px; color:var(--text-muted);">${
                 user.twitch_user_id || "N/A"
               }</code></td>
@@ -1755,10 +1766,11 @@
                   }>Admin</option>
                 </select>
               </td>
-              <td>
+              <td style="display:flex; gap:10px; align-items:center;">
                 <span id="role-status-${
                   user.username
                 }" style="font-size:12px; color:var(--success);"></span>
+                ${banBtn}
               </td>
             `;
             body.appendChild(tr);
@@ -1800,6 +1812,51 @@
           statusEl.textContent = "Error ✗";
           statusEl.style.color = "var(--danger)";
           alert("Network error: " + err.message);
+        }
+      }
+
+      async function toggleBan(userId, username, isBanned) {
+        if (isBanned) {
+          if (!confirm(`Unban ${username}?`)) return;
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/users/${userId}/unban`, {
+              method: "POST",
+              headers: { "CSRF-Token": CSRF_TOKEN },
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert("User unbanned");
+              fetchUsers();
+            } else {
+              alert("Error: " + data.error);
+            }
+          } catch (err) {
+            alert("Error: " + err.message);
+          }
+        } else {
+          const reason = prompt(`Reason for banning ${username}:`);
+          if (reason === null) return; // cancelled
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/users/${userId}/ban`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "CSRF-Token": CSRF_TOKEN,
+              },
+              body: JSON.stringify({ reason }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert("User banned");
+              fetchUsers();
+            } else {
+              alert("Error: " + data.error);
+            }
+          } catch (err) {
+            alert("Error: " + err.message);
+          }
         }
       }
 

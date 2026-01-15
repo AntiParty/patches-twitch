@@ -11,8 +11,6 @@ export const execute = async (
         const messageId = ctx.tags?.['id'];
 
         if (!username || !messageId) return;
-
-
         const publicCommands = [
             "!help",
             "!addaccount",
@@ -20,7 +18,6 @@ export const execute = async (
             "!record",
             "!unlink",
         ];
-
 
         const discordLink = "https://discord.gg/2UKzvzSEqA";
 

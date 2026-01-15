@@ -13,6 +13,12 @@ function escapeForRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// FUNCTION THAT CONTAINS A LIST OF LINKS THAT ARE ALLOWED TO BE SENT
+function allowedLinks(text: string): boolean {
+  const allowedLinksList = ['https://discord.gg/2UKzvzSEqA', 'https://finalsRS.com', 'https://finalsrs.com/'];
+  return allowedLinksList.some(link => text.includes(link));
+}
+
 function buildWordsRegexp(list: string[]): RegExp | null {
   if (!list || list.length === 0) return null;
   const escaped = list.map(w => escapeForRegex(w));
@@ -108,6 +114,9 @@ export function containsBlockedPhrase(text?: string | null): boolean {
 export function matchesBlockRegex(text?: string | null): boolean {
   if (!text) return false;
   ensureLoaded();
+  if (allowedLinks(text)) {
+    return false;
+  }
   return !!(blockRegexp && blockRegexp.test(text));
 }
 

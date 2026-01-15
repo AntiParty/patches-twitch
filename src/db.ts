@@ -40,6 +40,8 @@ class Channel extends Model {
   declare session_start_rs: number | null;
   declare bot_enabled: boolean;
   declare role: string;
+  declare banned: boolean;
+  declare ban_reason: string | null;
 }
 
 
@@ -154,6 +156,15 @@ Channel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'Basic user',
+    },
+    banned: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    ban_reason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {
@@ -375,6 +386,27 @@ async function runMigrations() {
         defaultValue: 'Basic user',
       });
       logger.info('[Migration] role column added successfully.');
+    }
+
+    // Add banned column if missing
+    if (!tableInfo.banned) {
+      logger.info('[Migration] Adding banned column to Channels table...');
+      await queryInterface.addColumn('Channels', 'banned', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+      logger.info('[Migration] banned column added successfully.');
+    }
+
+    // Add ban_reason column if missing
+    if (!tableInfo.ban_reason) {
+      logger.info('[Migration] Adding ban_reason column to Channels table...');
+      await queryInterface.addColumn('Channels', 'ban_reason', {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      logger.info('[Migration] ban_reason column added successfully.');
     }
   } catch (err) {
     logger.error('[Migration] Migration error:', err);

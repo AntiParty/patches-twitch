@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account Suspended - FinalsRS</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/output.css" />
+    <style>
+      body {
+        background-color: #111;
+        color: #eee;
+        font-family: "Inter", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        text-align: center;
+        background: #1a1a1a;
+        padding: 3rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        max-width: 500px;
+        width: 90%;
+        border: 1px solid #333;
+      }
+      h1 {
+        color: #ff4444;
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+      p {
+        font-size: 1.1rem;
+        color: #ccc;
+        line-height: 1.6;
+      }
+      .reason-box {
+        background: #252525;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin: 1.5rem 0;
+        border-left: 4px solid #ff4444;
+        text-align: left;
+      }
+      .reason-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #888;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+      .reason-text {
+        color: #fff;
+        font-weight: 500;
+      }
+      .support-link {
+        display: inline-block;
+        margin-top: 1rem;
+        color: #888;
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+      .support-link:hover {
+        color: #fff;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Account Suspended</h1>
+      <p>Your account has been suspended from accessing this service.</p>
+
+      <div class="reason-box">
+        <span class="reason-label">Reason</span>
+        <div class="reason-text"><%= reason %></div>
+      </div>
+
+      <p>If you believe this is a mistake, please contact support.</p>
+
+      <a href="/" class="support-link">Return to Home</a>
+    </div>
+  </body>
+</html>

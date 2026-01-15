@@ -96,8 +96,7 @@ export const setupServer = () => {
   
   logger.info("Serving views from:", viewsPath);
   logger.info("Serving public from:", publicPath);
-  
-  startCacheUpdater();
+
 
   const app = express();
 

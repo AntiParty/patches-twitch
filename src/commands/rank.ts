@@ -37,7 +37,7 @@ async function getLatestCacheFile(prefix: string): Promise<string | null> {
   }
 }
 
-async function getLatestLeaderboardData() {
+export async function getLatestLeaderboardData() {
   const file = await getLatestCacheFile("regular_s");
   if (!file) return null;
   try {

@@ -11,7 +11,7 @@ import { Channel } from '@/db';
 import logger from '@/util/logger';
 import { performanceMonitor } from '@/util/performanceMonitor';
 import { refreshBotToken } from '@/util/botAuth';
-import { reconnectChatBot, clients } from '@/util/ircBot';
+import { reconnectChatBot, clients, stopChatBot } from '@/util/ircBot';
 import { loadCommands } from '@/handlers/commands';
 import { getCommandAnalytics } from '@/util/commandAnalytics';
 import multer from 'multer';
@@ -19,6 +19,8 @@ import { requireAdminAPI, isAdmin, isStaff, requireApiKey, requireStaff, require
 import { csrfProtection } from '@/middleware/csrf.middleware';
 import { isDashboardEnabled, setDashboardEnabled } from '@/routes/user/dashboard.routes';
 import { logAdminAction } from '@/util/adminLogger';
+import { removeUserWebSocket } from '@/util/twitchEventSubWs';
+import { botManager } from '@/botManager';
 
 const router = Router();
 
@@ -124,7 +126,7 @@ router.get('/api/channels', requireAdminAPI, async (req: any, res: any) => {
 router.get('/api/users', requireAdminAPI, async (req: any, res: any) => {
     try {
         const users = await Channel.findAll({
-            attributes: ['id', 'username', 'role', 'twitch_user_id']
+            attributes: ['id', 'username', 'role', 'twitch_user_id', 'banned', 'ban_reason']
         });
         res.json({ users });
     } catch (err) {
@@ -164,6 +166,97 @@ router.post('/api/users/set-role', requireAdminAPI, async (req: any, res: any) =
     } catch (err) {
         logger.error('Error updating user role:', err);
         res.status(500).json({ error: 'Failed to update user role' });
+    }
+});
+
+/**
+ * POST /admin/api/users/:id/ban
+ * Ban a user
+ */
+router.post('/api/users/:id/ban', requireAdminAPI, async (req: any, res: any) => {
+    const userId = req.params.id;
+    const { reason } = req.body;
+
+    try {
+        const user = await Channel.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const username = user.username;
+        const twitchUserId = (user as any).twitch_user_id;
+
+        // Update ban status in database
+        user.banned = true;
+        user.ban_reason = reason || 'No reason provided';
+        await user.save();
+
+        // Stop the bot for this user
+        try {
+            await botManager.stopBotForUser(username);
+            logger.info(`[Admin] Stopped bot for banned user ${username}`);
+        } catch (err) {
+            logger.error(`[Admin] Failed to stop bot for ${username}:`, err);
+        }
+
+        // Remove EventSub subscriptions
+        if (twitchUserId) {
+            try {
+                removeUserWebSocket(twitchUserId);
+                logger.info(`[Admin] Removed EventSub subscriptions for banned user ${username}`);
+            } catch (err) {
+                logger.error(`[Admin] Failed to remove EventSub for ${username}:`, err);
+            }
+        }
+
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'BAN_USER', { targetId: userId, reason });
+        logger.info(`[Admin] User ${username} (${userId}) banned by ${req.session.username || 'admin'}: ${reason}`);
+        res.json({ success: true, message: `User ${username} banned and disconnected.` });
+    } catch (err) {
+        logger.error('Error banning user:', err);
+        res.status(500).json({ error: 'Failed to ban user' });
+    }
+});
+
+/**
+ * POST /admin/api/users/:id/unban
+ * Unban a user
+ */
+router.post('/api/users/:id/unban', requireAdminAPI, async (req: any, res: any) => {
+    const userId = req.params.id;
+
+    try {
+        const user = await Channel.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const username = user.username;
+        const accessToken = (user as any).access_token;
+        const refreshToken = (user as any).refresh_token;
+        const twitchUserId = (user as any).twitch_user_id;
+
+        // Update ban status in database
+        user.banned = false;
+        user.ban_reason = null;
+        await user.save();
+
+        // Restart the bot for this user if they have valid tokens
+        if (accessToken && refreshToken && twitchUserId) {
+            try {
+                await botManager.startBotForUser(username, accessToken, refreshToken, twitchUserId);
+                logger.info(`[Admin] Restarted bot for unbanned user ${username}`);
+            } catch (err) {
+                logger.error(`[Admin] Failed to restart bot for ${username}:`, err);
+            }
+        }
+
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'UNBAN_USER', { targetId: userId });
+        logger.info(`[Admin] User ${username} (${userId}) unbanned by ${req.session.username || 'admin'}`);
+        res.json({ success: true, message: `User ${username} unbanned and reconnected.` });
+    } catch (err) {
+        logger.error('Error unbanning user:', err);
+        res.status(500).json({ error: 'Failed to unban user' });
     }
 });
 

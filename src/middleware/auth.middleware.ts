@@ -6,28 +6,51 @@ const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim()
  */
 async function syncRole(req: any) {
     if (!req.session || !req.session.twitchUsername) return;
+
     try {
         const { Channel } = await import('@/db');
-        const user = await Channel.findOne({ where: { username: req.session.twitchUsername } });
-        if (user) {
-            const dbRole = (user as any).role || 'Basic user';
-            const currentRole = req.session.role;
-            
-            if (currentRole !== dbRole) {
-                req.session.role = dbRole;
-                req.session.isAdmin = dbRole === 'admin';
-                
-                // If they become Staff/Admin, ensure req.session.username is set for admin routes
-                if (dbRole === 'admin' || dbRole === 'Staff') {
-                    req.session.username = req.session.twitchUsername;
-                } else {
-                    // If downgraded below Staff, remove username link to admin panel
-                    delete req.session.username;
-                }
+
+        const user = await Channel.findOne({
+            where: { username: req.session.twitchUsername },
+            attributes: ['role', 'banned', 'ban_reason']
+        });
+
+        if (!user) return;
+
+        /* -------- Role sync -------- */
+
+        const dbRole = user.role ?? 'Basic user';
+
+        if (req.session.role !== dbRole) {
+            req.session.role = dbRole;
+            req.session.isAdmin = dbRole === 'admin';
+
+            if (dbRole === 'admin' || dbRole === 'Staff') {
+                req.session.username = req.session.twitchUsername;
+            } else {
+                req.session.username = null;
             }
         }
+
+        /* -------- Ban sync -------- */
+
+        req.session.banned = user.banned;
+
+        if (user.banned) {
+            req.session.banReason = user.ban_reason ?? null;
+        } else {
+            req.session.banReason = null;
+        }
+
+        /* -------- Force write to session store -------- */
+
+        if (typeof req.session.save === 'function') {
+            await new Promise<void>(resolve => req.session.save(() => resolve()));
+        }
+
     } catch (err) {
-        // Silent fail to avoid crashing on DB issues
+        // Log once – silent failures hide sync bugs
+        console.error('[syncRole] failed:', err);
     }
 }
 
@@ -38,6 +61,7 @@ export function isAdmin(req: any): boolean {
     if (!req.session) return false;
     
     // Check role in session (new system)
+    if (req.session.banned) return false;
     if (req.session.role === 'admin') return true;
 
     // Legacy check / Env-based override
@@ -51,6 +75,7 @@ export function isAdmin(req: any): boolean {
  */
 export function isStaff(req: any): boolean {
     if (!req.session) return false;
+    if (req.session.banned) return false;
     if (isAdmin(req)) return true;
     return req.session.role === 'Staff';
 }
@@ -59,6 +84,7 @@ export function isStaff(req: any): boolean {
  * Check if the current session is an authenticated user
  */
 export function isUser(req: any): boolean {
+    if (req.session && req.session.banned) return false;
     return req.session
         && req.session.isUser === true
         && req.session.twitchUsername;
@@ -69,15 +95,11 @@ export function isUser(req: any): boolean {
  * Redirects to admin login if not authenticated
  */
 export async function requireAdmin(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) return res.redirect('/banned');
     if (!isAdmin(req)) {
-        // Try syncing once more in case they just got promoted
-        await syncRole(req);
-        if (isAdmin(req)) {
-            return next();
-        }
         return res.redirect('/admin/login');
     }
-    await syncRole(req);
     next();
 }
 
@@ -86,10 +108,11 @@ export async function requireAdmin(req: any, res: any, next: any) {
  * Redirects to login if not authenticated
  */
 export async function requireUser(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) return res.redirect('/banned');
     if (!isUser(req)) {
         return res.redirect('/login');
     }
-    await syncRole(req);
     next();
 }
 
@@ -97,15 +120,11 @@ export async function requireUser(req: any, res: any, next: any) {
  * Middleware: Require Staff authentication (Staff or Admin)
  */
 export async function requireStaff(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) return res.redirect('/banned');
     if (!isStaff(req)) {
-        // Try syncing once more in case they just got promoted
-        await syncRole(req);
-        if (isStaff(req)) {
-            return next();
-        }
         return res.redirect('/admin/login');
     }
-    await syncRole(req);
     next();
 }
 
@@ -114,10 +133,13 @@ export async function requireStaff(req: any, res: any, next: any) {
  * Returns 401 JSON error if not authenticated
  */
 export async function requireUserAPI(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) {
+        return res.status(403).json({ error: 'Account banned', reason: req.session.banReason });
+    }
     if (!isUser(req)) {
         return res.status(401).json({ error: 'Not authenticated' });
     }
-    await syncRole(req);
     next();
 }
 
@@ -126,13 +148,13 @@ export async function requireUserAPI(req: any, res: any, next: any) {
  * Returns 403 JSON error if not authenticated
  */
 export async function requireAdminAPI(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) {
+        return res.status(403).json({ error: 'Account banned', reason: req.session.banReason });
+    }
     if (!isAdmin(req)) {
-        // Attempt sync for permissions
-        await syncRole(req);
-        if (isAdmin(req)) return next();
         return res.status(403).json({ error: 'Not authorized' });
     }
-    await syncRole(req);
     next();
 }
 
@@ -140,13 +162,13 @@ export async function requireAdminAPI(req: any, res: any, next: any) {
  * Middleware: Require Staff authentication (API version)
  */
 export async function requireStaffAPI(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) {
+        return res.status(403).json({ error: 'Account banned', reason: req.session.banReason });
+    }
     if (!isStaff(req)) {
-        // Attempt sync for permissions
-        await syncRole(req);
-        if (isStaff(req)) return next();
         return res.status(403).json({ error: 'Requires Staff role' });
     }
-    await syncRole(req);
     next();
 }
 

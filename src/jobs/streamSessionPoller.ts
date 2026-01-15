@@ -1,4 +1,4 @@
-import { getLiveStreamsForUsers } from '../util/twitchUtils';
+import { getLiveStreamsForUsers, refreshToken, getStreamStatusForUser } from '../util/twitchUtils';
 import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
@@ -6,15 +6,42 @@ import logger from '../util/logger';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
 const alertedMissingSession: Set<string> = new Set();
+
+let lastTokenRefreshTime = 0;
+const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // Refresh app token every 30 minutes
+
 export async function getTrackedUsernames(): Promise<string[]> {
   const channels = await Channel.findAll({ attributes: ['username'] });
   return channels.map((c: any) => c.username);
+}
+
+async function ensureAppTokenValid(): Promise<string> {
+  const now = Date.now();
+  // Refresh token proactively every 30 minutes
+  if (now - lastTokenRefreshTime > TOKEN_REFRESH_INTERVAL_MS) {
+    try {
+      await refreshToken();
+      lastTokenRefreshTime = now;
+      logger.info('App access token refreshed in stream polling');
+    } catch (err) {
+      logger.error('Failed to refresh app access token:', err);
+    }
+  }
+  const token = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
+  if (!token) {
+    throw new Error('No valid Twitch token available for stream polling');
+  }
+  return token;
 }
 
 export const startStreamSessionPolling = async () => {
   setInterval(async () => {
     try {
       const trackedUsers = await getTrackedUsernames(); // Implement this to return usernames you want to track
+      
+      // Ensure app token is valid before making requests
+      await ensureAppTokenValid();
+      
       const liveStreams = await getLiveStreamsForUsers(trackedUsers); // Twitch API call
       const activeSessions = await getActiveSessions(); // DB query
 

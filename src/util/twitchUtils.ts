@@ -6,7 +6,8 @@ import logger from '@/util/logger';
 
 export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string }[]> {
   const clientId = process.env.TWITCH_CLIENT_ID;
-  const accessToken = process.env.TWITCH_BOT_TOKEN;
+  // Prefer app access token for stream status checks (more reliable than bot token)
+  const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
   if (!clientId || !accessToken) return [];
   const results: { username: string }[] = [];
   for (const username of usernames) {

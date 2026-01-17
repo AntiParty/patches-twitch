@@ -378,6 +378,48 @@ router.get('/api/ign-stats', async (req: any, res: any) => {
     }
 })
 
+// RS Prediction API
+router.get('/api/rs-prediction', async (req: Request, res: Response) => {
+    try {
+        const { getRSPrediction } = await import('@/util/rsPredictor');
+        
+        let days = 61;
+        if (req.query.days) {
+            const parsed = parseInt(req.query.days as string, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+                days = parsed;
+            }
+        }
+
+        const prediction = await getRSPrediction(days);
+        
+        if (!prediction) {
+             res.status(200).json({ 
+                 status: "pending",
+                 message: "Not enough data for prediction.",
+                 confidence: "None"
+             });
+             return;
+        }
+
+        res.json({
+            currentRS: prediction.currentRS,
+            dailyChange: prediction.dailyChange,
+            safeRS: prediction.safeRS,
+            safeRS_min: prediction.safeRS_min,
+            safeRS_max: prediction.safeRS_max,
+            remainingDays: prediction.remainingDays,
+            dataPointsUsed: prediction.dataPointsUsed,
+            confidence: prediction.confidence,
+            standardError: prediction.standardError
+        });
+
+    } catch (err) {
+        logger.error('Error fetching RS prediction:', err);
+        res.status(500).json({ error: 'Failed to generate RS prediction.' });
+    }
+});
+
 //analytics dashboard for youtube video expirement
 router.get('/analytics-dashboard', (req: Request, res: Response) => {
     res.sendFile(path.join(viewsPath, 'analytics-dashboard.html'));

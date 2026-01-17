@@ -15,7 +15,6 @@ src/util/eventSubManager.ts.bak
 paidTwitchAccountService.md
 /twitch-api-playground
 API.md
-/cache
 stats.json
 stats.json
 data/analytics.json
@@ -35,3 +34,6 @@ test.md
 /frontend/public/uploads
 frontend/public/drops.json
 frontend/public/drops.json
+/cache
+frontend/public/drops.json
+*.json

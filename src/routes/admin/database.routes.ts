@@ -9,10 +9,10 @@ import { requireAdminAPI } from '@/middleware/auth.middleware';
 const router = Router();
 
 /**
- * GET /admin/api/db/:table
+ * GET /admin/db/:table
  * List all rows for a table
  */
-router.get('/api/db/:table', requireAdminAPI, async (req: any, res: any) => {
+router.get('/db/:table', requireAdminAPI, async (req: any, res: any) => {
     const { table } = req.params;
 
     try {
@@ -46,10 +46,10 @@ router.get('/api/db/:table', requireAdminAPI, async (req: any, res: any) => {
 });
 
 /**
- * POST /admin/api/db/:table
+ * POST /admin/db/:table
  * Create a new row in a table
  */
-router.post('/api/db/:table', requireAdminAPI, async (req: any, res: any) => {
+router.post('/db/:table', requireAdminAPI, async (req: any, res: any) => {
     const { table } = req.params;
     const data = req.body;
 
@@ -83,10 +83,40 @@ router.post('/api/db/:table', requireAdminAPI, async (req: any, res: any) => {
 });
 
 /**
- * PUT /admin/api/db/:table/:id
+ * GET for /admin/db/StreamSessions
+ * List all stream sessions with optional filters
+ */
+
+router.get('/db/StreamSessions', requireAdminAPI, async (req: any, res: any) => {
+    const { channelId, limit = 30, offset = 0 } = req.query;
+
+    try {
+        const { StreamSession } = await import('@/db');
+
+        const where: any = {};
+        if (channelId) {
+            where.channelId = channelId;
+        }
+
+        const sessions = await StreamSession.findAll({
+            where,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [['startTime', 'DESC']]
+        });
+
+        res.json({ sessions });
+    } catch (err) {
+        logger.error('Error listing stream sessions:', err);
+        res.status(500).json({ error: 'Failed to list stream sessions.' });
+    }
+});
+
+/**
+ * PUT /admin/db/:table/:id
  * Update a row by primary key
  */
-router.put('/api/db/:table/:id', requireAdminAPI, async (req: any, res: any) => {
+router.put('/db/:table/:id', requireAdminAPI, async (req: any, res: any) => {
     const { table, id } = req.params;
     const data = req.body;
 
@@ -126,10 +156,10 @@ router.put('/api/db/:table/:id', requireAdminAPI, async (req: any, res: any) => 
 });
 
 /**
- * DELETE /admin/api/db/:table/:id
+ * DELETE /admin/db/:table/:id
  * Delete a row by primary key
  */
-router.delete('/api/db/:table/:id', requireAdminAPI, async (req: any, res: any) => {
+router.delete('/db/:table/:id', requireAdminAPI, async (req: any, res: any) => {
     const { table, id } = req.params;
 
     try {

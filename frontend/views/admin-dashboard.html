@@ -2071,7 +2071,7 @@
         container.innerHTML =
           '<div style="color:var(--text-muted)">Loading...</div>';
 
-        const res = await fetch(`/admin/api/db/${table}`);
+        const res = await fetch(`/admin/db/${table}`);
         const data = await res.json();
         const rows = data.rows || [];
 
@@ -2105,7 +2105,7 @@
 
       async function deleteDbRow(table, id) {
         if (!confirm("Delete row?")) return;
-        await fetch(`/admin/api/db/${table}/${id}`, { method: "DELETE" });
+        await fetch(`/admin/db/${table}/${id}`, { method: "DELETE" });
         loadDbTable();
       }
 

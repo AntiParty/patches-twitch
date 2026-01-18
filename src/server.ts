@@ -151,8 +151,8 @@ export const setupServer = () => {
   // Apply CSRF protection to all routes. 
   // We exclude public API tokens if necessary, but here we'll use a standard implementation.
   app.use((req, res, next) => {
-    // Skip CSRF for health check and public overlay data (token-based)
-    if (req.path === '/health' || req.path.startsWith('/api/overlay/data/') || req.path.startsWith('/api/overlay/config/')) {
+    // Skip CSRF for health check, public overlay data (token-based), and admin API routes
+    if (req.path === '/health' || req.path.startsWith('/api/overlay/data/') || req.path.startsWith('/api/overlay/config/') || req.path.startsWith('/admin/db')) {
       return next();
     }
     csrfProtection(req, res, next);

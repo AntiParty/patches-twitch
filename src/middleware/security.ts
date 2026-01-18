@@ -28,7 +28,6 @@ const SUSPICIOUS_PATHS = [
     '/phpmyadmin',
     '/pma',
     '/mysql',
-    '/db',
     '/database',
     '/backup',
     '/sql',

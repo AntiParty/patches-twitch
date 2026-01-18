@@ -1,7 +1,7 @@
 import logger from '@/util/logger'
 import { Channel } from '@/db'
 
-export const minRole = "admin";
+export const minRole = "tester";
 
 export const execute = async (
     ctx: { say: (msg: string) => Promise<void>, user: string },

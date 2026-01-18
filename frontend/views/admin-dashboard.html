@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -28,8 +28,8 @@
         --danger: #e91916;
         --warning: #f5a524;
         --info: #3b82f6;
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         --radius: 8px;
         --font-main: "Inter", sans-serif;
       }
@@ -822,7 +822,9 @@
                   />
                   <button
                     class="btn btn-ghost"
-                    onclick="document.getElementById('drop-image-upload').click()"
+                    onclick="
+                      document.getElementById('drop-image-upload').click()
+                    "
                   >
                     <i class="fas fa-upload"></i>
                   </button>
@@ -899,7 +901,10 @@
               </button>
               <button
                 class="btn btn-ghost"
-                onclick="document.getElementById('add-command-panel').style.display='none'"
+                onclick="
+                  document.getElementById('add-command-panel').style.display =
+                    'none'
+                "
               >
                 Cancel
               </button>
@@ -921,6 +926,7 @@
               <option value="Channels">Channels</option>
               <option value="CustomResponse">CustomResponse</option>
               <option value="RankGoals">RankGoals</option>
+              <option value="CommandUsage">CommandUsage</option>
             </select>
           </div>
           <div id="db-editor-container">
@@ -1359,7 +1365,7 @@
           const totalSuccess =
             data.usageByCommand?.reduce(
               (sum, cmd) => sum + cmd.successCount,
-              0
+              0,
             ) || 0;
           const successRate =
             totalCommands > 0
@@ -1396,7 +1402,7 @@
                     </div>
                   </div>
                 </div>
-              `
+              `,
                 )
                 .join("");
             } else {
@@ -1422,15 +1428,15 @@
                       cmd.successRate >= 95
                         ? "var(--success)"
                         : cmd.successRate >= 80
-                        ? "var(--warning)"
-                        : "var(--danger)"
+                          ? "var(--warning)"
+                          : "var(--danger)"
                     }">
                       ${cmd.successRate.toFixed(1)}%
                     </span>
                   </td>
                   <td>${cmd.avgResponseTime || 0}ms</td>
                 </tr>
-              `
+              `,
                 )
                 .join("");
             } else {
@@ -1476,12 +1482,12 @@
 
           // Update hourly chart
           const chartContainer = document.getElementById(
-            "hourly-chart-container"
+            "hourly-chart-container",
           );
           if (chartContainer) {
             if (data.hourlyUsage?.length) {
               const maxCount = Math.max(
-                ...data.hourlyUsage.map((h) => h.count)
+                ...data.hourlyUsage.map((h) => h.count),
               );
               chartContainer.innerHTML = `
               <div style="width:100%;display:flex;align-items:flex-end;gap:4px;height:180px;padding:10px 0">
@@ -1528,19 +1534,19 @@
               <div>
                   <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Name</label>
                   <input class="input drop-name" value="${escapeHtml(
-                    data.name || ""
+                    data.name || "",
                   )}" placeholder="Item Name">
               </div>
               <div>
                   <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Category</label>
                   <input class="input drop-cat" value="${escapeHtml(
-                    data.category || ""
+                    data.category || "",
                   )}" placeholder="Category">
               </div>
               <div>
                   <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Duration</label>
                   <input class="input drop-dur" value="${escapeHtml(
-                    data.duration || ""
+                    data.duration || "",
                   )}" placeholder="e.g. 1 hour">
               </div>
               <div style="display:flex; align-items:flex-end; height:100%;">
@@ -1558,7 +1564,7 @@
       async function saveDropsConfig() {
         const lastUpdated = document.getElementById("drop-last-updated").value;
         const featuredImage = document.getElementById(
-          "drop-featured-image"
+          "drop-featured-image",
         ).value;
 
         const drops = [];
@@ -1680,9 +1686,8 @@
             const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
             const memPercent =
               (metrics.memory.used / metrics.memory.total) * 100;
-            document.getElementById(
-              "mem-val"
-            ).textContent = `${memUsed}MB / ${memTotal}MB`;
+            document.getElementById("mem-val").textContent =
+              `${memUsed}MB / ${memTotal}MB`;
             document.getElementById("mem-bar").style.width = memPercent + "%";
 
             if (metrics.botLatency) {
@@ -1705,7 +1710,7 @@
             document.getElementById("dash-commands").textContent =
               data.stats.commandsProcessed.toLocaleString();
             document.getElementById("dash-uptime").textContent = formatUptime(
-              data.stats.uptime
+              data.stats.uptime,
             );
           }
         } catch (e) {}
@@ -1995,7 +2000,7 @@
             '<span style="color:var(--success)">Broadcast Sent!</span>';
           setTimeout(
             () => (document.getElementById("broadcast-status").innerHTML = ""),
-            3000
+            3000,
           );
         } catch (e) {
           document.getElementById("broadcast-status").innerHTML =
@@ -2117,8 +2122,8 @@
               entry.level === "info"
                 ? "log-info"
                 : entry.level === "warn"
-                ? "log-warn"
-                : "log-error";
+                  ? "log-warn"
+                  : "log-error";
             viewer.innerHTML += `
               <div class="log-entry">
                 <span class="log-time">[${time}]</span>
@@ -2195,7 +2200,7 @@
         if (!key) return alert("API Key required");
         if (
           !confirm(
-            "This will pull the latest code from Git and restart the bot. Continue?"
+            "This will pull the latest code from Git and restart the bot. Continue?",
           )
         )
           return;

@@ -30,6 +30,10 @@ router.get('/api/db/:table', requireAdminAPI, async (req: any, res: any) => {
         } else if (table === 'RankGoals') {
             const { RankGoal } = await import('@/db');
             rows = await RankGoal.findAll();
+        } else if (table === 'CommandUsage') {
+            const { CommandUsage } = await import('@/db');
+            // Limit to last 500 to prevent crashing the browser
+            rows = await CommandUsage.findAll({ limit: 30, order: [['timestamp', 'DESC']] });
         } else {
             return res.status(400).json({ error: 'Unknown table' });
         }
@@ -64,6 +68,9 @@ router.post('/api/db/:table', requireAdminAPI, async (req: any, res: any) => {
         } else if (table === 'RankGoals') {
             const { RankGoal } = await import('@/db');
             row = await RankGoal.create(data);
+        } else if (table === 'CommandUsage') {
+            const { CommandUsage } = await import('@/db');
+            row = await CommandUsage.create(data);
         } else {
             return res.status(400).json({ error: 'Unknown table' });
         }
@@ -98,6 +105,9 @@ router.put('/api/db/:table/:id', requireAdminAPI, async (req: any, res: any) => 
         } else if (table === 'RankGoals') {
             const { RankGoal } = await import('@/db');
             model = RankGoal;
+        } else if (table === 'CommandUsage') {
+            const { CommandUsage } = await import('@/db');
+            model = CommandUsage;
         } else {
             return res.status(400).json({ error: 'Unknown table' });
         }
@@ -137,6 +147,9 @@ router.delete('/api/db/:table/:id', requireAdminAPI, async (req: any, res: any) 
         } else if (table === 'RankGoals') {
             const { RankGoal } = await import('@/db');
             model = RankGoal;
+        } else if (table === 'CommandUsage') {
+            const { CommandUsage } = await import('@/db');
+            model = CommandUsage;
         } else {
             return res.status(400).json({ error: 'Unknown table' });
         }

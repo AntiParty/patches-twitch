@@ -9,8 +9,6 @@ interface CommandContext {
   tags?: Record<string, any>;
 }
 
-export const minRole = "staff";
-
 export const execute = async (
     ctx: CommandContext,
     _channel: string,

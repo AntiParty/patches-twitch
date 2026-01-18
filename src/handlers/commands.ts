@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import logger from "@/util/logger";
+import { Channel } from "@/db";
+
+const ROLE_HIERARCHY = ["basic user", "tester", "admin", "staff", "owner"];
 
 export const loadCommands = () => {
     const commandsDir = path.resolve(__dirname, "../commands");
@@ -22,13 +25,37 @@ export const loadCommands = () => {
                 const mainKey = `!${commandName.toLowerCase()}`;
 
                 const wrappedExecute = async (
-                    ctx: any,
+                    ctx: { say: (msg: string) => Promise<void>; user?: string;[key: string]: any },
                     _channel: string,
                     message: string,
                     tags: Record<string, any>,
                     args: string[]
                 ) => {
-                    // correct argument order for all commands
+                    // Permission Check Middleware
+                    if (command.minRole) {
+                        const senderName = ctx.user;
+                        if (!senderName) return; // Should not happen if authenticated, but safety first
+
+                        const channelRecord = await Channel.findOne({ where: { username: senderName } });
+                        const userRole = channelRecord?.role?.toLowerCase() || "basic user";
+                        
+                        const minRoleIndex = ROLE_HIERARCHY.indexOf(command.minRole.toLowerCase());
+                        const userRoleIndex = ROLE_HIERARCHY.indexOf(userRole);
+
+                        // If the required role isn't in our list, fail safe (block) OR warn. 
+                        // Assuming strict hierarchy.
+                        if (minRoleIndex === -1) {
+                            logger.error(`Command ${mainKey} has invalid minRole: ${command.minRole}`);
+                            return; 
+                        }
+
+                        if (userRoleIndex < minRoleIndex) {
+                            await ctx.say(`@${tags?.['display-name'] || senderName} You do not have permission to use this command (Required: ${command.minRole}).`);
+                            return;
+                        }
+                    }
+
+                    // execute command
                     return command.execute(ctx, _channel, message, tags, args);
                 };
 
@@ -51,7 +78,6 @@ export const loadCommands = () => {
                         } else {
                             commandHandler[aliasKey] = wrappedExecute;
                             seenKeys.add(aliasKey);
-                            //logger.info(`Registered alias: ${aliasKey} for command: ${mainKey}`);
                         }
                     });
                 } else if (command.aliases) {

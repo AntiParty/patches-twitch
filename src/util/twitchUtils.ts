@@ -4,17 +4,17 @@ import fetch from 'node-fetch';
 import { Channel } from '../db';
 import logger from '@/util/logger';
 
-export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string }[]> {
+export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string }[]> {
   const clientId = process.env.TWITCH_CLIENT_ID;
   // Prefer app access token for stream status checks (more reliable than bot token)
   const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
   if (!clientId || !accessToken) return [];
-  const results: { username: string }[] = [];
+  const results: { username: string, thumbnailUrl?: string }[] = [];
   for (const username of usernames) {
     try {
       const status = await getStreamStatusForUser(username, accessToken);
       if (status.isLive) {
-        results.push({ username });
+        results.push({ username, thumbnailUrl: status.thumbnailUrl });
       }
     } catch (err) {
       // Optionally log error per user
@@ -76,17 +76,25 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
       const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((duration % (1000 * 60)) / 1000);
       const liveDuration = `${hours}h ${minutes}m ${seconds}s`;
+      
+      let thumb = stream.thumbnail_url || "";
+      if (thumb) {
+        thumb = thumb.replace("{width}", "320").replace("{height}", "180");
+      }
+
       logger.info(`${username} has been live for ${liveDuration}`);
       return {
         isLive: true,
         streamStartTime: startTime.toISOString(),
         liveDuration,
+        thumbnailUrl: thumb
       };
     }
     return {
       isLive: false,
       streamStartTime: null,
       liveDuration: null,
+      thumbnailUrl: null
     };
   } catch (error: any) {
     logger.error(`Exception during Twitch API call for ${username}:`, error);
@@ -94,6 +102,7 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
       isLive: false,
       streamStartTime: null,
       liveDuration: null,
+      thumbnailUrl: null,
       error: error?.message || 'Unknown error during Twitch API call.'
     };
   }

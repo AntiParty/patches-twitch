@@ -57,4 +57,4 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
   await ctx.say(parts.join(" | "));
 };
 
-export const aliases = ["status", "info"];
+export const aliases = ["status", "ping"];

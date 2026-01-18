@@ -42,6 +42,8 @@ class Channel extends Model {
   declare role: string;
   declare banned: boolean;
   declare ban_reason: string | null;
+  declare is_live: boolean;
+  declare stream_thumbnail_url: string | null;
 }
 
 
@@ -163,6 +165,15 @@ Channel.init(
       defaultValue: false,
     },
     ban_reason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    is_live: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    stream_thumbnail_url: {
       type: DataTypes.STRING,
       allowNull: true,
     },
@@ -407,6 +418,27 @@ async function runMigrations() {
         allowNull: true,
       });
       logger.info('[Migration] ban_reason column added successfully.');
+    }
+
+    // Add is_live column if missing
+    if (!tableInfo.is_live) {
+      logger.info('[Migration] Adding is_live column to Channels table...');
+      await queryInterface.addColumn('Channels', 'is_live', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+      logger.info('[Migration] is_live column added successfully.');
+    }
+
+    // Add stream_thumbnail_url column if missing
+    if (!tableInfo.stream_thumbnail_url) {
+      logger.info('[Migration] Adding stream_thumbnail_url column to Channels table...');
+      await queryInterface.addColumn('Channels', 'stream_thumbnail_url', {
+        type: DataTypes.STRING,
+        allowNull: true,
+      });
+      logger.info('[Migration] stream_thumbnail_url column added successfully.');
     }
   } catch (err) {
     logger.error('[Migration] Migration error:', err);

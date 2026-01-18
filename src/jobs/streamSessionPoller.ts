@@ -44,6 +44,36 @@ export const startStreamSessionPolling = async () => {
       
       const liveStreams = await getLiveStreamsForUsers(trackedUsers); // Twitch API call
       const activeSessions = await getActiveSessions(); // DB query
+      
+      const liveUsernames = new Set(liveStreams.map(u => u.username));
+      
+      // Update LIVE users individually (to save their specific thumbnail URL)
+      for (const liveUser of liveStreams) {
+          await Channel.update(
+              { 
+                  is_live: true, 
+                  stream_thumbnail_url: liveUser.thumbnailUrl || null 
+              },
+              { where: { username: liveUser.username } }
+          );
+      }
+      
+      // Update OFFLINE users (bulk is fine here)
+      const offlineUsernames = trackedUsers.filter(u => !liveUsernames.has(u));
+      if (offlineUsernames.length > 0) {
+          const { Op } = require('sequelize');
+          await Channel.update(
+              { 
+                  is_live: false, 
+                  stream_thumbnail_url: null 
+              },
+              { 
+                  where: { 
+                      username: { [Op.in]: offlineUsernames } 
+                  } 
+              }
+          );
+      }
 
       for (const user of liveStreams) {
         const hasSession = activeSessions.some(s => s.channel === user.username);

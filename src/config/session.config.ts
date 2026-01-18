@@ -12,7 +12,7 @@ const sessionStore = new SessionStore({
     db: sequelizeSessions,
     tableName: 'Sessions',
     checkExpirationInterval: 15 * 60 * 1000, // Cleanup expired sessions every 15 minutes
-    expiration: 24 * 60 * 60 * 1000, // Sessions expire after 24 hours
+    expiration: 7 * 24 * 60 * 60 * 1000, // Sessions expire after 7 days
     disableTouch: false, // Update session expiry on each request
 });
 
@@ -30,8 +30,8 @@ export const sessionConfig: session.SessionOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        // Shorter lifetime (8 hours) by default
-        maxAge: Number(process.env.SESSION_MAX_AGE_MS) || 8 * 60 * 60 * 1000,
+        // 7 days by default
+        maxAge: Number(process.env.SESSION_MAX_AGE_MS) || 7 * 24 * 60 * 60 * 1000,
         path: '/',
     },
 };

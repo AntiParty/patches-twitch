@@ -75,57 +75,78 @@ export interface PredictionResult {
   standardError: number;
 }
 
-// Weighted Linear Regression with exponential decay (recent data weighted more)
-// Returns { slope, standardError }
-function calculateWeightedSlope(points: HistoryEntry[]): { slope: number; standardError: number } {
+// Weighted Linear Regression with exponential decay
+// Returns full regression stats
+function calculateWeightedRegression(points: HistoryEntry[]): { 
+    slope: number; 
+    intercept: number; 
+    standardError: number;
+    xBar: number;
+    Sxx: number;
+    sumW: number;
+} {
     const n = points.length;
-    if (n < 2) return { slope: 0, standardError: 0 };
+    // Need at least 2 points
+    if (n < 2) return { slope: 0, intercept: 0, standardError: 0, xBar: 0, Sxx: 0, sumW: 0 };
 
-    // Exponential weighting: most recent point gets weight 1, older points get less
-    const weights: number[] = [];
-    for (let i = 0; i < n; i++) {
-        // Exponential decay from 0.3 (oldest) to 1.0 (newest)
-        const normalizedIndex = i / (n - 1); // 0 to 1
-        weights[i] = 0.3 + normalizedIndex * 0.7; // 0.3 to 1.0
-    }
-
-    // Normalize X to start from 0 at the first point
+    // Normalized time to avoid huge numbers
     const x0 = points[0].timestamp;
 
+    // Weights
+    const weights: number[] = [];
     let sumW = 0;
+    
+    // Calculate weights and sums for means
     let sumWX = 0;
     let sumWY = 0;
-    let sumWXY = 0;
-    let sumWXX = 0;
+
+    for (let i = 0; i < n; i++) {
+        // Linear-ish weight ramp from 0.3 to 1.0
+        // (Original code used linear interpolation for weight)
+        const normalizedIndex = i / (n - 1);
+        const w = 0.3 + normalizedIndex * 0.7;
+        weights[i] = w;
+        
+        sumW += w;
+        sumWX += w * (points[i].timestamp - x0);
+        sumWY += w * points[i].rankScore;
+    }
+
+    const xBar = sumWX / sumW;
+    const yBar = sumWY / sumW;
+
+    let Sxx = 0;
+    let Sxy = 0;
 
     for (let i = 0; i < n; i++) {
         const w = weights[i];
-        const x = points[i].timestamp - x0;
-        const y = points[i].rankScore;
-        
-        sumW += w;
-        sumWX += w * x;
-        sumWY += w * y;
-        sumWXY += w * x * y;
-        sumWXX += w * x * x;
+        const x = (points[i].timestamp - x0) - xBar;
+        const y = points[i].rankScore - yBar;
+        Sxx += w * x * x;
+        Sxy += w * x * y;
     }
 
-    const slope = (sumW * sumWXY - sumWX * sumWY) / (sumW * sumWXX - sumWX * sumWX);
-    
-    // Calculate residuals and standard error
+    const slope = Sxx !== 0 ? Sxy / Sxx : 0;
+    const intercept = yBar - slope * xBar;
+
+    // Calculate residuals and standard error of estimating the line
     let sumSquaredResiduals = 0;
     for (let i = 0; i < n; i++) {
-        const x = points[i].timestamp - x0;
-        const y = points[i].rankScore;
-        const yPredicted = slope * x;
-        const residual = y - yPredicted;
+        const x_raw = points[i].timestamp - x0;
+        const y_actual = points[i].rankScore;
+        const y_predicted = intercept + slope * x_raw; // Intercept is relative to x0 frame
+        const residual = y_actual - y_predicted;
+        
+        // Weighted Sum of Squared Errors
         sumSquaredResiduals += weights[i] * residual * residual;
     }
     
-    // Standard error of the estimate
-    const standardError = Math.sqrt(sumSquaredResiduals / (n - 2));
+    // Standard error (sigma)
+    // Degrees of freedom = n - 2 (slope + intercept)
+    const dof = Math.max(1, n - 2);
+    const standardError = Math.sqrt(sumSquaredResiduals / dof);
 
-    return { slope, standardError };
+    return { slope, intercept, standardError, xBar, Sxx, sumW };
 }
 
 export async function getRSPrediction(
@@ -138,18 +159,16 @@ export async function getRSPrediction(
     if (history.length === 0) return null;
 
     const now = Date.now();
-    const latest = history[history.length - 1];
+    const latest = history[history.length - 1]; // Use latest for currentRS, but regression for trend
     
     // Filter points within the prediction window
     const windowStart = now - PREDICTION_WINDOW_DAYS * 24 * 60 * 60 * 1000;
     let relevantHistory = history.filter(h => h.timestamp >= windowStart);
 
-    // If we don't have enough data in the window, fallback to all data available
     if (relevantHistory.length < 2 && history.length >= 2) {
         relevantHistory = history;
     }
     
-    // Need at least 2 points for a meaningful prediction
     if (relevantHistory.length < 2) {
          return {
             currentRS: latest.rankScore,
@@ -164,7 +183,7 @@ export async function getRSPrediction(
         };
     }
 
-    // Determine confidence based on time span covered
+    // Measure time span
     const timeSpan = relevantHistory[relevantHistory.length - 1].timestamp - relevantHistory[0].timestamp;
     const hoursSpanned = timeSpan / (1000 * 60 * 60);
     
@@ -172,40 +191,54 @@ export async function getRSPrediction(
     if (hoursSpanned > 24) confidence = "High";
     else if (hoursSpanned > 6) confidence = "Medium";
 
-    // Calculate weighted slope (RS per ms) with standard error
-    const { slope: slopeMs, standardError } = calculateWeightedSlope(relevantHistory);
+    // Perform Regression
+    const { slope: slopeMs, intercept, standardError, xBar, Sxx, sumW } = calculateWeightedRegression(relevantHistory);
     
-    // Convert slope to RS per Day
-    const slopeDay = slopeMs * 24 * 60 * 60 * 1000;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const dailyChange = Math.round(slopeMs * oneDayMs);
+
+    // Predict Future
+    // Target time is 'now + remainingDays'
+    // But our regression x0 is relevantHistory[0].timestamp
+    const x0 = relevantHistory[0].timestamp;
+    const targetDate = now + (remainingDays * oneDayMs);
+    const x_target = targetDate - x0;
+
+    // Predicted Mean RS at target date
+    const predictedRS_mean = intercept + slopeMs * x_target;
+
+    // Calculate Margin of Error (Prediction Interval at 95% confidence)
+    // Margin = t * s * sqrt( 1 + 1/sumW + (x_target - xBar)^2 / Sxx )
+    // We'll use t=1.96 (approx for normal, or generous for high dof)
     
-    // Round to reliable number
-    const dailyChange = Math.round(slopeDay);
-
-    // Projected change over remaining days
-    const projectedChange = dailyChange * remainingDays;
-
-    // Calculate prediction range using standard error
-    // Use ~1.96 * SE for ~95% confidence interval (normal distribution)
-    const standardErrorDays = standardError * Math.sqrt(remainingDays * 24 * 60 * 60 * 1000);
+    const term1 = 1; // Prediction noise (future fluctuation)
+    const term2 = 1 / sumW; // Uncertainty in mean height
+    const term3 = ((x_target - xBar) ** 2) / Sxx; // Uncertainty in slope (grows with time)
+    
+    let varianceFactor = term1 + term2 + term3;
+    if (isNaN(varianceFactor) || varianceFactor < 0) varianceFactor = 1;
+    
+    const standardErrorDays = standardError * Math.sqrt(varianceFactor);
     const marginOfError = 1.96 * standardErrorDays;
 
-    const predictedRS = latest.rankScore + projectedChange;
-    const safeRS_min = Math.floor(predictedRS - marginOfError);
-    const safeRS_max = Math.ceil(predictedRS + marginOfError);
+    const safeRS_max = Math.ceil(predictedRS_mean + marginOfError);
+    const safeRS_min = Math.floor(predictedRS_mean - marginOfError);
     
-    // SafeRS is the upper bound (conservative estimate)
-    const safeRS = safeRS_max;
-
+    // Add additional safety buffer of 5% of the total change if positive, just to be "Safe"
+    // (User original request implies "Safe" means "High Probability of being enough")
+    // The Upper Bound of the 95% Prediction Interval IS that safe score.
+    // However, if the trend is super flat (slope ~0), but variance is high, safe score rises.
+    
     return {
       currentRS: latest.rankScore,
       dailyChange,
-      safeRS,
+      safeRS: safeRS_max,
       safeRS_min,
       safeRS_max,
       remainingDays,
       dataPointsUsed: relevantHistory.length,
       confidence,
-      standardError: Math.round(standardError)
+      standardError: Math.round(standardError) // This is standard error of the fit
     };
   } catch (err) {
     logger.error("Error calculating prediction:", err);

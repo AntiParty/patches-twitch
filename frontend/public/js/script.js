@@ -112,6 +112,7 @@ animate();
 
 
 // Mobile Menu Toggle
+// Mobile Menu Toggle
 const menuBtn = document.querySelector('.mobile-menu-btn');
 const navLinks = document.querySelector('.nav-links');
 
@@ -130,3 +131,56 @@ if (menuBtn) {
         }
     });
 }
+
+// Check auth status
+async function checkLoginStatus() {
+    try {
+        // We can check if user is logged in by trying to fetch a protected route or a specific auth-check endpoint.
+        // Or simply checking if specific UI elements should change. 
+        // A simple way is to try hitting the /dashboard route via fetch, but redircets are messy.
+        // Better: hit a new lightweight endpoint /api/auth/status or assume if we can access user info
+        
+        // Since we don't have a dedicated status endpoint, let's try calling /api/user/me if it exists or similar.
+        // Actually, let's just make a small fetch to /dashboard and see if we get redirected or check a new endpoint if possible.
+        // But the user just asked for the landing page change.
+        // Let's create a tiny status endpoint or just try to fetch a protected resource.
+        
+        // Let's assume we can add a route later, but for now let's try to fetch /users which is protected.
+        // If 401/403 -> not logged in. If 200 -> logged in.
+        
+        // Wait, /users requires api key.
+        // Let's use /admin/api/status if it existed.
+        // The most robust way is adding an endpoint. I should add a lightweight endpoint.
+        // But I can't modify backend in this specific tool call easily without context switch (though I can).
+        // Let's modify the frontend to fetch `/api/auth/status` which I will add.
+        
+        const response = await fetch('/api/auth/status');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.isAuthenticated) {
+                updateAuthUI();
+            }
+        }
+    } catch (err) {
+        console.log('Not logged in');
+    }
+}
+
+function updateAuthUI() {
+    // Nav login button
+    const loginBtns = document.querySelectorAll('.btn-login');
+    loginBtns.forEach(btn => {
+        btn.textContent = 'Dashboard';
+        btn.href = '/dashboard';
+    });
+
+    // Hero CTA button
+    const heroBtn = document.querySelector('.hero .btn-primary');
+    if (heroBtn) {
+       heroBtn.textContent = 'Go to Dashboard';
+       heroBtn.href = '/dashboard';
+    }
+}
+
+// Run check
+checkLoginStatus();

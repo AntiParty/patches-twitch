@@ -117,6 +117,7 @@ export const setupServer = () => {
       req.url.startsWith('/assets') || 
       req.url.startsWith('/static') || 
       req.url.startsWith('/health') ||
+      req.url.startsWith('/api/overlay/config/') ||
       /\.(css|js|jpg|png|ico|svg|woff|woff2|ttf)$/.test(req.url);
 
     if (!skipLog) {

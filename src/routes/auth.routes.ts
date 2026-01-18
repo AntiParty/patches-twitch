@@ -161,4 +161,19 @@ router.get("/callback", async (req: any, res: any) => {
     }
 });
 
+/**
+ * GET /api/auth/status
+ * Check if the current user is authenticated
+ */
+router.get("/api/auth/status", (req: any, res: any) => {
+    if (req.session && req.session.isUser) {
+        return res.json({
+            isAuthenticated: true,
+            username: req.session.twitchUsername,
+            role: req.session.role
+        });
+    }
+    res.json({ isAuthenticated: false });
+});
+
 export default router;

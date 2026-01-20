@@ -118,6 +118,41 @@ IGNVisit.init(
   }
 );
 
+// Referral model - Track traffic sources
+export class Referral extends Model {
+  declare source: string;
+  declare timestamp: Date;
+}
+
+Referral.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    timestamp: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize: sequelizeMetrics,
+    modelName: "Referral",
+    tableName: "Referrals",
+    timestamps: false,
+    indexes: [
+      { fields: ["source"] },
+      { fields: ["timestamp"] }
+    ]
+  }
+);
+
 export const metricsDbReady = sequelizeMetrics
   .sync()
   .then(async () => {
@@ -166,10 +201,11 @@ export const metricsDbReady = sequelizeMetrics
     const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
     setInterval(async () => {
       try {
+        const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const deletedRequests = await RequestMetric.destroy({
-          where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
+          where: { timestamp: { [Op.lt]: sixtyDaysAgo } }
         });
         const deletedPerf = await PerformanceMetric.destroy({
           where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
@@ -178,7 +214,7 @@ export const metricsDbReady = sequelizeMetrics
           where: { timestamp: { [Op.lt]: sevenDaysAgo } }
         });
         if (deletedRequests > 0 || deletedPerf > 0 || deletedIGN > 0) {
-          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (30d), ${deletedPerf} perf (30d), and ${deletedIGN} IGN logs (7d).`);
+          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (60d), ${deletedPerf} perf (30d), and ${deletedIGN} IGN logs (7d).`);
         }
       } catch (err) {
         logger.error("[metrics-db] Failed to clean up old metrics:", err);

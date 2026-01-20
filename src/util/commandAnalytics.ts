@@ -66,73 +66,102 @@ export async function getCommandAnalytics(
     where.command = command;
   }
 
-  // Get total usage
-  const totalUsage = await CommandUsage.count({ where });
-  
-  // Get usage by command
-  const usageByCommand = await CommandUsage.findAll({
-    attributes: [
-      'command',
-      [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-      [sequelize.fn('AVG', sequelize.col('response_time_ms')), 'avg_response_time'],
-      [sequelize.fn('SUM', sequelize.literal('CASE WHEN success = 1 THEN 1 ELSE 0 END')), 'success_count'],
-    ],
-    where,
-    group: ['command'],
-    order: [[sequelize.literal('count'), 'DESC']],
-    raw: true,
-  });
+  // Execute all queries in parallel for performance
+  const [
+    totalUsage,
+    activeChannels,
+    uniqueCommandsCount,
+    usageByCommand,
+    uniqueUsers,
+    recentCommands,
+    hourlyUsage,
+    topUsers
+  ] = await Promise.all([
+    // 1. Total usage
+    CommandUsage.count({ where }),
+    
+    // 2. Active channels
+    CommandUsage.count({
+      where,
+      distinct: true,
+      col: 'channel',
+    }),
 
-  // Get unique users
-  const uniqueUsers = await CommandUsage.count({
-    where,
-    distinct: true,
-    col: 'user',
-  });
+    // 3. Unique commands
+    CommandUsage.count({
+      where,
+      distinct: true,
+      col: 'command',
+    }),
 
-  // Get recent commands
-  const recentCommands = await CommandUsage.findAll({
-    where,
-    order: [['timestamp', 'DESC']],
-    limit,
-    attributes: ['command', 'user', 'success', 'response_time_ms', 'timestamp'],
-  });
+    // 4. Usage by command
+    CommandUsage.findAll({
+      attributes: [
+        'command',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+        [sequelize.fn('COUNT', sequelize.literal('DISTINCT channel')), 'channel_count'],
+        [sequelize.fn('AVG', sequelize.col('response_time_ms')), 'avg_response_time'],
+        [sequelize.fn('SUM', sequelize.literal('CASE WHEN success = 1 THEN 1 ELSE 0 END')), 'success_count'],
+      ],
+      where,
+      group: ['command'] as any,
+      order: [[sequelize.literal('count'), 'DESC']],
+      raw: true,
+    }),
 
-  // Get hourly usage (last 24 hours)
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const hourlyUsage = await CommandUsage.findAll({
-    attributes: [
-      [sequelize.fn('strftime', '%Y-%m-%d %H:00:00', sequelize.col('timestamp')), 'hour'],
-      [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-    ],
-    where: {
-      ...where,
-      timestamp: { [Op.gte]: twentyFourHoursAgo },
-    },
-    group: [sequelize.literal('hour')],
-    order: [[sequelize.literal('hour'), 'ASC']],
-    raw: true,
-  });
+    // 5. Unique users
+    CommandUsage.count({
+      where,
+      distinct: true,
+      col: 'user',
+    }),
 
-  // Get top users
-  const topUsers = await CommandUsage.findAll({
-    attributes: [
-      'user',
-      [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-    ],
-    where,
-    group: ['user'],
-    order: [[sequelize.literal('count'), 'DESC']],
-    limit: 10,
-    raw: true,
-  });
+    // 6. Recent commands
+    CommandUsage.findAll({
+      where,
+      order: [['timestamp', 'DESC']],
+      limit: 20, // Reduced from 'limit' parameter for performance, dashboard only needs latest few
+      attributes: ['command', 'user', 'success', 'response_time_ms', 'timestamp'],
+    }),
+
+    // 7. Hourly usage
+    CommandUsage.findAll({
+      attributes: [
+        [sequelize.fn('strftime', '%Y-%m-%d %H:00:00', sequelize.col('timestamp')), 'hour'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+      ],
+      where: {
+        ...where,
+        timestamp: { [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      group: ['hour'] as any,
+      order: [['hour', 'ASC']] as any,
+      raw: true,
+    }),
+
+    // 8. Top users
+    CommandUsage.findAll({
+      attributes: [
+        'user',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+      ],
+      where,
+      group: ['user'],
+      order: [[sequelize.literal('count'), 'DESC']],
+      limit: 10,
+      raw: true,
+    })
+  ]);
 
   return {
-    totalUsage,
+    totalCommands: totalUsage,
+    uniqueCommands: uniqueCommandsCount,
     uniqueUsers,
-    usageByCommand: usageByCommand.map((row: any) => ({
+    activeChannels,
+    topCommands: usageByCommand.map((row: any) => ({
       command: row.command,
       count: parseInt(row.count) || 0,
+      channels: parseInt(row.channel_count) || 0,
       avgResponseTime: Math.round(parseFloat(row.avg_response_time) || 0),
       successCount: parseInt(row.success_count) || 0,
       successRate: totalUsage > 0 ? ((parseInt(row.success_count) || 0) / parseInt(row.count)) * 100 : 0,
@@ -144,8 +173,8 @@ export async function getCommandAnalytics(
       responseTime: cmd.response_time_ms,
       timestamp: cmd.timestamp,
     })),
-    hourlyUsage: hourlyUsage.map((row: any) => ({
-      hour: row.hour,
+    dailyUsage: hourlyUsage.map((row: any) => ({
+      date: row.hour, // chart expects date/hour
       count: parseInt(row.count) || 0,
     })),
     topUsers: topUsers.map((row: any) => ({

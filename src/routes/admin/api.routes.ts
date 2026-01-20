@@ -57,10 +57,30 @@ const serverStartTime = Date.now();
 /**
  * GET /admin
  * Render admin dashboard page (Staff or Admin)
+ * Redirects analysts to statistics dashboard
  */
-router.get('/', csrfProtection, requireStaff, (req: any, res: any) => {
-    const viewsPath = path.join(process.cwd(), 'frontend', 'views');
-    res.sendFile(path.join(viewsPath, 'admin-dashboard.html'));
+router.get('/', csrfProtection, async (req: any, res: any) => {
+    const { isAnalyst, isStaff, requireStaff } = await import('@/middleware/auth.middleware');
+    
+    // Check if user is analyst (but not staff/admin)
+    // Analysts get redirected to statistics dashboard
+    if (isAnalyst(req) && !isStaff(req)) {
+        return res.redirect('/statistics');
+    }
+    
+    // Require staff for admin dashboard
+    await requireStaff(req, res, () => {
+        const viewsPath = path.join(process.cwd(), 'frontend', 'views');
+        res.sendFile(path.join(viewsPath, 'admin-dashboard.html'));
+    });
+});
+
+/**
+ * GET /admin/statistics
+ * Redirect to /statistics (backward compatibility)
+ */
+router.get('/statistics', (req: any, res: any) => {
+    res.redirect('/statistics');
 });
 
 /**
@@ -80,6 +100,44 @@ router.get('/api/me', requireStaffAPI, (req: any, res: any) => {
  */
 router.get('/api/csrf', csrfProtection, (req: any, res: any) => {
     res.json({ csrfToken: req.csrfToken() });
+});
+
+/**
+ * Simple User Management (Temp JSON)
+ */
+router.get('/api/simple-users', requireAdminAPI, async (req: any, res: any) => {
+    const { getAllSimpleUsers } = await import('@/util/simpleUsers');
+    const users = await getAllSimpleUsers();
+    // Return users without password hash
+    const safeUsers = users.map(u => ({ username: u.username, role: u.role, createdAt: u.createdAt }));
+    res.json(safeUsers);
+});
+
+router.post('/api/simple-users', requireAdminAPI, async (req: any, res: any) => {
+    const { username, password, role } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+    
+    const { addSimpleUser } = await import('@/util/simpleUsers');
+    const success = await addSimpleUser(username, password, role || 'analyst');
+    
+    if (success) {
+        logAdminAction(req.session.username, 'ADD_SIMPLE_USER', `Added user ${username} as ${role}`);
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ error: 'User already exists or failed to create' });
+    }
+});
+
+router.delete('/api/simple-users/:username', requireAdminAPI, async (req: any, res: any) => {
+    const { removeSimpleUser } = await import('@/util/simpleUsers');
+    const success = await removeSimpleUser(req.params.username);
+    
+    if (success) {
+        logAdminAction(req.session.username, 'REMOVE_SIMPLE_USER', `Removed user ${req.params.username}`);
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'User not found' });
+    }
 });
 
 /**
@@ -141,7 +199,7 @@ router.get('/api/users', requireAdminAPI, async (req: any, res: any) => {
  */
 router.post('/api/users/set-role', requireAdminAPI, async (req: any, res: any) => {
     const { username, role } = req.body;
-    const validRoles = ['Basic user', 'tester', 'Staff', 'admin'];
+    const validRoles = ['Basic user', 'tester', 'analyst', 'Staff', 'admin'];
 
     if (!username || !role) {
         return res.status(400).json({ error: 'Username and role are required' });
@@ -574,6 +632,103 @@ router.get('/api/analytics', requireStaffAPI, async (req: any, res: any) => {
         logger.error('Error fetching global analytics:', err);
         res.status(500).json({ error: 'Failed to fetch global analytics.' });
     }
+});
+
+/**
+ * GET /admin/api/statistics
+ * Get combined statistics data (web requests + command usage + IGN analytics)
+ * Accessible to analysts and admins
+ */
+router.get('/api/statistics', async (req: any, res: any) => {
+    // Import the requireAnalyst middleware
+    const { requireAnalyst } = await import('@/middleware/auth.middleware');
+    
+    // Check if user has analyst or admin role
+    await requireAnalyst(req, res, async () => {
+        try {
+            const { getAnalytics } = await import('@/util/webAnalytics');
+            const { getIGNStats } = await import('@/util/ignStats');
+            const { RequestMetric } = await import('@/dbMetrics');
+            const { Op } = await import('sequelize');
+
+            // Get time ranges
+            const now = new Date();
+            const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            // Get web analytics
+            const webAnalytics = await getAnalytics();
+
+            // Get IGN stats
+            const ignStats = await getIGNStats();
+
+            // Get command analytics
+            const commandAnalytics = await getCommandAnalytics(null as any, {
+                startDate: last30d,
+                limit: 100
+            });
+
+            // Get request metrics by endpoint (top 20)
+            const requestsByEndpoint = await RequestMetric.findAll({
+                attributes: [
+                    'endpoint',
+                    [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col('id')), 'count'],
+                    [RequestMetric.sequelize!.fn('AVG', RequestMetric.sequelize!.col('responseTimeMs')), 'avgResponseTime']
+                ],
+                where: {
+                    timestamp: { [Op.gte]: last7d }
+                },
+                group: ['endpoint'],
+                order: [['count', 'DESC']] as any,
+                limit: 20,
+                raw: true
+            });
+
+            // Get requests by status code
+            const requestsByStatus = await RequestMetric.findAll({
+                attributes: [
+                    'statusCode',
+                    [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col('id')), 'count']
+                ],
+                where: {
+                    timestamp: { [Op.gte]: last7d }
+                },
+                group: ['statusCode'],
+                order: [['count', 'DESC']] as any,
+                raw: true
+            });
+
+            // Get hourly request distribution for last 24h
+            const hourlyRequests = await RequestMetric.findAll({
+                attributes: [
+                    [RequestMetric.sequelize!.fn('strftime', '%H', RequestMetric.sequelize!.col('timestamp')), 'hour'],
+                    [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col('id')), 'count']
+                ],
+                where: {
+                    timestamp: { [Op.gte]: last24h }
+                },
+                group: ['hour'] as any,
+                order: [['hour', 'ASC']] as any,
+                raw: true
+            });
+
+            res.json({
+                webAnalytics,
+                ignStats,
+                commandAnalytics,
+                requestMetrics: {
+                    byEndpoint: requestsByEndpoint,
+                    byStatus: requestsByStatus,
+                    hourlyDistribution: hourlyRequests
+                },
+                timestamp: now.toISOString()
+            });
+        } catch (err) {
+            logger.error('Error fetching combined statistics:', err);
+            res.status(500).json({ error: 'Failed to fetch statistics.' });
+        }
+    });
 });
 
 export default router;

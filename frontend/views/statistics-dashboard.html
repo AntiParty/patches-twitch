@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Statistics Dashboard · FinalsRS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      :root {
+        --bg: #0b0b0d;
+        --panel: #141418;
+        --border: #1f1f25;
+        --text: #eaeaea;
+        --muted: #9a9a9a;
+        --accent: #f5c26b;
+        --accent-glow: rgba(245, 194, 107, 0.1);
+        --live: #ff4b4b;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --error: #ef4444;
+      }
+
+      * {
+        box-sizing: border-box;
+        font-family: Inter, system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      header {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        z-index: 100;
+      }
+
+      header h1 {
+        font-size: 18px;
+        margin: 0;
+        letter-spacing: 0.04em;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+      }
+
+      .btn:hover {
+        border-color: var(--accent);
+        background: rgba(245, 194, 107, 0.05);
+      }
+
+      main {
+        padding: 28px;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+      }
+
+      .tab {
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        color: var(--muted);
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.2s ease;
+        font-weight: 500;
+      }
+
+      .tab:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .tab.active {
+        color: var(--accent);
+        background: rgba(245, 194, 107, 0.05);
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-bottom: 32px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        transition: border-color 0.2s ease;
+      }
+
+      .card:hover {
+        border-color: #2f2f35;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .value {
+        font-size: 34px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .value.success {
+        color: var(--success);
+      }
+
+      .value.warning {
+        color: var(--warning);
+      }
+
+      .value.error {
+        color: var(--error);
+      }
+
+      .sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 24px;
+        margin-top: 24px;
+      }
+
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .table th,
+      .table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        text-align: left;
+      }
+
+      .table th {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .table tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .badge {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .badge.success {
+        color: var(--success);
+      }
+
+      .badge.error {
+        color: var(--error);
+      }
+
+      footer {
+        padding: 16px 28px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+        margin-top: 40px;
+      }
+
+      .chart-container {
+        height: 300px;
+        margin-top: 12px;
+      }
+
+      .pulse {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--live);
+        margin-right: 6px;
+        box-shadow: 0 0 0 rgba(255, 75, 75, 0.4);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.7);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 10px rgba(255, 75, 75, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 75, 75, 0);
+        }
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--muted);
+      }
+
+      .spinner {
+        border: 3px solid var(--border);
+        border-top: 3px solid var(--accent);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .status-indicator.success {
+        background: var(--success);
+      }
+
+      .status-indicator.error {
+        background: var(--error);
+      }
+
+      .status-indicator.warning {
+        background: var(--warning);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Statistics Dashboard</h1>
+      <div class="header-actions">
+        <span
+          id="last-update"
+          style="font-size: 13px; color: var(--muted)"
+        ></span>
+        <a href="/admin" class="btn">← Back to Admin</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="tabs">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="web-requests">Web Requests</button>
+        <button class="tab" data-tab="commands">Command Usage</button>
+        <button class="tab" data-tab="ign-analytics">IGN Analytics</button>
+        <button class="tab" data-tab="referrals">Referrals</button>
+        <button class="tab" data-tab="system-health">System Health</button>
+      </div>
+
+      <!-- OVERVIEW TAB -->
+      <div class="tab-content active" id="overview">
+        <section class="stats">
+          <div class="card">
+            <div class="label">Total Requests (7d)</div>
+            <div class="value" id="total-requests">—</div>
+            <div class="sub">Web requests tracked</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Commands Processed (30d)</div>
+            <div class="value" id="total-commands">—</div>
+            <div class="sub">Bot commands executed</div>
+          </div>
+
+          <div class="card">
+            <div class="label">IGN Visits (7d)</div>
+            <div class="value" id="ign-visits">—</div>
+            <div class="sub">YouTube experiment</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Avg Response Time</div>
+            <div class="value" id="avg-response">—</div>
+            <div class="sub">Last 7 days</div>
+          </div>
+        </section>
+
+        <div class="grid">
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Request Distribution (24h)
+            </div>
+            <div class="chart-container">
+              <canvas id="hourlyChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Status Code Distribution
+            </div>
+            <div class="chart-container">
+              <canvas id="statusChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WEB REQUESTS TAB -->
+      <div class="tab-content" id="web-requests">
+        <section class="stats">
+          <div class="card">
+            <div class="label">Total Requests (7d)</div>
+            <div class="value" id="web-total-requests">—</div>
+            <div class="sub">All endpoints</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Unique Visitors (7d)</div>
+            <div class="value" id="web-unique-visitors">—</div>
+            <div class="sub">Tracked by IP</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Avg Response Time</div>
+            <div class="value" id="web-avg-response">—</div>
+            <div class="sub">Milliseconds</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Success Rate</div>
+            <div class="value success" id="web-success-rate">—</div>
+            <div class="sub">2xx status codes</div>
+          </div>
+        </section>
+
+        <div class="card" style="margin-top: 24px">
+          <div class="label" style="margin-bottom: 12px">
+            Top Endpoints (Last 7 Days)
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Endpoint</th>
+                <th style="text-align: right">Requests</th>
+                <th style="text-align: right">Avg Response (ms)</th>
+              </tr>
+            </thead>
+            <tbody id="endpoints-table">
+              <tr>
+                <td colspan="3" class="loading">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COMMANDS TAB -->
+      <div class="tab-content" id="commands">
+        <section class="stats">
+          <div class="card">
+            <div class="label">Total Commands (30d)</div>
+            <div class="value" id="cmd-total">—</div>
+            <div class="sub">All channels</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Unique Commands</div>
+            <div class="value" id="cmd-unique">—</div>
+            <div class="sub">Different commands used</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Most Popular</div>
+            <div class="value" id="cmd-popular">—</div>
+            <div class="sub">Top command</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Active Channels</div>
+            <div class="value" id="cmd-channels">—</div>
+            <div class="sub">Using commands</div>
+          </div>
+        </section>
+
+        <div class="card" style="margin-top: 24px">
+          <div class="label" style="margin-bottom: 12px">
+            Top Commands (Last 30 Days)
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th style="text-align: right">Usage Count</th>
+                <th style="text-align: right">Channels</th>
+              </tr>
+            </thead>
+            <tbody id="commands-table">
+              <tr>
+                <td colspan="3" class="loading">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" style="margin-top: 24px">
+          <div class="label" style="margin-bottom: 12px">
+            Command Usage Over Time
+          </div>
+          <div class="chart-container">
+            <canvas id="commandsChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- IGN ANALYTICS TAB -->
+      <div class="tab-content" id="ign-analytics">
+        <section class="stats">
+          <div class="card">
+            <div class="label">7-Day Total</div>
+            <div class="value" id="ign-total">—</div>
+            <div class="sub">Stored visits</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Today</div>
+            <div class="value" id="ign-today">—</div>
+            <div class="sub">Last 24 hours</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Last 5 Minutes</div>
+            <div class="value" id="ign-recent">—</div>
+            <div class="sub">Live activity</div>
+          </div>
+
+          <div class="card">
+            <div class="label">Hits While Live</div>
+            <div class="value" id="ign-live">—</div>
+            <div class="sub">Stream conversion</div>
+          </div>
+        </section>
+
+        <div class="card" style="margin-top: 24px">
+          <div class="label" style="margin-bottom: 12px">
+            Activity Heatmap (Daily Hits)
+          </div>
+          <div class="chart-container">
+            <canvas id="ignHeatmapChart"></canvas>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">Daily Breakdown</div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Hits</th>
+                  <th>While Live</th>
+                </tr>
+              </thead>
+              <tbody id="ign-daily">
+                <tr>
+                  <td colspan="3" class="loading">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">Recent Streams</div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th style="text-align: right">Hits</th>
+                </tr>
+              </thead>
+              <tbody id="ign-streams">
+                <tr>
+                  <td colspan="2" class="loading">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- REFERRALS TAB -->
+      <div class="tab-content" id="referrals">
+        <section class="stats">
+          <div class="card">
+            <div class="label">Top Source</div>
+            <div class="value" id="ref-top">—</div>
+            <div class="sub">Most common referrer</div>
+          </div>
+          <div class="card">
+            <div class="label">Total Tracked</div>
+            <div class="value" id="ref-total">—</div>
+            <div class="sub">Last 30 days</div>
+          </div>
+        </section>
+
+        <div class="grid">
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Source Distribution
+            </div>
+            <div class="chart-container">
+              <canvas id="referralChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Top Referral Sources
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th style="text-align: right">Count</th>
+                  <th style="text-align: right">%</th>
+                </tr>
+              </thead>
+              <tbody id="referrals-table">
+                <tr>
+                  <td colspan="3" class="loading">Loading...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SYSTEM HEALTH TAB -->
+      <div class="tab-content" id="system-health">
+        <div class="grid">
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">CPU Usage (24h)</div>
+            <div class="chart-container">
+              <canvas id="cpuChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Memory Usage (24h)
+            </div>
+            <div class="chart-container">
+              <canvas id="memoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="grid" style="margin-top: 24px">
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Bot Latency (24h)
+            </div>
+            <div class="chart-container">
+              <canvas id="latencyChart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">
+              Connected Channels (24h)
+            </div>
+            <div class="chart-container">
+              <canvas id="channelsChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>FinalsRS · Statistics Dashboard</footer>
+
+    <script>
+      let charts = {};
+      let statsData = null;
+
+      // Tab switching
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const tabName = tab.dataset.tab;
+
+          // Update active tab
+          document
+            .querySelectorAll(".tab")
+            .forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+
+          // Update active content
+          document
+            .querySelectorAll(".tab-content")
+            .forEach((c) => c.classList.remove("active"));
+          document.getElementById(tabName).classList.add("active");
+        });
+      });
+
+      // Format numbers
+      function formatNumber(num) {
+        if (num === null || num === undefined) return "—";
+        return num.toLocaleString();
+      }
+
+      // Format time
+      function formatTime(ms) {
+        if (ms === null || ms === undefined) return "—";
+        return Math.round(ms) + "ms";
+      }
+
+      // Update overview tab
+      function updateOverview(data) {
+        const webTotal = data.webAnalytics?.totalRequests || 0;
+        const cmdTotal = data.commandAnalytics?.totalCommands || 0;
+        const ignTotal = data.ignStats?.last7days || 0;
+        const avgResponse = data.webAnalytics?.avgResponseTime || 0;
+
+        document.getElementById("total-requests").textContent =
+          formatNumber(webTotal);
+        document.getElementById("total-commands").textContent =
+          formatNumber(cmdTotal);
+        document.getElementById("ign-visits").textContent =
+          formatNumber(ignTotal);
+        document.getElementById("avg-response").textContent =
+          formatTime(avgResponse);
+
+        // Update hourly chart
+        updateHourlyChart(data.requestMetrics?.hourlyDistribution || []);
+
+        // Update status chart
+        updateStatusChart(data.requestMetrics?.byStatus || []);
+      }
+
+      // Update web requests tab
+      function updateWebRequests(data) {
+        const analytics = data.webAnalytics || {};
+
+        document.getElementById("web-total-requests").textContent =
+          formatNumber(analytics.totalRequests);
+        document.getElementById("web-unique-visitors").textContent =
+          formatNumber(analytics.uniqueVisitors);
+        document.getElementById("web-avg-response").textContent = formatTime(
+          analytics.avgResponseTime,
+        );
+
+        // Calculate success rate
+        const statusCodes = data.requestMetrics?.byStatus || [];
+        const total = statusCodes.reduce((sum, s) => sum + (s.count || 0), 0);
+        const success = statusCodes
+          .filter((s) => s.statusCode >= 200 && s.statusCode < 300)
+          .reduce((sum, s) => sum + (s.count || 0), 0);
+        const successRate =
+          total > 0 ? ((success / total) * 100).toFixed(1) : 0;
+        document.getElementById("web-success-rate").textContent =
+          successRate + "%";
+
+        // Update endpoints table
+        const endpointsTable = document.getElementById("endpoints-table");
+        const endpoints = data.requestMetrics?.byEndpoint || [];
+
+        if (endpoints.length === 0) {
+          endpointsTable.innerHTML =
+            '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+        } else {
+          endpointsTable.innerHTML = endpoints
+            .map(
+              (e) => `
+        <tr>
+          <td><code style="font-size:12px;">${e.endpoint}</code></td>
+          <td style="text-align:right; font-weight:600; color:var(--accent)">${formatNumber(e.count)}</td>
+          <td style="text-align:right; color:var(--muted)">${formatTime(e.avgResponseTime)}</td>
+        </tr>
+      `,
+            )
+            .join("");
+        }
+      }
+
+      // Update commands tab
+      function updateCommands(data) {
+        const analytics = data.commandAnalytics || {};
+
+        document.getElementById("cmd-total").textContent = formatNumber(
+          analytics.totalCommands,
+        );
+        document.getElementById("cmd-unique").textContent = formatNumber(
+          analytics.uniqueCommands,
+        );
+
+        const topCommand = analytics.topCommands?.[0];
+        document.getElementById("cmd-popular").textContent = topCommand
+          ? topCommand.command
+          : "—";
+        document.getElementById("cmd-channels").textContent = formatNumber(
+          analytics.activeChannels,
+        );
+
+        // Update commands table
+        const commandsTable = document.getElementById("commands-table");
+        const commands = analytics.topCommands || [];
+
+        if (commands.length === 0) {
+          commandsTable.innerHTML =
+            '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+        } else {
+          commandsTable.innerHTML = commands
+            .slice(0, 20)
+            .map(
+              (c) => `
+        <tr>
+          <td><code style="font-size:12px; color:var(--accent)">!${c.command}</code></td>
+          <td style="text-align:right; font-weight:600; color:var(--accent)">${formatNumber(c.count)}</td>
+          <td style="text-align:right; color:var(--muted)">${formatNumber(c.channels || 0)}</td>
+        </tr>
+      `,
+            )
+            .join("");
+        }
+
+        // Update commands chart (if we have daily data)
+        if (analytics.dailyUsage) {
+          updateCommandsChart(analytics.dailyUsage);
+        }
+      }
+
+      // Update IGN analytics tab
+      function updateIGNAnalytics(data) {
+        const ign = data.ignStats || {};
+
+        document.getElementById("ign-total").textContent = formatNumber(
+          ign.last7days,
+        );
+        document.getElementById("ign-today").textContent = formatNumber(
+          ign.today,
+        );
+        document.getElementById("ign-recent").textContent = formatNumber(
+          ign.last5min,
+        );
+        document.getElementById("ign-live").textContent = formatNumber(
+          ign.totalLive,
+        );
+
+        // Update heatmap
+        if (ign.dailyBreakdown) {
+          updateIGNHeatmap(ign.dailyBreakdown);
+        }
+
+        // Update daily table
+        const dailyTable = document.getElementById("ign-daily");
+        const daily = ign.dailyBreakdown || [];
+
+        if (daily.length === 0) {
+          dailyTable.innerHTML =
+            '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+        } else {
+          dailyTable.innerHTML = [...daily]
+            .reverse()
+            .map(
+              (d) => `
+        <tr>
+          <td>${d.day}</td>
+          <td style="font-weight:600; color:var(--accent)">${d.count}</td>
+          <td style="color:#ff4b4b">${d.liveCount}</td>
+        </tr>
+      `,
+            )
+            .join("");
+        }
+
+        // Update streams table
+        const streamsTable = document.getElementById("ign-streams");
+        const streams = ign.recentStreams || [];
+
+        if (streams.length === 0) {
+          streamsTable.innerHTML =
+            '<tr><td colspan="2" style="text-align:center; color:var(--muted);">No streams tracked yet</td></tr>';
+        } else {
+          streamsTable.innerHTML = streams
+            .map(
+              (s) => `
+        <tr>
+          <td>
+            <div style="font-weight:600; color:var(--text); font-size:12px; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.title}</div>
+            <div style="font-size:10px; color:var(--muted);">${new Date(s.startTime).toLocaleDateString()}</div>
+          </td>
+          <td style="font-weight:700; color:var(--live); text-align:right; font-size:14px;">${s.hits}</td>
+        </tr>
+      `,
+            )
+            .join("");
+        }
+      }
+
+      // Chart: Hourly requests
+      function updateHourlyChart(data) {
+        const ctx = document.getElementById("hourlyChart");
+        if (!ctx) return;
+
+        const hours = Array.from({ length: 24 }, (_, i) =>
+          i.toString().padStart(2, "0"),
+        );
+        const counts = hours.map((h) => {
+          const entry = data.find((d) => d.hour === h);
+          return entry ? entry.count : 0;
+        });
+
+        if (charts.hourly) {
+          charts.hourly.data.labels = hours;
+          charts.hourly.data.datasets[0].data = counts;
+          charts.hourly.update("none");
+          return;
+        }
+
+        charts.hourly = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: hours,
+            datasets: [
+              {
+                label: "Requests",
+                data: counts,
+                backgroundColor: "rgba(245, 194, 107, 0.3)",
+                borderColor: "#f5c26b",
+                borderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: "rgba(255, 255, 255, 0.03)" },
+                ticks: { color: "#666" },
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: "#9a9a9a" },
+              },
+            },
+          },
+        });
+      }
+
+      // Chart: Status codes
+      function updateStatusChart(data) {
+        const ctx = document.getElementById("statusChart");
+        if (!ctx) return;
+
+        const labels = data.map((d) => `${d.statusCode}`);
+        const counts = data.map((d) => d.count);
+        const colors = data.map((d) => {
+          if (d.statusCode >= 200 && d.statusCode < 300) return "#4ade80";
+          if (d.statusCode >= 300 && d.statusCode < 400) return "#fbbf24";
+          return "#ef4444";
+        });
+
+        if (charts.status) {
+          charts.status.data.labels = labels;
+          charts.status.data.datasets[0].data = counts;
+          charts.status.data.datasets[0].backgroundColor = colors;
+          charts.status.update("none");
+          return;
+        }
+
+        charts.status = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                data: counts,
+                backgroundColor: colors,
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "right",
+                labels: { color: "#9a9a9a", font: { size: 11 } },
+              },
+            },
+          },
+        });
+      }
+
+      // Chart: IGN heatmap
+      function updateIGNHeatmap(data) {
+        const ctx = document.getElementById("ignHeatmapChart");
+        if (!ctx) return;
+
+        const sorted = [...data].sort((a, b) => a.day.localeCompare(b.day));
+        const labels = sorted.map((d) => {
+          const date = new Date(d.day);
+          return date.toLocaleDateString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+        });
+        const values = sorted.map((d) => d.count);
+        const liveValues = sorted.map((d) => d.liveCount);
+
+        if (charts.ignHeatmap) {
+          charts.ignHeatmap.data.labels = labels;
+          charts.ignHeatmap.data.datasets[0].data = values;
+          charts.ignHeatmap.data.datasets[1].data = liveValues;
+          charts.ignHeatmap.update("none");
+          return;
+        }
+
+        charts.ignHeatmap = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "TOTAL REACH",
+                data: values,
+                borderColor: "#f5c26b",
+                borderWidth: 4,
+                pointBackgroundColor: "#f5c26b",
+                tension: 0.4,
+                fill: true,
+                backgroundColor: "rgba(245, 194, 107, 0.1)",
+              },
+              {
+                label: "CONVERSION (LIVE)",
+                data: liveValues,
+                borderColor: "#ff4b4b",
+                borderWidth: 3,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+                backgroundColor: "rgba(255, 75, 75, 0.05)",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: "top",
+                align: "end",
+                labels: {
+                  color: "#9a9a9a",
+                  boxWidth: 12,
+                  font: { size: 11, weight: "bold" },
+                },
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: "rgba(255, 255, 255, 0.03)", drawBorder: false },
+                ticks: { color: "#666", font: { size: 10 } },
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: "#9a9a9a", font: { size: 10 } },
+              },
+            },
+          },
+        });
+      }
+
+      // Chart: Commands over time (placeholder)
+      function updateCommandsChart(dailyData) {
+        const ctx = document.getElementById("commandsChart");
+        if (!ctx) return;
+
+        // dailyData comes as array of { date: string, count: number }
+        // Sort by date just in case
+        const sorted = (dailyData || []).sort((a, b) =>
+          a.date.localeCompare(b.date),
+        );
+
+        const labels = sorted.map((d) => {
+          const date = new Date(d.date);
+          return date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        });
+        const values = sorted.map((d) => d.count);
+
+        if (charts.commands) {
+          charts.commands.data.labels = labels;
+          charts.commands.data.datasets[0].data = values;
+          charts.commands.update("none");
+          return;
+        }
+
+        charts.commands = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Commands",
+                data: values,
+                borderColor: "#f5c26b",
+                borderWidth: 3,
+                tension: 0.4,
+                fill: true,
+                backgroundColor: "rgba(245, 194, 107, 0.1)",
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: "rgba(255, 255, 255, 0.03)" },
+                ticks: { color: "#666" },
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: "#9a9a9a" },
+              },
+            },
+          },
+        });
+      }
+
+      // Update Referrals Tab
+      function updateReferrals(data) {
+        const referrals = data.referrals || [];
+        const total = referrals.reduce((sum, r) => sum + (r.count || 0), 0);
+
+        document.getElementById("ref-total").textContent = formatNumber(total);
+        if (referrals.length > 0) {
+          document.getElementById("ref-top").textContent = referrals[0].source;
+        } else {
+          document.getElementById("ref-top").textContent = "—";
+        }
+
+        // Table
+        const table = document.getElementById("referrals-table");
+        if (referrals.length === 0) {
+          table.innerHTML =
+            '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+        } else {
+          table.innerHTML = referrals
+            .slice(0, 10)
+            .map(
+              (r) => `
+                <tr>
+                    <td>${r.source}</td>
+                    <td style="text-align:right; font-weight:600; color:var(--accent)">${formatNumber(r.count)}</td>
+                    <td style="text-align:right; color:var(--muted)">${((r.count / total) * 100).toFixed(1)}%</td>
+                </tr>
+            `,
+            )
+            .join("");
+        }
+
+        // Chart
+        const ctx = document.getElementById("referralChart");
+        if (!ctx) return;
+
+        const top5 = referrals.slice(0, 5);
+        const labels = top5.map((r) => r.source);
+        const counts = top5.map((r) => r.count);
+
+        // Add "Other" if needed
+        if (referrals.length > 5) {
+          labels.push("Other");
+          counts.push(referrals.slice(5).reduce((s, r) => s + r.count, 0));
+        }
+
+        if (charts.referral) {
+          charts.referral.data.labels = labels;
+          charts.referral.data.datasets[0].data = counts;
+          charts.referral.update();
+        } else {
+          charts.referral = new Chart(ctx, {
+            type: "doughnut",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  data: counts,
+                  backgroundColor: [
+                    "#f5c26b",
+                    "#4ade80",
+                    "#fbbf24",
+                    "#ff4b4b",
+                    "#3b82f6",
+                    "#9a9a9a",
+                  ],
+                  borderWidth: 0,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "right", labels: { color: "#eaeaea" } },
+              },
+            },
+          });
+        }
+      }
+
+      // Update System Health Tab
+      function updateSystemHealth(data) {
+        const history = data.performanceHistory || [];
+        if (history.length === 0) return;
+
+        // Simplify data (take every Nth point if too many) to avoid chart lag
+        // Assuming data is sorted by timestamp
+        const labels = history.map((h) =>
+          new Date(h.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
+
+        const cpuData = history.map((h) => h.cpuUsage);
+        updateLineChart("cpuChart", "cpu", "CPU %", labels, cpuData, "#3b82f6");
+
+        const memData = history.map((h) =>
+          (h.memoryUsed / 1024 / 1024).toFixed(0),
+        ); // MB
+        updateLineChart(
+          "memoryChart",
+          "mem",
+          "Memory (MB)",
+          labels,
+          memData,
+          "#ff4b4b",
+        );
+
+        const latData = history.map((h) => h.botLatencyMs?.toFixed(0) || 0);
+        updateLineChart(
+          "latencyChart",
+          "lat",
+          "Latency (ms)",
+          labels,
+          latData,
+          "#fbbf24",
+        );
+
+        const chanData = history.map((h) => h.connectedChannels || 0);
+        updateLineChart(
+          "channelsChart",
+          "chan",
+          "Channels",
+          labels,
+          chanData,
+          "#4ade80",
+        );
+      }
+
+      function updateLineChart(id, key, label, labels, data, color) {
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+
+        if (charts[key]) {
+          charts[key].data.labels = labels;
+          charts[key].data.datasets[0].data = data;
+          charts[key].update("none");
+        } else {
+          charts[key] = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: label,
+                  data: data,
+                  borderColor: color,
+                  backgroundColor: color + "10", // 10% opacity
+                  borderWidth: 2,
+                  fill: true,
+                  tension: 0.4,
+                  pointRadius: 0,
+                  pointHitRadius: 10,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: "index", intersect: false },
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { display: false },
+                y: {
+                  beginAtZero: true,
+                  grid: { color: "rgba(255,255,255,0.05)" },
+                  ticks: { color: "#666" },
+                },
+              },
+            },
+          });
+        }
+      }
+
+      // Load statistics
+      async function loadStatistics() {
+        try {
+          const res = await fetch("/api/statistics");
+          if (!res.ok) {
+            if (res.status === 403) {
+              window.location.href = "/statistics/login";
+              return;
+            }
+            throw new Error("Failed to load statistics");
+          }
+
+          statsData = await res.json();
+
+          // Update all tabs
+          updateOverview(statsData);
+          updateWebRequests(statsData);
+          updateCommands(statsData);
+          updateIGNAnalytics(statsData);
+          updateReferrals(statsData);
+          updateSystemHealth(statsData);
+
+          // Update last update time
+          const now = new Date();
+          document.getElementById("last-update").textContent =
+            `Updated: ${now.toLocaleTimeString()}`;
+        } catch (err) {
+          console.error("Failed to load statistics:", err);
+        }
+      }
+
+      // Initial load
+      loadStatistics();
+
+      // Auto-refresh every 30 seconds
+      setInterval(loadStatistics, 30000);
+    </script>
+  </body>
+</html>

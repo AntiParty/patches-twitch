@@ -176,11 +176,52 @@ export async function requireStaffAPI(req: any, res: any, next: any) {
  * Middleware: Require a specific role or higher
  * Roles: Basic user < tester < Staff < admin
  */
+/**
+ * Check if the current session is at least Analyst
+ */
+export function isAnalyst(req: any): boolean {
+    if (!req.session) return false;
+    if (req.session.banned) return false;
+    if (isAdmin(req)) return true;
+    return req.session.role === 'analyst';
+}
+
+/**
+ * Middleware: Require Analyst authentication (Analyst or Admin)
+ */
+export async function requireAnalyst(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) return res.redirect('/banned');
+    if (!isAnalyst(req)) {
+        return res.redirect('/statistics/login');
+    }
+    next();
+}
+
+/**
+ * Middleware: Require Analyst authentication (API version)
+ */
+export async function requireAnalystAPI(req: any, res: any, next: any) {
+    await syncRole(req);
+    if (req.session && req.session.banned) {
+        return res.status(403).json({ error: 'Account banned', reason: req.session.banReason });
+    }
+    if (!isAnalyst(req)) {
+        return res.status(403).json({ error: 'Requires Analyst role' });
+    }
+    next();
+}
+
+/**
+ * Middleware: Require a specific role or higher
+ * Roles: Basic user < tester < analyst < Staff < admin
+ */
 const ROLE_HIERARCHY: Record<string, number> = {
     'Basic user': 0,
     'tester': 1,
-    'Staff': 2,
-    'admin': 3
+    'analyst': 2,
+    'Staff': 3,
+    'admin': 4
 };
 
 export function hasRole(minRole: string) {

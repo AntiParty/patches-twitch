@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { Channel } from '@/db';
+import { Referral } from '@/dbMetrics';
 import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
 import { requireApiKey } from '@/middleware/auth.middleware';
@@ -25,7 +26,16 @@ const statsFilePath = path.join(process.cwd(), "stats.json");
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
 
-router.get("/", (req: Request, res: Response) => {
+router.get("/", async (req: Request, res: Response) => {
+    const ref = req.query.ref as string;
+    if (ref) {
+        try {
+            await Referral.create({ source: ref });
+            logger.info(`Tracked referral from: ${ref}`);
+        } catch (err) {
+            logger.error("Failed to track referral:", err);
+        }
+    }
     res.sendFile(path.join(viewsPath, "index.html"));
 }); 
 
@@ -33,6 +43,59 @@ router.get("/banned", (req: any, res: Response) => {
     const reason = req.session?.banReason || "No reason provided.";
     res.render("banned", { reason });
 }); 
+
+/**
+ * GET /analyst
+ * Redirect to analyst statistics dashboard
+ */
+router.get("/analyst", (req: Request, res: Response) => {
+    res.redirect('/statistics');
+});
+
+/**
+ * GET /statistics/login
+ * Render statistics login page
+ */
+router.get("/statistics/login", (req: any, res: Response) => {
+    const csrfToken = req.csrfToken ? req.csrfToken() : '';
+    res.send(`<!DOCTYPE html><html><head><title>Statistics Login</title><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;background:#111;color:#eee}form{background:#222;padding:2rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5)}input{display:block;margin-bottom:1rem;padding:0.5rem;width:200px;border-radius:4px;border:1px solid #444;background:#111;color:#fff}button{width:100%;padding:0.5rem;border:none;border-radius:4px;background:#3b82f6;color:#fff;cursor:pointer}button:hover{background:#2563eb}</style></head><body><form method="POST" action="/statistics/login"><h2 style="margin-top:0">Statistics Login</h2><input name="username" placeholder="Username" required><br><input name="password" type="password" placeholder="Password" required><br><input type="hidden" name="_csrf" value="${csrfToken}"><button type="submit">Login</button></form></body></html>`);
+});
+
+/**
+ * POST /statistics/login
+ * Handle statistics login
+ */
+router.post("/statistics/login", async (req: any, res: Response) => {
+    const { username, password } = req.body;
+    const { verifySimpleLogin } = await import('@/util/simpleUsers');
+
+    const user = await verifySimpleLogin(username, password);
+
+    if (user) {
+        req.session.username = user.username;
+        req.session.role = user.role;
+        // Also set isAdmin if role is admin, though simple users usually are analysts
+        if (user.role === 'admin') req.session.isAdmin = true;
+        
+        logger.info(`[Auth] Simple user ${username} logged in as ${user.role}`);
+        return res.redirect('/statistics');
+    }
+
+    logger.warn(`[Auth] Failed login attempt for ${username}`);
+    res.redirect('/statistics/login?error=invalid');
+});
+
+/**
+ * GET /statistics
+ * Statistics dashboard (requires analyst or admin role)
+ */
+router.get("/statistics", async (req: any, res: Response) => {
+    const { requireAnalyst } = await import('@/middleware/auth.middleware');
+    await requireAnalyst(req, res, () => {
+        const viewsPath = path.join(process.cwd(), 'frontend', 'views');
+        res.sendFile(path.join(viewsPath, 'statistics-dashboard.html'));
+    });
+});
 
 
 /**
@@ -377,6 +440,148 @@ router.get('/api/ign-stats', async (req: any, res: any) => {
         res.status(500).json({ error: 'Failed to fetch IGN stats.' });
     }
 })
+
+/**
+ * GET /api/statistics
+ * Get combined statistics data (web requests + command usage + IGN analytics)
+ * Accessible to analysts and admins
+ */
+router.get('/api/statistics', async (req: any, res: any) => {
+    const { requireAnalystAPI } = await import('@/middleware/auth.middleware');
+    
+    // Check if user has analyst or admin role
+    await requireAnalystAPI(req, res, async () => {
+        try {
+            const { getAnalytics } = await import('@/util/webAnalytics');
+            const { getIGNStats } = await import('@/util/ignStats');
+            const { getCommandAnalytics } = await import('@/util/commandAnalytics');
+            const { RequestMetric } = await import('@/dbMetrics');
+            const { Op } = await import('sequelize');
+
+            // Get time ranges
+            const now = new Date();
+            const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const last7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const last30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            // Execute all major data fetches in parallel
+            const [
+                webAnalytics,
+                ignStats,
+                commandAnalytics,
+                requestsByEndpoint,
+                requestsByStatus,
+                hourlyRequests,
+                referrals,
+                performanceHistory
+            ] = await Promise.all([
+                // 1. Web Analytics
+                getAnalytics(),
+
+                // 2. IGN Stats
+                getIGNStats(),
+
+                // 3. Command Analytics
+                getCommandAnalytics(null as any, {
+                    startDate: last30d,
+                    limit: 100
+                }),
+
+                // 4. Request Metrics by Endpoint
+                RequestMetric.findAll({
+                    attributes: [
+                        'endpoint',
+                        [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col('id')), 'count'],
+                        [RequestMetric.sequelize!.fn('AVG', RequestMetric.sequelize!.col('responseTimeMs')), 'avgResponseTime']
+                    ],
+                    where: {
+                        timestamp: { [Op.gte]: last30d }
+                    },
+                    group: ['endpoint'],
+                    order: [['count', 'DESC']] as any,
+                    limit: 20,
+                    raw: true
+                }),
+
+                // 5. Request Metrics by Status
+                RequestMetric.findAll({
+                    attributes: [
+                        'statusCode',
+                        [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col('id')), 'count']
+                    ],
+                    where: {
+                        timestamp: { [Op.gte]: last30d }
+                    },
+                    group: ['statusCode'],
+                    order: [['count', 'DESC']] as any,
+                    raw: true
+                }),
+
+                // 6. Hourly Requests
+                RequestMetric.findAll({
+                    attributes: [
+                        [RequestMetric.sequelize!.fn('strftime', '%H', RequestMetric.sequelize!.col('timestamp')), 'hour'],
+                        [RequestMetric.sequelize!.fn('COUNT', RequestMetric.sequelize!.col('id')), 'count']
+                    ],
+                    where: {
+                        timestamp: { [Op.gte]: last24h }
+                    },
+                    group: ['hour'] as any,
+                    order: [['hour', 'ASC']] as any,
+                    raw: true
+                }),
+
+                // 7. Referrals
+                (async () => {
+                    const { Referral } = await import('@/dbMetrics');
+                    return Referral.findAll({
+                        attributes: [
+                            'source',
+                            [Referral.sequelize!.fn('COUNT', Referral.sequelize!.col('id')), 'count']
+                        ],
+                        where: {
+                            timestamp: { [Op.gte]: last30d }
+                        },
+                        group: ['source'],
+                        order: [['count', 'DESC']] as any,
+                        limit: 50,
+                        raw: true
+                    });
+                })(),
+
+                // 8. Performance History
+                (async () => {
+                   const { PerformanceMetric } = await import('@/dbMetrics');
+                   return PerformanceMetric.findAll({
+                        attributes: ['timestamp', 'cpuUsage', 'memoryUsed', 'botLatencyMs', 'connectedChannels'],
+                        where: {
+                            timestamp: { [Op.gte]: last24h }
+                        },
+                        order: [['timestamp', 'ASC']],
+                        raw: true
+                    });
+                })()
+            ]);
+
+            res.json({
+                webAnalytics,
+                ignStats,
+                commandAnalytics,
+                requestMetrics: {
+                    byEndpoint: requestsByEndpoint,
+                    byStatus: requestsByStatus,
+                    hourlyDistribution: hourlyRequests
+                },
+                referrals,
+                performanceHistory,
+                timestamp: now.toISOString()
+            });
+        } catch (err) {
+            logger.error('Error fetching combined statistics:', err);
+            res.status(500).json({ error: 'Failed to fetch statistics.' });
+        }
+    });
+});
 
 // RS Prediction API
 router.get('/api/rs-prediction', async (req: Request, res: Response) => {

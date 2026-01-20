@@ -33,4 +33,4 @@ export const execute = async (
     }
 }
 
-export const aliases = ["role", "r"];
+export const aliases = ["role"];

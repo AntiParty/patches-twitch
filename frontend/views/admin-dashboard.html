@@ -478,8 +478,14 @@
           <li class="nav-item admin-only" onclick="switchView('database')">
             <i class="fas fa-database"></i> Database
           </li>
+          <li class="nav-item admin-only" onclick="switchView('simple-auth')">
+            <i class="fas fa-key"></i> Analyst Access
+          </li>
           <li class="nav-item" onclick="switchView('analytics')">
             <i class="fas fa-chart-bar"></i> Analytics
+          </li>
+          <li class="nav-item" onclick="window.location.href = '/statistics'">
+            <i class="fas fa-chart-line"></i> Statistics
           </li>
           <li class="nav-item admin-only" onclick="switchView('logs')">
             <i class="fas fa-file-code"></i> System Logs
@@ -701,6 +707,120 @@
                   <!-- Populated by JS -->
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simple Auth View -->
+        <div id="view-simple-auth" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Analyst Access Management</h2>
+            <button class="btn btn-ghost" onclick="fetchSimpleUsers()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Temporary Users (JSON)</div>
+              <button
+                class="btn btn-primary"
+                onclick="showAddSimpleUserModal()"
+              >
+                <i class="fas fa-plus"></i> Add User
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="simple-users-body">
+                  <!-- Loaded dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Simple User Modal -->
+        <div
+          id="add-simple-user-modal"
+          style="
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <div
+            style="
+              background: var(--bg-card);
+              padding: 20px;
+              border-radius: 8px;
+              width: 400px;
+              border: 1px solid var(--border);
+            "
+          >
+            <h3>Add Temporary User</h3>
+            <div style="margin-bottom: 10px">
+              <label style="display: block; margin-bottom: 5px">Username</label>
+              <input
+                id="new-simple-user"
+                class="input"
+                placeholder="Username"
+                style="width: 100%"
+              />
+            </div>
+            <div style="margin-bottom: 10px">
+              <label style="display: block; margin-bottom: 5px">Password</label>
+              <input
+                id="new-simple-pass"
+                class="input"
+                type="password"
+                placeholder="Password"
+                style="width: 100%"
+              />
+            </div>
+            <div style="margin-bottom: 10px">
+              <label style="display: block; margin-bottom: 5px">Role</label>
+              <select id="new-simple-role" class="input" style="width: 100%">
+                <option value="analyst">Analyst</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div
+              style="
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 15px;
+              "
+            >
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  document.getElementById(
+                    'add-simple-user-modal',
+                  ).style.display = 'none'
+                "
+              >
+                Cancel
+              </button>
+              <button class="btn btn-primary" onclick="addSimpleUser()">
+                Add
+              </button>
             </div>
           </div>
         </div>
@@ -2262,6 +2382,100 @@
           btn.innerText = d.enabled ? "Enabled" : "Disabled";
           btn.className = d.enabled ? "btn btn-success" : "btn btn-danger";
         });
+      // --- Simple Auth ---
+      // --- Simple Auth ---
+      window.fetchSimpleUsers = async function () {
+        console.log("Fetching simple users...");
+        try {
+          const res = await fetch("/admin/api/simple-users");
+          const users = await res.json();
+          const tbody = document.getElementById("simple-users-body");
+          tbody.innerHTML = "";
+
+          if (users.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">No users found</td></tr>';
+            return;
+          }
+
+          users.forEach((u) => {
+            const date = new Date(u.createdAt).toLocaleDateString();
+            tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${u.username}</strong></td>
+                        <td>${u.role}</td>
+                        <td style="color:var(--text-muted)">${date}</td>
+                        <td>
+                            <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteSimpleUser('${u.username}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      window.showAddSimpleUserModal = function () {
+        document.getElementById("add-simple-user-modal").style.display = "flex";
+      };
+
+      window.addSimpleUser = async function () {
+        const username = document.getElementById("new-simple-user").value;
+        const password = document.getElementById("new-simple-pass").value;
+        const role = document.getElementById("new-simple-role").value;
+
+        if (!username || !password)
+          return alert("Username and password required");
+
+        try {
+          await ensureCsrfToken();
+          const res = await fetch("/admin/api/simple-users", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": CSRF_TOKEN,
+            },
+            body: JSON.stringify({ username, password, role }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById("add-simple-user-modal").style.display =
+              "none";
+            document.getElementById("new-simple-user").value = "";
+            document.getElementById("new-simple-pass").value = "";
+            fetchSimpleUsers();
+          } else {
+            alert("Error: " + data.error);
+          }
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
+
+      window.deleteSimpleUser = async function (username) {
+        if (!confirm("Delete user " + username + "?")) return;
+        try {
+          await ensureCsrfToken();
+          const res = await fetch(
+            "/admin/api/simple-users/" + encodeURIComponent(username),
+            {
+              method: "DELETE",
+              headers: { "CSRF-Token": CSRF_TOKEN },
+            },
+          );
+          const data = await res.json();
+          if (data.success) {
+            fetchSimpleUsers();
+          } else {
+            alert("Error: " + data.error);
+          }
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      };
     </script>
   </body>
 </html>

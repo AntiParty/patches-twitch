@@ -6,7 +6,7 @@ import logger from '@/util/logger';
 // ---------- Tracking ----------
 const IGNORED_EXTS = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.map'];
 //ignore any api/overlay/data/ endpoints & api/overlay/config/
-const IGNORED_PATHS = ['/api/overlay/data/', '/api/overlay/config/'];
+const IGNORED_PATHS = ['/api/', '/health', '/api/overlay/data/', '/api/overlay/config/', '/api/statistics', ];
 /**
  * 
  * @param req 

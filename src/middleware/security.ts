@@ -148,12 +148,67 @@ export function rateLimitRegenerate(req: Request, res: Response, next: NextFunct
     next();
 }
 
+/**
+ * Specifically for user feedback to prevent spam
+ * 1 request per minute, 5 per hour
+ */
+const feedbackTracker = new Map<string, { minuteCount: number; hourCount: number; minuteReset: number; hourReset: number }>();
+
+export function rateLimitFeedback(req: Request, res: Response, next: NextFunction): void {
+    const ip = req.ip || 'unknown';
+    const now = Date.now();
+    
+    let record = feedbackTracker.get(ip);
+
+    if (!record) {
+        record = {
+            minuteCount: 0,
+            hourCount: 0,
+            minuteReset: now + 60000,
+            hourReset: now + 3600000
+        };
+        feedbackTracker.set(ip, record);
+    }
+
+    // Reset windows if expired
+    if (now > record.minuteReset) {
+        record.minuteCount = 0;
+        record.minuteReset = now + 60000;
+    }
+    if (now > record.hourReset) {
+        record.hourCount = 0;
+        record.hourReset = now + 3600000;
+    }
+
+    // Check limits
+    if (record.minuteCount >= 1) {
+        res.status(429).json({ error: 'Please wait a minute before sending more feedback.' });
+        return;
+    }
+    if (record.hourCount >= 5) {
+        res.status(429).json({ error: 'Feedback limit reached for this hour.' });
+        return;
+    }
+
+    // Increment and proceed
+    record.minuteCount++;
+    record.hourCount++;
+    next();
+}
+
 // Clean up old entries periodically
 setInterval(() => {
     const now = Date.now();
+    // Clean requestCounts
     for (const [key, record] of requestCounts.entries()) {
         if (now > record.resetAt) {
             requestCounts.delete(key);
+        }
+    }
+    // Clean feedbackTracker
+    for (const [key, record] of feedbackTracker.entries()) {
+        if (now > record.hourReset) {
+            feedbackTracker.delete(key);
         }
     }
 }, 300000);

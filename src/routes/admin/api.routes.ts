@@ -731,4 +731,41 @@ router.get('/api/statistics', async (req: any, res: any) => {
     });
 });
 
+/**
+ * GET /admin/api/feedback
+ * List recent user feedback
+ */
+router.get('/api/feedback', requireStaffAPI, async (req: any, res: any) => {
+    try {
+        const { Feedback } = await import('@/db');
+        const feedback = await Feedback.findAll({
+            order: [['created_at', 'DESC']],
+            limit: 100
+        });
+        res.json({ feedback });
+    } catch (err) {
+        logger.error('Error fetching feedback:', err);
+        res.status(500).json({ error: 'Failed to fetch feedback' });
+    }
+});
+
+/**
+ * DELETE /admin/api/feedback/:id
+ * Delete a feedback entry
+ */
+router.delete('/api/feedback/:id', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        const { Feedback } = await import('@/db');
+        const deleted = await Feedback.destroy({ where: { id: req.params.id } });
+        if (deleted) {
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Feedback not found' });
+        }
+    } catch (err) {
+        logger.error('Error deleting feedback:', err);
+        res.status(500).json({ error: 'Failed to delete feedback' });
+    }
+});
+
 export default router;

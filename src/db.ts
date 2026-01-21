@@ -457,6 +457,50 @@ const dbReady = sequelize.sync()
   });
 
 // Returns stream sessions started within the last 8 hours (adjust as needed)
+
+// Feedback model
+class Feedback extends Model {
+  declare id: number;
+  declare user_id: string | null;
+  declare username: string | null;
+  declare message: string;
+  declare type: string;
+  declare created_at: Date;
+}
+
+Feedback.init(
+  {
+    user_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    message: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'general',
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'Feedback',
+    tableName: 'Feedback',
+    timestamps: false,
+  }
+);
+
 export async function getActiveSessions() {
   const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
   return await StreamSession.findAll({
@@ -468,4 +512,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, dbReady, getCustomResponse, setCustomResponse };

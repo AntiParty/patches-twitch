@@ -11,6 +11,7 @@ import { Referral } from '@/dbMetrics';
 import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
 import { requireApiKey } from '@/middleware/auth.middleware';
+import { rateLimitFeedback } from '@/middleware/security';
 import { getAnalytics } from '@/util/webAnalytics';
 import { log } from 'console';
 
@@ -92,8 +93,8 @@ router.post("/statistics/login", async (req: any, res: Response) => {
 router.get("/statistics", async (req: any, res: Response) => {
     const { requireAnalyst } = await import('@/middleware/auth.middleware');
     await requireAnalyst(req, res, () => {
-        const viewsPath = path.join(process.cwd(), 'frontend', 'views');
-        res.sendFile(path.join(viewsPath, 'statistics-dashboard.html'));
+        const csrfToken = req.csrfToken ? req.csrfToken() : '';
+        res.render('statistics-dashboard', { csrfToken });
     });
 });
 
@@ -647,6 +648,94 @@ router.get('/api/active-streamers', async (req: Request, res: Response) => {
     } catch (err) {
         logger.error('Error fetching active streamers:', err);
         res.status(500).json({ error: 'Failed to fetch active streamers' });
+    }
+});
+
+/**
+ * POST /api/feedback
+ * Submit user feedback
+ */
+router.post('/api/feedback', rateLimitFeedback, async (req: Request, res: Response) => {
+    try {
+        let { message, type } = req.body;
+
+        // --- Input Validation ---
+        if (!message || typeof message !== 'string') {
+             res.status(400).json({ error: 'Message is required.' });
+             return;
+        }
+
+        // Clean and trim message
+        message = message.trim();
+
+        // Max length check
+        if (message.length < 5) {
+            res.status(400).json({ error: 'Message is too short (min 5 characters).' });
+            return;
+        }
+        if (message.length > 1000) {
+            res.status(400).json({ error: 'Message is too long (max 1000 characters).' });
+            return;
+        }
+
+        // Valid types check
+        const allowedTypes = ['general', 'bug', 'feature', 'test'];
+        if (type && !allowedTypes.includes(type)) {
+            type = 'general'; // Default to general if invalid type provided
+        }
+
+        // Basic sanitization: remove HTML-like tags to prevent injection (though EJS/DB usually handles this)
+        const sanitizedMessage = message.replace(/<[^>]*>?/gm, '');
+
+        if (sanitizedMessage.length === 0) {
+            res.status(400).json({ error: 'Invalid message content.' });
+            return;
+        }
+
+        const { Feedback } = await import('@/db');
+        
+        let username: string | null = null;
+        let userId: string | null = null;
+
+        // Try to get user info from session if available
+        if ((req as any).session && (req as any).session.username) {
+            username = (req as any).session.username;
+        }
+        
+        await Feedback.create({
+            message: sanitizedMessage,
+            type: type || 'general',
+            username: username,
+            user_id: userId
+        });
+
+        logger.info(`Feedback received from ${username || 'Anonymous'}: ${sanitizedMessage}`);
+
+        // Send to Discord Webhook
+        const discordWebhookUrl = 'https://discord.com/api/webhooks/1463388601831129285/ThIc8o8BkKdbvYGW_at6o5ETRGcAHDr4c4YYSmFBfdH1CwBhwhgMdnZ5U8c1qqNkwkyM';
+        try {
+            await axios.post(discordWebhookUrl, {
+                embeds: [{
+                    title: `📝 New Feedback (${type})`,
+                    description: sanitizedMessage,
+                    color: type === 'bug' ? 0xe74c3c : (type === 'feature' ? 0x3498db : 0x9146FF),
+                    fields: [
+                        { name: 'User', value: username || 'Anonymous', inline: true },
+                        { name: 'Type', value: type || 'general', inline: true }
+                    ],
+                    timestamp: new Date().toISOString(),
+                    footer: { text: 'FinalsRS Feedback System' }
+                }]
+            });
+        } catch (discordErr) {
+            logger.error('Failed to send feedback to Discord:', discordErr);
+        }
+
+        res.status(200).json({ success: true, message: 'Feedback submitted successfully.' });
+
+    } catch (err) {
+        logger.error('Error submitting feedback:', err);
+        res.status(500).json({ error: 'Failed to submit feedback.' });
     }
 });
 

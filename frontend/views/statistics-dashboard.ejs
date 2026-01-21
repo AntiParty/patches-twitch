@@ -5,6 +5,11 @@
     <title>Statistics Dashboard · FinalsRS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="csrf-token" content="<%= csrfToken %>" />
+
+    <!-- icons -->
+    <link rel="icon" href="./assets/logo.png" />
+    <link rel="apple-touch-icon" href="./assets/logo.png" />
 
     <style>
       :root {
@@ -302,6 +307,51 @@
       .status-indicator.warning {
         background: var(--warning);
       }
+
+      /* Pagination Styles */
+      .pagination-container {
+        margin-top: 16px;
+        display: flex;
+        justify-content: center;
+      }
+      .pagination {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .btn-pagination {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 6px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+      .btn-pagination:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--text);
+        background: rgba(245, 194, 107, 0.05);
+      }
+      .btn-pagination.active {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: rgba(245, 194, 107, 0.1);
+      }
+      .btn-pagination:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .pagination-dots {
+        color: var(--muted);
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -421,6 +471,7 @@
               </tr>
             </tbody>
           </table>
+          <div id="web-pagination" class="pagination-container"></div>
         </div>
       </div>
 
@@ -470,6 +521,7 @@
               </tr>
             </tbody>
           </table>
+          <div id="commands-pagination" class="pagination-container"></div>
         </div>
 
         <div class="card" style="margin-top: 24px">
@@ -536,6 +588,7 @@
                 </tr>
               </tbody>
             </table>
+            <div id="ign-daily-pagination" class="pagination-container"></div>
           </div>
 
           <div class="card">
@@ -553,6 +606,7 @@
                 </tr>
               </tbody>
             </table>
+            <div id="ign-streams-pagination" class="pagination-container"></div>
           </div>
         </div>
       </div>
@@ -600,6 +654,7 @@
                 </tr>
               </tbody>
             </table>
+            <div id="referrals-pagination" class="pagination-container"></div>
           </div>
         </div>
       </div>
@@ -648,6 +703,92 @@
     <script>
       let charts = {};
       let statsData = null;
+
+      // Pagination State
+      const ITEMS_PER_PAGE = 10;
+      let currentPages = {
+        web: 1,
+        commands: 1,
+        ignDaily: 1,
+        ignStreams: 1,
+        referrals: 1,
+      };
+
+      function changePage(key, page) {
+        currentPages[key] = page;
+        if (!statsData) return;
+
+        switch (key) {
+          case "web":
+            updateWebRequests(statsData);
+            break;
+          case "commands":
+            updateCommands(statsData);
+            break;
+          case "ignDaily":
+          case "ignStreams":
+            updateIGNAnalytics(statsData);
+            break;
+          case "referrals":
+            updateReferrals(statsData);
+            break;
+        }
+      }
+
+      function renderPaginationHTML(totalItems, currentPage, key) {
+        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        if (totalPages <= 1) return "";
+
+        let html = '<div class="pagination">';
+
+        // Prev
+        html += `<button class="btn-pagination" ${currentPage === 1 ? "disabled" : ""} onclick="changePage('${key}', ${currentPage - 1})">«</button>`;
+
+        // Pages logic
+        const range = [];
+        if (totalPages <= 7) {
+          for (let i = 1; i <= totalPages; i++) range.push(i);
+        } else {
+          if (currentPage <= 4) {
+            range.push(1, 2, 3, 4, 5, "...", totalPages);
+          } else if (currentPage >= totalPages - 3) {
+            range.push(
+              1,
+              "...",
+              totalPages - 4,
+              totalPages - 3,
+              totalPages - 2,
+              totalPages - 1,
+              totalPages,
+            );
+          } else {
+            range.push(
+              1,
+              "...",
+              currentPage - 1,
+              currentPage,
+              currentPage + 1,
+              "...",
+              totalPages,
+            );
+          }
+        }
+
+        range.forEach((p) => {
+          if (p === "...") {
+            html += `<span class="pagination-dots">...</span>`;
+          } else {
+            const activeClass = p === currentPage ? "active" : "";
+            html += `<button class="btn-pagination ${activeClass}" onclick="changePage('${key}', ${p})">${p}</button>`;
+          }
+        });
+
+        // Next
+        html += `<button class="btn-pagination" ${currentPage === totalPages ? "disabled" : ""} onclick="changePage('${key}', ${currentPage + 1})">»</button>`;
+
+        html += "</div>";
+        return html;
+      }
 
       // Tab switching
       document.querySelectorAll(".tab").forEach((tab) => {
@@ -729,12 +870,17 @@
         // Update endpoints table
         const endpointsTable = document.getElementById("endpoints-table");
         const endpoints = data.requestMetrics?.byEndpoint || [];
+        const page = currentPages.web;
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        const pageData = endpoints.slice(start, end);
 
         if (endpoints.length === 0) {
           endpointsTable.innerHTML =
             '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+          document.getElementById("web-pagination").innerHTML = "";
         } else {
-          endpointsTable.innerHTML = endpoints
+          endpointsTable.innerHTML = pageData
             .map(
               (e) => `
         <tr>
@@ -745,6 +891,8 @@
       `,
             )
             .join("");
+          document.getElementById("web-pagination").innerHTML =
+            renderPaginationHTML(endpoints.length, page, "web");
         }
       }
 
@@ -770,13 +918,17 @@
         // Update commands table
         const commandsTable = document.getElementById("commands-table");
         const commands = analytics.topCommands || [];
+        const page = currentPages.commands;
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        const pageData = commands.slice(start, end);
 
         if (commands.length === 0) {
           commandsTable.innerHTML =
             '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+          document.getElementById("commands-pagination").innerHTML = "";
         } else {
-          commandsTable.innerHTML = commands
-            .slice(0, 20)
+          commandsTable.innerHTML = pageData
             .map(
               (c) => `
         <tr>
@@ -787,6 +939,8 @@
       `,
             )
             .join("");
+          document.getElementById("commands-pagination").innerHTML =
+            renderPaginationHTML(commands.length, page, "commands");
         }
 
         // Update commands chart (if we have daily data)
@@ -819,14 +973,20 @@
 
         // Update daily table
         const dailyTable = document.getElementById("ign-daily");
-        const daily = ign.dailyBreakdown || [];
+        const dailyRaw = ign.dailyBreakdown || [];
+        const daily = [...dailyRaw].reverse();
+
+        const pageDaily = currentPages.ignDaily;
+        const startDaily = (pageDaily - 1) * ITEMS_PER_PAGE;
+        const endDaily = startDaily + ITEMS_PER_PAGE;
+        const dailyData = daily.slice(startDaily, endDaily);
 
         if (daily.length === 0) {
           dailyTable.innerHTML =
             '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+          document.getElementById("ign-daily-pagination").innerHTML = "";
         } else {
-          dailyTable.innerHTML = [...daily]
-            .reverse()
+          dailyTable.innerHTML = dailyData
             .map(
               (d) => `
         <tr>
@@ -837,17 +997,25 @@
       `,
             )
             .join("");
+          document.getElementById("ign-daily-pagination").innerHTML =
+            renderPaginationHTML(daily.length, pageDaily, "ignDaily");
         }
 
         // Update streams table
         const streamsTable = document.getElementById("ign-streams");
         const streams = ign.recentStreams || [];
 
+        const pageStreams = currentPages.ignStreams;
+        const startStreams = (pageStreams - 1) * ITEMS_PER_PAGE;
+        const endStreams = startStreams + ITEMS_PER_PAGE;
+        const streamsData = streams.slice(startStreams, endStreams);
+
         if (streams.length === 0) {
           streamsTable.innerHTML =
             '<tr><td colspan="2" style="text-align:center; color:var(--muted);">No streams tracked yet</td></tr>';
+          document.getElementById("ign-streams-pagination").innerHTML = "";
         } else {
-          streamsTable.innerHTML = streams
+          streamsTable.innerHTML = streamsData
             .map(
               (s) => `
         <tr>
@@ -860,6 +1028,8 @@
       `,
             )
             .join("");
+          document.getElementById("ign-streams-pagination").innerHTML =
+            renderPaginationHTML(streams.length, pageStreams, "ignStreams");
         }
       }
 
@@ -1125,12 +1295,18 @@
 
         // Table
         const table = document.getElementById("referrals-table");
+
+        const page = currentPages.referrals;
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        const pageData = referrals.slice(start, end);
+
         if (referrals.length === 0) {
           table.innerHTML =
             '<tr><td colspan="3" style="text-align:center; color:var(--muted);">No data available</td></tr>';
+          document.getElementById("referrals-pagination").innerHTML = "";
         } else {
-          table.innerHTML = referrals
-            .slice(0, 10)
+          table.innerHTML = pageData
             .map(
               (r) => `
                 <tr>
@@ -1141,6 +1317,8 @@
             `,
             )
             .join("");
+          document.getElementById("referrals-pagination").innerHTML =
+            renderPaginationHTML(referrals.length, page, "referrals");
         }
 
         // Chart
@@ -1324,5 +1502,6 @@
       // Auto-refresh every 30 seconds
       setInterval(loadStatistics, 30000);
     </script>
+    <script src="/js/feedback.js"></script>
   </body>
 </html>

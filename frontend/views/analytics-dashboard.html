@@ -1,455 +1,531 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>IGN Analytics · FinalsRS</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <title>IGN Analytics · FinalsRS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    :root {
-      --bg: #0b0b0d;
-      --panel: #141418;
-      --border: #1f1f25;
-      --text: #eaeaea;
-      --muted: #9a9a9a;
-      --accent: #f5c26b;
-      --accent-glow: rgba(245, 194, 107, 0.1);
-      --live: #ff4b4b;
-    }
+    <style>
+      :root {
+        --bg: #0b0b0d;
+        --panel: #141418;
+        --border: #1f1f25;
+        --text: #eaeaea;
+        --muted: #9a9a9a;
+        --accent: #f5c26b;
+        --accent-glow: rgba(245, 194, 107, 0.1);
+        --live: #ff4b4b;
+      }
 
-    * {
-      box-sizing: border-box;
-      font-family: Inter, system-ui, sans-serif;
-    }
+      * {
+        box-sizing: border-box;
+        font-family: Inter, system-ui, sans-serif;
+      }
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-    }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+      }
 
-    header {
-      padding: 20px 28px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+      header {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-    header h1 {
-      font-size: 18px;
-      margin: 0;
-      letter-spacing: 0.04em;
-    }
+      header h1 {
+        font-size: 18px;
+        margin: 0;
+        letter-spacing: 0.04em;
+      }
 
-    header span {
-      font-size: 13px;
-      color: var(--muted);
-    }
+      header span {
+        font-size: 13px;
+        color: var(--muted);
+      }
 
-    main {
-      padding: 28px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+      main {
+        padding: 28px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 18px;
-      margin-bottom: 32px;
-    }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 18px;
+        margin-bottom: 32px;
+      }
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
-      transition: border-color 0.2s ease;
-    }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        transition: border-color 0.2s ease;
+      }
 
-    .card:hover {
-      border-color: #2f2f35;
-    }
+      .card:hover {
+        border-color: #2f2f35;
+      }
 
-    .label {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
 
-    .value {
-      font-size: 34px;
-      font-weight: 700;
-      color: var(--accent);
-    }
+      .value {
+        font-size: 34px;
+        font-weight: 700;
+        color: var(--accent);
+      }
 
-    .sub {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 6px;
-    }
+      .sub {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 24px;
-      margin-top: 24px;
-    }
+      .grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+        margin-top: 24px;
+      }
 
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+      .table {
+        width: 100%;
+        border-collapse: collapse;
+      }
 
-    .table th,
-    .table td {
-      padding: 12px;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
+      .table th,
+      .table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
 
-    .table th {
-      text-align: left;
-      color: var(--muted);
-      font-weight: 600;
-    }
+      .table th {
+        text-align: left;
+        color: var(--muted);
+        font-weight: 600;
+      }
 
-    .badge {
-      color: var(--accent);
-      font-weight: 600;
-    }
+      .badge {
+        color: var(--accent);
+        font-weight: 600;
+      }
 
-    footer {
-      padding: 16px 28px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      margin-top: 40px;
-    }
+      footer {
+        padding: 16px 28px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+        margin-top: 40px;
+      }
 
-    .chart-container {
-      height: 250px;
-      margin-top: 12px;
-    }
+      .chart-container {
+        height: 250px;
+        margin-top: 12px;
+      }
 
-    .pulse {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--live);
-      margin-right: 6px;
-      box-shadow: 0 0 0 rgba(255, 75, 75, 0.4);
-      animation: pulse 2s infinite;
-    }
+      .pulse {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--live);
+        margin-right: 6px;
+        box-shadow: 0 0 0 rgba(255, 75, 75, 0.4);
+        animation: pulse 2s infinite;
+      }
 
-    @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 75, 75, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 75, 75, 0); }
-    }
-  </style>
-</head>
-<body>
+      @keyframes pulse {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.7);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 10px rgba(255, 75, 75, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 75, 75, 0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>IGN Analytics</h1>
+      <span>FinalsRS.com</span>
+    </header>
 
-<header>
-  <h1>IGN Analytics</h1>
-  <span>FinalsRS.com</span>
-</header>
+    <main>
+      <!-- STAT CARDS -->
+      <section class="stats">
+        <div class="card">
+          <div class="label">7-Day Total</div>
+          <div class="value" id="total">—</div>
+          <div class="sub">Stored visits</div>
+        </div>
 
-<main>
-  <!-- STAT CARDS -->
-  <section class="stats">
-    <div class="card">
-      <div class="label">7-Day Total</div>
-      <div class="value" id="total">—</div>
-      <div class="sub">Stored visits</div>
-    </div>
+        <div class="card">
+          <div class="label">Today</div>
+          <div class="value" id="today">—</div>
+          <div class="sub">Last 24 hours</div>
+        </div>
 
-    <div class="card">
-      <div class="label">Today</div>
-      <div class="value" id="today">—</div>
-      <div class="sub">Last 24 hours</div>
-    </div>
+        <div class="card">
+          <div class="label">Last 5 Minutes</div>
+          <div class="value" id="recent">—</div>
+          <div class="sub">Live activity</div>
+        </div>
 
-    <div class="card">
-      <div class="label">Last 5 Minutes</div>
-      <div class="value" id="recent">—</div>
-      <div class="sub">Live activity</div>
-    </div>
+        <div class="card">
+          <div class="label">Hits While Live</div>
+          <div class="value" id="hits-live">—</div>
+          <div class="sub">Stream conversion</div>
+        </div>
 
-    <div class="card">
-      <div class="label">Hits While Live</div>
-      <div class="value" id="hits-live">—</div>
-      <div class="sub">Stream conversion</div>
-    </div>
+        <div class="card">
+          <div class="label">Twitch Status</div>
+          <div class="value" id="live-status">OFFLINE</div>
+          <div class="sub" id="live-id">ID: 660153356</div>
+        </div>
+      </section>
 
-    <div class="card">
-      <div class="label">Twitch Status</div>
-      <div class="value" id="live-status">OFFLINE</div>
-      <div class="sub" id="live-id">ID: 660153356</div>
-    </div>
-  </section>
-
-  <!-- ACTIVITY HEATMAP / CHART -->
-  <div class="card" style="margin-bottom: 24px;">
-    <div class="label">Activity Heatmap (Daily Hits)</div>
-    <div class="chart-container">
-      <canvas id="heatmapChart"></canvas>
-    </div>
-  </div>
-
-  <!-- LOWER GRID -->
-  <section class="grid">
-    <!-- DAILY RECAP -->
-    <div class="card">
-      <div class="label" style="margin-bottom:12px;">Daily Breakdown</div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Hits</th>
-            <th>While Live</th>
-          </tr>
-        </thead>
-        <tbody id="daily">
-          <tr><td colspan="3" style="color:var(--muted);">Loading daily data…</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- RECENT STREAMS / DETAILS -->
-    <div style="display: flex; flex-direction: column; gap: 24px;">
-      <div class="card">
-        <div class="label" style="margin-bottom:12px;">Recent Streams</div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th style="text-align:right">Hits</th>
-            </tr>
-          </thead>
-          <tbody id="streams">
-            <tr><td colspan="2" style="color:var(--muted);">No streams tracked yet…</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="card" id="stream-detail" style="display:none; border-color: var(--live); background: rgba(255, 75, 75, 0.02);">
-        <div class="label" style="color: var(--live)">Stream Detail</div>
-        <div id="stream-detail-content">
-            <h3 id="sd-title" style="margin: 8px 0 4px 0; font-size: 16px;">Title</h3>
-            <div id="sd-date" style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">Date</div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 13px; color: var(--muted);">Conversion:</span>
-                <span id="sd-hits" style="font-size: 20px; font-weight: 700; color: var(--live);">0</span>
-            </div>
+      <!-- ACTIVITY HEATMAP / CHART -->
+      <div class="card" style="margin-bottom: 24px">
+        <div class="label">Activity Heatmap (Daily Hits)</div>
+        <div class="chart-container">
+          <canvas id="heatmapChart"></canvas>
         </div>
       </div>
-    </div>
 
-    <!-- RECENT VISITS -->
-    <div class="card">
-      <div class="label" style="margin-bottom:12px;">Recent Visitors</div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Stream</th>
-            <th>Type</th>
-          </tr>
-        </thead>
-        <tbody id="visits">
-          <tr><td colspan="3" style="color:var(--muted);">Establishing connection…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+      <!-- LOWER GRID -->
+      <section class="grid">
+        <!-- DAILY RECAP -->
+        <div class="card">
+          <div class="label" style="margin-bottom: 12px">Daily Breakdown</div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Hits</th>
+                <th>While Live</th>
+              </tr>
+            </thead>
+            <tbody id="daily">
+              <tr>
+                <td colspan="3" style="color: var(--muted)">
+                  Loading daily data…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-  <!-- NOTES / META -->
-  <div class="card" style="margin-top: 24px;">
-    <div class="label">Notes</div>
-    <p style="font-size:13px; line-height:1.5; color:var(--muted);">
-      Tracking visits attributed to the in-game name <span class="badge">FinalsRS.com</span>. 
-      Includes conversion metrics for when <span class="badge" style="color:var(--live)">antiparty</span> is live on Twitch.
-    </p>
-  </div>
-</main>
+        <!-- RECENT STREAMS / DETAILS -->
+        <div style="display: flex; flex-direction: column; gap: 24px">
+          <div class="card">
+            <div class="label" style="margin-bottom: 12px">Recent Streams</div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th style="text-align: right">Hits</th>
+                </tr>
+              </thead>
+              <tbody id="streams">
+                <tr>
+                  <td colspan="2" style="color: var(--muted)">
+                    No streams tracked yet…
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-<footer>
-  FinalsRS · IGN Analytics Dashboard
-</footer>
+          <div
+            class="card"
+            id="stream-detail"
+            style="
+              display: none;
+              border-color: var(--live);
+              background: rgba(255, 75, 75, 0.02);
+            "
+          >
+            <div class="label" style="color: var(--live)">Stream Detail</div>
+            <div id="stream-detail-content">
+              <h3 id="sd-title" style="margin: 8px 0 4px 0; font-size: 16px">
+                Title
+              </h3>
+              <div
+                id="sd-date"
+                style="
+                  font-size: 12px;
+                  color: var(--muted);
+                  margin-bottom: 12px;
+                "
+              >
+                Date
+              </div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                "
+              >
+                <span style="font-size: 13px; color: var(--muted)"
+                  >Conversion:</span
+                >
+                <span
+                  id="sd-hits"
+                  style="font-size: 20px; font-weight: 700; color: var(--live)"
+                  >0</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
 
-<script>
-  let heatmapChart = null;
+        <!-- RECENT VISITS -->
+        <div class="card">
+          <div class="label" style="margin-bottom: 12px">Recent Visitors</div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Stream</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody id="visits">
+              <tr>
+                <td colspan="3" style="color: var(--muted)">
+                  Establishing connection…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-  function formatTime(seconds) {
-    if (seconds < 60) return seconds + "s ago";
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    if (m < 60) return `${m}m ${s}s ago`;
-    const h = Math.floor(m / 60);
-    const rm = m % 60;
-    if (h < 24) return `${h}h ${rm}m ago`;
-    const d = Math.floor(h / 24);
-    const rh = h % 24;
-    return `${d}d ${rh}h ago`;
-  }
+      <!-- NOTES / META -->
+      <div class="card" style="margin-top: 24px">
+        <div class="label">Notes</div>
+        <p style="font-size: 13px; line-height: 1.5; color: var(--muted)">
+          Tracking visits attributed to the in-game name
+          <span class="badge">FinalsRS.com</span>. Includes conversion metrics
+          for when
+          <span class="badge" style="color: var(--live)">antiparty</span> is
+          live on Twitch.
+        </p>
+      </div>
+    </main>
 
-  function updateHeatmap(dailyData) {
-    const ctx = document.getElementById('heatmapChart').getContext('2d');
-    
-    // Sort to ensure chronological order
-    const sorted = [...dailyData].sort((a,b) => a.day.localeCompare(b.day));
-    const labels = sorted.map(d => {
-        const date = new Date(d.day);
-        return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    });
-    const values = sorted.map(d => d.count);
-    const liveValues = sorted.map(d => d.liveCount);
+    <footer>FinalsRS · IGN Analytics Dashboard</footer>
 
-    if (heatmapChart) {
-        heatmapChart.data.labels = labels;
-        heatmapChart.data.datasets[0].data = values;
-        heatmapChart.data.datasets[1].data = liveValues;
-        heatmapChart.update('none');
-        return;
-    }
+    <script>
+      let heatmapChart = null;
 
-    heatmapChart = new Chart(ctx, {
-        type: 'line',
-        data: {
+      function formatTime(seconds) {
+        if (seconds < 60) return seconds + "s ago";
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        if (m < 60) return `${m}m ${s}s ago`;
+        const h = Math.floor(m / 60);
+        const rm = m % 60;
+        if (h < 24) return `${h}h ${rm}m ago`;
+        const d = Math.floor(h / 24);
+        const rh = h % 24;
+        return `${d}d ${rh}h ago`;
+      }
+
+      function updateHeatmap(dailyData) {
+        const ctx = document.getElementById("heatmapChart").getContext("2d");
+
+        // Sort to ensure chronological order
+        const sorted = [...dailyData].sort((a, b) =>
+          a.day.localeCompare(b.day),
+        );
+        const labels = sorted.map((d) => {
+          const date = new Date(d.day);
+          return date.toLocaleDateString(undefined, {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+        });
+        const values = sorted.map((d) => d.count);
+        const liveValues = sorted.map((d) => d.liveCount);
+
+        if (heatmapChart) {
+          heatmapChart.data.labels = labels;
+          heatmapChart.data.datasets[0].data = values;
+          heatmapChart.data.datasets[1].data = liveValues;
+          heatmapChart.update("none");
+          return;
+        }
+
+        heatmapChart = new Chart(ctx, {
+          type: "line",
+          data: {
             labels: labels,
             datasets: [
-                {
-                    label: 'TOTAL REACH',
-                    data: values,
-                    borderColor: '#f5c26b',
-                    borderWidth: 4,
-                    pointBackgroundColor: '#f5c26b',
-                    tension: 0.4,
-                    fill: true,
-                    backgroundColor: 'rgba(245, 194, 107, 0.1)'
-                },
-                {
-                    label: 'CONVERSION (LIVE)',
-                    data: liveValues,
-                    borderColor: '#ff4b4b',
-                    borderWidth: 3,
-                    borderDash: [5, 5],
-                    pointRadius: 0,
-                    tension: 0.4,
-                    fill: true,
-                    backgroundColor: 'rgba(255, 75, 75, 0.05)'
-                }
-            ]
-        },
-        options: {
+              {
+                label: "TOTAL REACH",
+                data: values,
+                borderColor: "#f5c26b",
+                borderWidth: 4,
+                pointBackgroundColor: "#f5c26b",
+                tension: 0.4,
+                fill: true,
+                backgroundColor: "rgba(245, 194, 107, 0.1)",
+              },
+              {
+                label: "CONVERSION (LIVE)",
+                data: liveValues,
+                borderColor: "#ff4b4b",
+                borderWidth: 3,
+                borderDash: [5, 5],
+                pointRadius: 0,
+                tension: 0.4,
+                fill: true,
+                backgroundColor: "rgba(255, 75, 75, 0.05)",
+              },
+            ],
+          },
+          options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: { color: '#9a9a9a', boxWidth: 12, font: { size: 11, weight: 'bold' } }
-                }
+              legend: {
+                display: true,
+                position: "top",
+                align: "end",
+                labels: {
+                  color: "#9a9a9a",
+                  boxWidth: 12,
+                  font: { size: 11, weight: "bold" },
+                },
+              },
             },
             scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
-                    ticks: { color: '#666', font: { size: 10 } }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#9a9a9a', font: { size: 10 } }
-                }
-            }
-        }
-    });
-  }
-
-  const currentStats = { total: 0, today: 0, recent: 0, liveHits: 0 };
-  let lastFetchedVisits = [];
-
-  // Update ages and predict counter growth every 100ms for ultra-smooth movement
-  setInterval(() => {
-    // 1. Update ages in the table
-    const tbody = document.getElementById("visits");
-    const rows = tbody.getElementsByTagName("tr");
-    lastFetchedVisits.forEach((v, i) => {
-        if (rows[i] && rows[i].cells[0]) {
-            const currentSeconds = v.secondsAgo + Math.floor((Date.now() - v.loadedAt) / 1000);
-            rows[i].cells[0].textContent = formatTime(currentSeconds);
-        }
-    });
-
-    // 2. Continuous "Drift" increment if we have a live visitor velocity
-    // This makes the counters keep creeping up slightly between fetches
-    if (currentStats.recent > 0) {
-        // Hits per 100ms based on last 5 min (300 seconds)
-        const drift = (currentStats.recent / 300) / 10;
-        
-        currentStats.total += drift;
-        currentStats.today += drift;
-        if (document.getElementById("live-status").textContent.includes("LIVE")) {
-            currentStats.liveHits += drift;
-        }
-
-        document.getElementById("total").textContent = Math.floor(currentStats.total).toLocaleString();
-        document.getElementById("today").textContent = Math.floor(currentStats.today).toLocaleString();
-        document.getElementById("hits-live").textContent = Math.floor(currentStats.liveHits).toLocaleString();
-    }
-  }, 100);
-
-  async function loadStats() {
-    try {
-      const res = await fetch("/api/ign-stats");
-      const data = await res.json();
-
-      // Update baseline stats
-      currentStats.total = data.last7days;
-      currentStats.today = data.today;
-      currentStats.recent = data.last5min;
-      currentStats.liveHits = data.totalLive;
-      
-      document.getElementById("recent").textContent = data.last5min.toLocaleString();
-
-      const liveEl = document.getElementById("live-status");
-      if (data.isCurrentlyLive) {
-          liveEl.innerHTML = '<span class="pulse"></span> LIVE';
-          liveEl.style.color = "#ff4b4b";
-      } else {
-          liveEl.textContent = "OFFLINE";
-          liveEl.style.color = "var(--muted)";
+              y: {
+                beginAtZero: true,
+                grid: { color: "rgba(255, 255, 255, 0.03)", drawBorder: false },
+                ticks: { color: "#666", font: { size: 10 } },
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: "#9a9a9a", font: { size: 10 } },
+              },
+            },
+          },
+        });
       }
 
-      if (data.dailyBreakdown) updateHeatmap(data.dailyBreakdown);
+      const currentStats = { total: 0, today: 0, recent: 0, liveHits: 0 };
+      let lastFetchedVisits = [];
 
-      // Recent Streams
-      const streamsBody = document.getElementById("streams");
-      streamsBody.innerHTML = "";
-      if (data.recentStreams && data.recentStreams.length > 0) {
-          data.recentStreams.forEach(s => {
+      // Update ages and predict counter growth every 100ms for ultra-smooth movement
+      setInterval(() => {
+        // 1. Update ages in the table
+        const tbody = document.getElementById("visits");
+        const rows = tbody.getElementsByTagName("tr");
+        lastFetchedVisits.forEach((v, i) => {
+          if (rows[i] && rows[i].cells[0]) {
+            const currentSeconds =
+              v.secondsAgo + Math.floor((Date.now() - v.loadedAt) / 1000);
+            rows[i].cells[0].textContent = formatTime(currentSeconds);
+          }
+        });
+
+        // 2. Continuous "Drift" increment if we have a live visitor velocity
+        // This makes the counters keep creeping up slightly between fetches
+        if (currentStats.recent > 0) {
+          // Hits per 100ms based on last 5 min (300 seconds)
+          const drift = currentStats.recent / 300 / 10;
+
+          currentStats.total += drift;
+          currentStats.today += drift;
+          if (
+            document.getElementById("live-status").textContent.includes("LIVE")
+          ) {
+            currentStats.liveHits += drift;
+          }
+
+          document.getElementById("total").textContent = Math.floor(
+            currentStats.total,
+          ).toLocaleString();
+          document.getElementById("today").textContent = Math.floor(
+            currentStats.today,
+          ).toLocaleString();
+          document.getElementById("hits-live").textContent = Math.floor(
+            currentStats.liveHits,
+          ).toLocaleString();
+        }
+      }, 100);
+
+      async function loadStats() {
+        try {
+          const res = await fetch("/api/ign-stats");
+          const data = await res.json();
+
+          // Update baseline stats
+          currentStats.total = data.last7days;
+          currentStats.today = data.today;
+          currentStats.recent = data.last5min;
+          currentStats.liveHits = data.totalLive;
+
+          document.getElementById("recent").textContent =
+            data.last5min.toLocaleString();
+
+          const liveEl = document.getElementById("live-status");
+          if (data.isCurrentlyLive) {
+            liveEl.innerHTML = '<span class="pulse"></span> LIVE';
+            liveEl.style.color = "#ff4b4b";
+          } else {
+            liveEl.textContent = "OFFLINE";
+            liveEl.style.color = "var(--muted)";
+          }
+
+          if (data.dailyBreakdown) updateHeatmap(data.dailyBreakdown);
+
+          // Recent Streams
+          const streamsBody = document.getElementById("streams");
+          streamsBody.innerHTML = "";
+          if (data.recentStreams && data.recentStreams.length > 0) {
+            data.recentStreams.forEach((s) => {
               const row = document.createElement("tr");
               row.className = "stream-row";
               row.style.cursor = "pointer";
               row.onclick = () => {
-                  const detail = document.getElementById("stream-detail");
-                  detail.style.display = "block";
-                  document.getElementById("sd-title").textContent = s.title;
-                  document.getElementById("sd-date").textContent = new Date(s.startTime).toLocaleString();
-                  document.getElementById("sd-hits").textContent = s.hits;
-                  
-                  // Highlight row
-                  document.querySelectorAll(".stream-row").forEach(r => r.style.background = "none");
-                  row.style.background = "rgba(255, 255, 255, 0.05)";
+                const detail = document.getElementById("stream-detail");
+                detail.style.display = "block";
+                document.getElementById("sd-title").textContent = s.title;
+                document.getElementById("sd-date").textContent = new Date(
+                  s.startTime,
+                ).toLocaleString();
+                document.getElementById("sd-hits").textContent = s.hits;
+
+                // Highlight row
+                document
+                  .querySelectorAll(".stream-row")
+                  .forEach((r) => (r.style.background = "none"));
+                row.style.background = "rgba(255, 255, 255, 0.05)";
               };
               row.innerHTML = `
                 <td>
@@ -459,16 +535,17 @@
                 <td style="font-weight:700; color:var(--live); text-align:right; font-size:14px;">${s.hits}</td>
               `;
               streamsBody.appendChild(row);
-          });
-      } else {
-          streamsBody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px; color:var(--muted);">Check back later!</td></tr>';
-      }
+            });
+          } else {
+            streamsBody.innerHTML =
+              '<tr><td colspan="2" style="text-align:center; padding:20px; color:var(--muted);">Check back later!</td></tr>';
+          }
 
-      // Daily Table
-      const dailyBody = document.getElementById("daily");
-      dailyBody.innerHTML = "";
-      if (data.dailyBreakdown) {
-          [...data.dailyBreakdown].reverse().forEach(d => {
+          // Daily Table
+          const dailyBody = document.getElementById("daily");
+          dailyBody.innerHTML = "";
+          if (data.dailyBreakdown) {
+            [...data.dailyBreakdown].reverse().forEach((d) => {
               const row = document.createElement("tr");
               row.innerHTML = `
                 <td>${d.day}</td>
@@ -476,34 +553,37 @@
                 <td style="color:#ff4b4b">${d.liveCount}</td>
               `;
               dailyBody.appendChild(row);
-          });
-      }
+            });
+          }
 
-      // Recent Visits
-      const tbody = document.getElementById("visits");
-      const now = Date.now();
-      lastFetchedVisits = data.recentVisits.map(v => ({ ...v, loadedAt: now }));
-      
-      tbody.innerHTML = "";
-      lastFetchedVisits.forEach(v => {
-        const row = document.createElement("tr");
-        const streamInfo = v.isLive ? `<span style="color:#ff4b4b; font-weight:700;">●</span> ${v.streamTitle || 'Live'}` : '<span style="color:var(--muted)">Offline</span>';
-        row.innerHTML = `
+          // Recent Visits
+          const tbody = document.getElementById("visits");
+          const now = Date.now();
+          lastFetchedVisits = data.recentVisits.map((v) => ({
+            ...v,
+            loadedAt: now,
+          }));
+
+          tbody.innerHTML = "";
+          lastFetchedVisits.forEach((v) => {
+            const row = document.createElement("tr");
+            const streamInfo = v.isLive
+              ? `<span style="color:#ff4b4b; font-weight:700;">●</span> ${v.streamTitle || "Live"}`
+              : '<span style="color:var(--muted)">Offline</span>';
+            row.innerHTML = `
           <td>${formatTime(v.secondsAgo)}</td>
           <td style="font-size:11px; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${streamInfo}</td>
           <td style="color:var(--muted)">${v.agent}</td>
         `;
-        tbody.appendChild(row);
-      });
+            tbody.appendChild(row);
+          });
+        } catch (e) {
+          console.error("Failed to load analytics", e);
+        }
+      }
 
-    } catch (e) {
-      console.error("Failed to load analytics", e);
-    }
-  }
-
-  loadStats();
-  setInterval(loadStats, 3000);
-</script>
-
-</body>
+      loadStats();
+      setInterval(loadStats, 3000);
+    </script>
+  </body>
 </html>

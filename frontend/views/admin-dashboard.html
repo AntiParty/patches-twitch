@@ -484,6 +484,9 @@
           <li class="nav-item" onclick="switchView('analytics')">
             <i class="fas fa-chart-bar"></i> Analytics
           </li>
+          <li class="nav-item" onclick="switchView('feedback')">
+            <i class="fas fa-comments"></i> User Feedback
+          </li>
           <li class="nav-item" onclick="window.location.href = '/statistics'">
             <i class="fas fa-chart-line"></i> Statistics
           </li>
@@ -1244,6 +1247,45 @@
           </div>
         </div>
 
+        <!-- Feedback View -->
+        <div id="view-feedback" class="view-section">
+          <div class="header">
+            <h2 class="page-title">User Feedback</h2>
+            <button class="btn btn-ghost" onclick="fetchFeedback()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+          <div class="card">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>Type</th>
+                    <th>Message</th>
+                    <th style="width: 100px">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="feedback-body">
+                  <tr>
+                    <td
+                      colspan="5"
+                      style="
+                        text-align: center;
+                        padding: 20px;
+                        color: var(--text-muted);
+                      "
+                    >
+                      Loading feedback...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- Settings View -->
         <div id="view-settings" class="view-section">
           <div class="header">
@@ -1423,6 +1465,7 @@
         if (viewId === "users") fetchUsers();
         if (viewId === "drops") loadDropsConfig();
         if (viewId === "analytics") loadAnalytics();
+        if (viewId === "feedback") fetchFeedback();
       }
 
       function refreshAll() {
@@ -1434,6 +1477,7 @@
           fetchChannels();
           fetchLogs();
           fetchCommands();
+          fetchFeedback();
         }
       }
 
@@ -2476,6 +2520,59 @@
           alert("Error: " + err.message);
         }
       };
+      // --- Feedback Management ---
+      async function fetchFeedback() {
+        const body = document.getElementById("feedback-body");
+        try {
+          const res = await fetch("/admin/api/feedback");
+          const data = await res.json();
+
+          if (!data.feedback || data.feedback.length === 0) {
+            body.innerHTML =
+              '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No feedback matches found</td></tr>';
+            return;
+          }
+
+          body.innerHTML = data.feedback
+            .map((f) => {
+              const date = new Date(f.created_at).toLocaleString();
+              const typeClass =
+                f.type === "bug"
+                  ? "color:var(--danger)"
+                  : f.type === "feature"
+                    ? "color:var(--info)"
+                    : "color:var(--text-muted)";
+              return `
+              <tr>
+                <td style="font-size:12px;color:var(--text-muted)">${date}</td>
+                <td><strong>${f.username || "Anonymous"}</strong></td>
+                <td><span style="${typeClass};font-weight:600;font-size:12px;text-transform:uppercase;">${f.type}</span></td>
+                <td style="max-width:400px;word-break:break-word;">${escapeHtml(f.message)}</td>
+                <td>
+                  <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteFeedback(${f.id})"><i class="fas fa-trash"></i></button>
+                </td>
+              </tr>
+            `;
+            })
+            .join("");
+        } catch (err) {
+          body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger)">Error loading feedback: ${err.message}</td></tr>`;
+        }
+      }
+
+      async function deleteFeedback(id) {
+        if (!confirm("Remove this feedback entry?")) return;
+        try {
+          await ensureCsrfToken();
+          const res = await fetch(`/admin/api/feedback/${id}`, {
+            method: "DELETE",
+            headers: { "CSRF-Token": CSRF_TOKEN },
+          });
+          if (res.ok) fetchFeedback();
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      }
     </script>
   </body>
 </html>

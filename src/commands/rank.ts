@@ -125,7 +125,9 @@ export const execute = async (ctx: CommandContext) => {
       rank: player?.rank ?? wtPlayer?.rank ?? "N/A",
       league: player?.league ?? "",
       rankScore: player?.rankScore ? player.rankScore.toLocaleString() : "",
+      score: player?.rankScore ? player.rankScore.toLocaleString() : "", // Alias
       wtRank: wtPlayer?.rank ?? "",
+      wt_rank: wtPlayer?.rank ?? "", // Alias
       found: player || wtPlayer ? "true" : "false",
     };
 

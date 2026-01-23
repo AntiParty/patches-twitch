@@ -75,4 +75,4 @@ Information about Twitch account services and integration.
 
 ---
 
-**Last Updated:** November 2026
+**Last Updated:** January 2026

@@ -169,11 +169,25 @@ export const execute = async (
     ) {
       const wtDiff = session.start_wt_rank - currentWTRank;
       const wtSign = wtDiff > 0 ? "+" : wtDiff < 0 ? "-" : "±";
-      const absWtDiff = Math.abs(wtDiff);
+    const absWtDiff = Math.abs(wtDiff);
       response += ` | WT rank: #${currentWTRank} (${wtSign}${absWtDiff} from start)`;
     } else if (wtPlayer) {
       response += ` | WT rank: #${currentWTRank}`;
     }
+
+    // 7. Try custom response
+    const vars = {
+      username,
+      sessionRS: (diff >= 0 ? "+" : "") + diff.toLocaleString(),
+      gain: (diff >= 0 ? "+" : "") + diff.toLocaleString(), // Alias
+      currentRS: currentScore.toLocaleString(),
+      score: currentScore.toLocaleString(), // Alias
+      wtDiff: typeof session.start_wt_rank === "number" && typeof currentWTRank === "number" ? currentWTRank - session.start_wt_rank : "",
+      startRS: session.start_score.toLocaleString(),
+      wtRank: currentWTRank ?? "",
+    };
+    const usedCustom = await maybeSendCustomResponse("record", ctx, vars);
+    if (usedCustom) return;
 
   await ctx.say(response, ctx.tags?.["id"]);
   } catch (error) {

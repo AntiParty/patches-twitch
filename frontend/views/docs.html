@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <!-- Basic -->
@@ -49,168 +49,282 @@
     />
 
     <!-- Styles -->
-    <link rel="stylesheet" href="/css/styles.css"/>
+    <link rel="stylesheet" href="/css/styles.css" />
 
     <style>
-      .docs-hero {
-        padding: 10rem 0 4rem;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        background: radial-gradient(circle at 50% 0%, rgba(217, 0, 47, 0.05) 0%, transparent 50%);
+      :root {
+        --sidebar-width: 280px;
+        --header-height: 70px;
+        --toc-width: 240px;
       }
 
-      .docs-hero-glow {
-        position: absolute;
-        top: -30%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 1200px;
-        height: 800px;
-        background: radial-gradient(circle, rgba(217, 0, 47, 0.1) 0%, transparent 70%);
-        z-index: -1;
-        pointer-events: none;
+      body {
+        scroll-behavior: smooth;
+        background-color: var(--bg-dark);
       }
 
-      .docs-hero h1 {
-        font-size: 3.5rem;
-        font-weight: 800;
-        letter-spacing: -2px;
+      /* Docs Layout */
+      .docs-layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) 1fr var(--toc-width);
+        max-width: 1600px;
+        margin: var(--header-height) auto 0;
+        min-height: calc(100vh - var(--header-height));
+      }
+
+      /* Sidebar Navigation */
+      .docs-sidebar {
+        position: sticky;
+        top: var(--header-height);
+        height: calc(100vh - var(--header-height));
+        padding: 2rem 1.5rem;
+        border-right: 1px solid var(--border-color);
+        overflow-y: auto;
+        background: var(--bg-dark);
+      }
+
+      .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .nav-group h4 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-tertiary);
+        margin-bottom: 0.75rem;
+        font-weight: 700;
+      }
+
+      .nav-group ul {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        border-radius: var(--radius-sm);
+        transition: all 0.2s;
+        text-decoration: none !important;
+      }
+
+      .nav-link:hover {
+        background: var(--bg-card);
+        color: var(--text-primary);
+      }
+
+      .nav-link.active {
+        background: rgba(217, 0, 47, 0.1);
+        color: var(--brand-primary);
+        font-weight: 600;
+      }
+
+      /* Main Content Area */
+      .docs-main {
+        padding: 3rem 4rem 6rem;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .docs-header {
+        margin-bottom: 3rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .breadcrumbs {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-tertiary);
         margin-bottom: 1rem;
       }
 
-      /* Button styling for Discord Link */
-      .btn--join-discord {
-        display: inline-flex;
-        text-decoration: none !important;
-        align-items: center;
-        gap: 0.75rem;
-        background: var(--brand-primary);
-        color: #ffffff !important;
-        
-        padding: 1rem 2.5rem;
-        border-radius: var(--radius-md);
-        font-weight: 700;
-        transition: all 0.2s ease;
-      }
-      .btn--join-discord:hover {
-        background: var(--brand-hover);
-        transform: translateY(-2px);     
+      .docs-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.75rem;
       }
 
-      .docs-hero .subtitle {
-        font-size: 1.25rem;
+      .docs-header .subtitle {
+        font-size: 1.1rem;
         color: var(--text-secondary);
-        margin-bottom: 3rem;
-        max-width: 700px;
-        margin: 0 auto;
+        max-width: 100%;
+        margin: 0;
       }
 
-      /* Docs Content */
-      .docs-content {
-        padding: 0 0 6rem;
+      /* Table of Contents (Right) */
+      .docs-toc {
+        position: sticky;
+        top: var(--header-height);
+        height: calc(100vh - var(--header-height));
+        padding: 2.5rem 1.5rem;
+        border-left: 1px solid var(--border-color);
       }
 
-      .docs-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 0 1.5rem;
+      .toc-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
       }
 
-      .docs-main-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 4rem;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      .toc-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
       }
 
+      .toc-link {
+        transition: color 0.2s;
+        text-decoration: none !important;
+      }
+
+      .toc-link:hover {
+        color: var(--brand-primary);
+      }
+
+      /* Content Styling */
       .markdown-body section {
-        margin-bottom: 4rem;
-      }
-
-      .markdown-body section:last-child {
-        margin-bottom: 0;
+        margin-bottom: 5rem;
+        scroll-margin-top: calc(var(--header-height) + 2rem);
       }
 
       .markdown-body h2 {
-        font-size: 2.25rem;
-        font-weight: 800;
+        font-size: 1.75rem;
+        font-weight: 700;
         color: var(--text-primary);
         margin-bottom: 1.5rem;
-        letter-spacing: -1px;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .markdown-body h2::before {
+        content: "#";
+        color: var(--brand-primary);
+        font-size: 1rem;
+        opacity: 0.5;
       }
 
       .markdown-body h3 {
-        font-size: 1.25rem;
-        font-weight: 700;
+        font-size: 1.1rem;
+        font-weight: 600;
         color: var(--text-primary);
         margin-top: 2rem;
         margin-bottom: 1rem;
       }
 
       .markdown-body p {
-        font-size: 1.1rem;
+        font-size: 1rem;
         color: var(--text-secondary);
-        line-height: 1.8;
+        line-height: 1.6;
+        margin-bottom: 1.25rem;
       }
 
       .tag {
         display: inline-flex;
         align-items: center;
-        padding: 4px 12px;
+        padding: 2px 10px;
         background: rgba(217, 0, 47, 0.1);
         color: var(--brand-primary);
         border: 1px solid rgba(217, 0, 47, 0.2);
-        border-radius: 100px;
-        font-size: 0.75rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.05em;
         margin-bottom: 1rem;
+      }
+
+      .tag.premium {
+        background: linear-gradient(
+          135deg,
+          rgba(234, 179, 8, 0.1) 0%,
+          rgba(234, 179, 8, 0.2) 100%
+        );
+        color: #eab308;
+        border-color: rgba(234, 179, 8, 0.3);
       }
 
       .var-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-        gap: 1.25rem;
-        margin-top: 2rem;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
       }
 
       .var-card {
-        background: rgba(0, 0, 0, 0.2);
+        background: var(--bg-card);
         border: 1px solid var(--border-color);
-        padding: 1.5rem;
+        padding: 1.25rem;
         border-radius: var(--radius-md);
-        transition: all 0.2s ease;
+        transition:
+          transform 0.2s,
+          border-color 0.2s;
+      }
+
+      .var-card:hover {
+        border-color: var(--brand-primary);
+        transform: translateY(-2px);
       }
 
       .var-code {
-        color: #fff;
-        font-family: 'JetBrains Mono', monospace;
+        color: var(--brand-primary);
+        font-family: "JetBrains Mono", monospace;
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         display: block;
         margin-bottom: 0.5rem;
       }
 
       .var-desc {
-        color: var(--text-tertiary);
+        color: var(--text-secondary);
         font-size: 0.85rem;
         line-height: 1.5;
       }
 
       .code-example {
         background: #000;
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: var(--radius-md);
         border: 1px solid var(--border-color);
-        font-family: 'JetBrains Mono', monospace;
-        margin: 2rem 0;
+        font-family: "JetBrains Mono", monospace;
+        margin: 1.5rem 0;
+        font-size: 0.9rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .code-example::after {
+        content: "CLI";
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: var(--border-color);
+        padding: 2px 8px;
+        font-size: 0.65rem;
+        color: var(--text-tertiary);
+        font-weight: 700;
+        border-bottom-left-radius: 4px;
       }
 
       .code-example .cmd {
-        color: var(--brand-primary);
+        color: #ef4444;
         font-weight: 700;
       }
 
@@ -224,7 +338,8 @@
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
         overflow: hidden;
-        margin-top: 2rem;
+        margin-top: 1.5rem;
+        background: var(--bg-card);
       }
 
       table {
@@ -234,274 +349,508 @@
 
       th {
         background: rgba(255, 255, 255, 0.03);
-        padding: 1.25rem;
+        padding: 1rem;
         text-align: left;
+        font-size: 0.85rem;
         font-weight: 600;
         color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
       }
 
       td {
-        padding: 1.25rem;
-        border-top: 1px solid var(--border-color);
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
         color: var(--text-secondary);
+        font-size: 0.9rem;
       }
 
-      hr {
-        border: 0;
-        height: 1px;
-        background: linear-gradient(to right, transparent, var(--border-color), transparent);
-        margin: 4rem 0;
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .footer-cta {
+        margin-top: 6rem;
+        padding: 3rem;
+        background: linear-gradient(135deg, var(--bg-card) 0%, #1c1c20 100%);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        text-align: center;
+      }
+
+      .btn--join-discord {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #5865f2;
+        color: #ffffff;
+        text-decoration: none !important;
+        padding: 0.75rem 2rem;
+        border-radius: var(--radius-md);
+        font-weight: 700;
+        transition: all 0.2s;
+        margin-top: 1.5rem;
+      }
+
+      .btn--join-discord .markdown-body .a {
+        color: #ffffff;
+      }
+
+      .btn--join-discord:hover {
+        background: #4752c4;
+        transform: translateY(-2px);
+      }
+
+      @media (max-width: 1100px) {
+        .docs-layout {
+          grid-template-columns: var(--sidebar-width) 1fr;
+        }
+        .docs-toc {
+          display: none;
+        }
       }
 
       @media (max-width: 768px) {
-        .docs-hero h1 { font-size: 2.5rem; }
-        .docs-main-card { padding: 2rem; }
+        .docs-layout {
+          display: block;
+        }
+        .docs-sidebar {
+          display: none;
+        }
+        .docs-main {
+          padding: 2rem 1.5rem;
+        }
       }
     </style>
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": [{
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Home",
-          "item": "https://finalsrs.com/"
-        },{
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Documentation",
-          "item": "https://finalsrs.com/docs"
-        }]
-      }
-    </script>
   </head>
 
   <body>
     <nav class="navbar">
       <div class="nav-container">
         <a href="/" class="logo">
-          <span class="logo-icon"><img src="./assets/logo.png" alt="FinalsRS Logo" /></span>
+          <span class="logo-icon"
+            ><img src="./assets/logo.png" alt="FinalsRS Logo"
+          /></span>
           FinalsRS
         </a>
         <div class="nav-links">
           <a href="/">Home</a>
-          <a href="/twitch-drops" data-umami-event="Twitch Drops">Drops</a>
-          <a href="/docs" style="color: var(--text-primary)" data-umami-event="Visit Docs">Docs</a>
-          <a href="/login" class="btn-login" data-umami-event="Login button nav">Log in</a>
+          <a href="/twitch-drops">Drops</a>
+          <a href="/docs" style="color: var(--text-primary)">Docs</a>
+          <a href="/developer" style="color: var(--text-primary)"
+            >Developer API</a
+          >
+          <a href="/login" class="btn-login">Log in</a>
         </div>
       </div>
     </nav>
 
-    <main>
-      <section class="docs-hero">
-        <div class="docs-hero-glow"></div>
-        <div class="container">
-          <div class="badge">
-            <span class="badge-dot"></span>
-            Documentation
+    <div class="docs-layout">
+      <!-- Sidebar Sidebar -->
+      <aside class="docs-sidebar">
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <h4>Getting Started</h4>
+            <ul>
+              <li><a href="#overview" class="nav-link active">Overview</a></li>
+              <li>
+                <a href="#linking" class="nav-link">Account Management</a>
+              </li>
+            </ul>
           </div>
-          <h1>Command <span class="text-gradient">Documentation</span></h1>
+          <div class="nav-group">
+            <h4>Configuration</h4>
+            <ul>
+              <li>
+                <a href="#customizing" class="nav-link">Customizing Commands</a>
+              </li>
+            </ul>
+          </div>
+          <div class="nav-group">
+            <h4>Command Reference</h4>
+            <ul>
+              <li><a href="#rank-vars" class="nav-link">!rank</a></li>
+              <li><a href="#record-vars" class="nav-link">!record</a></li>
+              <li><a href="#peak-vars" class="nav-link">!peak</a></li>
+              <li><a href="#drops-cmd" class="nav-link">!drops</a></li>
+              <li><a href="#goals" class="nav-link">!goal</a></li>
+              <li><a href="#predict" class="nav-link">!predict</a></li>
+            </ul>
+          </div>
+          <div class="nav-group">
+            <h4>General</h4>
+            <ul>
+              <li><a href="#general" class="nav-link">Utility Commands</a></li>
+            </ul>
+          </div>
+          <div class="nav-group">
+            <h4>Support</h4>
+            <ul>
+              <li>
+                <a
+                  href="https://discord.com/invite/2UKzvzSEqA"
+                  target="_blank"
+                  class="nav-link"
+                  >Discord Support</a
+                >
+              </li>
+            </ul>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="docs-main">
+        <header class="docs-header">
+          <div class="breadcrumbs">
+            <span>Documentation</span>
+            <span>&rsaquo;</span>
+            <span style="color: var(--text-primary)">Bot Commands</span>
+          </div>
+          <h1 id="overview">Bot Documentation</h1>
           <p class="subtitle">
-            Welcome to the FinalsRS documentation. This page explains how to customize and manage your Twitch bot commands easily
+            Comprehensive guide to managing and customizing your FinalsRS Twitch
+            bot experience.
           </p>
-        </div>
-      </section>
+        </header>
 
-      <section class="docs-content">
-        <div class="docs-container">
-          <div class="docs-main-card">
-            <div class="markdown-body">
-              <!-- Section: Custom Commands -->
-              <section id="customizing">
-                <div class="tag">Configuration</div>
-                <h2>Customizing Commands</h2>
-                <p>
-                  You can fully customize the responses for <code>!rank</code>, <code>!record</code>, and <code>!peak</code>. 
-                  Use variables in curly braces <code>{variable}</code> to inject dynamic player data into your custom messages.
-                </p>
+        <div class="markdown-body">
+          <!-- Section: Account Management -->
+          <section id="linking">
+            <div class="tag">Essentials</div>
+            <h2>Account Management</h2>
+            <p>
+              To start tracking your stats, you must link your
+              <strong>THE FINALS</strong> account. Your Twitch account is linked
+              automatically when you log in to the dashboard.
+            </p>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>!link &lt;FinalsName#1234&gt;</code></td>
+                    <td>Links your THE FINALS account to the bot.</td>
+                  </tr>
+                  <tr>
+                    <td><code>!unlink</code></td>
+                    <td>Removes the link to your account.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-                <h3>How to edit</h3>
-                <p>Use the <code>!editcmd</code> command directly in your Twitch chat:</p>
-                <div class="code-example">
-                  <span class="comment">// Example: Set a custom rank message</span><br />
-                  <span class="cmd">!editcmd rank</span> @{username}, I am currently rank #{rank} with {rankScore} RS! 🔥
-                </div>
-              </section>
+          <!-- Section: Custom Commands -->
+          <section id="customizing">
+            <div class="tag">Advanced</div>
+            <h2>Customizing Commands</h2>
+            <p>
+              FinalsRS allows you to fully customize how the bot responds to
+              commands like <code>!rank</code>, <code>!record</code>, and
+              <code>!peak</code>. Variables wrapped in curly braces (e.g.,
+              <code>{rank}</code>) are replaced with real player data.
+            </p>
 
-              <hr />
+            <h3>The !editcmd Command</h3>
+            <p>
+              Use <code>!editcmd</code> followed by the command name and your
+              new message template.
+            </p>
+            <div class="code-example">
+              <span class="comment"
+                >// Set a custom rank message with flavor text</span
+              ><br />
+              <span class="cmd">!editcmd rank</span> Currently grinding at
+              #{rank} with {rankScore} RS! Let's get it! 🔥
+            </div>
+            <p>
+              To reset a command to its default behavior, simply type
+              <code>!editcmd &lt;command&gt;</code> without a message.
+            </p>
+          </section>
 
-              <!-- Section: !rank variables -->
-              <section id="rank-vars">
-                <div class="tag">Variables</div>
-                <h2>!rank Command</h2>
-                <p>Show your current standing on the leaderboards.</p>
-                <div class="var-grid">
-                  <div class="var-card">
-                    <span class="var-code">{username}</span>
-                    <span class="var-desc">The Twitch user who called the command.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{rank}</span>
-                    <span class="var-desc">Current leaderboard rank (e.g. #450).</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{league}</span>
-                    <span class="var-desc">Current league (e.g. Diamond 3).</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{rankScore}</span>
-                    <span class="var-desc">Current Rank Score (RS) value.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{wtRank}</span>
-                    <span class="var-desc">Current World Tour rank.</span>
-                  </div>
-                </div>
-              </section>
-
-              <hr />
-
-              <!-- Section: !record variables -->
-              <section id="record-vars">
-                <div class="tag">Variables</div>
-                <h2>!record Command</h2>
-                <p>Track your session progress since you went live.</p>
-                <div class="var-grid">
-                  <div class="var-card">
-                    <span class="var-code">{sessionRS}</span>
-                    <span class="var-desc">RS gained or lost this session (e.g. +120).</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{currentRS}</span>
-                    <span class="var-desc">Your total current RS.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{wtDiff}</span>
-                    <span class="var-desc">World Tour ranks gained/lost this session.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{startRS}</span>
-                    <span class="var-desc">Your RS at the start of the stream.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{wtRank}</span>
-                    <span class="var-desc">Your current World Tour rank.</span>
-                  </div>
-                </div>
-              </section>
-
-              <hr />
-
-              <!-- Section: !peak variables -->
-              <section id="peak-vars">
-                <div class="tag">Variables</div>
-                <h2>!peak Command</h2>
-                <p>Display your all-time highest achievements.</p>
-                <div class="var-grid">
-                  <div class="var-card">
-                    <span class="var-code">{rank}</span>
-                    <span class="var-desc">Highest rank ever achieved.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{league}</span>
-                    <span class="var-desc">League of peak rank (e.g. Diamond 1).</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{rankScore}</span>
-                    <span class="var-desc">Peak Rank Score (RS) value.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{season}</span>
-                    <span class="var-desc">The season the peak was achieved.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{wtRank}</span>
-                    <span class="var-desc">Highest World Tour rank achieved.</span>
-                  </div>
-                  <div class="var-card">
-                    <span class="var-code">{wtSeason}</span>
-                    <span class="var-desc">The WT season for that peak.</span>
-                  </div>
-                </div>
-              </section>
-
-              <hr />
-
-              <!-- Section: Goal Command -->
-              <section id="goals">
-                <div class="tag">New System</div>
-                <h2>Set Your Goals</h2>
-                <p>
-                  The <code>!goal</code> command helps you track your journey to a specific rank.
-                </p>
-                <div class="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Command</th>
-                        <th>Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td><code>!goal &lt;rank&gt;</code></td>
-                        <td>Set a target rank (e.g. <code>!goal 100</code>)</td>
-                      </tr>
-                      <tr>
-                        <td><code>!goal</code></td>
-                        <td>Display current goal progress</td>
-                      </tr>
-                      <tr>
-                        <td><code>!goal remove</code></td>
-                        <td>Remove your current goal</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-
-              <div style="text-align: center; margin-top: 4rem; padding-top: 4rem; border-top: 1px solid var(--border-color);">
-                <h2>Need More Help?</h2>
-                <p style="margin-bottom: 2rem; color: var(--text-secondary);">
-                  Join our community on Discord for real-time support and feature requests.
-                </p>
-                <a href="https://discord.com/invite/2UKzvzSEqA" class="btn--join-discord primary large" data-umami-event="Discord Support Docs"
-                  >Join Discord</a
+          <!-- Section: !rank variables -->
+          <section id="rank-vars">
+            <div class="tag">Reference</div>
+            <h2>!rank Command</h2>
+            <p>
+              Displays current leaderboard rank, league standings, and World
+              Tour progress.
+            </p>
+            <div class="var-grid">
+              <div class="var-card">
+                <span class="var-code">{username}</span>
+                <span class="var-desc"
+                  >The Twitch user who called the command.</span
                 >
               </div>
+              <div class="var-card">
+                <span class="var-code">{rank}</span>
+                <span class="var-desc"
+                  >Current leaderboard rank (e.g. #450).</span
+                >
+              </div>
+              <div class="var-card">
+                <span class="var-code">{league}</span>
+                <span class="var-desc">Current league (e.g. Diamond 3).</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{rankScore}</span>
+                <span class="var-desc">Current Rank Score (RS) value.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{wtRank}</span>
+                <span class="var-desc">Current World Tour rank.</span>
+              </div>
             </div>
-          </div>
-        </div>
-      </section>
-    </main>
+          </section>
 
-    <footer>
-      <div class="container">
-        <div class="footer-grid">
-          <div class="footer-col">
-            <h3>FinalsRS</h3>
-            <p>The unofficial companion bot for THE FINALS.</p>
-          </div>
-          <div class="footer-col">
-            <h4>Product</h4>
-            <a href="/#features">Features</a>
-          </div>
-          <div class="footer-col">
-            <h4>Resources</h4>
-            <a href="/docs">Documentation</a>
-            <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
-          </div>
-          <div class="footer-col">
-            <h4>Legal</h4>
-            <a href="/legal">Privacy Policy</a>
-            <a href="/legal#">Terms of Service</a>
-          </div>
+          <!-- Section: !record variables -->
+          <section id="record-vars">
+            <div class="tag">Reference</div>
+            <h2>!record Command</h2>
+            <p>Tracks session progress (RS gained/lost) since you went live.</p>
+            <div class="var-grid">
+              <div class="var-card">
+                <span class="var-code">{sessionRS}</span>
+                <span class="var-desc"
+                  >RS gained or lost this session (e.g. +120).</span
+                >
+              </div>
+              <div class="var-card">
+                <span class="var-code">{currentRS}</span>
+                <span class="var-desc">Your total current RS.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{wtDiff}</span>
+                <span class="var-desc"
+                  >World Tour ranks gained/lost this session.</span
+                >
+              </div>
+              <div class="var-card">
+                <span class="var-code">{startRS}</span>
+                <span class="var-desc"
+                  >Your RS at the start of the stream.</span
+                >
+              </div>
+              <div class="var-card">
+                <span class="var-code">{wtRank}</span>
+                <span class="var-desc">Your current World Tour rank.</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section: !peak variables -->
+          <section id="peak-vars">
+            <div class="tag">Reference</div>
+            <h2>!peak Command</h2>
+            <p>
+              Displays all-time highest achievements recorded by the system.
+            </p>
+            <div class="var-grid">
+              <div class="var-card">
+                <span class="var-code">{rank}</span>
+                <span class="var-desc">Highest rank ever achieved.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{league}</span>
+                <span class="var-desc"
+                  >League of peak rank (e.g. Diamond 1).</span
+                >
+              </div>
+              <div class="var-card">
+                <span class="var-code">{rankScore}</span>
+                <span class="var-desc">Peak Rank Score (RS) value.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{season}</span>
+                <span class="var-desc">The season the peak was achieved.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{wtRank}</span>
+                <span class="var-desc">Highest World Tour rank achieved.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">{wtSeason}</span>
+                <span class="var-desc">The WT season for that peak.</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section: !drops command -->
+          <section id="drops-cmd">
+            <div class="tag">Information</div>
+            <h2>!drops Command</h2>
+            <p>Stay updated with active Twitch drops for THE FINALS.</p>
+            <div class="var-grid">
+              <div class="var-card">
+                <span class="var-code">!drops</span>
+                <span class="var-desc"
+                  >Lists current active drops and their durations.</span
+                >
+              </div>
+              <div class="var-card">
+                <span class="var-code">!drop</span>
+                <span class="var-desc">Alias for the drops command.</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section: Goal Command -->
+          <section id="goals">
+            <div class="tag">Utility</div>
+            <h2>Rank Goals</h2>
+            <p>
+              The <code>!goal</code> system helps you track progress toward a
+              specific leaderboard position.
+            </p>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>!goal &lt;rank&gt;</code></td>
+                    <td>Set a target rank (e.g. <code>!goal 100</code>)</td>
+                  </tr>
+                  <tr>
+                    <td><code>!goal</code></td>
+                    <td>Display current goal progress & percentage.</td>
+                  </tr>
+                  <tr>
+                    <td><code>!goal remove</code></td>
+                    <td>Clear your current active goal.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Section: Predict Command -->
+          <section id="predict">
+            <div class="tag premium">Premium / Tester</div>
+            <h2>Predict Cutoff</h2>
+            <p>
+              The <code>!predict</code> command uses historical T500 trends to
+              forecast future leaderboard cutoffs.
+            </p>
+            <div class="code-example">
+              <span class="comment">// Forecast the cutoff in 30 days</span
+              ><br />
+              <span class="cmd">!predict 30</span>
+            </div>
+          </section>
+
+          <!-- Section: General Commands -->
+          <section id="general">
+            <div class="tag">Utility</div>
+            <h2>Utility Commands</h2>
+            <p>
+              Standard commands for interacting with the bot and discovering
+              available features.
+            </p>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Command</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>!commands</code></td>
+                    <td>Lists all available commands for the channel.</td>
+                  </tr>
+                  <tr>
+                    <td><code>!help [command]</code></td>
+                    <td>Get detailed usage info for a specific command.</td>
+                  </tr>
+                  <tr>
+                    <td><code>!ping</code></td>
+                    <td>Check if the bot is responsive and view latency.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <footer class="footer-cta">
+            <h2>Still have questions?</h2>
+            <p>Join our developer and streamer community on Discord.</p>
+            <a
+              href="https://discord.com/invite/2UKzvzSEqA"
+              class="btn--join-discord"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"
+                />
+              </svg>
+              Join Discord Server
+            </a>
+          </footer>
         </div>
-        <div class="footer-bottom">
-          <p>&copy; 2026 FinalsRS. Not affiliated with Embark Studios.</p>
-        </div>
-      </div>
-    </footer>
+      </main>
+
+      <!-- TOC Table of Contents -->
+      <aside class="docs-toc">
+        <nav>
+          <div class="toc-title">On this page</div>
+          <ul class="toc-list">
+            <li><a href="#linking" class="toc-link">Account Management</a></li>
+            <li><a href="#customizing" class="toc-link">Customizing</a></li>
+            <li><a href="#rank-vars" class="nav-link">!rank Command</a></li>
+            <li><a href="#record-vars" class="nav-link">!record Command</a></li>
+            <li><a href="#peak-vars" class="nav-link">!peak Command</a></li>
+            <li><a href="#drops-cmd" class="nav-link">!drops Command</a></li>
+            <li><a href="#goals" class="nav-link">Rank Goals</a></li>
+            <li><a href="#predict" class="nav-link">Predict Cutoff</a></li>
+            <li><a href="#general" class="nav-link">Utility Commands</a></li>
+          </ul>
+        </nav>
+      </aside>
+    </div>
+
+    <script shadow>
+      // Simple Sidebar Highlighting
+      const observerOptions = {
+        root: null,
+        rootMargin: "-20% 0px -70% 0px",
+        threshold: 0,
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute("id");
+            document.querySelectorAll(".nav-link").forEach((link) => {
+              link.classList.toggle(
+                "active",
+                link.getAttribute("href") === `#${id}`,
+              );
+            });
+          }
+        });
+      }, observerOptions);
+
+      document.querySelectorAll("section[id]").forEach((section) => {
+        observer.observe(section);
+      });
+    </script>
   </body>
 </html>

@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Basic -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Primary SEO -->
+    <title>Developer API – FinalsRS</title>
+    <meta
+      name="description"
+      content="Official FinalsRS Developer API documentation. Build community tools with our public THE FINALS data endpoints."
+    />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://finalsrs.com/developer" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FinalsRS" />
+    <meta property="og:title" content="FinalsRS Developer API" />
+    <meta
+      property="og:description"
+      content="Build community tools with FinalsRS public data endpoints."
+    />
+    <meta
+      property="og:image"
+      content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
+    />
+
+    <!-- Icons -->
+    <link rel="icon" href="/assets/logo.png" />
+    <link rel="apple-touch-icon" href="/assets/logo.png" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/styles.css" />
+
+    <style>
+      :root {
+        --sidebar-width: 280px;
+        --header-height: 70px;
+        --toc-width: 240px;
+      }
+
+      body {
+        scroll-behavior: smooth;
+        background-color: var(--bg-dark);
+      }
+
+      .docs-layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-width) 1fr var(--toc-width);
+        max-width: 1600px;
+        margin: var(--header-height) auto 0;
+        min-height: calc(100vh - var(--header-height));
+      }
+
+      .docs-sidebar {
+        position: sticky;
+        top: var(--header-height);
+        height: calc(100vh - var(--header-height));
+        padding: 2rem 1.5rem;
+        border-right: 1px solid var(--border-color);
+        overflow-y: auto;
+        background: var(--bg-dark);
+      }
+
+      .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      .nav-group h4 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-tertiary);
+        margin-bottom: 0.75rem;
+        font-weight: 700;
+      }
+
+      .nav-group ul {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        border-radius: var(--radius-sm);
+        transition: all 0.2s;
+        text-decoration: none !important;
+      }
+
+      .nav-link:hover {
+        background: var(--bg-card);
+        color: var(--text-primary);
+      }
+
+      .nav-link.active {
+        background: rgba(217, 0, 47, 0.1);
+        color: var(--brand-primary);
+        font-weight: 600;
+      }
+
+      .docs-main {
+        padding: 3rem 4rem 6rem;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .docs-header {
+        margin-bottom: 3rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .docs-header h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin-bottom: 0.75rem;
+      }
+
+      .docs-header .subtitle {
+        font-size: 1.1rem;
+        color: var(--text-secondary);
+        max-width: 100%;
+        margin: 0;
+      }
+
+      .docs-toc {
+        position: sticky;
+        top: var(--header-height);
+        height: calc(100vh - var(--header-height));
+        padding: 2.5rem 1.5rem;
+        border-left: 1px solid var(--border-color);
+      }
+
+      .toc-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+      }
+
+      .toc-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+
+      .toc-link {
+        transition: color 0.2s;
+        text-decoration: none !important;
+      }
+
+      .toc-link:hover {
+        color: var(--brand-primary);
+      }
+
+      /* Content Styling */
+      section {
+        margin-bottom: 5rem;
+        scroll-margin-top: calc(var(--header-height) + 2rem);
+      }
+
+      h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      h2::before {
+        content: "#";
+        color: var(--brand-primary);
+        font-size: 1rem;
+        opacity: 0.5;
+      }
+
+      h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      p,
+      li {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: 1.25rem;
+      }
+
+      .code-block {
+        background: #0d0d0d;
+        padding: 1.5rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
+        color: #e5e5e5;
+        margin-bottom: 1.5rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+      }
+
+      th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-secondary);
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        background: rgba(217, 0, 47, 0.1);
+        color: var(--brand-primary);
+        border: 1px solid rgba(217, 0, 47, 0.2);
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+      }
+
+      .method-tag {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        margin-right: 8px;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      .method-get {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+      }
+
+      @media (max-width: 1100px) {
+        .docs-layout {
+          grid-template-columns: var(--sidebar-width) 1fr;
+        }
+        .docs-toc {
+          display: none;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .docs-layout {
+          display: block;
+        }
+        .docs-sidebar {
+          display: none;
+        }
+        .docs-main {
+          padding: 2rem 1.5rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar">
+      <div class="nav-container">
+        <a href="/" class="logo">
+          <span class="logo-icon"
+            ><img src="./assets/logo.png" alt="FinalsRS Logo"
+          /></span>
+          FinalsRS
+        </a>
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/twitch-drops">Drops</a>
+          <a href="/docs">Docs</a>
+          <a href="/developer" style="color: var(--text-primary)"
+            >Developer API</a
+          >
+          <a href="/login" class="btn-login">Log in</a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="docs-layout">
+      <!-- Sidebar -->
+      <aside class="docs-sidebar">
+        <nav class="sidebar-nav">
+          <div class="nav-group">
+            <h4>Introduction</h4>
+            <ul>
+              <li><a href="#overview" class="nav-link active">Overview</a></li>
+              <li>
+                <a href="#ratelimits" class="nav-link">Rate Limits & CORS</a>
+              </li>
+            </ul>
+          </div>
+          <div class="nav-group">
+            <h4>Endpoints</h4>
+            <ul>
+              <li>
+                <a href="#prediction" class="nav-link"
+                  >Leaderboard Prediction</a
+                >
+              </li>
+              <li>
+                <a href="#player" class="nav-link">Player Stats</a>
+              </li>
+            </ul>
+          </div>
+          <div class="nav-group">
+            <h4>Legal</h4>
+            <ul>
+              <li><a href="#terms" class="nav-link">Terms of Use</a></li>
+            </ul>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="docs-main">
+        <header class="docs-header">
+          <div class="breadcrumbs">
+            <span>Developers</span>
+            <span>&rsaquo;</span>
+            <span style="color: var(--text-primary)">API Reference</span>
+          </div>
+          <h1 id="overview">Developer API (Beta)</h1>
+          <p class="subtitle">
+            Welcome to the FinalsRS Developer API. Access our calculated
+            datasets to build amazing community tools for THE FINALS.
+          </p>
+        </header>
+
+        <div>
+          <!-- Overview -->
+          <section id="ratelimits">
+            <div class="tag">Getting Started</div>
+            <h2>Rate Limits & CORS</h2>
+            <p>
+              The API is currently public and does not require an API key. To
+              ensure fair usage, we implement IP-based rate limiting.
+            </p>
+            <ul>
+              <li>
+                <strong>Base URL:</strong>
+                <code>https://finalsrs.com/api/v1</code>
+              </li>
+              <li>
+                <strong>Rate Limit:</strong> 60 requests per minute per IP.
+              </li>
+              <li><strong>CORS:</strong> Enabled for all endpoints.</li>
+            </ul>
+          </section>
+
+          <!-- Prediction Endpoint -->
+          <section id="prediction">
+            <div class="tag">Endpoints</div>
+            <h2>Get Leaderboard Prediction</h2>
+            <p>
+              Returns the estimated Top 500 cutoff Rank Score (RS) for a future
+              date, accounting for daily trends and end-of-season rushes.
+            </p>
+
+            <div class="code-block">
+              <span class="method-tag method-get">GET</span> /leaderboard/cutoff
+            </div>
+
+            <h3>Query Parameters</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>days</code></td>
+                  <td>Integer</td>
+                  <td>
+                    Optional. Number of days into the future to predict.
+                    Defaults to current season end.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3>Response Example</h3>
+            <div class="code-block">
+              <pre>
+{
+  "meta": {
+    "generated_at": "2026-01-23T12:00:00.000Z",
+    "api_version": "v1"
+  },
+  "data": {
+    "current_cutoff_rs": 45100,
+    "prediction": {
+      "target_date_days": 55,
+      "predicted_rs": 62500,
+      "confidence_interval": {
+        "min": 61200,
+        "max": 63800
+      },
+      "trend": {
+        "daily_change": 320,
+        "slope_standard_error": 15
+      },
+      "season_rush": {
+        "active": false,
+        "multiplier": 1.0
+      }
+    },
+    "confidence_level": "High"
+  }
+}</pre
+              >
+            </div>
+          </section>
+
+          <!-- Player Lookup Endpoint -->
+          <section id="player">
+            <div class="tag">Endpoints</div>
+            <h2>Get Player Stats</h2>
+            <p>
+              Retrieve real-time leaderboard statistics for a specific player.
+              Supports searching by exact name or name#tag.
+            </p>
+
+            <div class="code-block">
+              <span class="method-tag method-get">GET</span> /player/:name
+            </div>
+
+            <h3>Path Parameters</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Type</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>name</code></td>
+                  <td>String</td>
+                  <td>
+                    The Embark ID (Name#1234) or display name to search for.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p
+              style="
+                margin-top: 1rem;
+                padding: 0.75rem 1rem;
+                background: rgba(217, 0, 47, 0.05);
+                border-left: 3px solid var(--brand-primary);
+                border-radius: 4px;
+              "
+            >
+              <strong>Important:</strong> Player names with tags require URL
+              encoding. Replace <code>#</code> with <code>%23</code><br />
+              <strong>Example:</strong>
+              <code>https://finalsrs.com/api/v1/player/carnifex%237330</code>
+            </p>
+
+            <h3>Response Example</h3>
+            <div class="code-block">
+              <pre>
+{
+  "meta": {
+    "generated_at": "2026-01-23T12:05:00.000Z"
+  },
+  "data": {
+    "name": "EmbarkName#1234",
+    "rank": 42,
+    "league": "Diamond 1",
+    "rank_score": 58200,
+    "movement": {
+      "rank_change": -2,
+      "score_change": 150
+    },
+    "updated_at": "2026-01-23T11:45:00.000Z"
+  }
+}</pre
+              >
+            </div>
+          </section>
+
+          <!-- Terms -->
+          <section id="terms">
+            <div class="tag">Important</div>
+            <h2>Terms of Use</h2>
+            <p>
+              By using the FinalsRS Developer API, you agree to the following:
+            </p>
+            <ul>
+              <li>
+                <strong>Attribution:</strong> If you use this data in a public
+                project, please credit "FinalsRS" with a link to
+                <a
+                  href="https://finalsrs.com"
+                  style="color: var(--brand-primary)"
+                  >finalsrs.com</a
+                >.
+              </li>
+              <li>
+                <strong>Caching:</strong> Please cache responses for at least 30
+                minutes. Our underlying data updates every 45 minutes.
+              </li>
+              <li>
+                <strong>Abuse:</strong> Excessive scraping or abuse will result
+                in a permanent IP ban.
+              </li>
+            </ul>
+          </section>
+        </div>
+      </main>
+
+      <!-- TOC -->
+      <aside class="docs-toc">
+        <div class="toc-title">On This Page</div>
+        <ul class="toc-list">
+          <li><a href="#overview" class="toc-link">Overview</a></li>
+          <li><a href="#ratelimits" class="toc-link">Rate Limits</a></li>
+          <li>
+            <a href="#prediction" class="toc-link">Prediction Endpoint</a>
+          </li>
+          <li><a href="#player" class="toc-link">Player Stats</a></li>
+          <li><a href="#terms" class="toc-link">Terms of Use</a></li>
+        </ul>
+      </aside>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+      // Simple active link highlighting
+      const sections = document.querySelectorAll("section");
+      const navLinks = document.querySelectorAll(".nav-link");
+
+      window.addEventListener("scroll", () => {
+        let current = "";
+        sections.forEach((section) => {
+          const sectionTop = section.offsetTop;
+          if (scrollY >= sectionTop - 150) {
+            current = section.getAttribute("id");
+          }
+        });
+
+        navLinks.forEach((link) => {
+          link.classList.remove("active");
+          if (link.getAttribute("href").includes(current)) {
+            link.classList.add("active");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

@@ -7,6 +7,9 @@ const REGULAR_S9_FILE = path.resolve(__dirname, "../../cache/regular_s9.json");
 const HISTORY_RETENTION_DAYS = 30; // 30 days of history
 const PREDICTION_WINDOW_DAYS = 5; // Look at last 5 days for trend analysis
 
+// Season 9 Configuration
+const S9_END_DATE = new Date("2026-03-19T10:00:00Z"); // Approx 55 days from Jan 23, 2026
+
 interface HistoryEntry {
   timestamp: number;
   rankScore: number;
@@ -63,6 +66,28 @@ export async function updateRSHistory(): Promise<void> {
   }
 }
 
+/**
+ * Calculates how many days are left in the current season.
+ */
+export function getRemainingDays(): number {
+  const now = Date.now();
+  const end = S9_END_DATE.getTime();
+  const diff = end - now;
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+/**
+ * Returns a multiplier for the daily RS gain based on proximity to season end.
+ * As the season ends, players grind harder for Top 500, causing a "rush".
+ */
+function getSeasonRushMultiplier(daysRemaining: number): number {
+  if (daysRemaining <= 3) return 2.2; // Final 3 days: Extreme grind
+  if (daysRemaining <= 7) return 1.7; // Final week: Heavy grind
+  if (daysRemaining <= 14) return 1.4; // Last 2 weeks: Moderate grind
+  if (daysRemaining <= 21) return 1.2; // Last 3 weeks: Early grind
+  return 1.0;
+}
+
 export interface PredictionResult {
   currentRS: number;
   dailyChange: number;
@@ -73,6 +98,8 @@ export interface PredictionResult {
   dataPointsUsed: number;
   confidence: "Low" | "Medium" | "High";
   standardError: number;
+  isSeasonEndRush: boolean;
+  rushMultiplier: number;
 }
 
 // Weighted Linear Regression with exponential decay
@@ -150,9 +177,11 @@ function calculateWeightedRegression(points: HistoryEntry[]): {
 }
 
 export async function getRSPrediction(
-  remainingDays: number = 61
+  remainingDaysInput?: number
 ): Promise<PredictionResult | null> {
   try {
+    const daysLeft = getRemainingDays();
+    const remainingDays = remainingDaysInput ?? daysLeft;
     const historyRaw = await fs.readFile(HISTORY_FILE, "utf8");
     const history: HistoryEntry[] = JSON.parse(historyRaw);
 
@@ -179,7 +208,9 @@ export async function getRSPrediction(
             remainingDays,
             dataPointsUsed: relevantHistory.length,
             confidence: "Low",
-            standardError: 0
+            standardError: 0,
+            isSeasonEndRush: false,
+            rushMultiplier: 1.0
         };
     }
 
@@ -195,17 +226,18 @@ export async function getRSPrediction(
     const { slope: slopeMs, intercept, standardError, xBar, Sxx, sumW } = calculateWeightedRegression(relevantHistory);
     
     const oneDayMs = 24 * 60 * 60 * 1000;
-    const dailyChange = Math.round(slopeMs * oneDayMs);
+    const multiplier = getSeasonRushMultiplier(daysLeft);
+    const dailyChange = Math.round(slopeMs * oneDayMs * multiplier);
 
     // Predict Future
     // Target time is 'now + remainingDays'
-    // But our regression x0 is relevantHistory[0].timestamp
     const x0 = relevantHistory[0].timestamp;
     const targetDate = now + (remainingDays * oneDayMs);
     const x_target = targetDate - x0;
 
     // Predicted Mean RS at target date
-    const predictedRS_mean = intercept + slopeMs * x_target;
+    // We apply the multiplier to the slope for the prediction to account for the "rush"
+    const predictedRS_mean = intercept + (slopeMs * multiplier) * x_target;
 
     // Calculate Margin of Error (Prediction Interval at 95% confidence)
     // Margin = t * s * sqrt( 1 + 1/sumW + (x_target - xBar)^2 / Sxx )
@@ -238,7 +270,9 @@ export async function getRSPrediction(
       remainingDays,
       dataPointsUsed: relevantHistory.length,
       confidence,
-      standardError: Math.round(standardError) // This is standard error of the fit
+      standardError: Math.round(standardError),
+      isSeasonEndRush: multiplier > 1.0,
+      rushMultiplier: multiplier
     };
   } catch (err) {
     logger.error("Error calculating prediction:", err);

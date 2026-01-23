@@ -119,13 +119,6 @@ async function getPeakRankAcrossSeasons(finalsName: string) {
 export async function execute(ctx: any, channel: string, message: string, args: string[]) {
   const sanitizedChannel = channel.replace(/^#/, '');
 
-  // Check for custom response first
-  const custom = await getCustomResponse(sanitizedChannel, 'peak');
-  if (custom) {
-    await ctx.say(custom);
-    return;
-  }
-
   // Get linked player
   const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
   const playerId = channelInstance?.player_id?.trim();
@@ -135,6 +128,26 @@ export async function execute(ctx: any, channel: string, message: string, args: 
   }
 
   const peaks = await getPeakRankAcrossSeasons(playerId);
+
+  // Check for custom response
+  const normalizedChannel = channel.replace(/^#/, '');
+  const resp = await getCustomResponse(normalizedChannel, 'peak');
+  if (resp) {
+    const vars: Record<string, any> = {
+      rank: peaks.regular?.rank ?? peaks.worldTour?.rank ?? "N/A",
+      league: peaks.regular?.league ?? "",
+      rankScore: peaks.regular?.rankScore ? peaks.regular.rankScore.toLocaleString() : "N/A",
+      score: peaks.regular?.rankScore ? peaks.regular.rankScore.toLocaleString() : "N/A", // Alias
+      season: peaks.regular ? seasonDisplay(peaks.regular.season) : "",
+      wtRank: peaks.worldTour?.rank ?? "",
+      wt_rank: peaks.worldTour?.rank ?? "", // Alias
+      wtSeason: peaks.worldTour ? seasonDisplay(peaks.worldTour.season) : "",
+      wt_season: peaks.worldTour ? seasonDisplay(peaks.worldTour.season) : "", // Alias
+    };
+    const message = resp.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? "");
+    await ctx.say(message);
+    return;
+  }
 
   if (peaks.regular && peaks.worldTour) {
     await ctx.say(

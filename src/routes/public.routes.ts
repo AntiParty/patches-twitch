@@ -236,6 +236,14 @@ router.get('/docs', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /developer
+ * Serve HTML Developer API page
+ */
+router.get('/developer', (req: Request, res: Response) => {
+    res.sendFile(path.join(viewsPath, 'developer-api.html'));
+});
+
+/**
  * GET /docs-markdown
  * Serve markdown documentation
  */
@@ -589,7 +597,7 @@ router.get('/api/rs-prediction', async (req: Request, res: Response) => {
     try {
         const { getRSPrediction } = await import('@/util/rsPredictor');
         
-        let days = 61;
+        let days: number | undefined = undefined;
         if (req.query.days) {
             const parsed = parseInt(req.query.days as string, 10);
             if (!isNaN(parsed) && parsed > 0) {
@@ -617,7 +625,9 @@ router.get('/api/rs-prediction', async (req: Request, res: Response) => {
             remainingDays: prediction.remainingDays,
             dataPointsUsed: prediction.dataPointsUsed,
             confidence: prediction.confidence,
-            standardError: prediction.standardError
+            standardError: prediction.standardError,
+            isSeasonEndRush: prediction.isSeasonEndRush,
+            rushMultiplier: prediction.rushMultiplier
         });
 
     } catch (err) {

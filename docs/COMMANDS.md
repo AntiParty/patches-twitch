@@ -126,47 +126,27 @@ Unlink your THE FINALS account from the bot.
 
 ### `!editcmd <command> [response]`
 
-Customize bot responses for specific commands.
+Customize bot responses.
 
 **Usage:**
 
 ```
-!editcmd rank                                    # View current custom response
-!editcmd rank @{username}, #{rank} {league}     # Set custom response
-!editcmd rank                                    # Remove custom response (back to default)
+!editcmd rank @{username} is #{rank} ({score} RS) in {league}
+!editcmd record Session gain: {gain} RS
+!editcmd peak Peak: #{rank} {league} in {season}
 ```
 
-**Available Variables for `!rank`:**
+**Available Variables**
 
-- `{username}` — User's display name
-- `{rank}` — Current rank number
-- `{league}` — Current league (Ruby, Diamond, etc.)
-- `{rankScore}` — Current RS value
-- `{wtRank}` — World Tour rank
-- `{found}` — 'true' if found, 'false' otherwise
-
-**Available Variables for `!peak`:**
-
-- `{rank}` — Peak rank number
-- `{league}` — Peak league
-- `{rankScore}` — Peak RS value
-- `{season}` — Season of peak (e.g., "Season 7")
-- `{wtRank}` — Peak World Tour rank
-- `{wtSeason}` — World Tour season of peak
-
-**Available Variables for `!record`:**
-
-- `{username}` — User's display name
-- `{sessionRS}` — RS gained/lost this session
-- `{currentRS}` — Current total RS
-
-**Example Custom Responses:**
-
-```
-!editcmd rank @{username} is grinding at #{rank} {league} with {rankScore} RS!
-!editcmd peak Peak performance: #{rank} {league} in {season}!
-!editcmd record Session grind: {sessionRS} RS gained!
-```
+| Variable     | Description                               |
+| :----------- | :---------------------------------------- |
+| `{username}` | User's display name                       |
+| `{rank}`     | Rank number (e.g. 500)                    |
+| `{score}`    | Rank Score (RS)                           |
+| `{league}`   | League (e.g. Diamond 1)                   |
+| `{gain}`     | Session RS gain/loss (Only for `!record`) |
+| `{season}`   | Season number (Only for `!peak`)          |
+| `{wt_rank}`  | World Tour Rank                           |
 
 ---
 
@@ -175,6 +155,18 @@ Customize bot responses for specific commands.
 ### `!commands`
 
 Lists all available commands.
+
+---
+
+### `!drops` or `!drop`
+
+Shows currently active Twitch drops for THE FINALS and a link to link your accounts.
+
+**Example Output:**
+
+```
+Current Finals Drops: S7 Pro Circuit Week 1 (2h) | S7 Pro Circuit Week 2 (4h) | Ends: 2026-02-15 | Be sure to Link your account to get drops here: https://id.embark.games/id/connected-platforms
+```
 
 ---
 
@@ -192,19 +184,16 @@ Get help for a specific command.
 
 ---
 
-## 🔧 Admin Commands
+### `!predict` or `!cutoff`
 
-_(These commands are restricted to channel owner/mods)_
+**[TESTER/PREMIUM ONLY]** Predicts the T500 leaderboard cutoff. If no days are provided, it automatically predicts the cutoff for the end of the current season. Accounts for end-of-season "rushes".
 
-### `!resetdb`
+**Usage:**
 
-**[ADMIN ONLY]** Reset the database (use with caution).
-
----
-
-### `!wipesubs`
-
-**[ADMIN ONLY]** Delete all EventSub subscriptions.
+```
+!predict        # Predict cutoff for the end of the season
+!predict 7      # Predict cutoff in 7 days
+```
 
 ---
 
@@ -319,5 +308,5 @@ If you encounter issues or have questions:
 
 ---
 
-**Last Updated:** November 2026
-**Bot Version:** 1.0.0
+**Last Updated:** January 2026
+**Bot Version:** 1.1.0

@@ -28,7 +28,7 @@ export const execute = async (
     }
 
     // 2. Parse arguments (Days)
-    let days = 61; // Default to approx end of season or 2 months
+    let days: number | undefined = undefined;
     if (args[0]) {
         const parsed = parseInt(args[0], 10);
         if (!isNaN(parsed) && parsed > 0 && parsed <= 365) {
@@ -49,10 +49,13 @@ export const execute = async (
     const safeRS = prediction.safeRS.toLocaleString();
     const minRS = prediction.safeRS_min.toLocaleString();
     const maxRS = prediction.safeRS_max.toLocaleString();
-    const daily = prediction.dailyChange > 0 ? `+${prediction.dailyChange}` : `${prediction.dailyChange}`;
+    const daily = prediction.dailyChange > 0 ? `+${prediction.dailyChange.toLocaleString()}` : `${prediction.dailyChange.toLocaleString()}`;
     
+    // Season End Rush indicator
+    const rushInfo = prediction.isSeasonEndRush ? ` (End-of-season rush: ${prediction.rushMultiplier}x)` : "";
+
     // Construct message
-    const msg = `@${username}, T500 Cutoff (${days}d): Target ~${safeRS} RS (${minRS}-${maxRS}). Trend: ${daily} RS/day. (Confidence: ${prediction.confidence})`;
+    const msg = `@${username}, T500 Cutoff (${prediction.remainingDays}d): Target ~${safeRS} RS (${minRS}-${maxRS}). Trend: ${daily} RS/day${rushInfo}. (Confidence: ${prediction.confidence})`;
 
     await ctx.say(msg, tags['id']);
 

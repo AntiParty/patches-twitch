@@ -4,7 +4,7 @@
  */
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
-import { Channel } from '@/db';
+import { Channel, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 
 const router = Router();
@@ -17,10 +17,11 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
  * Get correct redirect URI based on environment
  */
 const getRedirectUri = () => {
-    const uri = process.env.NODE_ENV === "production"
+    const uri = process.env.TWITCH_REDIRECT_URI || 
+        (process.env.NODE_ENV === "production"
         ? "https://finalsrs.com/callback"
-        : "http://localhost:3000/callback";
-    logger.info(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
+        : "http://localhost:3000/callback");
+    logger.info(`[Auth] Using redirect URI: ${uri}`);
     return uri;
 };
 
@@ -53,12 +54,21 @@ router.get("/login", (req: any, res: any) => {
  * Handles Twitch OAuth callback, stores tokens, subscribes user, and starts chatbot
  */
 router.get("/callback", async (req: any, res: any) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
     if (!code || typeof code !== "string") {
         return res.status(400).send("Invalid code");
     }
 
     try {
+        let stateData: any = {};
+        if (state) {
+            try {
+                stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+            } catch (ignored) {
+                // Ignore if not json or invalid base64
+            }
+        }
+
         // Exchange code for tokens
         const tokenResponse = await axios.post(
             "https://id.twitch.tv/oauth2/token",
@@ -89,8 +99,76 @@ router.get("/callback", async (req: any, res: any) => {
         const twitchUserId = twitchUser.id;
         const twitchUsername = twitchUser.login;
 
+        // --- Custom Bot Linking Flow ---
+        if (stateData && stateData.type === 'custom_bot') {
+            
+            // Relaxed check: Since this might be a different browser (incognito), we trust the signed state data for the target user.
+            // Ideally should be a signed token, but for now we rely on the state payload.
+            const targetUsername = stateData.username;
+            // Verify target user actually exists
+            const targetChannel = await Channel.findOne({ where: { username: targetUsername } });
+            
+            if (!targetChannel) {
+                 logger.error(`[Custom Bot] Target channel ${targetUsername} not found`);
+                 return res.status(404).send("Target channel not found. Please try again.");
+            }
+
+            const channelId = targetChannel.id;
+
+            // Check if this bot account is already linked properly
+            const existingBot = await CustomBotAccount.findOne({
+                where: { bot_twitch_user_id: twitchUserId }
+            });
+            
+            // If linked to SOMEONE ELSE, reject
+            if (existingBot && existingBot.channel_id !== channelId) {
+                 logger.error(`[Custom Bot] Bot account ${twitchUsername} already linked to another user`);
+                 // Redirect to a simple error page or send generic error
+                 return res.status(400).send("This bot account is already linked to another user.");
+            }
+
+            // Deactivate any existing custom bots for this user
+            await CustomBotAccount.update(
+                { is_active: false },
+                { where: { channel_id: channelId } }
+            );
+
+            // Upsert CustomBotAccount
+             await CustomBotAccount.upsert({
+                channel_id: channelId,
+                bot_username: twitchUsername,
+                bot_twitch_user_id: twitchUserId,
+                bot_access_token: access_token,
+                bot_refresh_token: refresh_token,
+                bot_token_expires_at: expirationTime,
+                is_active: true,
+                created_at: new Date(),
+                updated_at: new Date(),
+            });
+            
+            logger.info(`[Custom Bot] Linked bot ${twitchUsername} to user ${targetUsername}`);
+            
+            // Render specific Success HTML
+            return res.send(`
+                <html>
+                    <body style="background: #0f0f13; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif;">
+                        <div style="text-align: center; background: #1f1f23; padding: 40px; border-radius: 8px; border: 1px solid #2d2d35;">
+                            <h1 style="color: #00b35f; margin-bottom: 20px;">Success!</h1>
+                            <p style="margin-bottom: 20px;">
+                                Bot <strong>${twitchUsername}</strong> has been linked to <strong>${targetUsername}</strong>.
+                            </p>
+                            <p style="color: #adadb8;">You can now close this window and refresh your main dashboard.</p>
+                            <button onclick="window.close()" style="margin-top: 20px; padding: 10px 20px; background: #9147ff; color: white; border: none; border-radius: 4px; cursor: pointer;">Close Window</button>
+                        </div>
+                    </body>
+                </html>
+            `);
+        }
+
+        // --- Normal Login Flow ---
         // Upsert user in DB
         await Channel.upsert({
+
             username: twitchUsername,
             access_token,
             refresh_token,

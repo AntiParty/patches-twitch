@@ -1,4 +1,4 @@
-import { Channel } from "./db";
+import { Channel, CustomBotAccount } from "./db";
 import { startChatBot, stopChatBot, reconnectChatBot } from "./util/ircBot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
@@ -41,7 +41,26 @@ export class BotManager {
         logger.info(`Bot not enabled for ${username}`);
         return;
       } else {
-        await startChatBot(username, this.commandHandler);
+        // Check for custom bot account
+        const customBot = await CustomBotAccount.findOne({ 
+          where: { channel_id: channel.id, is_active: true } 
+        });
+
+        const isPrivileged = ['tester', 'Staff', 'admin'].includes(channel.role);
+        const hasAccess = channel.has_subscription || isPrivileged;
+
+        if (customBot && hasAccess) {
+          logger.info(`Starting custom bot ${customBot.bot_username} for channel ${username}`);
+          await startChatBot(username, this.commandHandler, {
+            botUsername: customBot.bot_username,
+            botToken: customBot.bot_access_token,
+            botUserId: customBot.bot_twitch_user_id,
+            refreshToken: customBot.bot_refresh_token
+          });
+        } else {
+          await startChatBot(username, this.commandHandler);
+        }
+        
         addUserSubscription(twitchUserId, accessToken, twitchUserId);
       }
       

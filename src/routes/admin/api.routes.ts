@@ -319,6 +319,54 @@ router.post('/api/users/:id/unban', requireAdminAPI, async (req: any, res: any) 
 });
 
 /**
+ * POST /admin/api/users/:id/grant-subscription
+ * Manually grant a subscription to a user
+ */
+router.post('/api/users/:id/grant-subscription', requireAdminAPI, async (req: any, res: any) => {
+    const userId = req.params.id;
+    const { durationDays, tier } = req.body;
+
+    // Default to 30 days if not specified
+    const duration = durationDays ? parseInt(durationDays) : 30;
+    const subscriptionTier = tier || 'custom_bot';
+
+    try {
+        const user = await Channel.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Update user subscription status
+        user.has_subscription = true;
+        user.subscription_tier = subscriptionTier;
+        await user.save();
+
+        // Create or update subscription record for tracking
+        const { Subscription } = await import('@/db');
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + duration);
+
+        await Subscription.create({
+            channel_id: user.id,
+            status: 'active',
+            plan_type: subscriptionTier,
+            current_period_start: new Date(),
+            current_period_end: endDate,
+            stripe_customer_id: 'manual_grant_' + Date.now(),
+            stripe_subscription_id: 'manual_grant_' + Date.now(),
+        });
+
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'GRANT_SUBSCRIPTION', { targetId: userId, duration, tier: subscriptionTier });
+        logger.info(`[Admin] Granted ${duration} days subscription to user ${user.username} (${userId})`);
+        
+        res.json({ success: true, message: `Granted subscription to ${user.username} for ${duration} days.` });
+    } catch (err) {
+        logger.error('Error granting subscription:', err);
+        res.status(500).json({ error: 'Failed to grant subscription' });
+    }
+});
+
+/**
  * GET /admin/api/logs
  * Get last 100 lines of main log file
  */

@@ -9,10 +9,16 @@ declare module 'express-session' {
         isUser?: boolean;
         twitchUserId?: string;
         twitchUsername?: string;
+        channelId?: number;
+        hasSubscription?: boolean;
+        subscriptionTier?: string | null;
 
         // Admin session properties
         isAdmin?: boolean;
         username?: string;
+        role?: string;
+        banned?: boolean;
+        banReason?: string | null;
     }
 }
 

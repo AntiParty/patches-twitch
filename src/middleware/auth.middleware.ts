@@ -12,7 +12,7 @@ async function syncRole(req: any) {
 
         const user = await Channel.findOne({
             where: { username: req.session.twitchUsername },
-            attributes: ['role', 'banned', 'ban_reason']
+            attributes: ['id', 'role', 'banned', 'ban_reason', 'has_subscription', 'subscription_tier']
         });
 
         if (!user) return;
@@ -31,6 +31,13 @@ async function syncRole(req: any) {
                 req.session.username = null;
             }
         }
+
+
+
+        /* -------- Subscription sync -------- */
+        req.session.channelId = user.id;
+        req.session.hasSubscription = user.has_subscription;
+        req.session.subscriptionTier = user.subscription_tier;
 
         /* -------- Ban sync -------- */
 

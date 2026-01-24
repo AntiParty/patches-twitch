@@ -44,6 +44,8 @@ class Channel extends Model {
   declare ban_reason: string | null;
   declare is_live: boolean;
   declare stream_thumbnail_url: string | null;
+  declare has_subscription: boolean;
+  declare subscription_tier: string | null;
 }
 
 
@@ -176,6 +178,16 @@ Channel.init(
     stream_thumbnail_url: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    has_subscription: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    subscription_tier: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -440,6 +452,28 @@ async function runMigrations() {
       });
       logger.info('[Migration] stream_thumbnail_url column added successfully.');
     }
+
+    // Add has_subscription column if missing
+    if (!tableInfo.has_subscription) {
+      logger.info('[Migration] Adding has_subscription column to Channels table...');
+      await queryInterface.addColumn('Channels', 'has_subscription', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+      logger.info('[Migration] has_subscription column added successfully.');
+    }
+
+    // Add subscription_tier column if missing
+    if (!tableInfo.subscription_tier) {
+      logger.info('[Migration] Adding subscription_tier column to Channels table...');
+      await queryInterface.addColumn('Channels', 'subscription_tier', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+      });
+      logger.info('[Migration] subscription_tier column added successfully.');
+    }
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
   }
@@ -501,6 +535,158 @@ Feedback.init(
   }
 );
 
+// Subscription model - Track paid subscriptions
+class Subscription extends Model {
+  declare id: number;
+  declare channel_id: number;
+  declare stripe_customer_id: string | null;
+  declare stripe_subscription_id: string | null;
+  declare status: string;
+  declare plan_type: string;
+  declare current_period_start: Date | null;
+  declare current_period_end: Date | null;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+Subscription.init(
+  {
+    channel_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Channels',
+        key: 'id',
+      },
+    },
+    stripe_customer_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    stripe_subscription_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'inactive', // active, canceled, past_due, inactive
+    },
+    plan_type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'custom_bot',
+    },
+    current_period_start: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    current_period_end: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'Subscription',
+    tableName: 'Subscriptions',
+    timestamps: false,
+    indexes: [
+      { fields: ['channel_id'] },
+      { fields: ['stripe_customer_id'] },
+      { fields: ['stripe_subscription_id'] },
+      { fields: ['status'] },
+    ],
+  }
+);
+
+// CustomBotAccount model - Track custom Twitch bot accounts
+class CustomBotAccount extends Model {
+  declare id: number;
+  declare channel_id: number;
+  declare bot_username: string;
+  declare bot_twitch_user_id: string;
+  declare bot_access_token: string;
+  declare bot_refresh_token: string;
+  declare bot_token_expires_at: Date | null;
+  declare is_active: boolean;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+CustomBotAccount.init(
+  {
+    channel_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Channels',
+        key: 'id',
+      },
+    },
+    bot_username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    bot_twitch_user_id: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    bot_access_token: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    bot_refresh_token: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    bot_token_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'CustomBotAccount',
+    tableName: 'CustomBotAccounts',
+    timestamps: false,
+    indexes: [
+      { fields: ['channel_id'] },
+      { fields: ['bot_twitch_user_id'] },
+      { fields: ['is_active'] },
+    ],
+  }
+);
+
+
 export async function getActiveSessions() {
   const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
   return await StreamSession.findAll({
@@ -512,4 +698,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, dbReady, getCustomResponse, setCustomResponse };

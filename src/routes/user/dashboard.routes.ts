@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import axios from 'axios';
-import { Channel } from '@/db';
+import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidPlayerId } from '@/middleware/validation.middleware';
@@ -47,6 +47,21 @@ router.get("/dashboard", requireUser, async (req: any, res: any) => {
         logger.error("Error fetching user stats for dashboard:", err);
     }
 
+    // Fetch subscription and custom bot data
+    let subscription = null;
+    let customBot = null;
+    try {
+        subscription = await Subscription.findOne({
+            where: { channel_id: req.session.channelId }
+        });
+
+        customBot = await CustomBotAccount.findOne({
+            where: { channel_id: req.session.channelId, is_active: true }
+        });
+    } catch (err) {
+        logger.error("Error fetching subscription/bot data for dashboard:", err);
+    }
+
     res.render("user-dashboard", {
         title: "FinalsRS - User dashboard",
         logoPath: "/assets/logo.png",
@@ -54,6 +69,8 @@ router.get("/dashboard", requireUser, async (req: any, res: any) => {
         role: req.session.role || 'Basic user',
         isAdmin: req.session.isAdmin || false,
         userStats,
+        subscription,
+        customBot,
     });
 });
 

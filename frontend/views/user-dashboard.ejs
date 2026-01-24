@@ -27,7 +27,10 @@
           "rank-tracker": 2,
           overlays: 3,
           analytics: 4,
-          settings: 5,
+          overlays: 3,
+          analytics: 4,
+          subscription: 5,
+          settings: 6,
         };
 
         const navItems = document.querySelectorAll(".nav-item");
@@ -1254,6 +1257,125 @@
           height: 80px;
         }
       }
+
+
+      /* Custom Bot Styles */
+      .status-card,
+      .guide-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      
+      .status-info {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .status-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .status-item:last-child {
+        border-bottom: none;
+      }
+
+      .status-active { color: var(--success); }
+      .status-canceled, .status-past_due { color: var(--danger); }
+
+      .bot-info {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .bot-avatar {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .bot-icon { font-size: 32px; }
+
+      .bot-details h3 {
+        font-size: 18px;
+        margin-bottom: 4px;
+      }
+
+      .bot-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+      .status-dot.inactive { background: var(--text-muted); }
+
+      .bot-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .setup-steps {
+        list-style: none;
+        counter-reset: step-counter;
+        margin-top: 16px;
+      }
+
+      .setup-steps li {
+        counter-increment: step-counter;
+        margin-bottom: 20px;
+        padding-left: 40px;
+        position: relative;
+      }
+
+      .setup-steps li::before {
+        content: counter(step-counter);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 28px;
+        height: 28px;
+        background: var(--bg-hover);
+        color: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .setup-steps strong {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--text-main);
+      }
+
+      .setup-steps p {
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
     </style>
     <link rel="icon" href="./assets/logo.png" />
   </head>
@@ -1300,6 +1422,9 @@
             <i class="fas fa-user-shield"></i> <span>Admin Dashboard</span>
           </li>
           <% } %>
+          <li class="nav-item" onclick="switchView('subscription')">
+            <i class="fas fa-robot"></i> <span>Custom Bot</span>
+          </li>
         </ul>
 
         <div class="sidebar-footer">
@@ -2233,6 +2358,181 @@
           </div>
         </div>
 
+
+        <!-- Custom Bot View -->
+        <div id="view-subscription" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Custom Bot</h2>
+          </div>
+
+          <div class="grid-2">
+            <!-- Subscription Status -->
+            <div class="status-card">
+              <div class="card-title">Subscription Status</div>
+              <% if (subscription) { %>
+              <div class="status-info">
+                <div class="status-item">
+                  <span class="label">Plan:</span>
+                  <span class="value"
+                    ><%= subscription.plan_type === 'custom_bot' ? 'Custom Bot' :
+                    subscription.plan_type %></span
+                  >
+                </div>
+                <div class="status-item">
+                  <span class="label">Status:</span>
+                  <span class="value status-<%= subscription.status %>"
+                    ><%= subscription.status %></span
+                  >
+                </div>
+                <% if (subscription.current_period_end) { %>
+                <div class="status-item">
+                  <span class="label">Renews:</span>
+                  <span class="value"
+                    ><%= new
+                    Date(subscription.current_period_end).toLocaleDateString()
+                    %></span
+                  >
+                </div>
+                <% } %>
+              </div>
+              <% } else { %>
+              <p style="color: var(--text-muted);">No active subscription found.</p>
+              <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.location.href='/subscribe'">
+                Subscribe Now
+              </button>
+              <% } %>
+            </div>
+
+            <!-- Custom Bot Status -->
+            <div class="status-card">
+              <div class="card-title">Custom Bot Account</div>
+              <% if (customBot) { %>
+              <div class="bot-info">
+                <div class="bot-avatar">
+                  <div class="bot-icon">🤖</div>
+                </div>
+                <div class="bot-details">
+                  <h3><%= customBot.bot_username %></h3>
+                  <p class="bot-status">
+                    <span
+                      class="status-dot <%= customBot.is_active ? 'active' : 'inactive' %>"
+                    ></span>
+                    <%= customBot.is_active ? 'Active' : 'Inactive' %>
+                  </p>
+                </div>
+              </div>
+              <div class="bot-actions">
+                <button class="btn btn-danger" id="unlinkBotBtn">
+                  Unlink Bot
+                </button>
+                <a href="/link-custom-bot" class="btn btn-primary"
+                  >Link Different Bot</a
+                >
+              </div>
+              <% } else { %>
+              <p style="color: var(--text-muted);">No custom bot linked yet.</p>
+              <% if (subscription) { %>
+              <div style="display: flex; gap: 10px; align-items: center; margin-top: 1rem;">
+                <a href="/link-custom-bot" class="btn btn-primary" style="margin: 0;">Link Custom Bot</a>
+                <button class="btn btn-ghost" onclick="copyCustomBotAuthLink()" title="Copy Link to authorize in another browser">
+                    <i class="fas fa-copy"></i>
+                </button>
+              </div>
+              <% } else { %>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Subscription required to link custom bot.</p>
+              <% } %>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Setup Guide -->
+          <div class="guide-card">
+            <div class="card-title">How to Set Up Your Custom Bot</div>
+            <ol class="setup-steps">
+              <li>
+                <strong>Create a Twitch Account</strong>
+                <p>
+                  Create a new Twitch account with your desired bot name (e.g.,
+                  "YourNameBot").
+                </p>
+              </li>
+              <li>
+                <strong>Link Your Bot</strong>
+                <p>
+                  Click "Link Custom Bot" above.
+                  <br><span style="font-size: 13px; color: var(--text-muted);">Tip: Use the copy button <i class="fas fa-copy" style="font-size: 11px;"></i> if you need to open the link in an Incognito window or another browser where your bot account is logged in.</span>
+                </p>
+              </li>
+              <li>
+                <strong>You're Done!</strong>
+                <p>
+                  Your bot will now respond in your chat using your custom account.
+                </p>
+              </li>
+              <script>
+                async function copyCustomBotAuthLink() {
+                    try {
+                        const res = await fetch('/api/subscription/custom-bot-auth-url');
+                        const data = await res.json();
+                        if (data.url) {
+                            await navigator.clipboard.writeText(data.url);
+                            showToast('Link copied! Open it in the browser where your bot is logged in.', 'success');
+                        } else {
+                            showToast('Failed to get link', 'danger');
+                        }
+                    } catch (e) {
+                         console.error(e);
+                         showToast('Error getting link', 'danger');
+                    }
+                }
+              </script>
+            </ol>
+          </div>
+
+          <script>
+            // Unlink bot handler
+            document.addEventListener("DOMContentLoaded", () => {
+                const unlinkBtn = document.getElementById("unlinkBotBtn");
+                if (unlinkBtn) {
+                  unlinkBtn.addEventListener("click", async () => {
+                    if (
+                      !confirm(
+                        "Are you sure you want to unlink your custom bot? The bot will revert to using the default account.",
+                      )
+                    ) {
+                      return;
+                    }
+          
+                    unlinkBtn.disabled = true;
+                    unlinkBtn.innerText = "Unlinking...";
+          
+                    try {
+                      const response = await fetch("/api/subscription/unlink-bot", {
+                        method: "POST",
+                        headers: { 
+                            "Content-Type": "application/json",
+                            "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').getAttribute("content")
+                        },
+                      });
+          
+                      if (response.ok) {
+                        window.location.reload();
+                      } else {
+                        alert("Failed to unlink bot. Please try again.");
+                      }
+                    } catch (error) {
+                      console.error("Unlink error:", error);
+                      alert("Failed to unlink bot. Please try again.");
+                    } finally {
+                      unlinkBtn.disabled = false;
+                      unlinkBtn.innerText = "Unlink Bot";
+                    }
+                  });
+                }
+            });
+          </script>
+        </div>
+
         <!-- Settings View -->
         <div id="view-settings" class="view-section">
           <div class="header">
@@ -2449,8 +2749,13 @@
                     >
                   </div>
                   <div class="gs-step-action-description">
-                    Copy your overlay URL and add it as a Browser Source in OBS
-                    Studio.
+                    Copy your overlay URL and add it as a Browser Source in OBS Studio.
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <input type="text" class="input" readonly value="<%= process.env.BASE_URL || '' %>/overlays/overlay.html?token=<%= userStats.user?.overlay_token || 'TOKEN_HERE' %>" id="gs-overlay-url-input" style="font-size: 12px; padding: 8px;">
+                        <button class="btn btn-ghost" onclick="copyGsOverlayUrl()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
                   </div>
                   <button
                     class="btn btn-primary gs-step-action-button"
@@ -2458,6 +2763,27 @@
                   >
                     <i class="fas fa-arrow-right"></i> Go to Overlays
                   </button>
+                  <script>
+                    function copyGsOverlayUrl() {
+                        const input = document.getElementById('gs-overlay-url-input');
+                        // Use the token if available globally, else try to use the placeholder
+                        if (overlayToken) {
+                            input.value = `${window.location.origin}/overlays/overlay.html?token=${overlayToken}`;
+                        }
+                        input.select();
+                        document.execCommand('copy');
+                        showToast('Overlay URL copied!', 'success');
+                    }
+                    // Try to populate on load if token available
+                    document.addEventListener('DOMContentLoaded', () => {
+                         setTimeout(() => {
+                             if(overlayToken) {
+                                  const input = document.getElementById('gs-overlay-url-input');
+                                  if(input) input.value = `${window.location.origin}/overlays/overlay.html?token=${overlayToken}`;
+                             }
+                         }, 1000);
+                    });
+                  </script>
                 </div>
               </div>
             </div>
@@ -2828,6 +3154,35 @@
       // --- On Load ---
       document.addEventListener("DOMContentLoaded", () => {
         (async () => {
+          // Handle URL Params for View Switching and Alerts
+          const urlParams = new URLSearchParams(window.location.search);
+          const viewParam = urlParams.get('view');
+          if (viewParam && ['overview', 'commands', 'rank-tracker', 'overlays', 'analytics', 'subscription', 'settings'].includes(viewParam)) {
+              // slight delay to ensure everything is initialized
+              setTimeout(() => switchView(viewParam), 100);
+          }
+
+          const errorParam = urlParams.get("error");
+          const successParam = urlParams.get("success");
+          
+          if (errorParam) {
+              let msg = "An error occurred.";
+              if (errorParam === 'missing_params') msg = "Missing parameters.";
+              if (errorParam === 'invalid_state') msg = "Invalid session state. Please try again.";
+              if (errorParam === 'bot_already_linked') msg = "This bot account is already linked to another user.";
+              if (errorParam === 'oauth_failed') msg = "OAuth authorization failed.";
+              // Remove param from URL without refresh to avoid showing toast on reload
+              window.history.replaceState({}, document.title, window.location.pathname + (viewParam ? `?view=${viewParam}` : ''));
+              setTimeout(() => showToast(msg, "danger"), 500);
+          }
+
+          if (successParam) {
+               let msg = "Operation successful.";
+               if (successParam === 'bot_linked') msg = "Custom bot linked successfully!";
+               window.history.replaceState({}, document.title, window.location.pathname + (viewParam ? `?view=${viewParam}` : ''));
+               setTimeout(() => showToast(msg, "success"), 500);
+          }
+
           // Fetch overlay token securely via session-authenticated API
           try {
             const tokRes = await fetch("/api/overlay/token");

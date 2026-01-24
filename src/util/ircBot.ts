@@ -13,6 +13,9 @@ interface IRCClient {
   reconnectAttempts: number;
   reconnectTimeout?: NodeJS.Timeout;
   intentionalDisconnect?: boolean;
+  customBotId?: string;
+  customBotToken?: string;
+  customRefreshToken?: string;
 }
 
 const clients: { [username: string]: IRCClient } = {};
@@ -59,9 +62,14 @@ export async function sendChatMessage(
   broadcasterId: string,
   message: string,
   replyParentId?: string,
-  bypassFilter: boolean = false
+  bypassFilter: boolean = false,
+  customCredentials?: {
+    botUserId: string;
+    accessToken: string;
+    clientId?: string;
+  }
 ) {
-  let appAccessToken = process.env.TWITCH_APP_ACCESS_TOKEN;
+  let appAccessToken = customCredentials?.accessToken || process.env.TWITCH_APP_ACCESS_TOKEN;
 
   // If no token is cached in env, try to generate one
   if (!appAccessToken) {
@@ -74,8 +82,8 @@ export async function sendChatMessage(
     }
   }
 
-  const clientId = process.env.TWITCH_CLIENT_ID;
-  const botUserId = process.env.TWITCH_BOT_USER_ID;
+  const clientId = customCredentials?.clientId || process.env.TWITCH_CLIENT_ID;
+  const botUserId = customCredentials?.botUserId || process.env.TWITCH_BOT_USER_ID;
 
   if (!broadcasterId || !botUserId || !appAccessToken || !clientId) {
     logger.error("[DEBUG] Missing credentials", {
@@ -174,7 +182,13 @@ export async function sendChatMessage(
 
 export const startChatBot = async (
   username: string,
-  commandHandler: Record<string, any>
+  commandHandler: Record<string, any>,
+  customCredentials?: {
+    botUsername: string;
+    botToken: string;
+    botUserId: string;
+    refreshToken: string;
+  }
 ) => {
   if (!username || typeof username !== "string") {
     logger.error("[DEBUG] Invalid username:", username);
@@ -187,16 +201,17 @@ export const startChatBot = async (
     return;
   }
 
-  const botUsername = process.env.TWITCH_BOT_USERNAME;
-  const botToken = process.env.TWITCH_BOT_TOKEN;
+  const botUsername = customCredentials?.botUsername || process.env.TWITCH_BOT_USERNAME;
+  const botToken = customCredentials?.botToken || process.env.TWITCH_BOT_TOKEN;
+  const botUserId = customCredentials?.botUserId || process.env.TWITCH_BOT_USER_ID;
 
-  if (!botUsername || !botToken || !process.env.TWITCH_BOT_USER_ID) {
+  if (!botUsername || !botToken || !botUserId) {
     logger.error(
-      "[DEBUG] Missing environment variables:",
+      "[DEBUG] Missing environment variables or credentials:",
       {
         botUsername,
         botToken: !!botToken,
-        botUserId: !!process.env.TWITCH_BOT_USER_ID,
+        botUserId: !!botUserId,
       }
     );
     return;
@@ -210,7 +225,10 @@ export const startChatBot = async (
     username: botUsername,
     channel: sanitizedUsername,
     connected: false,
-    reconnectAttempts: 0
+    reconnectAttempts: 0,
+    customBotId: customCredentials?.botUserId,
+    customBotToken: customCredentials?.botToken,
+    customRefreshToken: customCredentials?.refreshToken,
   };
 
   socket.connect(6667, "irc.chat.twitch.tv", () => {
@@ -379,8 +397,16 @@ export const startChatBot = async (
                   logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
                   return;
                 }
+                const client = clients[username.replace(/^#/, "")];
+                let customCreds;
+                if (client?.customBotId && client?.customBotToken) {
+                  customCreds = {
+                    botUserId: client.customBotId,
+                    accessToken: client.customBotToken,
+                  };
+                }
                 logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
-                await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter);
+                await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter, customCreds);
               },
               raw: (line: string) =>
                 socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
@@ -475,9 +501,19 @@ export const reconnectChatBot = async (
 ) => {
   const sanitizedUsername = username.replace(/^#/, "");
   const client = clients[sanitizedUsername];
+  let customCredentials;
 
   // Clean up existing connection if it exists
   if (client) {
+    if (client.customBotId && client.customBotToken) {
+      customCredentials = {
+        botUserId: client.customBotId,
+        botToken: client.customBotToken,
+        botUsername: client.username, // Reuse the username the bot was connected with
+        refreshToken: client.customRefreshToken || ''
+      };
+    }
+
     if (client.reconnectTimeout) {
       clearTimeout(client.reconnectTimeout);
     }
@@ -497,7 +533,7 @@ export const reconnectChatBot = async (
   await new Promise(resolve => setTimeout(resolve, 100));
 
   // Start fresh connection
-  await startChatBot(username, commandHandler);
+  await startChatBot(username, commandHandler, customCredentials);
 };
 
 export { clients };

@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage Subscription | AntiSnipe</title>
+    <link rel="stylesheet" href="/css/main.css" />
+    <link rel="stylesheet" href="/css/subscribe.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="subscribe-container">
+      <header class="subscribe-header">
+        <div class="logo">
+          <a href="/">AntiSnipe</a>
+        </div>
+        <nav>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/docs">Docs</a>
+        </nav>
+      </header>
+
+      <main class="subscribe-main">
+        <h1 style="text-align: center; margin-bottom: 3rem">
+          Manage Your Subscription
+        </h1>
+
+        <!-- Subscription Status -->
+        <section class="status-card">
+          <h2>Subscription Status</h2>
+          <% if (subscription) { %>
+          <div class="status-info">
+            <div class="status-item">
+              <span class="label">Plan:</span>
+              <span class="value"
+                ><%= subscription.plan_type === 'custom_bot' ? 'Custom Bot' :
+                subscription.plan_type %></span
+              >
+            </div>
+            <div class="status-item">
+              <span class="label">Status:</span>
+              <span class="value status-<%= subscription.status %>"
+                ><%= subscription.status %></span
+              >
+            </div>
+            <% if (subscription.current_period_end) { %>
+            <div class="status-item">
+              <span class="label">Renews:</span>
+              <span class="value"
+                ><%= new
+                Date(subscription.current_period_end).toLocaleDateString()
+                %></span
+              >
+            </div>
+            <% } %>
+          </div>
+          <% } else { %>
+          <p>No active subscription found.</p>
+          <% } %>
+        </section>
+
+        <!-- Custom Bot Status -->
+        <section class="status-card">
+          <h2>Custom Bot Account</h2>
+          <% if (customBot) { %>
+          <div class="bot-info">
+            <div class="bot-avatar">
+              <div class="bot-icon">🤖</div>
+            </div>
+            <div class="bot-details">
+              <h3><%= customBot.bot_username %></h3>
+              <p class="bot-status">
+                <span
+                  class="status-dot <%= customBot.is_active ? 'active' : 'inactive' %>"
+                ></span>
+                <%= customBot.is_active ? 'Active' : 'Inactive' %>
+              </p>
+            </div>
+          </div>
+          <div class="bot-actions">
+            <button class="btn btn-secondary" id="unlinkBotBtn">
+              Unlink Bot
+            </button>
+            <a href="/link-custom-bot" class="btn btn-primary"
+              >Link Different Bot</a
+            >
+          </div>
+          <% } else { %>
+          <p>No custom bot linked yet.</p>
+          <a
+            href="/link-custom-bot"
+            class="btn btn-primary"
+            style="margin-top: 1rem"
+            >Link Custom Bot</a
+          >
+          <% } %>
+        </section>
+
+        <!-- Setup Guide -->
+        <section class="guide-card">
+          <h2>How to Set Up Your Custom Bot</h2>
+          <ol class="setup-steps">
+            <li>
+              <strong>Create a Twitch Account</strong>
+              <p>
+                Create a new Twitch account with your desired bot name (e.g.,
+                "YourNameBot")
+              </p>
+            </li>
+            <li>
+              <strong>Link Your Bot</strong>
+              <p>
+                Click "Link Custom Bot" above and authorize the account you just
+                created
+              </p>
+            </li>
+            <li>
+              <strong>You're Done!</strong>
+              <p>
+                Your bot will now respond in your chat using your custom account
+              </p>
+            </li>
+          </ol>
+        </section>
+
+        <!-- Alert Messages -->
+        <% if (typeof error !== 'undefined') { %>
+        <div class="alert alert-error" id="alertMessage">
+          <% if (error === 'missing_params') { %> Missing parameters in OAuth
+          callback. <% } else if (error === 'invalid_state') { %> Invalid state
+          parameter. Please try again. <% } else if (error ===
+          'bot_already_linked') { %> This bot account is already linked to
+          another user. <% } else if (error === 'oauth_failed') { %> OAuth
+          authorization failed. Please try again. <% } else { %> An error
+          occurred. Please try again. <% } %>
+        </div>
+        <% } %> <% if (typeof success !== 'undefined') { %>
+        <div class="alert alert-success" id="alertMessage">
+          <% if (success === 'bot_linked') { %> Custom bot linked successfully!
+          <% } else if (success === 'bot_unlinked') { %> Custom bot unlinked
+          successfully. <% } %>
+        </div>
+        <% } %>
+      </main>
+
+      <footer class="subscribe-footer">
+        <p>&copy; 2026 AntiSnipe. All rights reserved.</p>
+        <div class="footer-links">
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/contact">Contact</a>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      // Auto-hide alerts after 5 seconds
+      const alert = document.getElementById("alertMessage");
+      if (alert) {
+        setTimeout(() => {
+          alert.style.opacity = "0";
+          setTimeout(() => alert.remove(), 300);
+        }, 5000);
+      }
+
+      // Unlink bot handler
+      const unlinkBtn = document.getElementById("unlinkBotBtn");
+      if (unlinkBtn) {
+        unlinkBtn.addEventListener("click", async () => {
+          if (
+            !confirm(
+              "Are you sure you want to unlink your custom bot? The bot will revert to using the default account.",
+            )
+          ) {
+            return;
+          }
+
+          unlinkBtn.disabled = true;
+          unlinkBtn.textContent = "Unlinking...";
+
+          try {
+            const response = await fetch("/api/subscription/unlink-bot", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+            });
+
+            if (response.ok) {
+              window.location.href =
+                "/subscription/manage?success=bot_unlinked";
+            } else {
+              alert("Failed to unlink bot. Please try again.");
+            }
+          } catch (error) {
+            console.error("Unlink error:", error);
+            alert("Failed to unlink bot. Please try again.");
+          } finally {
+            unlinkBtn.disabled = false;
+            unlinkBtn.textContent = "Unlink Bot";
+          }
+        });
+      }
+
+      // Parse URL parameters for alerts
+      const urlParams = new URLSearchParams(window.location.search);
+      const error = urlParams.get("error");
+      const success = urlParams.get("success");
+    </script>
+
+    <style>
+      .status-card,
+      .guide-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .status-card h2,
+      .guide-card h2 {
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+      }
+
+      .status-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .status-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .status-item:last-child {
+        border-bottom: none;
+      }
+
+      .label {
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      .value {
+        font-weight: 600;
+      }
+
+      .status-active {
+        color: var(--success-color);
+      }
+
+      .status-canceled,
+      .status-past_due {
+        color: #ff4444;
+      }
+
+      .bot-info {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .bot-avatar {
+        width: 80px;
+        height: 80px;
+        background: var(--gradient-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .bot-icon {
+        font-size: 2.5rem;
+      }
+
+      .bot-details h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .bot-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .status-dot.active {
+        background: var(--success-color);
+        box-shadow: 0 0 10px var(--success-color);
+      }
+
+      .status-dot.inactive {
+        background: #666;
+      }
+
+      .bot-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .setup-steps {
+        list-style: none;
+        counter-reset: step-counter;
+      }
+
+      .setup-steps li {
+        counter-increment: step-counter;
+        margin-bottom: 2rem;
+        padding-left: 3rem;
+        position: relative;
+      }
+
+      .setup-steps li::before {
+        content: counter(step-counter);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 2rem;
+        height: 2rem;
+        background: var(--gradient-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+      }
+
+      .setup-steps strong {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 1.125rem;
+      }
+
+      .setup-steps p {
+        color: var(--text-secondary);
+      }
+
+      .alert {
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+        transition: opacity 0.3s;
+      }
+
+      .alert-error {
+        background: rgba(255, 68, 68, 0.1);
+        border: 1px solid #ff4444;
+        color: #ff4444;
+      }
+
+      .alert-success {
+        background: rgba(0, 245, 147, 0.1);
+        border: 1px solid var(--success-color);
+        color: var(--success-color);
+      }
+    </style>
+  </body>
+</html>

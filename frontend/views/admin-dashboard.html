@@ -828,6 +828,82 @@
           </div>
         </div>
 
+        <!-- Grant Subscription Modal -->
+        <div
+          id="grant-sub-modal"
+          style="
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+          "
+        >
+          <div
+            style="
+              background: var(--bg-card);
+              padding: 20px;
+              border-radius: 8px;
+              width: 400px;
+              border: 1px solid var(--border);
+            "
+          >
+            <h3>Grant Subscription</h3>
+            <p
+              id="grant-sub-user-display"
+              style="color: var(--text-muted); margin-bottom: 15px"
+            ></p>
+            <input type="hidden" id="grant-sub-userid" />
+
+            <div style="margin-bottom: 10px">
+              <label style="display: block; margin-bottom: 5px"
+                >Duration (Days)</label
+              >
+              <input
+                id="grant-sub-duration"
+                class="input"
+                type="number"
+                value="30"
+                style="width: 100%"
+              />
+            </div>
+
+            <div style="margin-bottom: 10px">
+              <label style="display: block; margin-bottom: 5px">Tier</label>
+              <select id="grant-sub-tier" class="input" style="width: 100%">
+                <option value="custom_bot">Custom Bot (Standard)</option>
+              </select>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 15px;
+              "
+            >
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  document.getElementById('grant-sub-modal').style.display =
+                    'none'
+                "
+              >
+                Cancel
+              </button>
+              <button class="btn btn-primary" onclick="submitGrant()">
+                Grant
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Broadcast View -->
         <div id="view-broadcast" class="view-section">
           <div class="header">
@@ -1939,6 +2015,7 @@
                 <span id="role-status-${
                   user.username
                 }" style="font-size:12px; color:var(--success);"></span>
+                <button class="btn btn-primary" style="padding:4px 8px; font-size:12px;" onclick="openGrantModal('${user.id}', '${user.username}')">Grant Sub</button>
                 ${banBtn}
               </td>
             `;
@@ -2569,6 +2646,45 @@
             headers: { "CSRF-Token": CSRF_TOKEN },
           });
           if (res.ok) fetchFeedback();
+        } catch (err) {
+          alert("Error: " + err.message);
+        }
+      }
+
+      // --- Subscription Grant ---
+      function openGrantModal(userId, username) {
+        document.getElementById("grant-sub-userid").value = userId;
+        document.getElementById("grant-sub-user-display").innerText =
+          "User: " + username;
+        document.getElementById("grant-sub-modal").style.display = "flex";
+      }
+
+      async function submitGrant() {
+        const userId = document.getElementById("grant-sub-userid").value;
+        const duration = document.getElementById("grant-sub-duration").value;
+        const tier = document.getElementById("grant-sub-tier").value;
+
+        try {
+          await ensureCsrfToken();
+          const res = await fetch(
+            `/admin/api/users/${userId}/grant-subscription`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "CSRF-Token": CSRF_TOKEN,
+              },
+              body: JSON.stringify({ durationDays: duration, tier }),
+            },
+          );
+          const data = await res.json();
+          if (data.success) {
+            alert(data.message);
+            document.getElementById("grant-sub-modal").style.display = "none";
+            fetchUsers(); // Refresh grid
+          } else {
+            alert("Error: " + data.error);
+          }
         } catch (err) {
           alert("Error: " + err.message);
         }

@@ -6,6 +6,7 @@ import { sendChatMessage } from "./util/ircBot"
 import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
 import logger from "./util/logger";
 import axios from "axios";
+import { isUserAssignedToShard } from "./util/sharding";
 
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
@@ -19,11 +20,16 @@ export class BotManager {
   constructor() {
     this.commandHandler = loadCommands();
     // Start polling for missing stream sessions when BotManager is instantiated
+    // Note: The poller itself must handle sharding logic internally or we pass it here
     startStreamSessionPolling();
   }
 
   private async getChannels(): Promise<Channel[]> {
     let channels = await Channel.findAll();
+    
+    // Filter by Shard
+    channels = channels.filter((c: any) => isUserAssignedToShard(c.username));
+
     if (process.env.NODE_ENV === 'development' && process.env.DEV_CHANNELS) {
       const allowed = process.env.DEV_CHANNELS.split(',').map(s => s.trim().toLowerCase());
       if (allowed.length > 0) {
@@ -34,6 +40,11 @@ export class BotManager {
   }
 
   public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {
+    if (!isUserAssignedToShard(username)) {
+      logger.warn(`[Sharding] Skipping startBotForUser for ${username} (not assigned to this shard)`);
+      return;
+    }
+
     try {
       // Use the cached command handler instead of reloading every time
       const channel = await Channel.findOne({ where: { username } });
@@ -239,6 +250,11 @@ export class BotManager {
     }
 
     if (channelName) {
+      if (!isUserAssignedToShard(channelName)) {
+        logger.debug(`[Sharding] Skipping sendMessage for ${channelName} (not assigned to this shard)`);
+        return;
+      }
+
       const user = await Channel.findOne({
         where: { username: channelName },
       });
@@ -250,9 +266,7 @@ export class BotManager {
       logger.info(`[Admin] Sending message to ${channelName}: ${message}`);
       await sendChatMessage(userAny.twitch_user_id, message);
     } else {
-      const channels = await Channel.findAll({
-        attributes: ["username", "twitch_user_id"],
-      });
+      const channels = await this.getChannels(); // Respects sharding
 
       for (const ch of channels) {
         const username = (ch as any).username;

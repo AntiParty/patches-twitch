@@ -8,22 +8,34 @@ import logger from "./util/logger";
 import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
+import { getShardInfo, isUserAssignedToShard } from "./util/sharding";
 
 dbReady.then(async () => {
-  logger.info("Database ready, initializing bot services...");
+  const { shardIndex, shardCount } = getShardInfo();
+  logger.info(`Database ready, initializing bot services (Shard ${shardIndex}/${shardCount})...`);
 
   try {
     await botManager.loadTokensOnStartup();
-    // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
-    startBotTokenAutoRefresher();
-    startCacheUpdater();
+    
+    // Only Shard 0 handles global background jobs
+    if (shardIndex === 0) {
+      logger.info("[Startup] Starting global background jobs (Shard 0)...");
+      // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
+      startBotTokenAutoRefresher();
+      startCacheUpdater();
+    } else {
+      logger.info(`[Startup] Skipping global background jobs (Shard ${shardIndex})`);
+    }
 
     logger.info("Bot is up and running!");
 
     // Restore and continue tracking active stream sessions from DB
+    // Only for users assigned to this shard
     const activeSessions = await StreamSession.findAll();
     activeSessions.forEach(session => {
-      const channel = session.get('channel');
+      const channel = session.get('channel') as string;
+      if (!isUserAssignedToShard(channel)) return;
+
       const start_score = session.get('start_score');
       const start_wt_rank = session.get('start_wt_rank');
       const started_at = session.get('started_at');
@@ -52,6 +64,12 @@ dbReady.then(async () => {
       try {
         const user = await Channel.findOne({ where: { twitch_user_id } });
         if (!user) return res.status(404).send("User not found in DB");
+        
+        // Shard check
+        if (!isUserAssignedToShard(user.username)) {
+           logger.info(`[ControlAPI] Ignoring add-channel for ${user.username} (not assigned to Shard ${shardIndex})`);
+           return res.json({ success: false, message: "User managed by another shard" });
+        }
 
         await botManager.startBotForUser(
           user.username,
@@ -88,6 +106,13 @@ dbReady.then(async () => {
       // Always attempt to stop bot and disconnect EventSub WebSocket
       try {
         const uname = user?.username || username;
+        
+        // Check ownership if we have a username
+        if (uname && !isUserAssignedToShard(uname)) {
+            logger.info(`[ControlAPI] Ignoring remove-channel for ${uname} (not assigned to Shard ${shardIndex})`);
+            return res.json({ success: false, message: "User managed by another shard" });
+        }
+
         if (uname) {
           await botManager.stopBotForUser(uname);
 

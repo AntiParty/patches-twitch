@@ -11,11 +11,29 @@ function parseEnv(content: string): Record<string, string> {
   const result: Record<string, string> = {};
   const lines = content.split(/\r?\n/);
   for (const line of lines) {
-    if (!line || /^\s*#/.test(line)) continue;
-    const idx = line.indexOf("=");
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    const idx = trimmed.indexOf("=");
     if (idx === -1) continue;
-    const key = line.slice(0, idx).trim();
-    const value = line.slice(idx + 1);
+
+    const key = trimmed.slice(0, idx).trim();
+    let value = trimmed.slice(idx + 1).trim();
+
+    // Remove trailing comments (look for # preceded by a space)
+    const commentIdx = value.indexOf(" #");
+    if (commentIdx !== -1) {
+      value = value.slice(0, commentIdx).trim();
+    }
+
+    // Strip quotes if present
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
     if (key) result[key] = value;
   }
   return result;
@@ -63,4 +81,14 @@ export function updateEnvVariables(updates: Record<string, string>): { wroteFile
   const serialized = stringifyEnv(next, original);
   fs.writeFileSync(envPath, serialized, "utf8");
   return { wroteFile: true, filePath: envPath };
+}
+
+export function reloadEnv(): void {
+  const envPath = getEnvFilePath();
+  if (!fs.existsSync(envPath)) return;
+  const content = fs.readFileSync(envPath, "utf8");
+  const vars = parseEnv(content);
+  for (const [k, v] of Object.entries(vars)) {
+    process.env[k] = v;
+  }
 }

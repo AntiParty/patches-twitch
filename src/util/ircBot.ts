@@ -4,6 +4,7 @@ import { Channel } from "../db";
 import { commandCounter, incrementCommandsProcessed } from "../server";
 import logger from "./logger";
 import { refreshToken as getAppAccessToken } from "./twitchUtils";
+import { reloadEnv } from "./envUtils";
 
 interface IRCClient {
   socket: net.Socket;
@@ -180,6 +181,9 @@ export const startChatBot = async (
     logger.error("[DEBUG] Invalid username:", username);
     return;
   }
+
+  // Reload env to get latest bot token/refresh token updated by Shard 0
+  reloadEnv();
 
   const sanitizedUsername = username.replace(/^#/, "");
   if (clients[sanitizedUsername]) {

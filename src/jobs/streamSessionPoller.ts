@@ -3,6 +3,7 @@ import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
 import logger from '../util/logger';
+import { isUserAssignedToShard } from '../util/sharding';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
 const alertedMissingSession: Set<string> = new Set();
@@ -12,7 +13,9 @@ const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // Refresh app token every 30 
 
 export async function getTrackedUsernames(): Promise<string[]> {
   const channels = await Channel.findAll({ attributes: ['username'] });
-  return channels.map((c: any) => c.username);
+  return channels
+    .map((c: any) => c.username)
+    .filter(username => isUserAssignedToShard(username));
 }
 
 async function ensureAppTokenValid(): Promise<string> {

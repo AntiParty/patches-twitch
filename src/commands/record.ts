@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
 import { getStreamStatusWithAutoRefresh } from "../util/twitchUtils";
+import { cacheManager } from "../util/cacheManager";
 
 export interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -13,53 +14,24 @@ export interface CommandContext {
   tags?: Record<string, any>;
 }
 
+// Deprecated - kept for backward compatibility
 function getCacheDir() {
   return path.resolve(__dirname, "../../cache");
 }
 
+// Deprecated - use cacheManager.getLatestFile() instead
 export async function getLatestCacheFile(prefix: string): Promise<string | null> {
-  try {
-    const files = await fs.readdir(getCacheDir());
-    const matched = files
-      .filter(f => f.startsWith(prefix) && f.endsWith(".json"))
-      .map(f => {
-        const num = parseInt(f.match(/\d+/)?.[0] ?? "0", 10);
-        return { file: f, season: num };
-      })
-      .filter(x => x.season > 0)
-      .sort((a, b) => b.season - a.season); // newest first
-
-    return matched.length > 0 ? path.join(getCacheDir(), matched[0].file) : null;
-  } catch (err) {
-    logger.error(`Failed to list cache files for ${prefix}:`, err);
-    return null;
-  }
+  logger.warn('[record] getLatestCacheFile is deprecated, use cacheManager instead');
+  return cacheManager.getLatestFile(prefix);
 }
 
+// Use cache manager for efficient memory usage
 export async function getLatestLeaderboardData() {
-  const file = await getLatestCacheFile("regular_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("[record] Failed to read leaderboard cache:", err);
-    return null;
-  }
+  return cacheManager.getLatestLeaderboard();
 }
 
 export async function getLatestWorldTourData() {
-  const file = await getLatestCacheFile("worldTour_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("[record] Failed to read World Tour leaderboard cache:", err);
-    return null;
-  }
+  return cacheManager.getLatestWorldTour();
 }
 
 async function maybeSendCustomResponse(

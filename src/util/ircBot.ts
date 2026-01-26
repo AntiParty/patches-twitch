@@ -231,25 +231,31 @@ export const startChatBot = async (
     logger.info(`[DEBUG] Bot connected to #${sanitizedUsername}`);
   });
 
-  // Initialize heartbeat using any incoming activity as health indicator
+  // Use centralized heartbeat manager instead of per-connection interval
+  const { heartbeatManager } = await import('./heartbeatManager');
+  
   let lastActivity = Date.now();
   const HEARTBEAT_INTERVAL = 60_000; // send PING every minute
   const MAX_NO_ACTIVITY = 600_000; // 10 minutes tolerance
-  const heartbeat = setInterval(() => {
-    if (!clients[sanitizedUsername]?.connected) return;
-    const now = Date.now();
-    if (now - lastActivity > MAX_NO_ACTIVITY) {
+
+  heartbeatManager.register({
+    id: `irc_${sanitizedUsername}`,
+    lastActivity,
+    heartbeatInterval: HEARTBEAT_INTERVAL,
+    timeoutThreshold: MAX_NO_ACTIVITY,
+    onHeartbeat: () => {
+      if (!clients[sanitizedUsername]?.connected) return;
+      try {
+        socket.write("PING :tmi.twitch.tv\r\n");
+      } catch (e) {
+        logger.warn(`[DEBUG] Failed to write PING for ${sanitizedUsername}:`, e);
+      }
+    },
+    onTimeout: () => {
       logger.warn(`[DEBUG] No activity for ${sanitizedUsername} in ${Math.floor(MAX_NO_ACTIVITY / 1000)}s, reconnecting...`);
       socket.destroy(); // This will trigger the 'close' event
-      return;
     }
-    // send PING to solicit PONG / activity
-    try {
-      socket.write("PING :tmi.twitch.tv\r\n");
-    } catch (e) {
-      logger.warn(`[DEBUG] Failed to write PING for ${sanitizedUsername}:`, e);
-    }
-  }, HEARTBEAT_INTERVAL);
+  });
 
   socket.on("data", async (data) => {
     const rawData = data.toString();
@@ -283,7 +289,7 @@ export const startChatBot = async (
       if (!line) continue;
 
       // Update last-activity on any incoming data line to avoid false timeouts
-      lastActivity = Date.now();
+      heartbeatManager.updateActivity(`irc_${sanitizedUsername}`);
 
       if (line.startsWith("PING")) {
         socket.write("PONG :tmi.twitch.tv\r\n");
@@ -428,12 +434,15 @@ export const startChatBot = async (
   socket.on("error", (err) =>
     logger.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err)
   );
-  socket.on("close", () => {
+  socket.on("close", async () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
     if (clients[sanitizedUsername]) {
       clients[sanitizedUsername].connected = false;
     }
-    clearInterval(heartbeat);
+    
+    // Unregister from centralized heartbeat manager
+    const { heartbeatManager } = await import('./heartbeatManager');
+    heartbeatManager.unregister(`irc_${sanitizedUsername}`);
 
     const client = clients[sanitizedUsername];
     if (client) {

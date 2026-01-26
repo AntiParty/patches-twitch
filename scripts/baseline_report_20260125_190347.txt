@@ -1,0 +1,29 @@
+=== MEMORY BASELINE REPORT ===
+Generated: Sun Jan 25 07:03:47 PM MST 2026
+
+--- System Memory ---
+               total        used        free      shared  buff/cache   available
+Mem:           7.6Gi       5.9Gi       219Mi       340Mi       2.1Gi       1.7Gi
+Swap:          4.0Gi       1.1Gi       2.9Gi
+
+--- Node.js Process Memory ---
+root        2783  0.0  0.0   2704  1912 ?        Ss   Jan21   0:00 fusermount3 -o rw,nosuid,nodev,fsname=portal,auto_unmount,subtype=portal -- /run/user/1000/doc
+antipar+    6228  0.0  0.0   2804  1716 ?        S    Jan21   0:00 sh -c node dist/index.js
+antipar+    6229  0.0  0.7 11410276 63436 ?      Sl   Jan21   0:03 node dist/index.js
+antipar+    6899  0.0  0.5 631560 46504 pts/0    Sl+  Jan21   0:15 node /usr/local/bin/pm2 logs
+
+--- Database Sizes ---
+
+--- Cache Sizes ---
+
+--- Database Row Counts ---
+Channels: 
+CommandUsage: 
+RequestMetrics: 
+PerformanceMetrics: 
+
+--- Active Connections ---
+IRC Connections: 12
+Open File Descriptors: 3
+
+--- Oldest Data in Metrics ---

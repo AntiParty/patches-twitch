@@ -28,7 +28,8 @@ class PerformanceMonitor extends EventEmitter {
   constructor() {
     super();
     this.metrics = this.getInitialMetrics();
-    this.updateInterval = setInterval(() => this.updateMetrics(), 5000);
+    // Reduced from 5s to 30s to lower DB write pressure (17k/day -> 2.9k/day)
+    this.updateInterval = setInterval(() => this.updateMetrics(), 30000);
   }
 
   private getInitialMetrics(): PerformanceMetrics {

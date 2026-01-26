@@ -11,10 +11,10 @@ export const sequelizeMetrics = new Sequelize({
   storage: path.resolve(__dirname, "../data/metrics.sqlite"),
   logging: false,
   pool: {
-    max: 5,
+    max: 3, // Reduced from 5 to lower memory overhead
     min: 0,
     acquire: 30000,
-    idle: 10000,
+    idle: 5000, // Reduced from 10s to free connections faster
   },
   retry: {
     max: 3,
@@ -197,29 +197,48 @@ export const metricsDbReady = sequelizeMetrics
     }
   })
   .then(() => {
-    // Start periodic cleanup of old metrics (e.g., every 24 hours)
-    const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
-    setInterval(async () => {
+    // Cleanup function to remove old metrics and reduce database bloat
+    const cleanupOldMetrics = async () => {
       try {
-        const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        
+        // More aggressive cleanup to prevent 1M+ row accumulation
         const deletedRequests = await RequestMetric.destroy({
-          where: { timestamp: { [Op.lt]: sixtyDaysAgo } }
-        });
-        const deletedPerf = await PerformanceMetric.destroy({
           where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
         });
-        const deletedIGN = await IGNVisit.destroy({
+        // Performance metrics are high-frequency (every 5s), keep only 7 days
+        const deletedPerf = await PerformanceMetric.destroy({
           where: { timestamp: { [Op.lt]: sevenDaysAgo } }
         });
+        const deletedIGN = await IGNVisit.destroy({
+          where: { timestamp: { [Op.lt]: threeDaysAgo } }
+        });
+        
         if (deletedRequests > 0 || deletedPerf > 0 || deletedIGN > 0) {
-          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (60d), ${deletedPerf} perf (30d), and ${deletedIGN} IGN logs (7d).`);
+          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (30d), ${deletedPerf} perf (7d), ${deletedIGN} IGN (3d)`);
+          
+          // Run VACUUM to reclaim disk space after large deletions
+          if (deletedPerf > 10000 || deletedRequests > 1000) {
+            logger.info('[metrics-db] Running VACUUM to reclaim disk space...');
+            await sequelizeMetrics.query('VACUUM;');
+            logger.info('[metrics-db] VACUUM complete');
+          }
         }
       } catch (err) {
         logger.error("[metrics-db] Failed to clean up old metrics:", err);
       }
-    }, CLEANUP_INTERVAL);
+    };
+
+    // Run cleanup immediately on startup to clear existing bloat
+    logger.info('[metrics-db] Running initial cleanup...');
+    cleanupOldMetrics().catch(err => logger.error('[metrics-db] Initial cleanup failed:', err));
+    
+    // Run cleanup every 6 hours instead of 24 (more aggressive)
+    const CLEANUP_INTERVAL = 6 * 60 * 60 * 1000;
+    setInterval(cleanupOldMetrics, CLEANUP_INTERVAL);
+    logger.info('[metrics-db] Scheduled cleanup every 6 hours');
   })
   .catch((err) => {
     logger.error("[metrics-db] failed to sync:", err);

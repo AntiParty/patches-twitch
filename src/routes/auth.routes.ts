@@ -17,9 +17,7 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
  * Get correct redirect URI based on environment
  */
 const getRedirectUri = () => {
-    const uri = process.env.NODE_ENV === "production"
-        ? "https://finalsrs.com/callback"
-        : "http://localhost:3000/callback";
+    const uri = "https://finalsrs.com/callback";
     logger.info(`[DEBUG] Using redirect URI: ${uri} (NODE_ENV=${process.env.NODE_ENV})`);
     return uri;
 };

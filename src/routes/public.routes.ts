@@ -14,6 +14,7 @@ import { requireApiKey } from '@/middleware/auth.middleware';
 import { rateLimitFeedback } from '@/middleware/security';
 import { getAnalytics } from '@/util/webAnalytics';
 import { log } from 'console';
+import { getShardInfo } from '@/util/sharding';
 
 const router = Router();
 
@@ -658,6 +659,20 @@ router.get('/api/active-streamers', async (req: Request, res: Response) => {
     } catch (err) {
         logger.error('Error fetching active streamers:', err);
         res.status(500).json({ error: 'Failed to fetch active streamers' });
+    }
+});
+
+/**
+ * GET /api/shards
+ * Returns shard configuration (current shard index and total count)
+ */
+router.get('/api/shards', (req: Request, res: Response) => {
+    try {
+        const { shardIndex, shardCount } = getShardInfo();
+        res.json({ shardIndex, shardCount });
+    } catch (err) {
+        logger.error('Error fetching shard info:', err);
+        res.status(500).json({ error: 'Failed to fetch shard info' });
     }
 });
 

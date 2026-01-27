@@ -4,6 +4,7 @@
  * This will immediately clean up the 1M+ performance metric rows
  */
 
+import 'tsconfig-paths/register';
 import { sequelizeMetrics, PerformanceMetric, RequestMetric, IGNVisit } from '../src/dbMetrics';
 import { Op } from 'sequelize';
 import logger from '../src/util/logger';

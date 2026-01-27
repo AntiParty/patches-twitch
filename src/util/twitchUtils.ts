@@ -4,17 +4,21 @@ import fetch from 'node-fetch';
 import { Channel } from '../db';
 import logger from '@/util/logger';
 
-export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string }[]> {
+export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string, streamStartTime?: string }[]> {
   const clientId = process.env.TWITCH_CLIENT_ID;
   // Prefer app access token for stream status checks (more reliable than bot token)
   const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
   if (!clientId || !accessToken) return [];
-  const results: { username: string, thumbnailUrl?: string }[] = [];
+  const results: { username: string, thumbnailUrl?: string, streamStartTime?: string }[] = [];
   for (const username of usernames) {
     try {
       const status = await getStreamStatusForUser(username, accessToken);
       if (status.isLive) {
-        results.push({ username, thumbnailUrl: status.thumbnailUrl });
+        results.push({ 
+          username, 
+          thumbnailUrl: status.thumbnailUrl,
+          streamStartTime: status.streamStartTime || undefined
+        });
       }
     } catch (err) {
       // Optionally log error per user

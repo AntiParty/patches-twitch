@@ -502,14 +502,7 @@ Feedback.init(
 );
 
 export async function getActiveSessions() {
-  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
-  return await StreamSession.findAll({
-    where: {
-      started_at: {
-        [Op.gte]: eightHoursAgo
-      }
-    }
-  });
+  return await StreamSession.findAll();
 }
 
 export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, dbReady, getCustomResponse, setCustomResponse };

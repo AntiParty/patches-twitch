@@ -79,13 +79,30 @@ export const startStreamSessionPolling = async () => {
       }
 
       for (const user of liveStreams) {
-        const hasSession = activeSessions.some(s => s.channel === user.username);
-        if (!hasSession) {
+        const session = activeSessions.find(s => s.channel === user.username);
+        let shouldCreateSession = !session;
+
+        // Check if existing session is stale (from a previous stream)
+        if (session && user.streamStartTime) {
+          const streamStart = new Date(user.streamStartTime).getTime();
+          const sessionStart = new Date(session.started_at).getTime();
+          
+          // If the stream started significantly AFTER the session (e.g. > 10 mins),
+          // updates the session because the current session belongs to an older stream.
+          if (streamStart > sessionStart + 10 * 60 * 1000) {
+            shouldCreateSession = true;
+            logger.info(`[SessionPoller] Detected stale session for ${user.username}. Stream: ${user.streamStartTime}, Session: ${session.started_at}. Marked for reset.`);
+          }
+        }
+
+        if (shouldCreateSession) {
           // Only alert once per live session
           if (!alertedMissingSession.has(user.username)) {
             // Fetch channel info
             let channel = await Channel.findOne({ where: { username: user.username } });
             if (!channel?.player_id) {
+              // Only alert if we haven't checked recently or if it's a new issue
+               // Logic preserved from original
               await sendDiscordAlert({
                 type: 'warning',
                 title: 'Missing Stream Session',
@@ -149,7 +166,7 @@ export const startStreamSessionPolling = async () => {
             alertedMissingSession.delete(user.username);
           }
         } else {
-          // If session exists, remove from alert set so future alerts can happen after next offline/online
+          // If session exists and is valid, remove from alert set
           alertedMissingSession.delete(user.username);
         }
       }

@@ -70,7 +70,7 @@ export const execute = async (ctx: CommandContext) => {
       return;
     }
 
-    const finalsName = channelInstance.player_id.toLowerCase();
+    const finalsName = channelInstance.player_id.trim().toLowerCase();
     const regularData = await getLatestLeaderboardData();
     const worldTourData = await getLatestWorldTourData();
 
@@ -79,14 +79,15 @@ export const execute = async (ctx: CommandContext) => {
       return;
     }
 
+    // Helper to normalize strings
+    const normalize = (v: any) => v ? v.toLowerCase().trim() : "";
+
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
-      let player = data.find(p => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find(p => p.name.toLowerCase().startsWith(baseName));
-      }
-      return player;
+      const target = normalize(name);
+      
+      // Exact match only (ignoring case/whitespace)
+      return data.find(p => normalize(p.name) === target);
     };
 
     const player = findPlayer(regularData, finalsName);

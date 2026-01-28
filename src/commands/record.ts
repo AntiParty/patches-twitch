@@ -92,15 +92,16 @@ export const execute = async (
     }
 
     // 4. Find player
-    const finalsName = playerId.toLowerCase();
+    const finalsName = playerId.trim().toLowerCase();
+    // Helper to normalize strings
+    const normalize = (v: any) => v ? v.toLowerCase().trim() : "";
+
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
-      let player = data.find((p) => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find((p) => p.name.toLowerCase().startsWith(baseName));
-      }
-      return player;
+      const target = normalize(name);
+      
+      // Exact match only (ignoring case/whitespace)
+      return data.find(p => normalize(p.name) === target);
     };
     const player = findPlayer(cachedData, finalsName);
     const wtPlayer = findPlayer(worldTourData, finalsName);

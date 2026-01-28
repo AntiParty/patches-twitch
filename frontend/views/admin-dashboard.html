@@ -460,41 +460,32 @@
           <li class="nav-item active" onclick="switchView('dashboard')">
             <i class="fas fa-home"></i> Dashboard
           </li>
-          <li class="nav-item admin-only" onclick="switchView('channels')">
-            <i class="fas fa-users"></i> Channels
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('users')">
-            <i class="fas fa-user-shield"></i> Users
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('broadcast')">
-            <i class="fas fa-bullhorn"></i> Broadcast
+          <li
+            class="nav-item admin-only"
+            onclick="switchView('users-combined')"
+          >
+            <i class="fas fa-users"></i> Users
           </li>
           <li class="nav-item" onclick="switchView('drops')">
             <i class="fas fa-gift"></i> Drops
           </li>
-          <li class="nav-item admin-only" onclick="switchView('commands')">
+          <li
+            class="nav-item admin-only"
+            onclick="switchView('commands-combined')"
+          >
             <i class="fas fa-terminal"></i> Commands
           </li>
-          <li class="nav-item admin-only" onclick="switchView('database')">
-            <i class="fas fa-database"></i> Database
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('simple-auth')">
-            <i class="fas fa-key"></i> Analyst Access
-          </li>
-          <li class="nav-item" onclick="switchView('analytics')">
+          <li class="nav-item" onclick="switchView('analytics-combined')">
             <i class="fas fa-chart-bar"></i> Analytics
           </li>
-          <li class="nav-item" onclick="switchView('feedback')">
-            <i class="fas fa-comments"></i> User Feedback
-          </li>
-          <li class="nav-item" onclick="window.location.href = '/statistics'">
-            <i class="fas fa-chart-line"></i> Statistics
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('logs')">
-            <i class="fas fa-file-code"></i> System Logs
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('settings')">
+          <li
+            class="nav-item admin-only"
+            onclick="switchView('settings-combined')"
+          >
             <i class="fas fa-cog"></i> Settings
+          </li>
+          <li class="nav-item admin-only" onclick="switchView('other')">
+            <i class="fas fa-ellipsis-h"></i> Other Tools
           </li>
         </ul>
 
@@ -674,627 +665,19 @@
           </div>
         </div>
 
-        <!-- Channels View -->
-        <div id="view-channels" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Connected Channels</h2>
-            <button class="btn btn-ghost" onclick="fetchChannels()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-          <div id="channels-list" class="channels-grid">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
-        <!-- Users View -->
-        <div id="view-users" class="view-section">
-          <div class="header">
-            <h2 class="page-title">User Management</h2>
-            <button class="btn btn-ghost" onclick="fetchUsers()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-          <div class="card">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Twitch ID</th>
-                    <th>Role</th>
-                    <th style="width: 200px">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="users-body">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Simple Auth View -->
-        <div id="view-simple-auth" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Analyst Access Management</h2>
-            <button class="btn btn-ghost" onclick="fetchSimpleUsers()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Temporary Users (JSON)</div>
-              <button
-                class="btn btn-primary"
-                onclick="showAddSimpleUserModal()"
-              >
-                <i class="fas fa-plus"></i> Add User
-              </button>
-            </div>
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="simple-users-body">
-                  <!-- Loaded dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Add Simple User Modal -->
-        <div
-          id="add-simple-user-modal"
-          style="
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-          "
-        >
-          <div
-            style="
-              background: var(--bg-card);
-              padding: 20px;
-              border-radius: 8px;
-              width: 400px;
-              border: 1px solid var(--border);
-            "
-          >
-            <h3>Add Temporary User</h3>
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Username</label>
-              <input
-                id="new-simple-user"
-                class="input"
-                placeholder="Username"
-                style="width: 100%"
-              />
-            </div>
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Password</label>
-              <input
-                id="new-simple-pass"
-                class="input"
-                type="password"
-                placeholder="Password"
-                style="width: 100%"
-              />
-            </div>
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Role</label>
-              <select id="new-simple-role" class="input" style="width: 100%">
-                <option value="analyst">Analyst</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div
-              style="
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-                margin-top: 15px;
-              "
-            >
-              <button
-                class="btn btn-ghost"
-                onclick="
-                  document.getElementById(
-                    'add-simple-user-modal',
-                  ).style.display = 'none'
-                "
-              >
-                Cancel
-              </button>
-              <button class="btn btn-primary" onclick="addSimpleUser()">
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Broadcast View -->
-        <div id="view-broadcast" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Broadcast Message</h2>
-          </div>
-          <div class="card" style="max-width: 800px">
-            <div style="margin-bottom: 20px">
-              <label
-                style="
-                  display: block;
-                  margin-bottom: 8px;
-                  color: var(--text-muted);
-                "
-                >Target Channels</label
-              >
-              <div
-                id="broadcast-targets"
-                style="
-                  padding: 10px;
-                  border: 1px solid var(--border);
-                  border-radius: var(--radius);
-                  min-height: 40px;
-                  display: flex;
-                  flex-wrap: wrap;
-                  gap: 5px;
-                "
-              >
-                <span
-                  style="
-                    color: var(--text-muted);
-                    font-style: italic;
-                    padding: 5px;
-                  "
-                  >Select channels from the 'Channels' tab or leave empty for
-                  ALL.</span
-                >
-              </div>
-            </div>
-            <div style="margin-bottom: 20px">
-              <label
-                style="
-                  display: block;
-                  margin-bottom: 8px;
-                  color: var(--text-muted);
-                "
-                >Message</label
-              >
-              <textarea
-                id="broadcast-msg"
-                class="input"
-                style="min-height: 120px; resize: vertical"
-                placeholder="Type your announcement..."
-              ></textarea>
-            </div>
-            <div style="display: flex; justify-content: flex-end">
-              <button class="btn btn-primary" onclick="sendBroadcast()">
-                <i class="fas fa-paper-plane"></i> Send Broadcast
-              </button>
-            </div>
-            <div id="broadcast-status" style="margin-top: 15px"></div>
-          </div>
-        </div>
-
         <!-- Drops View -->
         <div id="view-drops" class="view-section">
           <div class="header">
-            <h2 class="page-title">Manage Twitch Drops</h2>
+            <h2 class="page-title">Drops Configuration</h2>
             <button class="btn btn-primary" onclick="saveDropsConfig()">
               <i class="fas fa-save"></i> Save Changes
             </button>
           </div>
 
-          <!-- Global Settings -->
-          <div class="card" style="margin-bottom: 20px">
-            <div class="card-title" style="margin-bottom: 15px">
-              Global Settings
-            </div>
-            <div class="grid-2">
-              <div>
-                <label
-                  style="
-                    display: block;
-                    margin-bottom: 5px;
-                    color: var(--text-muted);
-                  "
-                  >Last Updated Text</label
-                >
-                <input
-                  id="drop-last-updated"
-                  class="input"
-                  placeholder="e.g. November 28, 2026"
-                />
-              </div>
-              <div>
-                <label
-                  style="
-                    display: block;
-                    margin-bottom: 5px;
-                    color: var(--text-muted);
-                  "
-                  >Featured Image URL</label
-                >
-                <div style="display: flex; gap: 10px">
-                  <input
-                    id="drop-featured-image"
-                    class="input"
-                    placeholder="Path to image"
-                  />
-                  <input
-                    type="file"
-                    id="drop-image-upload"
-                    style="display: none"
-                    accept="image/*"
-                    onchange="handleImageUpload(this)"
-                  />
-                  <button
-                    class="btn btn-ghost"
-                    onclick="
-                      document.getElementById('drop-image-upload').click()
-                    "
-                  >
-                    <i class="fas fa-upload"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Drops List -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Active Drops List</div>
-              <button class="btn btn-success" onclick="addDropItem()">
-                <i class="fas fa-plus"></i> Add Item
-              </button>
-            </div>
-            <div
-              id="drops-items-container"
-              style="display: flex; flex-direction: column; gap: 10px"
-            >
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Commands View -->
-        <div id="view-commands" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Custom Commands</h2>
-            <button class="btn btn-success" onclick="showAddCommandModal()">
-              <i class="fas fa-plus"></i> Add Command
-            </button>
-          </div>
-          <div class="card">
-            <div class="table-container">
-              <table id="commands-table">
-                <thead>
-                  <tr>
-                    <th>Trigger</th>
-                    <th>Response</th>
-                    <th style="width: 100px">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="commands-body">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <!-- Add Command Form (Inline for simplicity) -->
-          <div
-            id="add-command-panel"
-            class="card"
-            style="margin-top: 20px; display: none"
-          >
-            <div class="card-title" style="margin-bottom: 15px">
-              Add New Command
-            </div>
-            <div style="display: flex; gap: 10px">
-              <input
-                id="new-cmd-name"
-                class="input"
-                placeholder="!command"
-                style="flex: 1"
-              />
-              <input
-                id="new-cmd-resp"
-                class="input"
-                placeholder="Response text"
-                style="flex: 2"
-              />
-              <button class="btn btn-success" onclick="addNewCommand()">
-                Save
-              </button>
-              <button
-                class="btn btn-ghost"
-                onclick="
-                  document.getElementById('add-command-panel').style.display =
-                    'none'
-                "
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Database View -->
-        <div id="view-database" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Database Editor</h2>
-            <select
-              id="db-table-select"
-              class="input"
-              style="width: 200px"
-              onchange="loadDbTable()"
-            >
-              <option value="StreamSessions">StreamSessions</option>
-              <option value="Channels">Channels</option>
-              <option value="CustomResponse">CustomResponse</option>
-              <option value="RankGoals">RankGoals</option>
-              <option value="CommandUsage">CommandUsage</option>
-            </select>
-          </div>
-          <div id="db-editor-container">
-            <!-- Table content goes here -->
-          </div>
-        </div>
-
-        <!-- Logs View -->
-        <div id="view-logs" class="view-section">
-          <div class="header">
-            <h2 class="page-title">System Logs</h2>
-            <div style="display: flex; gap: 10px">
-              <button class="btn btn-ghost" onclick="fetchLogs()">
-                <i class="fas fa-sync"></i> Refresh
-              </button>
-              <span
-                style="
-                  font-size: 12px;
-                  color: var(--text-muted);
-                  align-self: center;
-                "
-                >Auto-refreshing every 20s</span
-              >
-            </div>
-          </div>
-          <div id="logs-viewer" class="log-container">
-            <!-- Logs go here -->
-          </div>
-        </div>
-
-        <!-- Analytics View -->
-        <div id="view-analytics" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Command Analytics</h2>
-            <button class="btn btn-ghost" onclick="loadAnalytics()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-
-          <!-- Summary Cards -->
-          <div class="grid-3" style="margin-bottom: 30px">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Total Commands</div>
-                <i class="fas fa-terminal" style="color: var(--text-muted)"></i>
-              </div>
-              <div
-                style="font-size: 32px; font-weight: 700"
-                id="analytics-total"
-              >
-                -
-              </div>
-              <div class="card-subtitle">All time</div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Unique Users</div>
-                <i class="fas fa-users" style="color: var(--text-muted)"></i>
-              </div>
-              <div
-                style="font-size: 32px; font-weight: 700"
-                id="analytics-unique"
-              >
-                -
-              </div>
-              <div class="card-subtitle">Used the bot</div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Success Rate</div>
-                <i
-                  class="fas fa-check-circle"
-                  style="color: var(--text-muted)"
-                ></i>
-              </div>
-              <div
-                style="font-size: 32px; font-weight: 700"
-                id="analytics-success"
-              >
-                -
-              </div>
-              <div class="card-subtitle">Commands executed</div>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <!-- Command Usage Chart -->
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 20px">
-                Command Usage (Last 24 Hours)
-              </div>
-              <div
-                id="hourly-chart-container"
-                style="
-                  height: 200px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  color: var(--text-muted);
-                "
-              >
-                Loading chart...
-              </div>
-            </div>
-
-            <!-- Top Commands -->
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 20px">
-                Top Commands
-              </div>
-              <div
-                id="top-commands-list"
-                style="display: flex; flex-direction: column; gap: 12px"
-              >
-                <div
-                  style="
-                    text-align: center;
-                    padding: 20px;
-                    color: var(--text-muted);
-                  "
-                >
-                  Loading...
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Command Details Table -->
-          <div class="card" style="margin-top: 24px">
-            <div class="card-title" style="margin-bottom: 20px">
-              Command Statistics
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Command</th>
-                    <th>Usage</th>
-                    <th>Success Rate</th>
-                    <th>Avg Response Time</th>
-                  </tr>
-                </thead>
-                <tbody id="command-stats-table">
-                  <tr>
-                    <td
-                      colspan="4"
-                      style="
-                        text-align: center;
-                        padding: 20px;
-                        color: var(--text-muted);
-                      "
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Recent Commands -->
-          <div class="card" style="margin-top: 24px">
-            <div class="card-title" style="margin-bottom: 20px">
-              Recent Commands
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Command</th>
-                    <th>User</th>
-                    <th>Status</th>
-                    <th>Response Time</th>
-                  </tr>
-                </thead>
-                <tbody id="recent-commands-table">
-                  <tr>
-                    <td
-                      colspan="5"
-                      style="
-                        text-align: center;
-                        padding: 20px;
-                        color: var(--text-muted);
-                      "
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feedback View -->
-        <div id="view-feedback" class="view-section">
-          <div class="header">
-            <h2 class="page-title">User Feedback</h2>
-            <button class="btn btn-ghost" onclick="fetchFeedback()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-          <div class="card">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>User</th>
-                    <th>Type</th>
-                    <th>Message</th>
-                    <th style="width: 100px">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="feedback-body">
-                  <tr>
-                    <td
-                      colspan="5"
-                      style="
-                        text-align: center;
-                        padding: 20px;
-                        color: var(--text-muted);
-                      "
-                    >
-                      Loading feedback...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Settings View -->
-        <div id="view-settings" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Settings</h2>
-          </div>
           <div class="grid-2">
             <div class="card">
               <div class="card-title" style="margin-bottom: 15px">
-                API Configuration
+                Global Settings
               </div>
               <div style="margin-bottom: 15px">
                 <label
@@ -1302,51 +685,694 @@
                     display: block;
                     margin-bottom: 5px;
                     color: var(--text-muted);
+                    font-size: 12px;
                   "
-                  >Admin API Key</label
+                  >Last Updated Date</label
                 >
                 <input
-                  id="settings-api-key"
-                  type="password"
+                  id="drop-last-updated"
                   class="input"
-                  placeholder="Enter API Key"
+                  placeholder="e.g. October 2023"
                 />
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 15px">
+                Featured Image
+              </div>
+              <div style="margin-bottom: 15px">
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 5px;
+                    color: var(--text-muted);
+                    font-size: 12px;
+                  "
+                  >Image URL</label
+                >
+                <input
+                  id="drop-featured-image"
+                  class="input"
+                  placeholder="https://..."
+                />
+              </div>
+              <div>
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 5px;
+                    color: var(--text-muted);
+                    font-size: 12px;
+                  "
+                  >Or Upload</label
+                >
+                <input
+                  type="file"
+                  onchange="handleImageUpload(this)"
+                  style="font-size: 12px"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 20px">
+            <div class="card-header">
+              <div class="card-title">Drop Items</div>
+              <button class="btn btn-ghost" onclick="addDropItem()">
+                <i class="fas fa-plus"></i> Add Item
+              </button>
+            </div>
+            <div
+              id="drops-items-container"
+              style="display: flex; flex-direction: column; gap: 10px"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Users Combined View -->
+        <div id="view-users-combined" class="view-section">
+          <div class="header" style="justify-content: start; gap: 20px">
+            <h2 class="page-title">User Management</h2>
+            <div style="display: flex; gap: 10px">
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('users-combined', 'channels');
+                  fetchChannels();
+                "
+              >
+                Active Channels
+              </button>
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('users-combined', 'db-users');
+                  fetchUsers();
+                "
+              >
+                All Users
+              </button>
+            </div>
+          </div>
+
+          <div id="subview-users-combined-channels">
+            <!-- Content from old view-channels -->
+            <div class="header">
+              <h3 class="card-title">Connected Channels</h3>
+              <button class="btn btn-ghost" onclick="fetchChannels()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
+            <div id="channels-list" class="channels-grid"></div>
+          </div>
+
+          <div id="subview-users-combined-db-users" style="display: none">
+            <!-- Content from old view-users -->
+            <div class="header">
+              <h3 class="card-title">Database Records</h3>
+              <button class="btn btn-ghost" onclick="fetchUsers()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
+            <div class="card">
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Twitch ID</th>
+                      <th>Role</th>
+                      <th style="width: 200px">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Commands Combined View -->
+        <div id="view-commands-combined" class="view-section">
+          <div class="header" style="justify-content: start; gap: 20px">
+            <h2 class="page-title">Commands</h2>
+            <div style="display: flex; gap: 10px">
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('commands-combined', 'list');
+                  fetchCommands();
+                "
+              >
+                Manage
+              </button>
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('commands-combined', 'test');
+                  initTestSuite();
+                "
+              >
+                Test Suite
+              </button>
+            </div>
+          </div>
+
+          <div id="subview-commands-combined-list">
+            <div class="header">
+              <div class="card-title">Custom Commands</div>
+              <button class="btn btn-success" onclick="showAddCommandModal()">
+                <i class="fas fa-plus"></i> Add Command
+              </button>
+            </div>
+            <div class="card">
+              <div class="table-container">
+                <table id="commands-table">
+                  <thead>
+                    <tr>
+                      <th>Trigger</th>
+                      <th>Response</th>
+                      <th style="width: 100px">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="commands-body"></tbody>
+                </table>
+              </div>
+            </div>
+            <!-- Add Command Form -->
+            <div
+              id="add-command-panel"
+              class="card"
+              style="margin-top: 20px; display: none"
+            >
+              <div class="card-title" style="margin-bottom: 15px">
+                Add New Command
+              </div>
+              <div style="display: flex; gap: 10px">
+                <input
+                  id="new-cmd-name"
+                  class="input"
+                  placeholder="!command"
+                  style="flex: 1"
+                />
+                <input
+                  id="new-cmd-resp"
+                  class="input"
+                  placeholder="Response text"
+                  style="flex: 2"
+                />
+                <button class="btn btn-success" onclick="addNewCommand()">
+                  Save
+                </button>
+                <button
+                  class="btn btn-ghost"
+                  onclick="
+                    document.getElementById('add-command-panel').style.display =
+                      'none'
+                  "
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="subview-commands-combined-test" style="display: none">
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Test Configuration</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 15px">
+                  <div>
+                    <label
+                      style="
+                        display: block;
+                        margin-bottom: 5px;
+                        color: var(--text-muted);
+                      "
+                      >Simulate User</label
+                    >
+                    <select
+                      id="test-user-select"
+                      class="input"
+                      onchange="updateTestUser()"
+                    ></select>
+                  </div>
+                  <div>
+                    <label
+                      style="
+                        display: block;
+                        margin-bottom: 5px;
+                        color: var(--text-muted);
+                      "
+                      >Command</label
+                    >
+                    <input
+                      id="test-command-input"
+                      class="input"
+                      placeholder="!ping"
+                    />
+                  </div>
+                  <button class="btn btn-primary" onclick="runTestCommand()">
+                    Run Test
+                  </button>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-header">
+                  <div
+                    class="card-title"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      width: 100%;
+                    "
+                  >
+                    <span>Bot Response</span>
+                    <button
+                      class="btn btn-ghost"
+                      style="padding: 0; font-size: 12px"
+                      onclick="
+                        document.getElementById('test-output').innerHTML = ''
+                      "
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
                 <div
+                  id="test-output"
+                  class="log-container"
+                  style="
+                    height: 200px;
+                    background: #111;
+                    border: 1px solid #333;
+                  "
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics Combined View -->
+        <div id="view-analytics-combined" class="view-section">
+          <div class="header" style="justify-content: start; gap: 20px">
+            <h2 class="page-title">Analytics & Monitoring</h2>
+            <div style="display: flex; gap: 10px">
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('analytics-combined', 'charts');
+                  loadAnalytics();
+                "
+              >
+                Analytics
+              </button>
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('analytics-combined', 'feedback');
+                  fetchFeedback();
+                "
+              >
+                Feedback
+              </button>
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('analytics-combined', 'logs');
+                  fetchLogs();
+                "
+              >
+                Logs
+              </button>
+            </div>
+          </div>
+
+          <div id="subview-analytics-combined-charts">
+            <div class="header">
+              <button class="btn btn-ghost" onclick="loadAnalytics()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
+            <div class="grid-3" style="margin-bottom: 30px">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Total Commands</div>
+                  <i
+                    class="fas fa-terminal"
+                    style="color: var(--text-muted)"
+                  ></i>
+                </div>
+                <div
+                  style="font-size: 32px; font-weight: 700"
+                  id="analytics-total"
+                >
+                  -
+                </div>
+                <div class="card-subtitle">All time</div>
+              </div>
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Unique Users</div>
+                  <i class="fas fa-users" style="color: var(--text-muted)"></i>
+                </div>
+                <div
+                  style="font-size: 32px; font-weight: 700"
+                  id="analytics-unique"
+                >
+                  -
+                </div>
+                <div class="card-subtitle">Used the bot</div>
+              </div>
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Success Rate</div>
+                  <i
+                    class="fas fa-check-circle"
+                    style="color: var(--text-muted)"
+                  ></i>
+                </div>
+                <div
+                  style="font-size: 32px; font-weight: 700"
+                  id="analytics-success"
+                >
+                  -
+                </div>
+                <div class="card-subtitle">Commands executed</div>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title" style="margin-bottom: 20px">
+                  Command Usage (Last 24 Hours)
+                </div>
+                <div
+                  id="hourly-chart-container"
+                  style="
+                    height: 200px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--text-muted);
+                  "
+                >
+                  Loading chart...
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title" style="margin-bottom: 20px">
+                  Top Commands
+                </div>
+                <div
+                  id="top-commands-list"
+                  style="display: flex; flex-direction: column; gap: 12px"
+                >
+                  <div
+                    style="
+                      text-align: center;
+                      padding: 20px;
+                      color: var(--text-muted);
+                    "
+                  >
+                    Loading...
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="subview-analytics-combined-feedback" style="display: none">
+            <div class="header">
+              <div class="card-title">User Feedback</div>
+              <button class="btn btn-ghost" onclick="fetchFeedback()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
+            <div class="card">
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>User</th>
+                      <th>Type</th>
+                      <th>Message</th>
+                      <th style="width: 100px">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="feedback-body">
+                    <tr>
+                      <td
+                        colspan="5"
+                        style="
+                          text-align: center;
+                          padding: 20px;
+                          color: var(--text-muted);
+                        "
+                      >
+                        Loading feedback...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="subview-analytics-combined-logs" style="display: none">
+            <div class="header">
+              <div class="card-title">System Logs</div>
+              <div style="display: flex; gap: 10px">
+                <button class="btn btn-ghost" onclick="fetchLogs()">
+                  <i class="fas fa-sync"></i> Refresh
+                </button>
+                <span
                   style="
                     font-size: 12px;
                     color: var(--text-muted);
-                    margin-top: 5px;
+                    align-self: center;
                   "
+                  >Auto-refreshing every 20s</span
                 >
-                  Required for sensitive actions (Restart, Broadcast).
-                </div>
               </div>
-              <button class="btn btn-primary" onclick="saveSettings()">
-                Save Key
-              </button>
             </div>
+            <div id="logs-viewer" class="log-container"></div>
+          </div>
+        </div>
 
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 15px">
-                Feature Flags
-              </div>
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  margin-bottom: 10px;
+        <!-- Settings Combined View -->
+        <div id="view-settings-combined" class="view-section">
+          <div class="header" style="justify-content: start; gap: 20px">
+            <h2 class="page-title">System Settings</h2>
+            <div style="display: flex; gap: 10px">
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('settings-combined', 'config');
+                  loadSettings();
                 "
               >
-                <span>User Dashboard Access</span>
-                <button
-                  id="toggle-dashboard-btn"
-                  class="btn btn-success"
-                  onclick="toggleUserDashboard()"
-                >
-                  Enabled
+                Configuration
+              </button>
+              <button
+                class="btn btn-ghost"
+                onclick="
+                  showSubView('settings-combined', 'database');
+                  loadDbTable();
+                "
+              >
+                Database Editor
+              </button>
+            </div>
+          </div>
+
+          <div id="subview-settings-combined-config">
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title" style="margin-bottom: 15px">
+                  API Configuration
+                </div>
+                <div style="margin-bottom: 15px">
+                  <label
+                    style="
+                      display: block;
+                      margin-bottom: 5px;
+                      color: var(--text-muted);
+                    "
+                    >Admin API Key</label
+                  >
+                  <input
+                    id="settings-api-key"
+                    type="password"
+                    class="input"
+                    placeholder="Enter API Key"
+                  />
+                  <div
+                    style="
+                      font-size: 12px;
+                      color: var(--text-muted);
+                      margin-top: 5px;
+                    "
+                  >
+                    Required for sensitive actions (Restart, Broadcast).
+                  </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()">
+                  Save Key
                 </button>
               </div>
+              <div class="card">
+                <div class="card-title" style="margin-bottom: 15px">
+                  Feature Flags
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                  "
+                >
+                  <span>User Dashboard Access</span>
+                  <button
+                    id="toggle-dashboard-btn"
+                    class="btn btn-success"
+                    onclick="toggleUserDashboard()"
+                  >
+                    Enabled
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="subview-settings-combined-database" style="display: none">
+            <div class="header">
+              <div class="card-title">Raw Data</div>
+              <select
+                id="db-table-select"
+                class="input"
+                style="width: 200px"
+                onchange="loadDbTable()"
+              >
+                <option value="StreamSessions">StreamSessions</option>
+                <option value="Channels">Channels</option>
+                <option value="CustomResponse">CustomResponse</option>
+                <option value="RankGoals">RankGoals</option>
+                <option value="CommandUsage">CommandUsage</option>
+              </select>
+            </div>
+            <div id="db-editor-container"></div>
+          </div>
+        </div>
+
+        <!-- Other Tools View -->
+        <div id="view-other" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Other Tools</h2>
+          </div>
+
+          <div class="grid-2">
+            <!-- Broadcast -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 15px">
+                Broadcast Message
+              </div>
+              <div style="margin-bottom: 20px">
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 8px;
+                    color: var(--text-muted);
+                  "
+                  >Target Channels</label
+                >
+                <div
+                  id="broadcast-targets"
+                  style="
+                    padding: 10px;
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius);
+                    min-height: 40px;
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 5px;
+                  "
+                >
+                  <span
+                    style="
+                      color: var(--text-muted);
+                      font-style: italic;
+                      padding: 5px;
+                    "
+                    >Select channels from the 'Users -> Active Channels' tab or
+                    leave empty for ALL.</span
+                  >
+                </div>
+              </div>
+              <div style="margin-bottom: 20px">
+                <label
+                  style="
+                    display: block;
+                    margin-bottom: 8px;
+                    color: var(--text-muted);
+                  "
+                  >Message</label
+                >
+                <textarea
+                  id="broadcast-msg"
+                  class="input"
+                  style="min-height: 120px; resize: vertical"
+                  placeholder="Type your announcement..."
+                ></textarea>
+              </div>
+              <div style="display: flex; justify-content: flex-end">
+                <button class="btn btn-primary" onclick="sendBroadcast()">
+                  <i class="fas fa-paper-plane"></i> Send Broadcast
+                </button>
+              </div>
+              <div id="broadcast-status" style="margin-top: 15px"></div>
+            </div>
+
+            <!-- Analyst Access -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Analyst Access</div>
+                <button
+                  class="btn btn-primary"
+                  onclick="showAddSimpleUserModal()"
+                >
+                  <i class="fas fa-plus"></i> Add User
+                </button>
+              </div>
+              <button class="btn btn-ghost" onclick="fetchSimpleUsers()">
+                <i class="fas fa-sync"></i> Refresh List
+              </button>
+              <div class="table-container" style="margin-top: 10px">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Role</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="simple-users-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- External Stats Link -->
+            <div class="card">
+              <div class="card-title">External Statistics</div>
+              <p style="color: var(--text-muted); margin-bottom: 15px">
+                Compare statistics with public endpoints.
+              </p>
+              <a href="/statistics" target="_blank" class="btn btn-primary"
+                >Open Statistics Page <i class="fas fa-external-link-alt"></i
+              ></a>
             </div>
           </div>
         </div>
@@ -1403,13 +1429,10 @@
 
           // If currently on an admin-only view, and not an admin, switch to dashboard
           const adminOnlyViews = [
-            "channels",
-            "users",
-            "broadcast",
-            "commands",
-            "database",
-            "logs",
-            "settings",
+            "users-combined",
+            "commands-combined",
+            "settings-combined",
+            "other",
           ];
 
           if (data.role !== "admin") {
@@ -1429,13 +1452,10 @@
       function switchView(viewId) {
         // Security check for Staff
         const adminOnlyViews = [
-          "channels",
-          "users",
-          "broadcast",
-          "commands",
-          "database",
-          "logs",
-          "settings",
+          "users-combined",
+          "commands-combined",
+          "settings-combined",
+          "other",
         ];
         if (window.USER_ROLE === "Staff" && adminOnlyViews.includes(viewId)) {
           console.warn("Unauthorized access attempt to " + viewId);
@@ -1459,13 +1479,41 @@
         if (targetView) targetView.classList.add("active");
 
         // Trigger specific loads
-        if (viewId === "database") loadDbTable();
-        if (viewId === "logs") fetchLogs();
-        if (viewId === "channels") fetchChannels();
-        if (viewId === "users") fetchUsers();
+        if (viewId === "users-combined") {
+          // Default sub-view
+          showSubView("users-combined", "channels");
+          fetchChannels();
+        }
+        if (viewId === "commands-combined") {
+          showSubView("commands-combined", "list");
+          fetchCommands();
+        }
         if (viewId === "drops") loadDropsConfig();
-        if (viewId === "analytics") loadAnalytics();
-        if (viewId === "feedback") fetchFeedback();
+        if (viewId === "analytics-combined") {
+          showSubView("analytics-combined", "charts");
+          loadAnalytics();
+        }
+        if (viewId === "settings-combined") {
+          showSubView("settings-combined", "config");
+        }
+        if (viewId === "other") {
+          fetchSimpleUsers();
+        }
+      }
+
+      function showSubView(parentView, subViewName) {
+        const parent = document.getElementById(`view-${parentView}`);
+        // Hide all direct children starting with subview-
+        const children = parent.querySelectorAll(
+          `[id^="subview-${parentView}-"]`,
+        );
+        children.forEach((el) => (el.style.display = "none"));
+
+        // Show target
+        const target = document.getElementById(
+          `subview-${parentView}-${subViewName}`,
+        );
+        if (target) target.style.display = "block";
       }
 
       function refreshAll() {
@@ -1474,16 +1522,17 @@
 
         // Only fetch admin-restricted data if user is not Staff
         if (window.USER_ROLE !== "Staff") {
-          fetchChannels();
-          fetchLogs();
+          fetchChannels(); // Pre-fetch for broadcasts mainly
           fetchCommands();
-          fetchFeedback();
         }
       }
 
       // --- Drops Management ---
       async function loadDropsConfig() {
+        // Fix: Use correct ID 'drops-items-container' instead of potentially null reference
         const container = document.getElementById("drops-items-container");
+        if (!container) return; // Guard clause
+
         container.innerHTML =
           '<div style="padding:20px; text-align:center;">Loading...</div>';
         try {
@@ -1492,10 +1541,13 @@
           const data = await res.json();
 
           // Globals
-          document.getElementById("drop-last-updated").value =
-            data.lastUpdated || "";
-          document.getElementById("drop-featured-image").value =
-            data.featuredImage || "";
+          const lastUpdatedEl = document.getElementById("drop-last-updated");
+          const featuredImageEl = document.getElementById(
+            "drop-featured-image",
+          );
+
+          if (lastUpdatedEl) lastUpdatedEl.value = data.lastUpdated || "";
+          if (featuredImageEl) featuredImageEl.value = data.featuredImage || "";
 
           // Items
           container.innerHTML = "";
@@ -2571,6 +2623,67 @@
           if (res.ok) fetchFeedback();
         } catch (err) {
           alert("Error: " + err.message);
+        }
+      }
+
+      // --- Test Suite ---
+      async function initTestSuite() {
+        const select = document.getElementById("test-user-select");
+        if (select.options.length > 0) return; // already loaded
+
+        try {
+          const res = await fetch("/admin/api/channels");
+          const data = await res.json();
+          if (data.channels) {
+            select.innerHTML = "";
+            data.channels.forEach((ch) => {
+              const name = typeof ch === "string" ? ch : ch.username;
+              const opt = document.createElement("option");
+              opt.value = name;
+              opt.textContent = name;
+              select.appendChild(opt);
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load users for test suite", e);
+        }
+      }
+
+      function updateTestUser() {
+        // Optional: Update UI or fetch user specific details
+      }
+
+      async function runTestCommand() {
+        const user = document.getElementById("test-user-select").value;
+        const cmd = document.getElementById("test-command-input").value;
+        const output = document.getElementById("test-output");
+
+        if (!user || !cmd) return alert("Select user and enter command");
+
+        output.innerHTML += `<div class="log-entry"><span class="log-time">[REQ]</span> <span style="color:#aaa">${user}: ${cmd}</span></div>`;
+
+        try {
+          await ensureCsrfToken();
+          const res = await fetch("/admin/api/test-command", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "CSRF-Token": CSRF_TOKEN,
+            },
+            body: JSON.stringify({ username: user, command: cmd }),
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            data.logs.forEach((log) => {
+              output.innerHTML += `<div class="log-entry"><span class="log-time">[BOT]</span> <span class="log-info">${log}</span></div>`;
+            });
+          } else {
+            output.innerHTML += `<div class="log-entry"><span class="log-time">[ERR]</span> <span class="log-error">${data.error || "Unknown error"}</span></div>`;
+          }
+          output.scrollTop = output.scrollHeight;
+        } catch (e) {
+          output.innerHTML += `<div class="log-entry"><span class="log-time">[ERR]</span> <span class="log-error">${e.message}</span></div>`;
         }
       }
     </script>

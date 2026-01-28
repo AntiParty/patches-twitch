@@ -6,6 +6,7 @@ import { Router } from 'express';
 import authRoutes from './auth.routes';
 import apiRoutes from './api.routes';
 import databaseRoutes from './database.routes';
+import testRoutes from './test.routes';
 import { csrfErrorHandler } from '@/middleware/csrf.middleware';
 
 const router = Router();
@@ -18,5 +19,8 @@ router.use(apiRoutes);
 
 // Mount database editor routes
 router.use(databaseRoutes);
+
+// Mount test suite routes
+router.use(testRoutes);
 
 export default router;

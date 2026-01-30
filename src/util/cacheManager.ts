@@ -185,6 +185,35 @@ class CacheManager {
   }
 
   /**
+   * Invalidate specific key or all keys from memory cache
+   * This forces the next access to reload from disk
+   */
+  invalidate(key?: string): void {
+    if (key) {
+      if (this.cache.has(key)) {
+        const entry = this.cache.get(key)!;
+        this.currentSize -= entry.size;
+        this.cache.delete(key);
+        logger.debug(`[CacheManager] Invalidated ${key}`);
+      }
+    } else {
+      // Invalidate all
+      this.cache.clear();
+      this.currentSize = 0;
+      logger.debug("[CacheManager] Invalidated all cache entries");
+    }
+  }
+
+  /**
+   * Invalidate and immediately reload from disk
+   * Returns the fresh data
+   */
+  async refresh(key: string): Promise<any> {
+    this.invalidate(key);
+    return this.get(key);
+  }
+
+  /**
    * Get cache statistics
    */
   getStats() {

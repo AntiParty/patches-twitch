@@ -4,8 +4,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import logger from '@/util/logger';
-import exp from 'constants';
 import { updateRSHistory } from '@/util/rsPredictor';
+import { cacheManager } from '@/util/cacheManager';
 
 let lastUpdate = Date.now();
 const updateIntervalMs = 35 * 60 * 1000; // 35 minutes 
@@ -65,6 +65,7 @@ async function updateAllCachesRateLimited() {
 async function updateCache(type: 'regular' | 'worldTour', season: number) {
   const url = getApiUrl(type, season);
   const cachePath = getCachePath(type, season);
+  const cacheKey = type === 'regular' ? `regular_s${season}` : `worldTour_s${season}`;
 
   try {
     logger.info(`Fetching ${type} leaderboard data for season ${season}...`);
@@ -79,6 +80,10 @@ async function updateCache(type: 'regular' | 'worldTour', season: number) {
     }
 
     await fs.writeFile(cachePath, JSON.stringify(leaderboardData, null, 2), 'utf8');
+
+    // Invalidate in-memory cache so next access loads fresh data from disk
+    cacheManager.invalidate(cacheKey);
+
     logger.info(`${type} cache for season ${season} updated with ${leaderboardData.length} entries.`);
   } catch (error) {
     logger.error(`Error updating ${type} cache for season ${season}:`, error);

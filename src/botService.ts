@@ -9,6 +9,7 @@ import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 import { getShardInfo, isUserAssignedToShard } from "./util/sharding";
+import { memoryMonitor } from "./util/memoryMonitor";
 
 dbReady.then(async () => {
   const { shardIndex, shardCount } = getShardInfo();
@@ -241,13 +242,25 @@ dbReady.then(async () => {
       const checks = [databaseStatus, botStatus, eventsubStatus];
       const overallOk = checks.every((x) => x.status === "ok" || x.status === "optional");
 
+      // Get detailed memory stats from memory monitor
+      const memStats = memoryMonitor.getStats();
+
       const result = {
         status: overallOk ? "ok" : "error",
         version: "1.0.0",
         timestamp,
         uptime,
         checks,
-        memory: process.memoryUsage(),
+        memory: {
+          ...process.memoryUsage(),
+          heapUsedMB: Math.round(memStats.current.heapMB),
+          rssMB: Math.round(memStats.current.rssMB),
+          trend: memStats.trend ? {
+            heapGrowthMB: Math.round(memStats.trend.heapGrowthMB),
+            rssGrowthMB: Math.round(memStats.trend.rssGrowthMB),
+            periodMin: Math.round(memStats.trend.periodMin),
+          } : null,
+        },
         cpu: process.cpuUsage()
       };
 

@@ -14,6 +14,23 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 const tokenRefreshFailures: { [key: string]: number } = {};
 
+// Clean up stale entries from module-level state every 30 minutes
+// This prevents unbounded memory growth from accumulated user data
+setInterval(() => {
+  const now = Date.now();
+  const staleThreshold = 24 * 60 * 60 * 1000; // 24 hours
+
+  // Clean up token refresh failures older than 24 hours of inactivity
+  // (entries without recent timers can be considered stale)
+  for (const username of Object.keys(tokenRefreshFailures)) {
+    if (!refreshTimers[username] && tokenRefreshFailures[username] === 0) {
+      delete tokenRefreshFailures[username];
+    }
+  }
+
+  logger.debug(`[BotManager] Cleanup: refreshTimers=${Object.keys(refreshTimers).length}, failures=${Object.keys(tokenRefreshFailures).length}`);
+}, 30 * 60 * 1000);
+
 export class BotManager {
   private commandHandler: any;
   private lastValidated: Record<string, number> = {};
@@ -23,6 +40,19 @@ export class BotManager {
     // Start polling for missing stream sessions when BotManager is instantiated
     // Note: The poller itself must handle sharding logic internally or we pass it here
     startStreamSessionPolling();
+
+    // Clean up stale lastValidated entries every hour
+    // Entries older than 2 hours are no longer useful for debouncing
+    setInterval(() => {
+      const now = Date.now();
+      const staleThreshold = 2 * 60 * 60 * 1000; // 2 hours
+      for (const username of Object.keys(this.lastValidated)) {
+        if (now - this.lastValidated[username] > staleThreshold) {
+          delete this.lastValidated[username];
+        }
+      }
+      logger.debug(`[BotManager] lastValidated cleanup: ${Object.keys(this.lastValidated).length} entries remaining`);
+    }, 60 * 60 * 1000);
   }
 
   private async getChannels(): Promise<Channel[]> {

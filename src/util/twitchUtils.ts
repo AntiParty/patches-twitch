@@ -224,7 +224,7 @@ let accessToken: string | null = null;
 
 // Per-user refresh lock and retry count. Use normalized (lowercased) keys to
 // avoid duplicate refreshes due to casing differences.
-// 
+//
 // COORDINATION NOTE: This function is called from multiple places:
 // - botManager.refreshTokenFunction() - scheduled token refreshes
 // - getStreamStatusWithAutoRefresh() - on-demand refresh when token expires
@@ -236,6 +236,38 @@ const refreshRetryTimers: Record<string, NodeJS.Timeout> = {}; // Track retry ti
 const refreshCooldowns: Record<string, number> = {}; // Track cooldown expiry times
 const MAX_REFRESH_RETRIES = 5;
 const COOLDOWN_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+// Clean up stale entries every 30 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+
+  // Clean up expired cooldowns
+  for (const key of Object.keys(refreshCooldowns)) {
+    if (refreshCooldowns[key] < now) {
+      delete refreshCooldowns[key];
+      delete refreshRetries[key];
+      delete refreshLocks[key];
+    }
+  }
+
+  // Clean up stale locks (older than 5 minutes - should never take this long)
+  // This handles edge cases where locks weren't properly released
+  for (const key of Object.keys(refreshLocks)) {
+    if (refreshLocks[key] && !refreshCooldowns[key] && !refreshRetryTimers[key]) {
+      // Lock is set but no cooldown or pending retry - likely stale
+      delete refreshLocks[key];
+    }
+  }
+
+  // Clean up retry counts for users not in cooldown
+  for (const key of Object.keys(refreshRetries)) {
+    if (!refreshCooldowns[key] && refreshRetries[key] === 0) {
+      delete refreshRetries[key];
+    }
+  }
+
+  logger.debug(`[TwitchUtils] Cleanup: locks=${Object.keys(refreshLocks).length}, cooldowns=${Object.keys(refreshCooldowns).length}, retries=${Object.keys(refreshRetries).length}`);
+}, 30 * 60 * 1000);
 
 // Helper function to clear retry timer for a user
 function clearRetryTimer(key: string) {

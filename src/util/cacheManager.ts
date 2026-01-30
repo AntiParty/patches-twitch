@@ -90,12 +90,58 @@ class CacheManager {
   }
 
   /**
-   * Estimate memory size of data
+   * Estimate memory size of data without creating full JSON string
+   * Uses a recursive sampling approach to avoid memory spikes
    */
   private estimateSize(data: any): number {
-    // Rough estimate: JSON string length * 2 (for object overhead)
-    const jsonStr = JSON.stringify(data);
-    return jsonStr.length * 2;
+    return this.estimateSizeRecursive(data, 0, 5);
+  }
+
+  /**
+   * Recursively estimate size with depth limit to prevent stack overflow
+   * and sampling to avoid traversing huge arrays entirely
+   */
+  private estimateSizeRecursive(data: any, depth: number, maxDepth: number): number {
+    if (data === null || data === undefined) return 8;
+    if (depth > maxDepth) return 100; // Estimate for deeply nested objects
+
+    const type = typeof data;
+
+    if (type === 'string') {
+      return data.length * 2 + 24; // String overhead
+    }
+    if (type === 'number') return 16;
+    if (type === 'boolean') return 8;
+
+    if (Array.isArray(data)) {
+      // Sample array for large datasets to avoid traversing everything
+      const sampleSize = Math.min(data.length, 100);
+      let sampleTotal = 0;
+      for (let i = 0; i < sampleSize; i++) {
+        const idx = Math.floor((i / sampleSize) * data.length);
+        sampleTotal += this.estimateSizeRecursive(data[idx], depth + 1, maxDepth);
+      }
+      // Extrapolate from sample
+      const avgItemSize = sampleTotal / sampleSize;
+      return data.length * avgItemSize + 32; // Array overhead
+    }
+
+    if (type === 'object') {
+      const keys = Object.keys(data);
+      let total = 32; // Object overhead
+      const sampleSize = Math.min(keys.length, 20);
+      for (let i = 0; i < sampleSize; i++) {
+        const key = keys[i];
+        total += key.length * 2 + 24; // Key string
+        total += this.estimateSizeRecursive(data[key], depth + 1, maxDepth);
+      }
+      if (keys.length > sampleSize) {
+        total = (total / sampleSize) * keys.length;
+      }
+      return total;
+    }
+
+    return 16; // Default estimate
   }
 
   /**

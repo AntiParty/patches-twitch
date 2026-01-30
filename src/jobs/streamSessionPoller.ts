@@ -6,7 +6,31 @@ import logger from '../util/logger';
 import { isUserAssignedToShard } from '../util/sharding';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
-const alertedMissingSession: Set<string> = new Set();
+
+// Track alerted users with timestamps for automatic cleanup
+// This prevents unbounded memory growth when users go online/offline repeatedly
+const alertedMissingSessionMap: Map<string, number> = new Map();
+const MAX_ALERTED_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours max retention
+
+// Wrapper object providing Set-like interface for backward compatibility
+const alertedMissingSession = {
+  has: (username: string) => alertedMissingSessionMap.has(username),
+  add: (username: string) => { alertedMissingSessionMap.set(username, Date.now()); },
+  delete: (username: string) => alertedMissingSessionMap.delete(username),
+};
+
+// Clean up old alerted entries every 30 minutes to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [username, timestamp] of alertedMissingSessionMap.entries()) {
+    if (now - timestamp > MAX_ALERTED_AGE_MS) {
+      alertedMissingSessionMap.delete(username);
+    }
+  }
+  if (alertedMissingSessionMap.size > 0) {
+    logger.debug(`[StreamPoller] Cleanup: alertedMissingSession size=${alertedMissingSessionMap.size}`);
+  }
+}, 30 * 60 * 1000);
 
 let lastTokenRefreshTime = 0;
 const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // Refresh app token every 30 minutes

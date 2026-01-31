@@ -623,6 +623,94 @@
         }
       }
 
+      /* Completion Celebration */
+      .onboarding-celebration {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 15, 19, 0.95);
+        z-index: 10001;
+        animation: fadeIn 0.3s ease;
+      }
+
+      .celebration-content {
+        text-align: center;
+        animation: scaleIn 0.5s ease;
+      }
+
+      .celebration-icon {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, var(--success), #00d970);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        color: white;
+        margin: 0 auto 24px;
+        animation: celebrationPulse 1s infinite;
+        box-shadow: 0 8px 30px rgba(0, 179, 95, 0.4);
+      }
+
+      .celebration-content h3 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--text-main);
+      }
+
+      .celebration-content p {
+        font-size: 16px;
+        color: var(--text-muted);
+      }
+
+      @keyframes scaleIn {
+        from {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes celebrationPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+
+      .onboarding-celebration.fade-out {
+        animation: fadeOut 0.5s ease forwards;
+      }
+
+      @keyframes fadeOut {
+        to { opacity: 0; }
+      }
+
+      /* Resume Setup Button */
+      .resume-setup-btn {
+        border: 1px dashed var(--primary);
+        color: var(--primary);
+      }
+
+      .resume-setup-btn:hover {
+        background: rgba(145, 71, 255, 0.1);
+        border-style: solid;
+      }
+
+      /* Focus styles for accessibility */
+      .gs-step-container:focus-visible,
+      .gs-nav-buttons button:focus-visible,
+      .gs-close:focus-visible,
+      .resume-setup-btn:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
       /* Cards & Grid */
       .grid-2 {
         display: grid;
@@ -1339,9 +1427,19 @@
                 Welcome back, <%= username %>
               </div>
             </div>
-            <a href="/" class="btn btn-ghost"
-              ><i class="fas fa-external-link-alt"></i> Home Page</a
-            >
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <button
+                id="resume-setup-btn"
+                class="btn btn-ghost resume-setup-btn"
+                onclick="openGettingStarted()"
+                style="display: none;"
+              >
+                <i class="fas fa-rocket"></i> Resume Setup
+              </button>
+              <a href="/" class="btn btn-ghost"
+                ><i class="fas fa-external-link-alt"></i> Home Page</a
+              >
+            </div>
           </div>
 
           <!-- Onboarding Checklist -->
@@ -2313,17 +2411,20 @@
         <div
           id="getting-started-modal"
           class="gs-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="gs-modal-title"
           onclick="if(event.target === this) closeGettingStarted()"
         >
-          <div class="gs-modal">
+          <div class="gs-modal" role="document">
             <div class="gs-header">
-              <h2><i class="fas fa-rocket"></i> Welcome to FinalsRS!</h2>
-              <button class="gs-close" onclick="closeGettingStarted()">
-                <i class="fas fa-times"></i>
+              <h2 id="gs-modal-title"><i class="fas fa-rocket" aria-hidden="true"></i> Welcome to FinalsRS!</h2>
+              <button class="gs-close" onclick="closeGettingStarted()" aria-label="Close getting started modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
               </button>
             </div>
 
-            <div class="gs-progress">
+            <div class="gs-progress" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-label="Onboarding progress">
               <div class="gs-progress-bar">
                 <div id="gs-progress-fill" class="gs-progress-fill"></div>
               </div>
@@ -2605,9 +2706,19 @@
       }
 
       /* --- CLIENT STATE --- */
+      // Legacy localStorage keys (for migration cleanup)
       const GS_KEY = "finalsrs_getting_started_seen";
       const GS_CHECKLIST_KEY = "finalsrs_checklist_hidden";
       const GS_COMPLETED_KEY = "finalsrs_onboarding_completed";
+
+      // Server-backed onboarding state
+      let onboardingState = {
+        completed: false,
+        stepCompleted: 0,
+        skippedAt: null,
+        completedAt: null,
+        checklistHidden: false
+      };
 
       // --- State ---
       let overlayToken = null;
@@ -2615,30 +2726,140 @@
       let currentOnboardingStep = 1;
       const totalSteps = 4;
 
+      // --- Onboarding Event System (replaces polling) ---
+      const ONBOARDING_EVENTS = {
+        BOT_STATUS_CHANGED: 'onboarding:bot-status-changed',
+        ACCOUNT_LINKED: 'onboarding:account-linked',
+        OVERLAY_CONFIGURED: 'onboarding:overlay-configured'
+      };
+
+      function dispatchOnboardingEvent(eventType) {
+        document.dispatchEvent(new CustomEvent(eventType));
+      }
+
+      // Fetch onboarding state from server
+      async function fetchOnboardingState() {
+        try {
+          const res = await fetch('/api/onboarding/status', {
+            headers: getCsrfHeaders()
+          });
+          if (res.ok) {
+            onboardingState = await res.json();
+            // Clean up legacy localStorage after successful server fetch
+            if (onboardingState.completed || onboardingState.stepCompleted > 0) {
+              localStorage.removeItem(GS_KEY);
+              localStorage.removeItem(GS_CHECKLIST_KEY);
+              localStorage.removeItem(GS_COMPLETED_KEY);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch onboarding state', e);
+        }
+        return onboardingState;
+      }
+
+      // Track onboarding analytics event
+      async function trackOnboardingEvent(eventType, stepNumber = null, metadata = null) {
+        try {
+          await fetch('/api/onboarding/event', {
+            method: 'POST',
+            headers: getCsrfHeaders(),
+            body: JSON.stringify({ eventType, stepNumber, metadata })
+          });
+        } catch (e) {
+          console.error('Failed to track onboarding event', e);
+        }
+      }
+
+      // Update resume button visibility
+      function updateResumeButtonVisibility() {
+        const resumeBtn = document.getElementById('resume-setup-btn');
+        if (resumeBtn) {
+          const shouldShow = !onboardingState.completed && onboardingState.stepCompleted < 4;
+          resumeBtn.style.display = shouldShow ? 'inline-flex' : 'none';
+        }
+      }
+
       // --- Onboarding Functions ---
       function openGettingStarted() {
-        document.getElementById("getting-started-modal").style.display = "flex";
+        const modal = document.getElementById("getting-started-modal");
+        modal.style.display = "flex";
         currentOnboardingStep = 1;
         updateOnboardingStep();
         checkOnboardingProgress();
+        // Track resume event if reopening
+        if (onboardingState.skippedAt) {
+          trackOnboardingEvent('resume');
+        }
+        // Focus management for accessibility
+        setTimeout(() => {
+          const closeBtn = modal.querySelector('.gs-close');
+          if (closeBtn) closeBtn.focus();
+        }, 100);
       }
 
       function closeGettingStarted() {
         document.getElementById("getting-started-modal").style.display = "none";
+        // Return focus to resume button if it exists
+        const resumeBtn = document.getElementById('resume-setup-btn');
+        if (resumeBtn && resumeBtn.style.display !== 'none') {
+          resumeBtn.focus();
+        }
       }
 
-      function skipOnboarding() {
-        localStorage.setItem(GS_KEY, "true");
+      async function skipOnboarding() {
+        // Persist to server
+        try {
+          await fetch('/api/onboarding/skip', {
+            method: 'POST',
+            headers: getCsrfHeaders()
+          });
+          onboardingState.skippedAt = new Date().toISOString();
+        } catch (e) {
+          console.error('Failed to skip onboarding', e);
+        }
         closeGettingStarted();
         showOnboardingChecklist();
+        updateResumeButtonVisibility();
       }
 
-      function finishGettingStarted() {
-        localStorage.setItem(GS_KEY, "true");
-        localStorage.setItem(GS_COMPLETED_KEY, "true");
+      async function finishGettingStarted() {
+        // Persist to server
+        try {
+          await fetch('/api/onboarding/complete', {
+            method: 'POST',
+            headers: getCsrfHeaders()
+          });
+          onboardingState.completed = true;
+          onboardingState.completedAt = new Date().toISOString();
+          onboardingState.checklistHidden = true;
+        } catch (e) {
+          console.error('Failed to complete onboarding', e);
+        }
         closeGettingStarted();
         hideOnboardingChecklist();
-        showToast("Welcome aboard! You're all set! 🎉", "success");
+        updateResumeButtonVisibility();
+        showCompletionCelebration();
+        showToast("Welcome aboard! You're all set!", "success");
+      }
+
+      // Completion celebration animation
+      function showCompletionCelebration() {
+        const celebration = document.createElement('div');
+        celebration.className = 'onboarding-celebration';
+        celebration.innerHTML = `
+          <div class="celebration-content">
+            <div class="celebration-icon"><i class="fas fa-trophy"></i></div>
+            <h3>Setup Complete!</h3>
+            <p>Your bot is ready to use</p>
+          </div>
+        `;
+        document.body.appendChild(celebration);
+
+        setTimeout(() => {
+          celebration.classList.add('fade-out');
+          setTimeout(() => celebration.remove(), 500);
+        }, 3000);
       }
 
       function nextStep() {
@@ -2674,6 +2895,12 @@
           "gs-progress-text"
         ).innerText = `Step ${currentOnboardingStep} of ${totalSteps}`;
 
+        // Update progress bar ARIA
+        const progressBar = document.querySelector('.gs-progress');
+        if (progressBar) {
+          progressBar.setAttribute('aria-valuenow', currentOnboardingStep);
+        }
+
         // Update navigation buttons
         const prevBtn = document.getElementById("gs-prev-btn");
         const nextBtn = document.getElementById("gs-next-btn");
@@ -2685,6 +2912,9 @@
           currentOnboardingStep < totalSteps ? "inline-flex" : "none";
         finishBtn.style.display =
           currentOnboardingStep === totalSteps ? "inline-flex" : "none";
+
+        // Track step view
+        trackOnboardingEvent('step_view', currentOnboardingStep);
 
         // Check progress for current step
         checkOnboardingProgress();
@@ -2713,9 +2943,10 @@
       }
 
       async function checkOnboardingProgress() {
+        let highestCompletedStep = 0;
+
         // Check step 1: Bot enabled
         try {
-          // Check bot status by looking at the status indicator or text
           const statusText = document.getElementById("bot-status-text");
           const indicator = document.getElementById("bot-status-indicator");
           const botEnabled =
@@ -2723,19 +2954,18 @@
               statusText.innerText.trim().toLowerCase() === "active") ||
             (indicator && indicator.classList.contains("indicator-success"));
           updateStepStatus(1, botEnabled);
+          if (botEnabled) highestCompletedStep = 1;
         } catch (e) {
           console.error("Failed to check bot status", e);
         }
 
         // Check step 2: Account linked
         try {
-          // Check multiple sources for account link status
           const playerIdInput = document.getElementById("player-id-input");
           const playerIdFromInput = playerIdInput ?
             playerIdInput.value.trim() :
             "";
 
-          // Check if the linked account card shows a player ID (not "No Account Linked")
           const linkedAccountSection = document.querySelector(
             "#view-overview .grid-3 .card:nth-child(2)"
           );
@@ -2747,16 +2977,15 @@
           const hasLinkedAccount =
             playerIdFromInput !== "" || hasLinkedAccountInCard;
           updateStepStatus(2, hasLinkedAccount);
+          if (hasLinkedAccount && highestCompletedStep >= 1) highestCompletedStep = 2;
         } catch (e) {
           console.error("Failed to check account link status", e);
         }
 
-        // Check step 3: Commands customized (optional, always show as optional)
-        // This is optional, so we don't mark it as required
+        // Check step 3: Commands customized (optional)
         updateStepStatus(3, false, true);
 
-        // Check step 4: Overlay setup (optional, always show as optional)
-        // Check if overlay token exists and URL is set
+        // Check step 4: Overlay setup (optional)
         const overlayUrlInput = document.getElementById("overlay-url-input");
         const hasOverlaySetup =
           (overlayToken && overlayToken.trim() !== "") ||
@@ -2764,6 +2993,20 @@
             overlayUrlInput.value &&
             overlayUrlInput.value !== "");
         updateStepStatus(4, hasOverlaySetup, true);
+
+        // Persist highest completed step to server if it's higher than before
+        if (highestCompletedStep > onboardingState.stepCompleted) {
+          try {
+            await fetch('/api/onboarding/step', {
+              method: 'POST',
+              headers: getCsrfHeaders(),
+              body: JSON.stringify({ step: highestCompletedStep })
+            });
+            onboardingState.stepCompleted = highestCompletedStep;
+          } catch (e) {
+            console.error('Failed to persist step progress', e);
+          }
+        }
       }
 
       function updateStepStatus(step, completed, optional = false) {
@@ -2810,24 +3053,35 @@
 
       function showOnboardingChecklist() {
         const checklist = document.getElementById("onboarding-checklist");
-        const checklistHidden = localStorage.getItem(GS_CHECKLIST_KEY);
-        const onboardingCompleted = localStorage.getItem(GS_COMPLETED_KEY);
 
-        if (!checklistHidden && !onboardingCompleted) {
+        if (!onboardingState.checklistHidden && !onboardingState.completed) {
           checklist.style.display = "block";
           checkOnboardingProgress();
         }
       }
 
-      function hideOnboardingChecklist() {
+      async function hideOnboardingChecklist() {
         const checklist = document.getElementById("onboarding-checklist");
         checklist.style.display = "none";
-        localStorage.setItem(GS_CHECKLIST_KEY, "true");
+
+        // Persist to server
+        try {
+          await fetch('/api/onboarding/hide-checklist', {
+            method: 'POST',
+            headers: getCsrfHeaders()
+          });
+          onboardingState.checklistHidden = true;
+        } catch (e) {
+          console.error('Failed to hide checklist', e);
+        }
       }
 
       // --- On Load ---
       document.addEventListener("DOMContentLoaded", () => {
         (async () => {
+          // Fetch onboarding state from server first
+          await fetchOnboardingState();
+
           // Fetch overlay token securely via session-authenticated API
           try {
             const tokRes = await fetch("/api/overlay/token");
@@ -2896,17 +3150,34 @@
 
           // Final refresh of preview once everything is set
           updateOverlayUrlDisplay();
+
+          // Initialize onboarding based on server state
+          if (!onboardingState.completed && !onboardingState.skippedAt && onboardingState.stepCompleted === 0) {
+            // First time user - show modal
+            openGettingStarted();
+          } else if (!onboardingState.completed && !onboardingState.checklistHidden) {
+            // Returning user who hasn't completed - show checklist
+            showOnboardingChecklist();
+          }
+
+          // Update resume button visibility
+          updateResumeButtonVisibility();
         })();
 
-        // Initialize onboarding
-        if (!localStorage.getItem(GS_KEY)) {
-          openGettingStarted();
-        } else {
-          showOnboardingChecklist();
-        }
+        // Event-driven updates instead of polling
+        document.addEventListener(ONBOARDING_EVENTS.BOT_STATUS_CHANGED, checkOnboardingProgress);
+        document.addEventListener(ONBOARDING_EVENTS.ACCOUNT_LINKED, checkOnboardingProgress);
+        document.addEventListener(ONBOARDING_EVENTS.OVERLAY_CONFIGURED, checkOnboardingProgress);
 
-        // Check progress periodically
-        setInterval(checkOnboardingProgress, 5000);
+        // Keyboard navigation for modal
+        document.addEventListener('keydown', (e) => {
+          const modal = document.getElementById('getting-started-modal');
+          if (modal && modal.style.display === 'flex') {
+            if (e.key === 'Escape') {
+              closeGettingStarted();
+            }
+          }
+        });
       });
 
       // --- Overlay Functions ---
@@ -2982,6 +3253,9 @@
             saveTimeout = setTimeout(() => {
               updateOverlayUrlDisplay();
             }, 500);
+
+            // Dispatch event for onboarding progress
+            dispatchOnboardingEvent(ONBOARDING_EVENTS.OVERLAY_CONFIGURED);
           } else {
             statusEl.innerText = "Failed to save.";
             showToast("Failed to save overlay configuration", "danger");
@@ -3581,8 +3855,8 @@
               if (data.success) {
                 status.innerHTML =
                   '<span style="color:var(--success)">Successfully linked! Reloading...</span>';
-                // Refresh onboarding progress before reload
-                setTimeout(checkOnboardingProgress, 300);
+                // Dispatch event for onboarding progress
+                dispatchOnboardingEvent(ONBOARDING_EVENTS.ACCOUNT_LINKED);
                 setTimeout(() => window.location.reload(), 1000);
               } else {
                 status.innerHTML = `<span style="color:var(--danger)">${
@@ -3700,8 +3974,8 @@
             showToast(`Bot turned ${isEnabled ? "on" : "off"}`, "success");
             btn.disabled = false;
 
-            // Refresh onboarding progress
-            setTimeout(checkOnboardingProgress, 500);
+            // Dispatch event for onboarding progress
+            dispatchOnboardingEvent(ONBOARDING_EVENTS.BOT_STATUS_CHANGED);
           } else {
             showToast("Failed to toggle bot status.", "danger");
             text.innerText = originalText;

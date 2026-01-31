@@ -200,13 +200,13 @@ export const metricsDbReady = sequelizeMetrics
     // Cleanup function to remove old metrics and reduce database bloat
     const cleanupOldMetrics = async () => {
       try {
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-        
+
         // More aggressive cleanup to prevent 1M+ row accumulation
         const deletedRequests = await RequestMetric.destroy({
-          where: { timestamp: { [Op.lt]: thirtyDaysAgo } }
+          where: { timestamp: { [Op.lt]: sixtyDaysAgo } }
         });
         // Performance metrics are high-frequency (every 5s), keep only 7 days
         const deletedPerf = await PerformanceMetric.destroy({
@@ -215,9 +215,9 @@ export const metricsDbReady = sequelizeMetrics
         const deletedIGN = await IGNVisit.destroy({
           where: { timestamp: { [Op.lt]: threeDaysAgo } }
         });
-        
+
         if (deletedRequests > 0 || deletedPerf > 0 || deletedIGN > 0) {
-          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (30d), ${deletedPerf} perf (7d), ${deletedIGN} IGN (3d)`);
+          logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (60d), ${deletedPerf} perf (7d), ${deletedIGN} IGN (3d)`);
           
           // Run VACUUM to reclaim disk space after large deletions
           if (deletedPerf > 10000 || deletedRequests > 1000) {

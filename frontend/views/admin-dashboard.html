@@ -481,6 +481,9 @@
           <li class="nav-item admin-only" onclick="switchView('simple-auth')">
             <i class="fas fa-key"></i> Analyst Access
           </li>
+          <li class="nav-item admin-only" onclick="switchView('subscriptions')">
+            <i class="fas fa-crown"></i> Subscriptions
+          </li>
           <li class="nav-item" onclick="switchView('analytics')">
             <i class="fas fa-chart-bar"></i> Analytics
           </li>
@@ -1362,6 +1365,165 @@
           </div>
         </div>
 
+        <!-- Subscriptions View -->
+        <div id="view-subscriptions" class="view-section">
+          <div class="header">
+            <h2 class="page-title">Subscription Management</h2>
+            <button class="btn btn-primary" onclick="refreshSubscriptionStats()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="stats-grid" id="subscription-stats">
+            <div class="stat-card">
+              <div class="stat-value" id="stat-total-subscribers">-</div>
+              <div class="stat-label">Active Subscribers</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-custom-bots">-</div>
+              <div class="stat-label">Custom Bots</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-role-bypass">-</div>
+              <div class="stat-label">Role Bypass</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-total-premium">-</div>
+              <div class="stat-label">Total Premium Access</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <!-- Grant Subscription -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 15px">
+                <i class="fas fa-crown" style="color: var(--warning)"></i>
+                Grant Test Subscription
+              </div>
+              <div style="margin-bottom: 15px">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
+                  Username
+                </label>
+                <input
+                  id="grant-sub-username"
+                  type="text"
+                  class="input"
+                  placeholder="Enter Twitch username"
+                />
+              </div>
+              <div style="margin-bottom: 15px">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
+                  Duration (days)
+                </label>
+                <input
+                  id="grant-sub-days"
+                  type="number"
+                  class="input"
+                  value="30"
+                  min="1"
+                  max="365"
+                />
+              </div>
+              <button class="btn btn-primary" onclick="grantSubscription()">
+                <i class="fas fa-gift"></i> Grant Subscription
+              </button>
+              <div id="grant-sub-result" style="margin-top: 10px; font-size: 14px;"></div>
+            </div>
+
+            <!-- Revoke Subscription -->
+            <div class="card">
+              <div class="card-title" style="margin-bottom: 15px">
+                <i class="fas fa-ban" style="color: var(--danger)"></i>
+                Revoke Subscription
+              </div>
+              <div style="margin-bottom: 15px">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
+                  Username
+                </label>
+                <input
+                  id="revoke-sub-username"
+                  type="text"
+                  class="input"
+                  placeholder="Enter Twitch username"
+                />
+              </div>
+              <button class="btn btn-danger" onclick="revokeSubscription()">
+                <i class="fas fa-times"></i> Revoke Subscription
+              </button>
+              <div id="revoke-sub-result" style="margin-top: 10px; font-size: 14px;"></div>
+            </div>
+          </div>
+
+          <!-- Set Role -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-title" style="margin-bottom: 15px">
+              <i class="fas fa-user-shield" style="color: var(--info)"></i>
+              Set User Role (for Testing)
+            </div>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
+                  Username
+                </label>
+                <input
+                  id="set-role-username"
+                  type="text"
+                  class="input"
+                  placeholder="Enter Twitch username"
+                />
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
+                  Role
+                </label>
+                <select id="set-role-select" class="input">
+                  <option value="Basic user">Basic user</option>
+                  <option value="tester">tester (bypass subscription)</option>
+                  <option value="analyst">analyst</option>
+                  <option value="Staff">Staff (bypass subscription)</option>
+                  <option value="admin">admin (bypass subscription)</option>
+                </select>
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <button class="btn btn-primary" onclick="setUserRole()">
+                  <i class="fas fa-save"></i> Set Role
+                </button>
+              </div>
+            </div>
+            <div id="set-role-result" style="margin-top: 10px; font-size: 14px;"></div>
+          </div>
+
+          <!-- Active Subscribers List -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-title" style="margin-bottom: 15px">
+              <i class="fas fa-list" style="color: var(--primary)"></i>
+              Active Subscribers
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Tier</th>
+                    <th>Status</th>
+                    <th>Custom Bot</th>
+                    <th>Expires</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="subscribers-table-body">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted);">
+                      Loading...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- Settings View -->
         <div id="view-settings" class="view-section">
           <div class="header">
@@ -1486,6 +1648,7 @@
             "database",
             "logs",
             "settings",
+            "subscriptions",
           ];
 
           if (data.role !== "admin") {
@@ -1512,6 +1675,7 @@
           "database",
           "logs",
           "settings",
+          "subscriptions",
         ];
         if (window.USER_ROLE === "Staff" && adminOnlyViews.includes(viewId)) {
           console.warn("Unauthorized access attempt to " + viewId);
@@ -2689,6 +2853,203 @@
           alert("Error: " + err.message);
         }
       }
+
+      // ========================================
+      // SUBSCRIPTION MANAGEMENT FUNCTIONS
+      // ========================================
+
+      async function refreshSubscriptionStats() {
+        try {
+          // Fetch stats
+          const statsRes = await fetch('/admin/api/subscription-stats');
+          const stats = await statsRes.json();
+
+          document.getElementById('stat-total-subscribers').innerText = stats.totalSubscribers || 0;
+          document.getElementById('stat-custom-bots').innerText = stats.customBotUsers || 0;
+          document.getElementById('stat-role-bypass').innerText = stats.roleBypass?.total || 0;
+          document.getElementById('stat-total-premium').innerText = stats.totalPremiumAccess || 0;
+
+          // Fetch subscribers list
+          const subsRes = await fetch('/admin/api/subscriptions');
+          const subsData = await subsRes.json();
+
+          const tbody = document.getElementById('subscribers-table-body');
+          if (subsData.subscriptions && subsData.subscriptions.length > 0) {
+            tbody.innerHTML = subsData.subscriptions.map(sub => `
+              <tr>
+                <td><strong>${sub.username}</strong></td>
+                <td>${sub.tier || 'custom_bot'}</td>
+                <td>
+                  <span class="status-pill ${sub.subscription?.status === 'active' ? 'online' : 'offline'}">
+                    ${sub.subscription?.status || 'unknown'}
+                  </span>
+                  ${sub.subscription?.isManualGrant ? '<span style="color: var(--warning); font-size: 11px;"> (test)</span>' : ''}
+                </td>
+                <td>${sub.customBot ? sub.customBot.username : '<span style="color: var(--text-muted)">None</span>'}</td>
+                <td>${sub.subscription?.periodEnd ? new Date(sub.subscription.periodEnd).toLocaleDateString() : '-'}</td>
+                <td>
+                  <button class="btn btn-sm" onclick="revokeSubscriptionById(${sub.id}, '${sub.username}')" style="background: var(--danger); padding: 5px 10px; font-size: 12px;">
+                    Revoke
+                  </button>
+                </td>
+              </tr>
+            `).join('');
+          } else {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No active subscribers</td></tr>';
+          }
+        } catch (err) {
+          console.error('Failed to refresh subscription stats:', err);
+        }
+      }
+
+      async function grantSubscription() {
+        const username = document.getElementById('grant-sub-username').value.trim().toLowerCase();
+        const days = parseInt(document.getElementById('grant-sub-days').value) || 30;
+        const resultDiv = document.getElementById('grant-sub-result');
+
+        if (!username) {
+          resultDiv.innerHTML = '<span style="color: var(--danger)">Please enter a username</span>';
+          return;
+        }
+
+        try {
+          // First, find the user ID
+          const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
+          const searchData = await searchRes.json();
+
+          const user = searchData.users?.find(u => u.username.toLowerCase() === username);
+          if (!user) {
+            resultDiv.innerHTML = `<span style="color: var(--danger)">User "${username}" not found</span>`;
+            return;
+          }
+
+          // Grant subscription
+          const res = await fetch(`/admin/api/users/${user.id}/grant-subscription`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': CSRF_TOKEN
+            },
+            body: JSON.stringify({ durationDays: days, tier: 'custom_bot' })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            resultDiv.innerHTML = `<span style="color: var(--success)">${data.message}</span>`;
+            document.getElementById('grant-sub-username').value = '';
+            refreshSubscriptionStats();
+          } else {
+            resultDiv.innerHTML = `<span style="color: var(--danger)">${data.error}</span>`;
+          }
+        } catch (err) {
+          resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+        }
+      }
+
+      async function revokeSubscription() {
+        const username = document.getElementById('revoke-sub-username').value.trim().toLowerCase();
+        const resultDiv = document.getElementById('revoke-sub-result');
+
+        if (!username) {
+          resultDiv.innerHTML = '<span style="color: var(--danger)">Please enter a username</span>';
+          return;
+        }
+
+        try {
+          // First, find the user ID
+          const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
+          const searchData = await searchRes.json();
+
+          const user = searchData.users?.find(u => u.username.toLowerCase() === username);
+          if (!user) {
+            resultDiv.innerHTML = `<span style="color: var(--danger)">User "${username}" not found</span>`;
+            return;
+          }
+
+          await revokeSubscriptionById(user.id, username);
+          resultDiv.innerHTML = `<span style="color: var(--success)">Subscription revoked from ${username}</span>`;
+          document.getElementById('revoke-sub-username').value = '';
+        } catch (err) {
+          resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+        }
+      }
+
+      async function revokeSubscriptionById(userId, username) {
+        if (!confirm(`Are you sure you want to revoke the subscription from ${username}?`)) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/admin/api/users/${userId}/revoke-subscription`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': CSRF_TOKEN
+            }
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            refreshSubscriptionStats();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      }
+
+      async function setUserRole() {
+        const username = document.getElementById('set-role-username').value.trim().toLowerCase();
+        const role = document.getElementById('set-role-select').value;
+        const resultDiv = document.getElementById('set-role-result');
+
+        if (!username) {
+          resultDiv.innerHTML = '<span style="color: var(--danger)">Please enter a username</span>';
+          return;
+        }
+
+        try {
+          // First, find the user ID
+          const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
+          const searchData = await searchRes.json();
+
+          const user = searchData.users?.find(u => u.username.toLowerCase() === username);
+          if (!user) {
+            resultDiv.innerHTML = `<span style="color: var(--danger)">User "${username}" not found</span>`;
+            return;
+          }
+
+          const res = await fetch(`/admin/api/users/${user.id}/set-role`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': CSRF_TOKEN
+            },
+            body: JSON.stringify({ role })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            resultDiv.innerHTML = `<span style="color: var(--success)">${data.message}</span>`;
+            document.getElementById('set-role-username').value = '';
+            refreshSubscriptionStats();
+          } else {
+            resultDiv.innerHTML = `<span style="color: var(--danger)">${data.error}</span>`;
+          }
+        } catch (err) {
+          resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+        }
+      }
+
+      // Load subscription stats when switching to subscriptions view
+      const originalSwitchView = switchView;
+      switchView = function(viewId) {
+        originalSwitchView(viewId);
+        if (viewId === 'subscriptions') {
+          refreshSubscriptionStats();
+        }
+      };
     </script>
   </body>
 </html>

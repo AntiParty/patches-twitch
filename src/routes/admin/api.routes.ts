@@ -367,6 +367,179 @@ router.post('/api/users/:id/grant-subscription', requireAdminAPI, async (req: an
 });
 
 /**
+ * POST /admin/api/users/:id/revoke-subscription
+ * Revoke a user's subscription
+ */
+router.post('/api/users/:id/revoke-subscription', requireAdminAPI, async (req: any, res: any) => {
+    const userId = req.params.id;
+
+    try {
+        const user = await Channel.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Update user subscription status
+        user.has_subscription = false;
+        await user.save();
+
+        // Update subscription record
+        const { Subscription, CustomBotAccount } = await import('@/db');
+        await Subscription.update(
+            { status: 'inactive' },
+            { where: { channel_id: userId } }
+        );
+
+        // Deactivate custom bot if any
+        await CustomBotAccount.update(
+            { is_active: false },
+            { where: { channel_id: userId } }
+        );
+
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'REVOKE_SUBSCRIPTION', { targetId: userId });
+        logger.info(`[Admin] Revoked subscription from user ${user.username} (${userId})`);
+
+        res.json({ success: true, message: `Revoked subscription from ${user.username}.` });
+    } catch (err) {
+        logger.error('Error revoking subscription:', err);
+        res.status(500).json({ error: 'Failed to revoke subscription' });
+    }
+});
+
+/**
+ * GET /admin/api/subscriptions
+ * Get all active subscriptions with details
+ */
+router.get('/api/subscriptions', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        const { Subscription, CustomBotAccount } = await import('@/db');
+
+        // Get all users with subscriptions
+        const subscribers = await Channel.findAll({
+            where: { has_subscription: true },
+            attributes: ['id', 'username', 'twitch_user_id', 'has_subscription', 'subscription_tier', 'role'],
+        });
+
+        // Get subscription details and custom bot info for each
+        const subscriptionData = await Promise.all(subscribers.map(async (sub: any) => {
+            const subscription = await Subscription.findOne({
+                where: { channel_id: sub.id },
+                order: [['created_at', 'DESC']],
+            });
+
+            const customBot = await CustomBotAccount.findOne({
+                where: { channel_id: sub.id, is_active: true },
+            });
+
+            return {
+                id: sub.id,
+                username: sub.username,
+                twitchUserId: sub.twitch_user_id,
+                tier: sub.subscription_tier,
+                role: sub.role,
+                subscription: subscription ? {
+                    status: subscription.status,
+                    planType: subscription.plan_type,
+                    periodStart: subscription.current_period_start,
+                    periodEnd: subscription.current_period_end,
+                    isManualGrant: subscription.stripe_customer_id?.startsWith('manual_grant_') ||
+                                   subscription.stripe_customer_id?.startsWith('test_grant_'),
+                } : null,
+                customBot: customBot ? {
+                    username: customBot.bot_username,
+                    isActive: customBot.is_active,
+                } : null,
+            };
+        }));
+
+        res.json({ subscriptions: subscriptionData, total: subscriptionData.length });
+    } catch (err) {
+        logger.error('Error fetching subscriptions:', err);
+        res.status(500).json({ error: 'Failed to fetch subscriptions' });
+    }
+});
+
+/**
+ * GET /admin/api/subscription-stats
+ * Get subscription statistics for testing/monitoring
+ */
+router.get('/api/subscription-stats', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        const { Subscription, CustomBotAccount } = await import('@/db');
+
+        const totalSubscribers = await Channel.count({ where: { has_subscription: true } });
+        const activeSubscriptions = await Subscription.count({ where: { status: 'active' } });
+        const customBotUsers = await CustomBotAccount.count({ where: { is_active: true } });
+
+        // Role-based access (testers, staff, admins without subscription)
+        const testerCount = await Channel.count({ where: { role: 'tester', has_subscription: false } });
+        const staffCount = await Channel.count({ where: { role: 'Staff', has_subscription: false } });
+        const adminCount = await Channel.count({ where: { role: 'admin', has_subscription: false } });
+
+        // Manual grants (test subscriptions)
+        const manualGrants = await Subscription.count({
+            where: {
+                status: 'active',
+            }
+        });
+
+        res.json({
+            totalSubscribers,
+            activeSubscriptions,
+            customBotUsers,
+            roleBypass: {
+                testers: testerCount,
+                staff: staffCount,
+                admins: adminCount,
+                total: testerCount + staffCount + adminCount,
+            },
+            manualGrants,
+            totalPremiumAccess: totalSubscribers + testerCount + staffCount + adminCount,
+        });
+    } catch (err) {
+        logger.error('Error fetching subscription stats:', err);
+        res.status(500).json({ error: 'Failed to fetch subscription stats' });
+    }
+});
+
+/**
+ * POST /admin/api/users/:id/set-role
+ * Set a user's role (for testing purposes)
+ */
+router.post('/api/users/:id/set-role', requireAdminAPI, async (req: any, res: any) => {
+    const userId = req.params.id;
+    const { role } = req.body;
+
+    const validRoles = ['Basic user', 'tester', 'analyst', 'Staff', 'admin'];
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
+    }
+
+    try {
+        const user = await Channel.findByPk(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const oldRole = user.role;
+        user.role = role;
+        await user.save();
+
+        await logAdminAction(req.session.username, req.session.role || 'admin', 'SET_ROLE', {
+            targetId: userId,
+            oldRole,
+            newRole: role
+        });
+        logger.info(`[Admin] Changed role for ${user.username} from ${oldRole} to ${role}`);
+
+        res.json({ success: true, message: `Changed ${user.username}'s role from ${oldRole} to ${role}.` });
+    } catch (err) {
+        logger.error('Error setting role:', err);
+        res.status(500).json({ error: 'Failed to set role' });
+    }
+});
+
+/**
  * GET /admin/api/logs
  * Get last 100 lines of main log file
  */

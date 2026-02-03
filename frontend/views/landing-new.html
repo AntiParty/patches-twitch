@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Basic -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    <!-- Primary SEO -->
+    <title>#1 Twitch Bot for THE FINALS – Live Stats & Leaderboards | FinalsRS</title>
+    <meta name="description"
+        content="Level up your THE FINALS stream with FinalsRS - the #1 FREE Twitch bot for real-time player stats, live leaderboards, and zero-latency rank tracking. Join hundreds of streamers today!">
+    <meta name="robots" content="index, follow">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="https://finalsrs.com/">
+
+    <!-- Open Graph (Facebook, Discord, etc.) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="FinalsRS">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:url" content="https://finalsrs.com/">
+    <meta property="og:title" content="FinalsRS – Twitch Bot for THE FINALS | Live Stats & Leaderboards">
+    <meta property="og:description"
+        content="Engage your Twitch chat with real-time stats, live leaderboards, and rank tracking for THE FINALS.">
+    <meta property="og:image" content="https://finalsrs.com/assets/finalsrr-chat-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="360">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@FinalsRS">
+    <meta name="twitter:title" content="FinalsRS – Twitch Bot for THE FINALS">
+    <meta name="twitter:description"
+        content="Free Twitch bot for THE FINALS with live stats, leaderboards, and rank tracking.">
+    <meta name="twitter:image" content="https://finalsrs.com/assets/finalsrr-chat-preview.png">
+
+    <!-- Keywords -->
+    <meta name="keywords"
+        content="THE FINALS Twitch bot, FinalsRS, Twitch stats bot, THE FINALS leaderboard, Twitch rank tracking, live game stats">
+
+    <!-- Icons -->
+    <link rel="icon" href="./assets/logo.png">
+    <link rel="apple-touch-icon" href="./assets/logo.png">
+
+    <!-- Google Site Verification -->
+    <meta name="google-site-verification" content="x9Ypq3cctF6c7a5910mpq6fnmtg83h9jXrxheEqE0WM">
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "FinalsRS",
+            "url": "https://finalsrs.com/",
+            "description": "A free Twitch bot for THE FINALS providing real-time player stats, leaderboards, and rank tracking.",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Web",
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+            }
+        }
+    </script>
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [{
+                    "@type": "Question",
+                    "name": "What is FinalsRS?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "FinalsRS is a powerful Twitch bot designed specifically for THE FINALS. It allows streamers to display real-time player stats, live leaderboard rankings, and match history directly in their Twitch chat."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Is FinalsRS free to use?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Yes, FinalsRS is completely free to use for all THE FINALS streamers. You can add it to your channel with just a few clicks."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Does FinalsRS track World Tour ranks?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Absolutely! FinalsRS tracks both Rank Score (RS) and World Tour (WT) rankings live."
+                    }
+                }
+            ]
+        }
+    </script>
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [{
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://finalsrs.com/"
+            }]
+        }
+    </script>
+
+    <!-- Google Tag Manager -->
+    <script>
+        (function (w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start': new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-KB6VBBXB');
+    </script>
+
+    <!-- Umami Analytics -->
+    <script defer src="https://umami.antiparty.dev/script.js" data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5">
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #0f0f12;
+            --bg-card: #141418;
+            --border: #1f1f26;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #f5c26b;
+            --accent-glow: rgba(245, 194, 107, 0.15);
+            --accent-hover: #f7cf8a;
+            --purple: #9146ff;
+            --purple-glow: rgba(145, 70, 255, 0.15);
+            --red: #ff4b4b;
+            --green: #22c55e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 32px;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 20px;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--accent-glow);
+        }
+
+        .btn-purple {
+            background: var(--purple);
+            color: #fff;
+        }
+
+        .btn-purple:hover {
+            background: #a259ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--purple-glow);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--text-muted);
+        }
+
+        .btn-large {
+            padding: 14px 28px;
+            font-size: 16px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 120px 32px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: 20%;
+            right: 10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(ellipse, var(--purple-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(145, 70, 255, 0.1);
+            border: 1px solid rgba(145, 70, 255, 0.3);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--purple);
+            margin-bottom: 24px;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(40px, 6vw, 72px);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            max-width: 800px;
+            position: relative;
+        }
+
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--accent), #ff9f43);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin-bottom: 40px;
+            line-height: 1.7;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 60px;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 48px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .hero-stat {
+            text-align: center;
+        }
+
+        .hero-stat .value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .hero-stat .label {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Featured Streamers - Static Grid */
+        .featured {
+            padding: 60px 32px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .featured-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .featured-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-right: 8px;
+        }
+
+        .featured-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            /* Pill shape looks more modern */
+            transition: all 0.2s ease;
+        }
+
+        .featured-viewers {
+            font-size: 11px;
+            color: var(--red);
+            /* Red live indicator style */
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .featured-viewers::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            background: var(--red);
+            border-radius: 50%;
+        }
+
+        .featured-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--purple), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            color: #fff;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .featured-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        /* When using an image, hide any text fallback */
+        .featured-avatar img + span {
+            display: none;
+        }
+
+        .featured-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .featured-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .featured-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .featured-title.partner {
+            color: var(--purple);
+        }
+
+        .featured-title.verified {
+            color: var(--accent);
+        }
+
+        .featured-count {
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* How It Works Section */
+        .how-it-works {
+            padding: 80px 32px;
+            background: var(--bg-primary);
+        }
+
+        .how-it-works-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 24px 28px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: all 0.2s;
+        }
+
+        .step:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            color: #000;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .step-content code {
+            background: rgba(245, 194, 107, 0.15);
+            color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+        }
+
+        .step-arrow {
+            font-size: 24px;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 900px) {
+            .how-it-works-container {
+                flex-direction: column;
+            }
+
+            .step-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        /* Section Header */
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-header h2 {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .section-header p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Commands Preview */
+        .commands-preview {
+            padding: 120px 32px;
+            background: var(--bg-secondary);
+        }
+
+        .commands-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        .commands-content h2 {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 20px;
+        }
+
+        .commands-content p {
+            color: var(--text-secondary);
+            font-size: 17px;
+            margin-bottom: 32px;
+            line-height: 1.7;
+        }
+
+        .command-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .command-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        .command-item code {
+            background: rgba(245, 194, 107, 0.1);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+        }
+
+        /* Updated Marquee Styles */
+        .marquee-track {
+            display: flex;
+            gap: 24px;
+            animation: marquee 50s linear infinite;
+            width: max-content;
+            padding: 10px 0;
+        }
+
+        /* Ensure the animation doesn't "jump" by having two identical sets of items */
+        @keyframes marquee {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        /* Twitch Chat Mockup */
+        .twitch-chat-mockup {
+            background: #0e0e10;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+            max-width: 420px;
+        }
+
+        .chat-header {
+            padding: 12px;
+            border-bottom: 1px solid #1f1f23;
+            text-align: center;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .chat-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 320px;
+            justify-content: flex-end;
+        }
+
+        .chat-line {
+            font-size: 14px;
+            line-height: 1.5;
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        .chat-line .timestamp {
+            color: #53535f;
+            margin-right: 8px;
+            font-size: 12px;
+        }
+
+        .chat-line .username {
+            font-weight: 700;
+            margin-right: 4px;
+        }
+
+        .chat-line .user-1 {
+            color: #ff4500;
+        }
+
+        .chat-line .user-2 {
+            color: #1e90ff;
+        }
+
+        .chat-line .bot-name {
+            color: var(--accent);
+        }
+
+        .chat-line .bot-badge {
+            width: 18px;
+            height: 18px;
+            vertical-align: middle;
+            margin-right: 4px;
+            border-radius: 4px;
+        }
+
+        .chat-line .mention {
+            background: rgba(217, 0, 47, 0.15);
+            color: #ff4757;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .chat-line .rank-diamond {
+            color: #b9f2ff;
+            text-shadow: 0 0 8px rgba(185, 242, 255, 0.5);
+            font-weight: 700;
+        }
+
+        .chat-line .gain {
+            color: #00ff7f;
+            font-weight: 700;
+        }
+
+        .chat-line.bot-response {
+            background: rgba(245, 194, 107, 0.03);
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin: 4px 0;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 120px 32px;
+        }
+
+        .testimonials-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .testimonial-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+        }
+
+        .testimonial-card p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .testimonial-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+        }
+
+        .testimonial-info .name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .testimonial-info .role {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 120px 32px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 400px;
+            background: radial-gradient(ellipse, var(--purple-glow) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta h2 {
+            font-size: 48px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .cta p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto 40px;
+            position: relative;
+        }
+
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+        }
+
+        /* Footer */
+        footer {
+            padding: 64px 32px 32px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px;
+        }
+
+        .footer-brand {
+            max-width: 280px;
+        }
+
+        .footer-brand .logo {
+            margin-bottom: 16px;
+        }
+
+        .footer-brand p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .footer-column h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .footer-column a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 0;
+            transition: color 0.2s;
+        }
+
+        .footer-column a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 48px auto 0;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .footer-bottom a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        .footer-bottom a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .hero-stats {
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .commands-container {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            nav {
+                padding: 12px 16px;
+            }
+
+            .hero {
+                padding: 100px 20px 60px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-KB6VBBXB" height="0" width="0"
+            style="display:none;visibility:hidden"></iframe></noscript>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/assets/logo.png" alt="FinalsRS" class="logo-icon">
+                FinalsRS
+            </a>
+            <div class="nav-links">
+                <a href="/docs">Commands</a>
+                <a href="#">Status</a>
+                <a href="/docs">Docs</a>
+                <a href="#">FAQ</a>
+            </div>
+            <div class="nav-buttons">
+                <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
+                <a href="/auth/twitch" class="btn btn-purple">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                    </svg>
+                    Add to Twitch
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-badge">
+            <span class="dot"></span>
+            <span>Trusted by 500+ Twitch channels</span>
+        </div>
+        <h1>
+            Rank updates<br>
+            live in <span class="highlight">chat</span>
+        </h1>
+
+        <p>
+            Real-time RS tracking, peak rank history, and T500 predictions.
+            Stop alt-tabbing. Let your viewers handle the stat checks.
+        </p>
+        <div class="hero-buttons">
+            <a href="/auth/twitch" class="btn btn-primary btn-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                </svg>
+                Add to Your Channel
+            </a>
+            <a href="/docs" class="btn btn-outline">View Commands</a>
+        </div>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="value">500+</div>
+                <div class="label">Active Channels</div>
+            </div>
+            <div class="hero-stat">
+                <div class="value">1M+</div>
+                <div class="label">Commands Processed</div>
+            </div>
+            <div class="hero-stat">
+                <div class="value">99.9%</div>
+                <div class="label">Uptime</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Streamers -->
+    <section class="featured">
+        <div class="featured-label">Trusted by top community members</div>
+        <div class="marquee-container">
+            <div class="marquee-track">
+                <!-- Use img inside featured-avatar for profile pics, or just text as fallback -->
+                <div class="featured-item">
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png" alt="antiparty">
+                    </div>
+                    <span>antiparty</span>
+                    <span class="featured-viewers">15k</span>
+                </div>
+                <div class="featured-item">
+                    
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png" alt="LeftClickSnipe">
+                    </div>
+                    <span>LeftClickSnipe</span>
+                    <span class="featured-viewers">8.2k</span>
+                </div>
+                <div class="featured-item">
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/c08fd4bf-44cc-40fd-9068-7ceba79a0569-profile_image-70x70.png" alt="Ekazoko">
+                    </div>
+                    <span>Ekazoko</span>
+                    <span class="featured-viewers">24k</span>
+                </div>
+                <div class="featured-item">
+                    
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/7ca2298b-d08c-4c6d-bd61-56ca7f59f576-profile_image-70x70.jpeg" alt="KS_Rachel">
+                    </div>
+                    <span>KS_Rachel</span>
+                    <span class="featured-viewers">2.4k</span>
+                </div>
+                <div class="featured-item">
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png" alt="its_gdawg">
+                    </div>
+                    <span>its_gdawg</span>
+                    <span class="featured-viewers">500</span>
+                </div>
+                <!-- Duplicate set for seamless loop -->
+                <div class="featured-item">
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png" alt="antiparty">
+                    </div>
+                    <span>antiparty</span>
+                    <span class="featured-viewers">15k</span>
+                </div>
+                <div class="featured-item">
+                    
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png" alt="LeftClickSnipe">
+                    </div>
+                    <span>LeftClickSnipe</span>
+                    <span class="featured-viewers">8.2k</span>
+                </div>
+                <div class="featured-item">
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/c08fd4bf-44cc-40fd-9068-7ceba79a0569-profile_image-70x70.png" alt="Ekazoko">
+                    </div>
+                    <span>Ekazoko</span>
+                    <span class="featured-viewers">24k</span>
+                </div>
+                <div class="featured-item">
+                    
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/7ca2298b-d08c-4c6d-bd61-56ca7f59f576-profile_image-70x70.jpeg" alt="KS_Rachel">
+                    </div>
+                    <span>KS_Rachel</span>
+                    <span class="featured-viewers">2.4k</span>
+                </div>
+                <div class="featured-item">
+                    <div class="featured-avatar">
+                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png" alt="its_gdawg">
+                    </div>
+                    <span>its_gdawg</span>
+                    <span class="featured-viewers">500</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section class="how-it-works">
+        <div class="how-it-works-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Connect Twitch</h3>
+                    <p>One click login with your Twitch account</p>
+                </div>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Link your IGN</h3>
+                    <p>Type <code>!link YourName#1234</code> in chat</p>
+                </div>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>You're live</h3>
+                    <p>Chat uses <code>!rank</code>, <code>!peak</code>, and more</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Commands Preview -->
+    <section class="commands-preview">
+        <div class="commands-container">
+            <div class="commands-content">
+                <h2>Your chat, your stats</h2>
+                <p>
+                    Link your account once, then let chat handle the rest.
+                    Every command works instantly - no API keys, no setup headaches.
+                </p>
+                <div class="command-list">
+                    <div class="command-item">
+                        <code>!rank</code>
+                        <span>Current RS, league & World Tour rank</span>
+                    </div>
+                    <div class="command-item">
+                        <code>!peak</code>
+                        <span>Best rank across all seasons</span>
+                    </div>
+                    <div class="command-item">
+                        <code>!record</code>
+                        <span>RS Gain/Lost During the stream</span>
+                    </div>
+                    <div class="command-item">
+                        <code>!predict</code>
+                        <span>T500 cutoff prediction</span>
+                    </div>
+                    <div class="command-item">
+                        <code>!link Name#1234</code>
+                        <span>Link your Finals account</span>
+                    </div>
+                </div>
+            </div>
+            <div class="twitch-chat-mockup">
+                <div class="chat-header">Stream Chat</div>
+                <div class="chat-body">
+                    <div class="chat-line">
+                        <span class="timestamp">12:01</span>
+                        <span class="username user-1">Viewer77:</span>
+                        <span class="message">!rank</span>
+                    </div>
+                    <div class="chat-line bot-response">
+                        <span class="timestamp">12:01</span>
+                        <img src="/assets/logo.png" class="bot-badge" alt="Bot">
+                        <span class="username bot-name">FinalsRS:</span>
+                        <span class="message">
+                            <span class="mention">@Viewer77</span>
+                            <strong class="rank-diamond">Diamond 3</strong> — 43,331 RS | WT: #498
+                        </span>
+                    </div>
+                    <div class="chat-line">
+                        <span class="timestamp">12:05</span>
+                        <span class="username user-2">Viewer77:</span>
+                        <span class="message">!record</span>
+                    </div>
+                    <div class="chat-line bot-response">
+                        <span class="timestamp">12:05</span>
+                        <img src="/assets/logo.png" class="bot-badge" alt="Bot">
+                        <span class="username bot-name">FinalsRS:</span>
+                        <span class="message">
+                            <span class="mention">@Viewer77</span> Session RS:
+                            <span class="gain">+145 RS (43,331 RS)</span> WT Rank: (-16 from start)
+                        </span>
+                    </div>
+                    <div class="chat-line">
+                        <span class="timestamp">12:08</span>
+                        <span class="username user-1">Viewer77:</span>
+                        <span class="message">!peak</span>
+                    </div>
+                    <div class="chat-line bot-response">
+                        <span class="timestamp">12:08</span>
+                        <img src="/assets/logo.png" class="bot-badge" alt="Bot">
+                        <span class="username bot-name">FinalsRS:</span>
+                        <span class="message">
+                            Peak rank: #501 <strong class="rank-diamond">Diamond 4</strong> (42,235 RS) in Season 9
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="section-header">
+            <h2>What streamers say</h2>
+            <p>Real feedback from The Finals community.</p>
+        </div>
+        <div class="testimonials-grid">
+            <div class="testimonial-card">
+                <p>"finally my chat can stop asking me what rank i am every 30 seconds lmao. they just use !rank now.
+                    actual lifesaver"</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar"></div>
+                    <div class="testimonial-info">
+                        <div class="name">antiparty</div>
+                        <div class="role">Twitch Partner · Ruby</div>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <p>"the overlay is clean af. matches my stream aesthetic and updates live. my viewers love seeing the RS
+                    go up (and down lol)"</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar"></div>
+                    <div class="testimonial-info">
+                        <div class="name">stormyy</div>
+                        <div class="role">Diamond 1</div>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card">
+                <p>"!predict told me i needed 14.2k to stay ruby. got to 14.5k and stopped. woke up still ruby. bot
+                    literally saved my season"</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar"></div>
+                    <div class="testimonial-info">
+                        <div class="name">carnifex</div>
+                        <div class="role">Ruby · Season 4</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <h2>Stop missing rank questions</h2>
+        <p>Setup takes 30 seconds. Link your account and you're live.</p>
+        <div class="cta-buttons">
+            <a href="/auth/twitch" class="btn btn-primary btn-large">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                </svg>
+                Add to Twitch - Free forever
+            </a>
+            <a href="/docs" class="btn btn-outline">See all commands</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <img src="/assets/logo.png" alt="FinalsRS" class="logo-icon">
+                    FinalsRS
+                </a>
+                <p>The ultimate Twitch bot for The Finals ranked statistics. Real-time stats, overlays, and predictions.
+                </p>
+            </div>
+            <div class="footer-column">
+                <h4>Bot</h4>
+                <a href="/auth/twitch">Add to Twitch</a>
+                <a href="/docs">Commands</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="#">Status</a>
+            </div>
+            <div class="footer-column">
+                <h4>Resources</h4>
+                <a href="/docs">Documentation</a>
+                <a href="#">Support</a>
+                <a href="#">FAQ</a>
+                <a href="#">Changelog</a>
+            </div>
+            <div class="footer-column">
+                <h4>Legal</h4>
+                <a href="/legal">Terms of Service</a>
+                <a href="/legal">Privacy Policy</a>
+                <a href="#">Refund Policy</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2025 FinalsRS. All rights reserved.</span>
+            <span>Not affiliated with Embark Studios</span>
+        </div>
+    </footer>
+</body>
+
+</html>

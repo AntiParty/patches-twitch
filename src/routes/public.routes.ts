@@ -41,6 +41,10 @@ router.get("/", async (req: Request, res: Response) => {
     res.sendFile(path.join(viewsPath, "index.html"));
 }); 
 
+// new landing page for test reasons
+router.get("/new-landing", async (req: Request, res: Response) => {
+    res.sendFile(path.join(viewsPath, "landing-new.html"));
+});
 router.get("/banned", (req: any, res: Response) => {
     const reason = req.session?.banReason || "No reason provided.";
     res.render("banned", { reason });

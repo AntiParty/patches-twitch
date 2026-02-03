@@ -1,730 +1,814 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<head>
+    <!-- Basic -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <!-- Primary SEO -->
     <title>THE FINALS Twitch Drops Tracker | FinalsRS</title>
-    <meta
-      name="description"
-      content="Track active THE FINALS Twitch Drops with FinalsRS. See current rewards, drop requirements, and eligible streams in real time."
-    />
-    <meta name="robots" content="index, follow" />
+    <meta name="description"
+        content="Track active THE FINALS Twitch Drops with FinalsRS. See current rewards, drop requirements, and eligible streams in real time.">
+    <meta name="robots" content="index, follow">
 
     <!-- Canonical -->
-    <link rel="canonical" href="https://finalsrs.com/drops" />
+    <link rel="canonical" href="https://finalsrs.com/drops">
 
     <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="FinalsRS" />
-    <meta property="og:url" content="https://finalsrs.com/drops" />
-    <meta
-      property="og:title"
-      content="THE FINALS Twitch Drops Tracker | FinalsRS"
-    />
-    <meta
-      property="og:description"
-      content="View current THE FINALS Twitch Drops, rewards, and how to earn them by watching eligible Twitch streams."
-    />
-    <meta
-      property="og:image"
-      content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
-    />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="360" />
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="FinalsRS">
+    <meta property="og:url" content="https://finalsrs.com/drops">
+    <meta property="og:title" content="THE FINALS Twitch Drops Tracker | FinalsRS">
+    <meta property="og:description"
+        content="View current THE FINALS Twitch Drops, rewards, and how to earn them by watching eligible Twitch streams.">
+    <meta property="og:image" content="https://finalsrs.com/assets/finalsrr-chat-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="360">
 
     <!-- Twitter -->
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="THE FINALS Twitch Drops Tracker" />
-    <meta
-      name="twitter:description"
-      content="Live tracking for THE FINALS Twitch Drops, rewards, and progress."
-    />
-    <meta
-      name="twitter:image"
-      content="https://finalsrs.com/assets/finalsrr-chat-preview.png"
-    />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="THE FINALS Twitch Drops Tracker">
+    <meta name="twitter:description" content="Live tracking for THE FINALS Twitch Drops, rewards, and progress.">
+    <meta name="twitter:image" content="https://finalsrs.com/assets/finalsrr-chat-preview.png">
 
-    <!-- Keywords (Drops-focused) -->
-    <meta
-      name="keywords"
-      content="THE FINALS Twitch Drops, FinalsRS drops, THE FINALS drops tracker, Twitch Drops THE FINALS rewards"
-    />
+    <!-- Keywords -->
+    <meta name="keywords"
+        content="THE FINALS Twitch Drops, FinalsRS drops, THE FINALS drops tracker, Twitch Drops THE FINALS rewards">
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
 
     <!-- Icons -->
-    <link rel="icon" href="/assets/logo.png" />
-    <link rel="apple-touch-icon" href="/assets/logo.png" />
-    <link rel="stylesheet" href="/css/styles.css" />
+    <link rel="icon" href="/assets/logo.png">
+    <link rel="apple-touch-icon" href="/assets/logo.png">
 
-    <!-- Styles -->
-
-    <!-- Analytics -->
-    <!--<script defer src="https://umami.antiparty.dev/script.js" data-website-id="e0cd55e0-2ed3-4ac9-96dd-4db99c98a1d5">
-    </script>-->
-
-    <!-- Schema: Event / Promotion-style page -->
+    <!-- Schema -->
     <script type="application/ld+json">
-      {
+    {
         "@context": "https://schema.org",
         "@type": "WebPage",
         "name": "THE FINALS Twitch Drops Tracker",
         "url": "https://finalsrs.com/drops",
         "description": "Live tracker for THE FINALS Twitch Drops, including rewards, durations, and eligibility criteria."
-      }
+    }
     </script>
     <script type="application/ld+json">
-      {
+    {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
-        "itemListElement": [
-          {
+        "itemListElement": [{
             "@type": "ListItem",
             "position": 1,
             "name": "Home",
             "item": "https://finalsrs.com/"
-          },
-          {
+        }, {
             "@type": "ListItem",
             "position": 2,
             "name": "Twitch Drops",
             "item": "https://finalsrs.com/drops"
-          }
-        ]
-      }
+        }]
+    }
     </script>
 
     <style>
-      /* Drops Page - Simple Single Image Layout */
-      .drops-hero {
-        padding: 10rem 0 4rem;
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-        background: linear-gradient(to bottom, var(--bg-dark), #0c0c0e);
-      }
-
-      .drops-hero-glow {
-        position: absolute;
-        top: -30%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 1200px;
-        height: 800px;
-        background: radial-gradient(
-          circle,
-          rgba(217, 0, 47, 0.12) 0%,
-          rgba(0, 0, 0, 0) 70%
-        );
-        z-index: -1;
-        pointer-events: none;
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 700;
-        font-size: 1.5rem;
-      }
-
-      .logo-icon img {
-        width: 32px;
-        /* adjust as needed */
-        height: 32px;
-        /* keeps it square */
-        object-fit: contain;
-      }
-
-      .drops-hero h1 {
-        font-size: 3.5rem;
-        line-height: 1.1;
-        font-weight: 800;
-        letter-spacing: -1px;
-        margin-bottom: 1rem;
-      }
-
-      .drops-hero .subtitle {
-        font-size: 1.2rem;
-        color: var(--text-secondary);
-        margin-bottom: 3rem;
-        max-width: 700px;
-        margin-left: auto;
-        margin-right: auto;
-      }
-
-      /* Drops Content */
-      .drops-content {
-        padding: 4rem 0 6rem;
-      }
-
-      .drops-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 0 1.5rem;
-      }
-
-      /* Featured Image */
-      .drops-featured-image {
-        width: 100%;
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-        margin-bottom: 3rem;
-        border: 1px solid var(--border-color);
-        background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
-      }
-
-      .drops-featured-image img {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
-
-      /* Drops List */
-      .drops-list-container {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 3rem;
-        margin-bottom: 2rem;
-      }
-
-      .drops-list-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-      }
-
-      .drops-list-header h2 {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-      }
-
-      .last-updated {
-        color: var(--text-tertiary);
-        font-size: 0.9rem;
-      }
-
-      .drops-list {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 2rem 0;
-      }
-
-      .drop-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1.25rem 0;
-        border-bottom: 1px solid var(--border-color);
-        transition: all 0.2s;
-      }
-
-      .drop-item:last-child {
-        border-bottom: none;
-      }
-
-      .drop-item-info {
-        flex: 1;
-      }
-
-      .drop-item-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: 0.25rem;
-      }
-
-      .drop-item-category {
-        font-size: 0.85rem;
-        color: var(--text-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .drop-item-time {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--brand-primary);
-        font-weight: 600;
-        font-size: 1rem;
-      }
-
-      .drop-item-time svg {
-        width: 18px;
-        height: 18px;
-      }
-
-      /* CTA Button */
-      .drops-cta {
-        text-align: center;
-      }
-
-      .btn-view-drops {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.75rem;
-        background: var(--brand-primary);
-        color: white;
-        padding: 1.25rem 3rem;
-        border-radius: var(--radius-md);
-        font-weight: 700;
-        font-size: 1.1rem;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-        font-family: inherit;
-        text-decoration: none;
-      }
-
-      .btn-view-drops:hover {
-        background: var(--brand-hover);
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px var(--brand-glow);
-      }
-
-      .btn-view-drops svg {
-        width: 20px;
-        height: 20px;
-      }
-
-      /* Info Section */
-      .drops-info {
-        background: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-lg);
-        padding: 3rem;
-        margin-top: 4rem;
-      }
-
-      .drops-info h2 {
-        font-size: 2rem;
-        margin-bottom: 1.5rem;
-        color: var(--text-primary);
-      }
-
-      .drops-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 2rem;
-      }
-
-      .info-step {
-        display: flex;
-        gap: 1rem;
-      }
-
-      .step-number {
-        width: 40px;
-        height: 40px;
-        background: rgba(217, 0, 47, 0.1);
-        border: 1px solid rgba(217, 0, 47, 0.3);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--brand-primary);
-        font-weight: 700;
-        flex-shrink: 0;
-      }
-
-      .step-content h3 {
-        font-size: 1.1rem;
-        margin-bottom: 0.5rem;
-        color: var(--text-primary);
-      }
-
-      .step-content p {
-        color: var(--text-secondary);
-        font-size: 0.95rem;
-        line-height: 1.6;
-      }
-
-      /* Responsive */
-      @media (max-width: 768px) {
-        .drops-hero h1 {
-          font-size: 2.5rem;
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #0f0f12;
+            --bg-card: #141418;
+            --border: #1f1f26;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #f5c26b;
+            --accent-glow: rgba(245, 194, 107, 0.15);
+            --purple: #9146ff;
+            --purple-glow: rgba(145, 70, 255, 0.15);
+            --red: #ff4b4b;
+            --green: #22c55e;
         }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 32px;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 20px;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--text-primary);
+        }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-purple {
+            background: var(--purple);
+            color: #fff;
+        }
+
+        .btn-purple:hover {
+            background: #a259ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--purple-glow);
+        }
+
+        /* Hero */
+        .drops-hero {
+            padding: 140px 32px 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-glow {
+            position: absolute;
+            top: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(145, 70, 255, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .drops-hero h1 {
+            font-size: clamp(40px, 6vw, 56px);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .drops-hero h1 .highlight {
+            background: linear-gradient(135deg, var(--purple), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .drops-hero .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* Content */
+        .drops-content {
+            padding: 0 32px 80px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Streamers Section */
+        .streamers-section {
+            margin-bottom: 48px;
+            display: none;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .live-badge {
+            background: var(--red);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .streamers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .streamer-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: block;
+        }
+
+        .streamer-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--purple);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .stream-thumbnail {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: var(--bg-secondary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stream-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .streamer-card:hover .stream-thumbnail img {
+            transform: scale(1.05);
+        }
+
+        .streamer-info {
+            padding: 16px;
+        }
+
+        .streamer-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .stream-status {
+            font-size: 13px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+
+        /* Featured Image */
+        .drops-featured-image {
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 32px;
+            border: 1px solid var(--border);
+        }
+
+        .drops-featured-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Drops List */
         .drops-list-container {
-          padding: 2rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
         }
 
         .drops-list-header {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .drops-list-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .last-updated {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .drops-list {
+            list-style: none;
+            margin-bottom: 32px;
         }
 
         .drop-item {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border);
         }
 
+        .drop-item:last-child {
+            border-bottom: none;
+        }
+
+        .drop-item-info {
+            flex: 1;
+        }
+
+        .drop-item-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .drop-item-category {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .drop-item-time {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .drop-item-time svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* CTA Button */
+        .drops-cta {
+            text-align: center;
+        }
+
+        .btn-view-drops {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--purple);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-view-drops:hover {
+            background: #a259ff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--purple-glow);
+        }
+
+        .btn-view-drops svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* How To Claim */
         .drops-info {
-          padding: 2rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .drops-info h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
         }
 
         .drops-info-grid {
-          grid-template-columns: 1fr;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
         }
-      }
 
-      /* Mobile Menu */
-      .mobile-menu-btn {
-        display: none;
-        flex-direction: column;
-        gap: 4px;
-        cursor: pointer;
-      }
-
-      .mobile-menu-btn span {
-        width: 24px;
-        height: 2px;
-        background: var(--text-primary);
-        transition: all 0.3s;
-      }
-
-      @media (max-width: 768px) {
-        .mobile-menu-btn {
-          display: flex;
+        .info-step {
+            display: flex;
+            gap: 16px;
         }
-      }
 
-      /* Active Streamers Section */
-      .streamers-section {
-        margin-bottom: 4rem;
-        display: none; /* Hidden by default until loaded */
-      }
-      .streamers-header {
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-      }
-      .streamers-header h2 {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-      }
-      .live-badge {
-        background: #ef4444; /* Red */
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        animation: pulse 2s infinite;
-      }
-      @keyframes pulse {
-        0% {
-          opacity: 1;
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: rgba(145, 70, 255, 0.1);
+            border: 1px solid rgba(145, 70, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--purple);
+            font-weight: 700;
+            flex-shrink: 0;
         }
-        50% {
-          opacity: 0.6;
+
+        .step-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
         }
-        100% {
-          opacity: 1;
+
+        .step-content p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
         }
-      }
 
-      .streamers-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1.5rem;
-      }
+        /* Footer */
+        footer {
+            padding: 64px 32px 32px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
 
-      .streamer-card {
-        background: #18181b;
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        overflow: hidden;
-        transition:
-          transform 0.2s,
-          box-shadow 0.2s,
-          border-color 0.2s;
-        text-decoration: none;
-        display: block;
-      }
-      .streamer-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
-        border-color: var(--brand-primary);
-      }
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px;
+        }
 
-      .stream-thumbnail {
-        width: 100%;
-        aspect-ratio: 16/9;
-        background: #09090b;
-        position: relative;
-        overflow: hidden;
-      }
-      .stream-thumbnail img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease;
-      }
-      .streamer-card:hover .stream-thumbnail img {
-        transform: scale(1.05);
-      }
+        .footer-brand {
+            max-width: 280px;
+        }
 
-      .streamer-info {
-        padding: 1rem;
-      }
-      .streamer-name {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-        margin-bottom: 0.25rem;
-      }
-      .stream-status {
-        font-size: 0.85rem;
-        color: #a1a1aa;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-      .status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background-color: #10b981; /* Green */
-      }
+        .footer-brand .logo {
+            margin-bottom: 16px;
+        }
+
+        .footer-brand p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .footer-column h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .footer-column a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 0;
+            transition: color 0.2s;
+        }
+
+        .footer-column a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 48px auto 0;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .drops-hero {
+                padding: 120px 20px 60px;
+            }
+
+            .drops-content {
+                padding: 0 20px 60px;
+            }
+
+            .drops-list-container,
+            .drops-info {
+                padding: 24px;
+            }
+
+            .drops-list-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .drop-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .drops-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
-  </head>
+</head>
 
-  <body>
-    <nav class="navbar">
-      <div class="nav-container">
-        <div class="logo">
-          <span class="logo-icon"
-            ><img src="./assets/logo.png" alt="FinalsRS Logo"
-          /></span>
-          FinalsRS
+<body>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/assets/logo.png" alt="FinalsRS" class="logo-icon">
+                FinalsRS
+            </a>
+            <div class="nav-links">
+                <a href="#">Status</a>
+                <a href="/docs">Docs</a>
+                <a href="#">FAQ</a>
+            </div>
+            <div class="nav-buttons">
+                <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
+                <a href="/auth/twitch" class="btn btn-purple">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                    </svg>
+                    Add to Twitch
+                </a>
+            </div>
         </div>
-        <div class="nav-links">
-          <a href="/">Home</a>
-          <a href="/twitch-drops">Drops</a>
-          <a href="/docs">Docs</a>
-          <a href="/login" class="btn-login" data-umami-event="Login button nav"
-            >Log in</a
-          >
-        </div>
-        <div class="mobile-menu-btn">
-          <span></span><span></span><span></span>
-        </div>
-      </div>
     </nav>
 
     <main>
-      <section class="drops-hero">
-        <div class="drops-hero-glow"></div>
-        <div class="container">
-          <div class="badge">
-            <span class="badge-dot"></span>
-            Exclusive Rewards
-          </div>
-          <h1>Twitch <span class="text-gradient">Drops</span></h1>
-          <p class="subtitle">
-            Watch THE FINALS streams and earn exclusive in-game rewards. Unlock
-            unique skins, emotes, and more just by watching your favorite
-            streamers.
-          </p>
-        </div>
-      </section>
+        <!-- Hero -->
+        <section class="drops-hero">
+            <div class="hero-glow"></div>
+            <h1>Twitch <span class="highlight">Drops</span></h1>
+            <p class="subtitle">
+                Watch THE FINALS streams and earn exclusive in-game rewards. Unlock unique skins, emotes, and more just
+                by watching your favorite streamers.
+            </p>
+        </section>
 
-      <section class="drops-content">
-        <div class="drops-container">
-          <!-- Active Streamers -->
-          <div class="streamers-section" id="streamers-section">
-            <div class="streamers-header">
-              <h2>Live With Drops</h2>
-              <span class="live-badge">LIVE</span>
-            </div>
-            <div class="streamers-grid" id="streamers-grid">
-              <!-- Populated by JS -->
-            </div>
-          </div>
-
-          <!-- Featured Image -->
-          <div class="drops-featured-image">
-            <img
-              id="drops-featured-img"
-              src="./assets/drops/image+(148).webp"
-              alt="THE FINALS Twitch Drops Showcase"
-            />
-          </div>
-
-          <!-- Drops List -->
-          <div class="drops-list-container">
-            <div class="drops-list-header">
-              <h2>Available Drops</h2>
-              <span class="last-updated" id="drops-last-updated"
-                >Last updated: January 2026</span
-              >
-            </div>
-
-            <ul class="drops-list" id="drops-list">
-              <!-- Populated by JS -->
-              <div
-                style="
-                  text-align: center;
-                  padding: 20px;
-                  color: var(--text-tertiary);
-                "
-              >
-                Loading drops...
-              </div>
-            </ul>
-
-            <div class="drops-cta">
-              <a
-                href="https://www.twitch.tv/drops/inventory"
-                target="_blank"
-                class="btn-view-drops"
-                data-umami-event="View Twitch Drops"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-                  ></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-                View Twitch Drops
-              </a>
-            </div>
-          </div>
-
-          <!-- How to Claim Section -->
-          <div class="drops-info">
-            <h2>How to Claim Twitch Drops</h2>
-            <div class="drops-info-grid">
-              <div class="info-step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                  <h3>Link Your Account</h3>
-                  <p>
-                    Connect your Twitch account to your THE FINALS account in
-                    the game settings.
-                  </p>
+        <!-- Content -->
+        <section class="drops-content">
+            <!-- Active Streamers -->
+            <div class="streamers-section" id="streamers-section">
+                <div class="section-header">
+                    <h2>Live With Drops</h2>
+                    <span class="live-badge">LIVE</span>
                 </div>
-              </div>
-              <div class="info-step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                  <h3>Watch Streams</h3>
-                  <p>
-                    Watch any THE FINALS stream with Drops enabled for the
-                    required duration.
-                  </p>
+                <div class="streamers-grid" id="streamers-grid">
+                    <!-- Populated by JS -->
                 </div>
-              </div>
-              <div class="info-step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                  <h3>Claim Your Drop</h3>
-                  <p>
-                    Once earned, claim your drop on Twitch and it will appear in
-                    your game inventory.
-                  </p>
-                </div>
-              </div>
             </div>
-          </div>
-        </div>
-      </section>
+
+            <!-- Featured Image -->
+            <div class="drops-featured-image">
+                <img id="drops-featured-img" src="./assets/drops/image+(148).webp"
+                    alt="THE FINALS Twitch Drops Showcase">
+            </div>
+
+            <!-- Drops List -->
+            <div class="drops-list-container">
+                <div class="drops-list-header">
+                    <h2>Available Drops</h2>
+                    <span class="last-updated" id="drops-last-updated">Last updated: January 2026</span>
+                </div>
+
+                <ul class="drops-list" id="drops-list">
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                        Loading drops...
+                    </div>
+                </ul>
+
+                <div class="drops-cta">
+                    <a href="https://www.twitch.tv/drops/inventory" target="_blank" class="btn-view-drops">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                            <polyline points="15 3 21 3 21 9"></polyline>
+                            <line x1="10" y1="14" x2="21" y2="3"></line>
+                        </svg>
+                        View Twitch Drops
+                    </a>
+                </div>
+            </div>
+
+            <!-- How to Claim -->
+            <div class="drops-info">
+                <h2>How to Claim Twitch Drops</h2>
+                <div class="drops-info-grid">
+                    <div class="info-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Link Your Account</h3>
+                            <p>Connect your Twitch account to your THE FINALS account in the game settings.</p>
+                        </div>
+                    </div>
+                    <div class="info-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Watch Streams</h3>
+                            <p>Watch any THE FINALS stream with Drops enabled for the required duration.</p>
+                        </div>
+                    </div>
+                    <div class="info-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Claim Your Drop</h3>
+                            <p>Once earned, claim your drop on Twitch and it will appear in your game inventory.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
+    <!-- Footer -->
     <footer>
-      <div class="container">
-        <div class="footer-grid">
-          <div class="footer-col">
-            <h3>FinalsRS</h3>
-            <p>The unofficial companion bot for THE FINALS.</p>
-          </div>
-          <div class="footer-col">
-            <h4>Product</h4>
-            <a href="/">Features</a>
-            <a href="/drops">Twitch Drops</a>
-          </div>
-          <div class="footer-col">
-            <h4>Resources</h4>
-            <a href="/docs">Documentation</a>
-            <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
-          </div>
-          <div class="footer-col">
-            <h4>Legal</h4>
-            <a href="/legal">Privacy</a>
-            <a href="/legal#">Terms</a>
-          </div>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <img src="/assets/logo.png" alt="FinalsRS" class="logo-icon">
+                    FinalsRS
+                </a>
+                <p>The ultimate Twitch bot for The Finals ranked statistics. Real-time stats, overlays, and
+                    predictions.</p>
+            </div>
+            <div class="footer-column">
+                <h4>Bot</h4>
+                <a href="/auth/twitch">Add to Twitch</a>
+                <a href="/docs">Commands</a>
+                <a href="/dashboard">Dashboard</a>
+            </div>
+            <div class="footer-column">
+                <h4>Resources</h4>
+                <a href="/docs">Documentation</a>
+                <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
+            </div>
+            <div class="footer-column">
+                <h4>Legal</h4>
+                <a href="/legal">Privacy Policy</a>
+                <a href="/legal">Terms of Service</a>
+            </div>
         </div>
         <div class="footer-bottom">
-          <p>&copy; 2026 FinalsRS. Not affiliated with Embark Studios.</p>
+            <span>&copy; 2025 FinalsRS. All rights reserved.</span>
+            <span>Not affiliated with Embark Studios</span>
         </div>
-      </div>
     </footer>
 
-    <script src="/js/script.js"></script>
     <script>
-      document.addEventListener("DOMContentLoaded", async () => {
-        try {
-          // Fetch drops data with cache busting
-          const res = await fetch("/drops.json?t=" + Date.now());
-          if (!res.ok) throw new Error("Failed to load drops data");
-          const data = await res.json();
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Fetch drops data with cache busting
+                const res = await fetch('/drops.json?t=' + Date.now());
+                if (!res.ok) throw new Error('Failed to load drops data');
+                const data = await res.json();
 
-          // Update Header Info
-          if (data.lastUpdated) {
-            document.getElementById("drops-last-updated").textContent =
-              `Last updated: ${data.lastUpdated}`;
-          }
-          if (data.featuredImage) {
-            document.getElementById("drops-featured-img").src =
-              data.featuredImage;
-          }
+                // Update Header Info
+                if (data.lastUpdated) {
+                    document.getElementById('drops-last-updated').textContent = `Last updated: ${data.lastUpdated}`;
+                }
+                if (data.featuredImage) {
+                    document.getElementById('drops-featured-img').src = data.featuredImage;
+                }
 
-          // Render List
-          const listEl = document.getElementById("drops-list");
-          listEl.innerHTML = ""; // Clear placeholder
+                // Render List
+                const listEl = document.getElementById('drops-list');
+                listEl.innerHTML = '';
 
-          if (data.drops && Array.isArray(data.drops)) {
-            data.drops.forEach((drop) => {
-              const li = document.createElement("li");
-              li.className = "drop-item";
-              li.innerHTML = `
+                if (data.drops && Array.isArray(data.drops)) {
+                    data.drops.forEach(drop => {
+                        const li = document.createElement('li');
+                        li.className = 'drop-item';
+                        li.innerHTML = `
                             <div class="drop-item-info">
-                                <div class="drop-item-name">${escapeHtml(
-                                  drop.name,
-                                )}</div>
-                                <div class="drop-item-category">${escapeHtml(
-                                  drop.category,
-                                )}</div>
+                                <div class="drop-item-name">${escapeHtml(drop.name)}</div>
+                                <div class="drop-item-category">${escapeHtml(drop.category)}</div>
                             </div>
                             <div class="drop-item-time">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
@@ -736,78 +820,76 @@
                                 ${escapeHtml(drop.duration)}
                             </div>
                         `;
-              listEl.appendChild(li);
-            });
-          }
-
-          // Fetch Active Streamers
-          try {
-            const streamRes = await fetch("/api/active-streamers");
-            if (streamRes.ok) {
-              const streamers = await streamRes.json();
-              if (streamers && streamers.length > 0) {
-                const gridEl = document.getElementById("streamers-grid");
-                const sectionEl = document.getElementById("streamers-section");
-
-                gridEl.innerHTML = "";
-                // Deduplicate based on channel name just in case
-                const seenChannels = new Set();
-
-                streamers.forEach((s) => {
-                  if (seenChannels.has(s.channel)) return;
-                  seenChannels.add(s.channel);
-
-                  const card = document.createElement("a");
-                  card.href = `https://twitch.tv/${s.channel}`;
-                  card.target = "_blank";
-                  card.className = "streamer-card";
-                  // Use stored thumbnail if available, otherwise fallback to dynamic preview
-                  const thumbUrl = s.thumbnail_url
-                    ? s.thumbnail_url
-                    : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${s.channel.toLowerCase()}-320x180.jpg?t=${Date.now()}`;
-
-                  card.innerHTML = `
-                              <div class="stream-thumbnail">
-                                  <img src="${thumbUrl}" alt="${s.channel}" loading="lazy">
-                              </div>
-                              <div class="streamer-info">
-                                  <div class="streamer-name">${escapeHtml(s.channel)}</div>
-                                  <div class="stream-status">
-                                      <span class="status-dot"></span>
-                                      Playing THE FINALS
-                                  </div>
-                              </div>
-                          `;
-                  gridEl.appendChild(card);
-                });
-
-                // Show section if we added any cards
-                if (gridEl.children.length > 0) {
-                  sectionEl.style.display = "block";
+                        listEl.appendChild(li);
+                    });
                 }
-              }
-            }
-          } catch (e) {
-            console.error("Failed to load active streamers", e);
-          }
-        } catch (err) {
-          console.error(err);
-          document.getElementById("drops-list").innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--text-tertiary);">
+
+                // Fetch Active Streamers
+                try {
+                    const streamRes = await fetch('/api/active-streamers');
+                    if (streamRes.ok) {
+                        const streamers = await streamRes.json();
+                        if (streamers && streamers.length > 0) {
+                            const gridEl = document.getElementById('streamers-grid');
+                            const sectionEl = document.getElementById('streamers-section');
+
+                            gridEl.innerHTML = '';
+                            const seenChannels = new Set();
+
+                            streamers.forEach(s => {
+                                if (seenChannels.has(s.channel)) return;
+                                seenChannels.add(s.channel);
+
+                                const card = document.createElement('a');
+                                card.href = `https://twitch.tv/${s.channel}`;
+                                card.target = '_blank';
+                                card.className = 'streamer-card';
+                                const thumbUrl = s.thumbnail_url
+                                    ? s.thumbnail_url
+                                    : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${s.channel.toLowerCase()}-320x180.jpg?t=${Date.now()}`;
+
+                                card.innerHTML = `
+                                    <div class="stream-thumbnail">
+                                        <img src="${thumbUrl}" alt="${s.channel}" loading="lazy">
+                                    </div>
+                                    <div class="streamer-info">
+                                        <div class="streamer-name">${escapeHtml(s.channel)}</div>
+                                        <div class="stream-status">
+                                            <span class="status-dot"></span>
+                                            Playing THE FINALS
+                                        </div>
+                                    </div>
+                                `;
+                                gridEl.appendChild(card);
+                            });
+
+                            if (gridEl.children.length > 0) {
+                                sectionEl.style.display = 'block';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to load active streamers', e);
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('drops-list').innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
                         Failed to load drops data. Please try again later.
                     </div>`;
-        }
-      });
+            }
+        });
 
-      function escapeHtml(text) {
-        if (!text) return "";
-        return text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      }
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
     </script>
-  </body>
+</body>
+
 </html>

@@ -2,146 +2,470 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Basic -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Title -->
-  <title>Legal Information | FinalsRS – Privacy Policy & Terms</title>
+    <!-- Title -->
+    <title>Legal Information | FinalsRS – Privacy Policy & Terms</title>
 
-  <!-- Description -->
-  <meta
-    name="description"
-    content="Read the Privacy Policy and Terms of Service for FinalsRS, the Twitch bot for THE FINALS. Learn how we handle data, user rights, and platform compliance."
-  />
+    <!-- Description -->
+    <meta name="description"
+        content="Read the Privacy Policy and Terms of Service for FinalsRS, the Twitch bot for THE FINALS. Learn how we handle data, user rights, and platform compliance.">
 
-  <!-- Indexing (legal pages should still be indexed) -->
-  <meta name="robots" content="index, follow" />
+    <!-- Indexing -->
+    <meta name="robots" content="index, follow">
 
-  <!-- Canonical -->
-  <link rel="canonical" href="https://finalsrs.com/legal" />
+    <!-- Canonical -->
+    <link rel="canonical" href="https://finalsrs.com/legal">
 
-  <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="FinalsRS" />
-  <meta property="og:url" content="https://finalsrs.com/legal" />
-  <meta
-    property="og:title"
-    content="Legal Information | FinalsRS"
-  />
-  <meta
-    property="og:description"
-    content="Privacy Policy and Terms of Service for FinalsRS."
-  />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="FinalsRS">
+    <meta property="og:url" content="https://finalsrs.com/legal">
+    <meta property="og:title" content="Legal Information | FinalsRS">
+    <meta property="og:description" content="Privacy Policy and Terms of Service for FinalsRS.">
 
-  <!-- Twitter -->
-  <meta name="twitter:card" content="summary" />
-  <meta
-    name="twitter:title"
-    content="Legal Information | FinalsRS"
-  />
-  <meta
-    name="twitter:description"
-    content="Privacy Policy and Terms of Service for FinalsRS."
-  />
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Legal Information | FinalsRS">
+    <meta name="twitter:description" content="Privacy Policy and Terms of Service for FinalsRS.">
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet"
-  />
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Icons -->
-  <link rel="icon" href="./assets/logo.png" />
-  <link rel="apple-touch-icon" href="./assets/logo.png" />
+    <!-- Icons -->
+    <link rel="icon" href="./assets/logo.png">
+    <link rel="apple-touch-icon" href="./assets/logo.png">
 
-  <!-- Styles -->
-  <link rel="stylesheet" href="/css/styles.css">
-
-  <!-- Schema.org: Legal Page -->
-  <script type="application/ld+json">
+    <!-- Schema.org -->
+    <script type="application/ld+json">
     {
-      "@context": "https://schema.org",
-      "@type": "WebPage",
-      "name": "Legal Information",
-      "url": "https://finalsrs.com/legal",
-      "about": {
-        "@type": "SoftwareApplication",
-        "name": "FinalsRS"
-      }
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": "Legal Information",
+        "url": "https://finalsrs.com/legal",
+        "about": {
+            "@type": "SoftwareApplication",
+            "name": "FinalsRS"
+        }
     }
-  </script>
+    </script>
+
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #0f0f12;
+            --bg-card: #141418;
+            --border: #1f1f26;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #f5c26b;
+            --accent-glow: rgba(245, 194, 107, 0.15);
+            --purple: #9146ff;
+            --purple-glow: rgba(145, 70, 255, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 32px;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 20px;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-purple {
+            background: var(--purple);
+            color: #fff;
+        }
+
+        .btn-purple:hover {
+            background: #a259ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px var(--purple-glow);
+        }
+
+        /* Legal Page */
+        .legal-page {
+            padding: 120px 32px 80px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .legal-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .legal-header h1 {
+            font-size: 40px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .legal-header p {
+            font-size: 17px;
+            color: var(--text-secondary);
+        }
+
+        /* Tabs */
+        .legal-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .tab-btn:hover {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
+        /* Content */
+        .legal-content-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px;
+        }
+
+        #legal-content {
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        #legal-content h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 32px 0 16px;
+        }
+
+        #legal-content h2:first-child {
+            margin-top: 0;
+        }
+
+        #legal-content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 24px 0 12px;
+        }
+
+        #legal-content p {
+            margin-bottom: 16px;
+        }
+
+        #legal-content ul,
+        #legal-content ol {
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+
+        #legal-content li {
+            margin-bottom: 8px;
+        }
+
+        #legal-content a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        #legal-content a:hover {
+            text-decoration: underline;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-muted);
+        }
+
+        /* Footer */
+        footer {
+            padding: 64px 32px 32px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 48px;
+        }
+
+        .footer-brand {
+            max-width: 280px;
+        }
+
+        .footer-brand .logo {
+            margin-bottom: 16px;
+        }
+
+        .footer-brand p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .footer-column h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .footer-column a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 6px 0;
+            transition: color 0.2s;
+        }
+
+        .footer-column a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 48px auto 0;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .legal-page {
+                padding: 100px 20px 60px;
+            }
+
+            .legal-header h1 {
+                font-size: 32px;
+            }
+
+            .legal-tabs {
+                flex-wrap: wrap;
+            }
+
+            .legal-content-wrapper {
+                padding: 24px;
+            }
+
+            .footer-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 
-
 <body>
-
-    <nav class="navbar">
+    <!-- Navigation -->
+    <nav>
         <div class="nav-container">
-            <a href="index.html" class="logo">
-                <span class="logo-icon"><img src="./assets/logo.png" alt=""></span>
+            <a href="/" class="logo">
+                <img src="/assets/logo.png" alt="FinalsRS" class="logo-icon">
                 FinalsRS
             </a>
             <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="index.html#community">Community</a>
-                <a href="index.html#premium">Premium</a>
-                <a href="/login" class="btn-login">Log in</a>
+                <a href="#">Status</a>
+                <a href="/docs">Docs</a>
+                <a href="#">FAQ</a>
             </div>
-            <div class="mobile-menu-btn">
-                <span></span><span></span><span></span>
+            <div class="nav-buttons">
+                <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
+                <a href="/auth/twitch" class="btn btn-purple">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                    </svg>
+                    Add to Twitch
+                </a>
             </div>
         </div>
     </nav>
 
     <main class="legal-page">
-        <div class="container">
-            <div class="legal-header">
-                <h1>Legal Center</h1>
-                <p>Transparency is key. Read our policies below.</p>
-            </div>
+        <div class="legal-header">
+            <h1>Legal Center</h1>
+            <p>Transparency is key. Read our policies below.</p>
+        </div>
 
-            <div class="legal-tabs">
-                <button class="tab-btn active" data-target="privacy">Privacy Policy</button>
-                <button class="tab-btn" data-target="terms">Terms of Service</button>
-            </div>
+        <div class="legal-tabs">
+            <button class="tab-btn active" data-target="privacy">Privacy Policy</button>
+            <button class="tab-btn" data-target="terms">Terms of Service</button>
+        </div>
 
-            <div class="legal-content-wrapper">
-                <div id="legal-content" class="markdown-body">
-                    <!-- Content will be loaded here -->
-                    <div class="loading-spinner">Loading...</div>
-                </div>
+        <div class="legal-content-wrapper">
+            <div id="legal-content">
+                <div class="loading-spinner">Loading...</div>
             </div>
         </div>
     </main>
 
+    <!-- Footer -->
     <footer>
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-col">
-                    <h3>FinalsRS</h3>
-                    <p>The unofficial companion bot for THE FINALS.</p>
-                </div>
-                <div class="footer-col">
-                    <h4>Product</h4>
-                    <a href="index.html#features">Features</a>
-                    <a href="#">Pricing</a>
-                </div>
-                <div class="footer-col">
-                    <h4>Resources</h4>
-                    <a href="/docs">Documentation</a>
-                    <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
-                </div>
-                <div class="footer-col">
-                    <h4>Legal</h4>
-                    <a href="legal.html#privacy">Privacy</a>
-                    <a href="legal.html#terms">Terms</a>
-                </div>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <a href="/" class="logo">
+                    <img src="/assets/logo.png" alt="FinalsRS" class="logo-icon">
+                    FinalsRS
+                </a>
+                <p>The ultimate Twitch bot for The Finals ranked statistics. Real-time stats, overlays, and
+                    predictions.</p>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 FinalsRS. Not affiliated with Embark Studios.</p>
+            <div class="footer-column">
+                <h4>Bot</h4>
+                <a href="/auth/twitch">Add to Twitch</a>
+                <a href="/docs">Commands</a>
+                <a href="/dashboard">Dashboard</a>
             </div>
+            <div class="footer-column">
+                <h4>Resources</h4>
+                <a href="/docs">Documentation</a>
+                <a href="https://discord.com/invite/2UKzvzSEqA">Support</a>
+            </div>
+            <div class="footer-column">
+                <h4>Legal</h4>
+                <a href="/legal">Privacy Policy</a>
+                <a href="/legal">Terms of Service</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2025 FinalsRS. All rights reserved.</span>
+            <span>Not affiliated with Embark Studios</span>
         </div>
     </footer>
 

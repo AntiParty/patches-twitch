@@ -6,6 +6,7 @@ import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { Channel, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
+import { verifyOAuthState, encryptToken } from '@/util/crypto';
 
 const router = Router();
 
@@ -61,11 +62,26 @@ router.get("/callback", async (req: any, res: any) => {
 
     try {
         let stateData: any = {};
+        let isSignedState = false;
         if (state) {
-            try {
-                stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
-            } catch (ignored) {
-                // Ignore if not json or invalid base64
+            // Try to verify as signed state first (for custom_bot flows)
+            const verified = verifyOAuthState(state as string, 15 * 60 * 1000); // 15 min max age
+            if (verified) {
+                stateData = verified;
+                isSignedState = true;
+                logger.info('[Auth] Verified signed OAuth state');
+            } else {
+                // Fall back to legacy unsigned state (for backward compatibility during transition)
+                try {
+                    stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
+                    // If it looks like a custom_bot state but wasn't signed, reject it
+                    if (stateData.type === 'custom_bot') {
+                        logger.warn('[Auth] Received unsigned custom_bot state - rejecting for security');
+                        return res.status(400).send('Invalid OAuth state. Please try again.');
+                    }
+                } catch (ignored) {
+                    // Ignore if not json or invalid base64
+                }
             }
         }
 
@@ -133,13 +149,13 @@ router.get("/callback", async (req: any, res: any) => {
                 { where: { channel_id: channelId } }
             );
 
-            // Upsert CustomBotAccount
+            // Upsert CustomBotAccount with encrypted tokens
              await CustomBotAccount.upsert({
                 channel_id: channelId,
                 bot_username: twitchUsername,
                 bot_twitch_user_id: twitchUserId,
-                bot_access_token: access_token,
-                bot_refresh_token: refresh_token,
+                bot_access_token: encryptToken(access_token),
+                bot_refresh_token: encryptToken(refresh_token),
                 bot_token_expires_at: expirationTime,
                 is_active: true,
                 created_at: new Date(),
@@ -166,12 +182,11 @@ router.get("/callback", async (req: any, res: any) => {
         }
 
         // --- Normal Login Flow ---
-        // Upsert user in DB
+        // Upsert user in DB with encrypted tokens
         await Channel.upsert({
-
             username: twitchUsername,
-            access_token,
-            refresh_token,
+            access_token: encryptToken(access_token),
+            refresh_token: encryptToken(refresh_token),
             token_expires_at: expirationTime,
             twitch_user_id: twitchUserId,
         });

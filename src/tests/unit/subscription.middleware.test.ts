@@ -75,6 +75,13 @@ describe('Subscription Middleware', () => {
       assert.equal(next.called, true, 'Should call next for admin');
     });
 
+    it('should allow subscriber role to bypass subscription (early access)', async () => {
+      const { res, next } = await runMiddleware(requireSubscription, TestScenarios.subscriberRole);
+
+      assert.equal(res.redirectUrl, null, 'Should not redirect');
+      assert.equal(next.called, true, 'Should call next for subscriber role');
+    });
+
     it('should redirect expired subscribers to /subscribe', async () => {
       const { res, next } = await runMiddleware(requireSubscription, TestScenarios.expiredSubscriber);
 
@@ -142,6 +149,13 @@ describe('Subscription Middleware', () => {
       assert.equal(next.called, true, 'Should call next for admin');
     });
 
+    it('should allow subscriber role to bypass subscription (early access)', async () => {
+      const { res, next } = await runMiddleware(requireSubscriptionAPI, TestScenarios.subscriberRole);
+
+      assert.equal(res.statusCode, 200, 'Should not change status for subscriber role');
+      assert.equal(next.called, true, 'Should call next for subscriber role');
+    });
+
     it('should allow access in development mode', async () => {
       process.env.NODE_ENV = 'development';
       const { res, next } = await runMiddleware(requireSubscriptionAPI, TestScenarios.freeUser);
@@ -182,6 +196,11 @@ describe('Subscription Middleware', () => {
       assert.equal(hasSubscription(req as any), true, 'Admin should have subscription access');
     });
 
+    it('should return true for subscriber role (early access)', () => {
+      const req = createMockRequest(TestScenarios.subscriberRole);
+      assert.equal(hasSubscription(req as any), true, 'Subscriber role should have subscription access');
+    });
+
     it('should return true in development mode', () => {
       process.env.NODE_ENV = 'development';
       const req = createMockRequest(TestScenarios.freeUser);
@@ -213,6 +232,7 @@ describe('Subscription Access Matrix', () => {
     { scenario: 'subscriber', expectAccess: true, expectApiCode: 200 },
     { scenario: 'tester', expectAccess: true, expectApiCode: 200 },
     { scenario: 'staff', expectAccess: true, expectApiCode: 200 },
+    { scenario: 'subscriberRole', expectAccess: true, expectApiCode: 200 },
     { scenario: 'admin', expectAccess: true, expectApiCode: 200 },
     { scenario: 'expiredSubscriber', expectAccess: false, expectApiCode: 403 },
   ];

@@ -6,12 +6,32 @@ import { sendChatMessage } from "./util/ircBot"
 import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
 import logger from "./util/logger";
 import axios from "axios";
+import { decryptToken } from "./util/crypto";
 
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 const tokenRefreshFailures: { [key: string]: number } = {};
+
+/**
+ * Safely decrypt a token, handling both encrypted and legacy plain tokens
+ * During migration period, some tokens may still be plaintext
+ */
+function safeDecryptToken(encryptedOrPlainToken: string): string {
+  if (!encryptedOrPlainToken) return '';
+
+  // Try to decrypt - if it fails, assume it's a legacy plain token
+  const decrypted = decryptToken(encryptedOrPlainToken);
+  if (decrypted) {
+    return decrypted;
+  }
+
+  // Legacy plain token - log warning and return as-is
+  // This allows gradual migration
+  logger.warn('[BotManager] Found unencrypted token - will be encrypted on next refresh');
+  return encryptedOrPlainToken;
+}
 
 export class BotManager {
   private commandHandler: any;
@@ -53,9 +73,9 @@ export class BotManager {
           logger.info(`Starting custom bot ${customBot.bot_username} for channel ${username}`);
           await startChatBot(username, this.commandHandler, {
             botUsername: customBot.bot_username,
-            botToken: customBot.bot_access_token,
+            botToken: safeDecryptToken(customBot.bot_access_token),
             botUserId: customBot.bot_twitch_user_id,
-            refreshToken: customBot.bot_refresh_token
+            refreshToken: safeDecryptToken(customBot.bot_refresh_token)
           });
         } else {
           await startChatBot(username, this.commandHandler);
@@ -184,8 +204,8 @@ export class BotManager {
     for (const channel of channels) {
       const chanAny: any = channel as any;
       const username = chanAny.username;
-      const access_token = chanAny.access_token;
-      const refresh_token = chanAny.refresh_token;
+      const access_token = safeDecryptToken(chanAny.access_token);
+      const refresh_token = safeDecryptToken(chanAny.refresh_token);
       const token_expires_at = chanAny.token_expires_at;
 
       if (!access_token || !refresh_token) {
@@ -237,8 +257,8 @@ export class BotManager {
       for (const channel of channels) {
         const chanAny: any = channel as any;
         const username = chanAny.username;
-        const access_token = chanAny.access_token;
-        const refresh_token = chanAny.refresh_token;
+        const access_token = safeDecryptToken(chanAny.access_token);
+        const refresh_token = safeDecryptToken(chanAny.refresh_token);
         const twitch_user_id = chanAny.twitch_user_id;
         if (username && access_token && twitch_user_id) {
           logger.info(`Loading channel: ${username}`);

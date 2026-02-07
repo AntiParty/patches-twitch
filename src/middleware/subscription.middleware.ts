@@ -15,9 +15,11 @@ export function requireSubscription(req: Request, res: Response, next: NextFunct
     return next();
   }
 
-  // Allow testers, staff, and admins to bypass subscription requirement
+  // Allow subscribers, testers, staff, and admins to bypass subscription requirement
+  // 'subscriber' role grants early access to premium features
   const role = req.session.role;
-  if (process.env.NODE_ENV === 'development' || role === 'tester' || role === 'Staff' || role === 'admin') {
+  const bypassRoles = ['subscriber', 'tester', 'Staff', 'admin'];
+  if (process.env.NODE_ENV === 'development' || bypassRoles.includes(role || '')) {
     if (process.env.NODE_ENV === 'development') {
         logger.info(`[Subscription] Dev mode bypass for ${req.session.twitchUsername}`);
     } else {
@@ -43,9 +45,11 @@ export function requireSubscriptionAPI(req: Request, res: Response, next: NextFu
     return next();
   }
 
-  // Allow testers, staff, and admins to bypass subscription requirement
+  // Allow subscribers, testers, staff, and admins to bypass subscription requirement
+  // 'subscriber' role grants early access to premium features
   const role = req.session.role;
-  if (process.env.NODE_ENV === 'development' || role === 'tester' || role === 'Staff' || role === 'admin') {
+  const bypassRoles = ['subscriber', 'tester', 'Staff', 'admin'];
+  if (process.env.NODE_ENV === 'development' || bypassRoles.includes(role || '')) {
      if (process.env.NODE_ENV === 'development') {
         logger.info(`[Subscription API] Dev mode bypass for ${req.session.twitchUsername}`);
     } else {
@@ -75,7 +79,8 @@ export function hasSubscription(req: Request): boolean {
 
   if (process.env.NODE_ENV === 'development') return true;
 
-  // Testers, staff, and admins have access
+  // Subscribers, testers, staff, and admins have access
   const role = req.session.role;
-  return role === 'tester' || role === 'Staff' || role === 'admin';
+  const bypassRoles = ['subscriber', 'tester', 'Staff', 'admin'];
+  return bypassRoles.includes(role || '');
 }

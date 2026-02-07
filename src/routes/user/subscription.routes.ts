@@ -2,11 +2,16 @@
 import { Router, Request, Response } from 'express';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
 import { requireSubscription, requireSubscriptionAPI } from '@/middleware/subscription.middleware';
+import { csrfProtection, csrfErrorHandler } from '@/middleware/csrf.middleware';
 import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import axios from 'axios';
+import { signOAuthState, verifyOAuthState } from '@/util/crypto';
 
 const router = Router();
+
+// Apply CSRF error handler for this router
+router.use(csrfErrorHandler);
 
 /**
  * GET /subscribe
@@ -71,12 +76,13 @@ router.get('/subscription/manage', requireUser, requireSubscription, async (req:
  * Initiate custom bot OAuth flow
  */
 router.get('/link-custom-bot', requireUser, requireSubscription, (req: Request, res: Response) => {
-  const state = Buffer.from(JSON.stringify({
+  // Sign the state with HMAC to prevent tampering
+  const state = signOAuthState({
     channelId: req.session.channelId!,
     username: req.session.twitchUsername!,
     type: 'custom_bot',
     timestamp: Date.now(),
-  })).toString('base64');
+  });
 
   const redirectUri = process.env.TWITCH_REDIRECT_URI || (process.env.NODE_ENV === "production"
     ? "https://finalsrs.com/callback"
@@ -98,12 +104,13 @@ router.get('/link-custom-bot', requireUser, requireSubscription, (req: Request, 
  * Returns the OAuth URL for linking a custom bot
  */
 router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubscriptionAPI, (req: Request, res: Response) => {
-  const state = Buffer.from(JSON.stringify({
+  // Sign the state with HMAC to prevent tampering
+  const state = signOAuthState({
     channelId: req.session.channelId!,
     username: req.session.twitchUsername!,
     type: 'custom_bot',
     timestamp: Date.now(),
-  })).toString('base64');
+  });
 
   const redirectUri = process.env.TWITCH_REDIRECT_URI || (process.env.NODE_ENV === "production"
     ? "https://finalsrs.com/callback"
@@ -131,7 +138,7 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
  * POST /api/subscription/unlink-bot
  * Unlink custom bot account
  */
-router.post('/api/subscription/unlink-bot', requireUserAPI, requireSubscriptionAPI, async (req: Request, res: Response) => {
+router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, requireSubscriptionAPI, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
 
@@ -146,6 +153,14 @@ router.post('/api/subscription/unlink-bot', requireUserAPI, requireSubscriptionA
     logger.error('[Custom Bot] Error unlinking bot:', error);
     res.status(500).json({ error: 'Failed to unlink custom bot' });
   }
+});
+
+/**
+ * GET /api/subscription/csrf-token
+ * Get CSRF token for subscription API calls
+ */
+router.get('/api/subscription/csrf-token', requireUserAPI, csrfProtection, (req: Request, res: Response) => {
+  res.json({ csrfToken: req.csrfToken() });
 });
 
 /**

@@ -3,6 +3,18 @@ import path from 'path';
 import fetch from 'node-fetch';
 import { Channel } from '../db';
 import logger from '@/util/logger';
+import { decryptToken, encryptToken } from './crypto';
+
+/**
+ * Safely decrypt a token, handling both encrypted and legacy plain tokens
+ */
+function safeDecryptToken(encryptedOrPlainToken: string): string {
+  if (!encryptedOrPlainToken) return '';
+  const decrypted = decryptToken(encryptedOrPlainToken);
+  if (decrypted) return decrypted;
+  // Legacy plain token
+  return encryptedOrPlainToken;
+}
 
 export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string }[]> {
   const clientId = process.env.TWITCH_CLIENT_ID;
@@ -155,7 +167,9 @@ export const getStreamStatusWithAutoRefresh = async (username: string) => {
       logger.error(`No access token found for user: ${username}`);
       return { isLive: false, streamStartTime: null, liveDuration: null, error: 'No access token found.' };
     }
-    let result = await getStreamStatusForUser(username, chanAny.access_token);
+    // Decrypt the stored token for API use
+    const accessToken = safeDecryptToken(chanAny.access_token);
+    let result = await getStreamStatusForUser(username, accessToken);
     if (result?.error && result.error.includes('401')) {
       // Token expired, refresh it
       console.warn(`Access token expired for user: ${username}, attempting to refresh.`);
@@ -258,12 +272,15 @@ export const refreshAccessToken = async (channel: any) => {
   }
 
   // Validate refresh token before attempting refresh
-  const refreshToken = (freshChannel as any).refresh_token;
-  if (!refreshToken) {
+  const encryptedRefreshToken = (freshChannel as any).refresh_token;
+  if (!encryptedRefreshToken) {
     logger.error(`[${username}] No refresh token available.`);
     refreshLocks[key] = false;
     return null;
   }
+
+  // Decrypt the refresh token for use with Twitch API
+  const refreshToken = safeDecryptToken(encryptedRefreshToken);
 
   const isValidRefreshToken = await validateRefreshToken(refreshToken);
   if (!isValidRefreshToken) {
@@ -281,7 +298,7 @@ export const refreshAccessToken = async (channel: any) => {
   const url = 'https://id.twitch.tv/oauth2/token';
   const params = new URLSearchParams({
     grant_type: 'refresh_token',
-    refresh_token: (freshChannel as any).refresh_token,
+    refresh_token: refreshToken, // Use decrypted token
     client_id: clientId,
     client_secret: clientSecret,
   });
@@ -382,9 +399,9 @@ export const refreshAccessToken = async (channel: any) => {
     const data = await response.json();
     tokenExpiryTime = Date.now() + (data.expires_in * 1000);
 
-    // Update channel with new tokens
-    freshChannel.access_token = data.access_token;
-    freshChannel.refresh_token = data.refresh_token;
+    // Update channel with new encrypted tokens
+    freshChannel.access_token = encryptToken(data.access_token);
+    freshChannel.refresh_token = encryptToken(data.refresh_token);
 
     // Persist the expiry in the DB - ensure it's set properly
     const expiresAt = new Date(Date.now() + data.expires_in * 1000);

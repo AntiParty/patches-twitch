@@ -2,6 +2,10 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
+// Validate environment variables early (before other imports that may use them)
+import validateEnvironment from '@/config/envValidation';
+validateEnvironment();
+
 // --- Core Imports ---
 import fs from 'fs';
 import express from "express";

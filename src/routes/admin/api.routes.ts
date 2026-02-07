@@ -712,10 +712,15 @@ router.post("/api/restart-bot", requireApiKey, async (req: any, res: any) => {
  */
 router.post("/api/deploy", requireApiKey, async (req, res) => {
   try {
-    const deploySecret = process.env.DEPLOY_SECRET || "supersecret";
-    
+    // SECURITY: Require DEPLOY_SECRET to be set - no fallback
+    const deploySecret = process.env.DEPLOY_SECRET;
+    if (!deploySecret) {
+      logger.error('[Deploy] DEPLOY_SECRET not configured');
+      return res.status(500).json({ error: 'Deploy secret not configured' });
+    }
+
     const response = await axios.post("http://127.0.0.1:2500/deploy", {}, {
-      headers: { "x-deploy-token": "supersecret" }
+      headers: { "x-deploy-token": deploySecret }
     });
 
     await logAdminAction((req.session as any)?.username || 'API_USER', (req.session as any)?.role || 'admin', 'TRIGGER_DEPLOY');

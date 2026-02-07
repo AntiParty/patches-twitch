@@ -4,6 +4,22 @@ import SequelizeStore from 'connect-session-sequelize';
 import { sequelizeSessions, dbSessionsReady } from '@/dbSessions';
 import logger from '@/util/logger';
 
+// Validate required secrets at startup
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const WEAK_SECRETS = ['change_this_secret', 'supersecret', 'secret', 'password', ''];
+
+if (!SESSION_SECRET) {
+    throw new Error('CRITICAL: SESSION_SECRET environment variable is required. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+}
+
+if (WEAK_SECRETS.includes(SESSION_SECRET) || SESSION_SECRET.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('CRITICAL: SESSION_SECRET is too weak for production. Use a 64+ character random string.');
+    } else {
+        logger.warn('[SessionConfig] WARNING: SESSION_SECRET is weak. Use a 64+ character random string in production.');
+    }
+}
+
 // Create Sequelize store
 const SessionStore = SequelizeStore(session.Store);
 
@@ -20,7 +36,7 @@ const sessionStore = new SessionStore({
 export const sessionConfig: session.SessionOptions = {
     // Use configurable cookie name; avoid indicating admin in cookie name
     name: process.env.SESSION_NAME || 'fsr.sid',
-    secret: process.env.SESSION_SECRET || 'change_this_secret',
+    secret: SESSION_SECRET, // Validated above - no fallback
     store: sessionStore,
     resave: false,
     saveUninitialized: false,

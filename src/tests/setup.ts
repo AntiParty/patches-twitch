@@ -133,6 +133,16 @@ export const TestScenarios = {
     channelId: 5,
   },
 
+  // Subscriber role (early access bypass - no active subscription but has role)
+  subscriberRole: {
+    isUser: true,
+    hasSubscription: false,
+    subscriptionTier: null,
+    role: 'subscriber',
+    twitchUsername: 'subscriberuser',
+    channelId: 7,
+  },
+
   // Not logged in
   anonymous: {
     isUser: false,

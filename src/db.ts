@@ -46,6 +46,12 @@ class Channel extends Model {
   declare stream_thumbnail_url: string | null;
   declare has_subscription: boolean;
   declare subscription_tier: string | null;
+  // Onboarding state fields
+  declare onboarding_completed: boolean;
+  declare onboarding_step_completed: number;
+  declare onboarding_skipped_at: Date | null;
+  declare onboarding_completed_at: Date | null;
+  declare onboarding_checklist_hidden: boolean;
 }
 
 
@@ -189,6 +195,32 @@ Channel.init(
       allowNull: true,
       defaultValue: null,
     },
+    // Onboarding state fields
+    onboarding_completed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    onboarding_step_completed: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    onboarding_skipped_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    onboarding_completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    onboarding_checklist_hidden: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,
@@ -284,6 +316,59 @@ RankGoal.init(
     modelName: 'RankGoal',
     tableName: 'RankGoals',
     timestamps: false,
+  }
+);
+
+// OnboardingEvent model - Track onboarding analytics
+class OnboardingEvent extends Model {
+  declare id: number;
+  declare channel: string;
+  declare event_type: string;
+  declare step_number: number | null;
+  declare metadata: string | null;
+  declare created_at: Date;
+}
+
+OnboardingEvent.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    event_type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    step_number: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    metadata: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'OnboardingEvent',
+    tableName: 'OnboardingEvents',
+    timestamps: false,
+    indexes: [
+      { fields: ['channel', 'created_at'] },
+      { fields: ['event_type', 'created_at'] },
+    ]
   }
 );
 
@@ -473,6 +558,53 @@ async function runMigrations() {
         defaultValue: null,
       });
       logger.info('[Migration] subscription_tier column added successfully.');
+    }
+
+    // Add onboarding columns if missing
+    if (!tableInfo.onboarding_completed) {
+      logger.info('[Migration] Adding onboarding_completed column to Channels table...');
+      await queryInterface.addColumn('Channels', 'onboarding_completed', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+      logger.info('[Migration] onboarding_completed column added successfully.');
+    }
+    if (!tableInfo.onboarding_step_completed) {
+      logger.info('[Migration] Adding onboarding_step_completed column to Channels table...');
+      await queryInterface.addColumn('Channels', 'onboarding_step_completed', {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      });
+      logger.info('[Migration] onboarding_step_completed column added successfully.');
+    }
+    if (!tableInfo.onboarding_skipped_at) {
+      logger.info('[Migration] Adding onboarding_skipped_at column to Channels table...');
+      await queryInterface.addColumn('Channels', 'onboarding_skipped_at', {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+      });
+      logger.info('[Migration] onboarding_skipped_at column added successfully.');
+    }
+    if (!tableInfo.onboarding_completed_at) {
+      logger.info('[Migration] Adding onboarding_completed_at column to Channels table...');
+      await queryInterface.addColumn('Channels', 'onboarding_completed_at', {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+      });
+      logger.info('[Migration] onboarding_completed_at column added successfully.');
+    }
+    if (!tableInfo.onboarding_checklist_hidden) {
+      logger.info('[Migration] Adding onboarding_checklist_hidden column to Channels table...');
+      await queryInterface.addColumn('Channels', 'onboarding_checklist_hidden', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+      logger.info('[Migration] onboarding_checklist_hidden column added successfully.');
     }
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
@@ -688,14 +820,7 @@ CustomBotAccount.init(
 
 
 export async function getActiveSessions() {
-  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
-  return await StreamSession.findAll({
-    where: {
-      started_at: {
-        [Op.gte]: eightHoursAgo
-      }
-    }
-  });
+  return await StreamSession.findAll();
 }
 
-export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, OnboardingEvent, Feedback, Subscription, CustomBotAccount, dbReady, getCustomResponse, setCustomResponse };

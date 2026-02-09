@@ -19,6 +19,28 @@ const userWebSockets: Record<
 // Track ongoing token refresh operations to prevent concurrent refreshes for the same user
 const tokenRefreshLocks: Map<string, Promise<string | null>> = new Map();
 
+// Periodically clean up stale userWebSockets entries and token refresh locks
+// This handles edge cases where cleanup didn't happen properly
+setInterval(() => {
+  // Clean up stale tokenRefreshLocks (should be auto-cleaned, but safety net)
+  // Map will hold promises that should resolve quickly; if stuck for >5 min, something is wrong
+  // Note: We can't easily check promise age, so we just log the size for monitoring
+  if (tokenRefreshLocks.size > 0) {
+    logger.debug(`[EventSubWs] Active token refresh locks: ${tokenRefreshLocks.size}`);
+  }
+
+  // Clean up disconnected WebSocket entries that weren't properly removed
+  for (const [userId, wsObj] of Object.entries(userWebSockets)) {
+    if (!wsObj.ws || wsObj.ws.readyState === WebSocket.CLOSED) {
+      if (wsObj.shouldReconnect === false) {
+        // WebSocket is closed and shouldn't reconnect - safe to clean up
+        delete userWebSockets[userId];
+        logger.debug(`[EventSubWs] Cleaned up stale WebSocket entry for ${userId}`);
+      }
+    }
+  }
+}, 15 * 60 * 1000); // Every 15 minutes
+
 export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
   if (!userWebSockets[userId]) {
     userWebSockets[userId] = {

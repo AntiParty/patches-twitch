@@ -211,5 +211,12 @@ setInterval(() => {
             feedbackTracker.delete(key);
         }
     }
+    // Clean abuseTracker - remove entries older than 24 hours
+    const ABUSE_TRACKER_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    for (const [key, record] of abuseTracker.entries()) {
+        if (now - record.lastAbuse > ABUSE_TRACKER_TTL) {
+            abuseTracker.delete(key);
+        }
+    }
 }, 300000);
 

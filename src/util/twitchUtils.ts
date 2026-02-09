@@ -16,20 +16,48 @@ function safeDecryptToken(encryptedOrPlainToken: string): string {
   return encryptedOrPlainToken;
 }
 
-export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string }[]> {
+export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string, streamStartTime?: string }[]> {
   const clientId = process.env.TWITCH_CLIENT_ID;
-  // Prefer app access token for stream status checks (more reliable than bot token)
-  const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
+  let accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
+
   if (!clientId || !accessToken) return [];
-  const results: { username: string, thumbnailUrl?: string }[] = [];
-  for (const username of usernames) {
+
+  const results: { username: string, thumbnailUrl?: string, streamStartTime?: string }[] = [];
+  let tokenRefreshed = false;
+
+  for (let i = 0; i < usernames.length; i++) {
+    const username = usernames[i];
     try {
-      const status = await getStreamStatusForUser(username, accessToken);
+      let status = await getStreamStatusForUser(username, accessToken!);
+
+      // Handle 401 Unauthorized - Token might be expired
+      if (status.error && status.status === 401 && !tokenRefreshed) {
+        logger.warn(`[TwitchUtils] Core App Token 401 for ${username}. Attempting refresh...`);
+        try {
+          const newToken = await refreshToken();
+          accessToken = newToken;
+          tokenRefreshed = true;
+          // Retry this user with new token
+          status = await getStreamStatusForUser(username, accessToken as string);
+        } catch (refreshErr) {
+          logger.error('[TwitchUtils] Failed to refresh Core App Token. Aborting stream status check to avoid spam.', refreshErr);
+          break; // Stop looping if we can't refresh the token
+        }
+      } else if (status.error && status.status === 401 && tokenRefreshed) {
+         logger.error(`[TwitchUtils] Core App Token still 401 after refresh for ${username}. Aborting.`);
+         break;
+      }
+
       if (status.isLive) {
-        results.push({ username, thumbnailUrl: status.thumbnailUrl });
+        results.push({ 
+          username, 
+          thumbnailUrl: status.thumbnailUrl || undefined,
+          streamStartTime: status.streamStartTime || undefined
+        });
       }
     } catch (err) {
       // Optionally log error per user
+      logger.error(`[TwitchUtils] Unexpected error checking stream status for ${username}:`, err);
     }
   }
   return results;
@@ -45,7 +73,8 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
       isLive: false,
       streamStartTime: null,
       liveDuration: null,
-      error: 'Twitch Client ID missing.'
+      error: 'Twitch Client ID missing.',
+      status: 0 
     };
   }
 
@@ -60,13 +89,26 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
 
     if (!response.ok) {
       const errorDetails = await response.text();
+      
+      // Reduce log severity for 401s to avoid spamming ERROR logs
+      if (response.status === 401) {
+        return {
+          isLive: false,
+          streamStartTime: null,
+          liveDuration: null,
+          error: 'Unauthorized',
+          status: 401
+        };
+      }
+
       logger.error(`Failed to fetch live stream status for ${username}: ${response.statusText}`);
       logger.error(`Error details: ${errorDetails}`);
       return {
         isLive: false,
         streamStartTime: null,
         liveDuration: null,
-        error: `Twitch API error: ${response.statusText}`
+        error: `Twitch API error: ${response.statusText}`,
+        status: response.status
       };
     }
 
@@ -80,7 +122,8 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
           isLive: true,
           streamStartTime: null,
           liveDuration: null,
-          error: 'Invalid start time from Twitch API.'
+          error: 'Invalid start time from Twitch API.',
+          status: 200
         };
       }
       const duration = new Date().getTime() - startTime.getTime();
@@ -99,14 +142,16 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
         isLive: true,
         streamStartTime: startTime.toISOString(),
         liveDuration,
-        thumbnailUrl: thumb
+        thumbnailUrl: thumb,
+        status: 200
       };
     }
     return {
       isLive: false,
       streamStartTime: null,
       liveDuration: null,
-      thumbnailUrl: null
+      thumbnailUrl: null,
+      status: 200
     };
   } catch (error: any) {
     logger.error(`Exception during Twitch API call for ${username}:`, error);
@@ -115,7 +160,8 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
       streamStartTime: null,
       liveDuration: null,
       thumbnailUrl: null,
-      error: error?.message || 'Unknown error during Twitch API call.'
+      error: error?.message || 'Unknown error during Twitch API call.',
+      status: 500
     };
   }
 };
@@ -192,7 +238,7 @@ let accessToken: string | null = null;
 
 // Per-user refresh lock and retry count. Use normalized (lowercased) keys to
 // avoid duplicate refreshes due to casing differences.
-// 
+//
 // COORDINATION NOTE: This function is called from multiple places:
 // - botManager.refreshTokenFunction() - scheduled token refreshes
 // - getStreamStatusWithAutoRefresh() - on-demand refresh when token expires
@@ -204,6 +250,38 @@ const refreshRetryTimers: Record<string, NodeJS.Timeout> = {}; // Track retry ti
 const refreshCooldowns: Record<string, number> = {}; // Track cooldown expiry times
 const MAX_REFRESH_RETRIES = 5;
 const COOLDOWN_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+// Clean up stale entries every 30 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+
+  // Clean up expired cooldowns
+  for (const key of Object.keys(refreshCooldowns)) {
+    if (refreshCooldowns[key] < now) {
+      delete refreshCooldowns[key];
+      delete refreshRetries[key];
+      delete refreshLocks[key];
+    }
+  }
+
+  // Clean up stale locks (older than 5 minutes - should never take this long)
+  // This handles edge cases where locks weren't properly released
+  for (const key of Object.keys(refreshLocks)) {
+    if (refreshLocks[key] && !refreshCooldowns[key] && !refreshRetryTimers[key]) {
+      // Lock is set but no cooldown or pending retry - likely stale
+      delete refreshLocks[key];
+    }
+  }
+
+  // Clean up retry counts for users not in cooldown
+  for (const key of Object.keys(refreshRetries)) {
+    if (!refreshCooldowns[key] && refreshRetries[key] === 0) {
+      delete refreshRetries[key];
+    }
+  }
+
+  logger.debug(`[TwitchUtils] Cleanup: locks=${Object.keys(refreshLocks).length}, cooldowns=${Object.keys(refreshCooldowns).length}, retries=${Object.keys(refreshRetries).length}`);
+}, 30 * 60 * 1000);
 
 // Helper function to clear retry timer for a user
 function clearRetryTimer(key: string) {

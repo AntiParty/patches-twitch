@@ -2,6 +2,7 @@ import { Channel, getCustomResponse, RankGoal } from "../db";
 import fs from "fs/promises";
 import path from "path";
 import logger from "../util/logger";
+import { cacheManager } from "../util/cacheManager";
 
 interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -14,53 +15,24 @@ interface CommandContext {
 
 const processedMessages = new Set<string>();
 
+// Deprecated - kept for backward compatibility
 function getCacheDir() {
   return path.resolve(__dirname, "../../cache");
 }
 
+// Deprecated - use cacheManager.getLatestFile() instead
 async function getLatestCacheFile(prefix: string): Promise<string | null> {
-  try {
-    const files = await fs.readdir(getCacheDir());
-    const matched = files
-      .filter(f => f.startsWith(prefix) && f.endsWith(".json"))
-      .map(f => {
-        const num = parseInt(f.match(/\d+/)?.[0] ?? "0", 10);
-        return { file: f, season: num };
-      })
-      .filter(x => x.season > 0)
-      .sort((a, b) => b.season - a.season); // newest first
-
-    return matched.length > 0 ? path.join(getCacheDir(), matched[0].file) : null;
-  } catch (err) {
-    logger.error(`Failed to list cache files for ${prefix}:`, err);
-    return null;
-  }
+  logger.warn('[rank] getLatestCacheFile is deprecated, use cacheManager instead');
+  return cacheManager.getLatestFile(prefix);
 }
 
+// Use cache manager for efficient memory usage
 export async function getLatestLeaderboardData() {
-  const file = await getLatestCacheFile("regular_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("Failed to read leaderboard cache file:", err);
-    return null;
-  }
+  return cacheManager.getLatestLeaderboard();
 }
 
 async function getLatestWorldTourData() {
-  const file = await getLatestCacheFile("worldTour_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("Failed to read World Tour leaderboard cache file:", err);
-    return null;
-  }
+  return cacheManager.getLatestWorldTour();
 }
 
 async function maybeSendCustomResponse(
@@ -98,7 +70,7 @@ export const execute = async (ctx: CommandContext) => {
       return;
     }
 
-    const finalsName = channelInstance.player_id.toLowerCase();
+    const finalsName = channelInstance.player_id.trim().toLowerCase();
     const regularData = await getLatestLeaderboardData();
     const worldTourData = await getLatestWorldTourData();
 
@@ -107,14 +79,15 @@ export const execute = async (ctx: CommandContext) => {
       return;
     }
 
+    // Helper to normalize strings
+    const normalize = (v: any) => v ? v.toLowerCase().trim() : "";
+
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
-      let player = data.find(p => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find(p => p.name.toLowerCase().startsWith(baseName));
-      }
-      return player;
+      const target = normalize(name);
+      
+      // Exact match only (ignoring case/whitespace)
+      return data.find(p => normalize(p.name) === target);
     };
 
     const player = findPlayer(regularData, finalsName);

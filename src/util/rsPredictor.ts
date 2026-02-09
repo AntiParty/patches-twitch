@@ -4,7 +4,7 @@ import logger from "@/util/logger";
 
 const HISTORY_FILE = path.resolve(__dirname, "../../cache/rs_history.json");
 const REGULAR_S9_FILE = path.resolve(__dirname, "../../cache/regular_s9.json");
-const HISTORY_RETENTION_DAYS = 30; // 30 days of history
+const HISTORY_RETENTION_DAYS = 30; // 60 days of history
 const PREDICTION_WINDOW_DAYS = 5; // Look at last 5 days for trend analysis
 
 // Season 9 Configuration

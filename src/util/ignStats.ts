@@ -67,6 +67,10 @@ async function updateLiveStatus() {
 updateLiveStatus();
 setInterval(updateLiveStatus, 120000); // Check every 2 minutes
 
+// Cache for IGN stats to reduce database load
+let statsCache: { data: any; timestamp: number } | null = null;
+const STATS_CACHE_TTL = 5000; // 5 seconds cache
+
 /**
  * Tracks a visit specifically for the IGN/YouTube experiment.
  * Filters out common bots and static assets.
@@ -100,8 +104,15 @@ export async function trackIGNVisit(req: Request) {
 
 /**
  * Aggregates statistics for the IGN dashboard.
+ * Uses caching to reduce database load from frequent polling.
  */
 export async function getIGNStats() {
+    // Return cached data if still valid
+    const nowTimestamp = Date.now();
+    if (statsCache && (nowTimestamp - statsCache.timestamp) < STATS_CACHE_TTL) {
+        return statsCache.data;
+    }
+
     await metricsDbReady;
 
     const now = new Date();
@@ -180,7 +191,7 @@ export async function getIGNStats() {
         };
     });
 
-    return {
+    const result = {
         total,
         today,
         last7days,
@@ -191,4 +202,9 @@ export async function getIGNStats() {
         recentStreams,
         recentVisits
     };
+
+    // Update cache
+    statsCache = { data: result, timestamp: nowTimestamp };
+
+    return result;
 }

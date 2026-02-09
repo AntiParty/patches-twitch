@@ -7,6 +7,7 @@ import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Impor
 import logger from "./util/logger";
 import axios from "axios";
 import { decryptToken } from "./util/crypto";
+import { isUserAssignedToShard } from "./util/sharding";
 
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
@@ -33,17 +34,53 @@ function safeDecryptToken(encryptedOrPlainToken: string): string {
   return encryptedOrPlainToken;
 }
 
+// Clean up stale entries from module-level state every 30 minutes
+// This prevents unbounded memory growth from accumulated user data
+setInterval(() => {
+  const now = Date.now();
+  const staleThreshold = 24 * 60 * 60 * 1000; // 24 hours
+
+  // Clean up token refresh failures older than 24 hours of inactivity
+  // (entries without recent timers can be considered stale)
+  for (const username of Object.keys(tokenRefreshFailures)) {
+    if (!refreshTimers[username] && tokenRefreshFailures[username] === 0) {
+      delete tokenRefreshFailures[username];
+    }
+  }
+
+  logger.debug(`[BotManager] Cleanup: refreshTimers=${Object.keys(refreshTimers).length}, failures=${Object.keys(tokenRefreshFailures).length}`);
+}, 30 * 60 * 1000);
+
 export class BotManager {
   private commandHandler: any;
+  private lastValidated: Record<string, number> = {};
 
   constructor() {
     this.commandHandler = loadCommands();
     // Start polling for missing stream sessions when BotManager is instantiated
+    // Note: The poller itself must handle sharding logic internally or we pass it here
     startStreamSessionPolling();
+
+    // Clean up stale lastValidated entries every hour
+    // Entries older than 2 hours are no longer useful for debouncing
+    setInterval(() => {
+      const now = Date.now();
+      const staleThreshold = 2 * 60 * 60 * 1000; // 2 hours
+      for (const username of Object.keys(this.lastValidated)) {
+        if (now - this.lastValidated[username] > staleThreshold) {
+          delete this.lastValidated[username];
+        }
+      }
+      logger.debug(`[BotManager] lastValidated cleanup: ${Object.keys(this.lastValidated).length} entries remaining`);
+    }, 60 * 60 * 1000);
   }
 
   private async getChannels(): Promise<Channel[]> {
     let channels = await Channel.findAll();
+    
+    // Filter by Shard
+    channels = channels.filter((c: any) => isUserAssignedToShard(c.username));
+
     if (process.env.NODE_ENV === 'development' && process.env.DEV_CHANNELS) {
       const allowed = process.env.DEV_CHANNELS.split(',').map(s => s.trim().toLowerCase());
       if (allowed.length > 0) {
@@ -54,6 +91,11 @@ export class BotManager {
   }
 
   public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {
+    if (!isUserAssignedToShard(username)) {
+      logger.warn(`[Sharding] Skipping startBotForUser for ${username} (not assigned to this shard)`);
+      return;
+    }
+
     try {
       // Use the cached command handler instead of reloading every time
       const channel = await Channel.findOne({ where: { username } });
@@ -200,6 +242,7 @@ export class BotManager {
   public async validateAllTokens(prefetchedChannels?: Channel[]) {
     const channels = prefetchedChannels || await this.getChannels();
     const validationWindow = 30 * 60 * 1000; // 30 minutes
+    const debounceTime = 10 * 60 * 1000; // Only re-validate every 10 minutes if in window
 
     for (const channel of channels) {
       const chanAny: any = channel as any;
@@ -213,21 +256,38 @@ export class BotManager {
         continue;
       }
 
+      const now = Date.now();
+
       if (!token_expires_at) {
         // Unknown expiry -> validate once to learn TTL and schedule refresh
-        logger.info(`No expiry stored for ${username}, validating token to schedule refresh.`);
-        await this.validateToken(username, access_token, refresh_token);
+        // Only validate if not recently validated to avoid spam on every loop if DB update fails or is slow
+        if (!this.lastValidated[username] || now - this.lastValidated[username] > debounceTime) {
+          logger.info(`No expiry stored for ${username}, validating token to schedule refresh.`);
+          await this.validateToken(username, access_token, refresh_token);
+          this.lastValidated[username] = now;
+        }
         continue;
       }
 
-      const timeLeft = new Date(token_expires_at).getTime() - Date.now();
+      const timeLeft = new Date(token_expires_at).getTime() - now;
       if (timeLeft <= 0) {
-        logger.info(`Token for ${username} has expired. Refreshing...`);
+        // Expired - try refresh immediately. 
+        // Throttle this too just in case refresh fails repeatedly? 
+        // refreshTokenFunction has its own retry/cooldown logic usually, so we can rely on that mostly,
+        // but let's debounce slightly to match loop frequency if needed.
+        logger.info(`Token for ${username} has expired (or is extremely close). Refreshing...`);
         await this.refreshTokenFunction(username, refresh_token);
+        // We don't mark validated here because we want refresh to happen.
       } else if (timeLeft <= validationWindow) {
+        // Check if we validated recently to avoid spamming logs every minute
+        if (this.lastValidated[username] && now - this.lastValidated[username] < debounceTime) {
+          continue;
+        }
+
         // If token will expire within the validation window, call validate to update schedule
         logger.info(`Token for ${username} expires soon (in ${Math.round(timeLeft / 1000)}s). Validating.`);
         await this.validateToken(username, access_token, refresh_token);
+        this.lastValidated[username] = now;
       } else {
         // Token healthy and not near expiry; skip to avoid unnecessary API calls
         logger.debug?.(`Token for ${username} healthy, skipping validation.`);
@@ -278,6 +338,11 @@ export class BotManager {
     }
 
     if (channelName) {
+      if (!isUserAssignedToShard(channelName)) {
+        logger.debug(`[Sharding] Skipping sendMessage for ${channelName} (not assigned to this shard)`);
+        return;
+      }
+
       const user = await Channel.findOne({
         where: { username: channelName },
       });
@@ -289,9 +354,7 @@ export class BotManager {
       logger.info(`[Admin] Sending message to ${channelName}: ${message}`);
       await sendChatMessage(userAny.twitch_user_id, message);
     } else {
-      const channels = await Channel.findAll({
-        attributes: ["username", "twitch_user_id"],
-      });
+      const channels = await this.getChannels(); // Respects sharding
 
       for (const ch of channels) {
         const username = (ch as any).username;

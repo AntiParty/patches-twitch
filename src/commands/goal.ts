@@ -21,6 +21,17 @@ export const execute = async (
     const username = tags?.["display-name"] || ctx.user || "user";
     const sanitizedChannel = ctx.channel.replace(/^#/, "");
 
+        // Helper to normalize strings
+    const normalize = (v: any) => v ? v.toLowerCase().trim() : "";
+
+    const findPlayer = (data: any[] | null, name: string) => {
+      if (!data) return null;
+      const target = normalize(name);
+      
+      // Exact match only (ignoring case/whitespace)
+      return data.find(p => normalize(p.name) === target);
+    };
+
     try {
         // Check if user has linked account
         const channelInstance = (await Channel.findOne({
@@ -60,13 +71,8 @@ export const execute = async (
                 return;
             }
 
-            const finalsName = playerId.toLowerCase();
-            let player = cachedData.find((p: any) => p.name.toLowerCase() === finalsName);
-
-            if (!player && finalsName.includes("#")) {
-                const baseName = finalsName.split("#")[0];
-                player = cachedData.find((p: any) => p.name.toLowerCase().startsWith(baseName));
-            }
+            const finalsName = playerId.trim().toLowerCase();
+            const player = findPlayer(cachedData, finalsName);
 
             if (!player) {
                 await ctx.say(
@@ -158,13 +164,8 @@ export const execute = async (
             return;
         }
 
-        const finalsName = playerId.toLowerCase();
-        let currentPlayer = cachedData.find((p: any) => p.name.toLowerCase() === finalsName);
-
-        if (!currentPlayer && finalsName.includes("#")) {
-            const baseName = finalsName.split("#")[0];
-            currentPlayer = cachedData.find((p: any) => p.name.toLowerCase().startsWith(baseName));
-        }
+        const finalsName = playerId.trim().toLowerCase();
+        const currentPlayer = findPlayer(cachedData, finalsName);
 
         if (!currentPlayer) {
             await ctx.say(

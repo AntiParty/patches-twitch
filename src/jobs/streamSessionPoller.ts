@@ -3,16 +3,43 @@ import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
 import logger from '../util/logger';
+import { isUserAssignedToShard } from '../util/sharding';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
-const alertedMissingSession: Set<string> = new Set();
+
+// Track alerted users with timestamps for automatic cleanup
+// This prevents unbounded memory growth when users go online/offline repeatedly
+const alertedMissingSessionMap: Map<string, number> = new Map();
+const MAX_ALERTED_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours max retention
+
+// Wrapper object providing Set-like interface for backward compatibility
+const alertedMissingSession = {
+  has: (username: string) => alertedMissingSessionMap.has(username),
+  add: (username: string) => { alertedMissingSessionMap.set(username, Date.now()); },
+  delete: (username: string) => alertedMissingSessionMap.delete(username),
+};
+
+// Clean up old alerted entries every 30 minutes to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [username, timestamp] of alertedMissingSessionMap.entries()) {
+    if (now - timestamp > MAX_ALERTED_AGE_MS) {
+      alertedMissingSessionMap.delete(username);
+    }
+  }
+  if (alertedMissingSessionMap.size > 0) {
+    logger.debug(`[StreamPoller] Cleanup: alertedMissingSession size=${alertedMissingSessionMap.size}`);
+  }
+}, 30 * 60 * 1000);
 
 let lastTokenRefreshTime = 0;
 const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // Refresh app token every 30 minutes
 
 export async function getTrackedUsernames(): Promise<string[]> {
   const channels = await Channel.findAll({ attributes: ['username'] });
-  return channels.map((c: any) => c.username);
+  return channels
+    .map((c: any) => c.username)
+    .filter(username => isUserAssignedToShard(username));
 }
 
 async function ensureAppTokenValid(): Promise<string> {
@@ -76,13 +103,30 @@ export const startStreamSessionPolling = async () => {
       }
 
       for (const user of liveStreams) {
-        const hasSession = activeSessions.some(s => s.channel === user.username);
-        if (!hasSession) {
+        const session = activeSessions.find(s => s.channel === user.username);
+        let shouldCreateSession = !session;
+
+        // Check if existing session is stale (from a previous stream)
+        if (session && user.streamStartTime) {
+          const streamStart = new Date(user.streamStartTime).getTime();
+          const sessionStart = new Date(session.started_at).getTime();
+          
+          // If the stream started significantly AFTER the session (e.g. > 10 mins),
+          // updates the session because the current session belongs to an older stream.
+          if (streamStart > sessionStart + 10 * 60 * 1000) {
+            shouldCreateSession = true;
+            logger.info(`[SessionPoller] Detected stale session for ${user.username}. Stream: ${user.streamStartTime}, Session: ${session.started_at}. Marked for reset.`);
+          }
+        }
+
+        if (shouldCreateSession) {
           // Only alert once per live session
           if (!alertedMissingSession.has(user.username)) {
             // Fetch channel info
             let channel = await Channel.findOne({ where: { username: user.username } });
             if (!channel?.player_id) {
+              // Only alert if we haven't checked recently or if it's a new issue
+               // Logic preserved from original
               await sendDiscordAlert({
                 type: 'warning',
                 title: 'Missing Stream Session',
@@ -146,7 +190,7 @@ export const startStreamSessionPolling = async () => {
             alertedMissingSession.delete(user.username);
           }
         } else {
-          // If session exists, remove from alert set so future alerts can happen after next offline/online
+          // If session exists and is valid, remove from alert set
           alertedMissingSession.delete(user.username);
         }
       }

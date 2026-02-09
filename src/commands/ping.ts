@@ -2,6 +2,7 @@
 import os from "os";
 import fs from "fs/promises";
 import { Channel } from "../db";
+import { getShardInfo } from "../util/sharding";
 
 export const execute = async (ctx: any, channel: string, str: string, tags: Record<string, any>) => {
   const start = Date.now();
@@ -18,6 +19,7 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
   const usedMB = (mem.rss / 1024 / 1024).toFixed(0);
   const totalMB = (os.totalmem() / 1024 / 1024).toFixed(0);
   const percent = Math.round((parseInt(usedMB) / parseInt(totalMB)) * 100);
+  
 
   // System Details
   const platform = os.platform();
@@ -54,7 +56,11 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
 
   if (temp !== "N/A") parts.push(`Temp: ${temp}`);
 
+  // Shard Info
+  const { shardIndex, shardCount } = getShardInfo();
+  parts.push(`Shard: ${shardIndex}/${shardCount}`);
+
   await ctx.say(parts.join(" | "));
 };
 
-export const aliases = ["status", "ping"];
+export const aliases = ["status", "stats", "ping"];

@@ -340,6 +340,11 @@
     <script>
       let heatmapChart = null;
 
+      // Performance: Track intervals for cleanup
+      let statsInterval = null;
+      let driftInterval = null;
+      let lastDataHash = null;
+
       function formatTime(seconds) {
         if (seconds < 60) return seconds + "s ago";
         const m = Math.floor(seconds / 60);
@@ -440,9 +445,9 @@
       const currentStats = { total: 0, today: 0, recent: 0, liveHits: 0 };
       let lastFetchedVisits = [];
 
-      // Update ages and predict counter growth every 100ms for ultra-smooth movement
-      setInterval(() => {
-        // 1. Update ages in the table
+      // Performance: Optimized time update - runs every 1s instead of 100ms
+      // Counter drift moved to separate, less frequent interval
+      function updateVisitTimes() {
         const tbody = document.getElementById("visits");
         const rows = tbody.getElementsByTagName("tr");
         lastFetchedVisits.forEach((v, i) => {
@@ -452,12 +457,13 @@
             rows[i].cells[0].textContent = formatTime(currentSeconds);
           }
         });
+      }
 
-        // 2. Continuous "Drift" increment if we have a live visitor velocity
-        // This makes the counters keep creeping up slightly between fetches
+      // Performance: Counter drift at 1s intervals instead of 100ms (10x less CPU)
+      function updateCounterDrift() {
         if (currentStats.recent > 0) {
-          // Hits per 100ms based on last 5 min (300 seconds)
-          const drift = currentStats.recent / 300 / 10;
+          // Hits per second based on last 5 min (300 seconds)
+          const drift = currentStats.recent / 300;
 
           currentStats.total += drift;
           currentStats.today += drift;
@@ -477,12 +483,28 @@
             currentStats.liveHits,
           ).toLocaleString();
         }
-      }, 100);
+      }
+
+      // Combined update interval - 1s instead of 100ms
+      driftInterval = setInterval(() => {
+        updateVisitTimes();
+        updateCounterDrift();
+      }, 1000);
+
+      // Performance: Simple hash to detect data changes
+      function hashData(data) {
+        return `${data.last7days}-${data.today}-${data.last5min}-${data.totalLive}-${data.isCurrentlyLive}`;
+      }
 
       async function loadStats() {
         try {
           const res = await fetch("/api/ign-stats");
           const data = await res.json();
+
+          // Performance: Skip DOM updates if data hasn't changed significantly
+          const newHash = hashData(data);
+          const dataChanged = newHash !== lastDataHash;
+          lastDataHash = newHash;
 
           // Update baseline stats
           currentStats.total = data.last7days;
@@ -501,6 +523,9 @@
             liveEl.textContent = "OFFLINE";
             liveEl.style.color = "var(--muted)";
           }
+
+          // Performance: Only update chart/tables when data actually changed
+          if (!dataChanged) return;
 
           if (data.dailyBreakdown) updateHeatmap(data.dailyBreakdown);
 
@@ -583,7 +608,32 @@
       }
 
       loadStats();
-      setInterval(loadStats, 3000);
+      // Performance: Increased interval from 3s to 10s (with server-side caching)
+      statsInterval = setInterval(loadStats, 10000);
+
+      // Performance: Cleanup intervals on page unload to prevent memory leaks
+      window.addEventListener('beforeunload', () => {
+        if (statsInterval) clearInterval(statsInterval);
+        if (driftInterval) clearInterval(driftInterval);
+      });
+
+      // Performance: Pause updates when tab is hidden
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          if (statsInterval) clearInterval(statsInterval);
+          if (driftInterval) clearInterval(driftInterval);
+          statsInterval = null;
+          driftInterval = null;
+        } else {
+          // Resume when tab becomes visible
+          loadStats();
+          statsInterval = setInterval(loadStats, 10000);
+          driftInterval = setInterval(() => {
+            updateVisitTimes();
+            updateCounterDrift();
+          }, 1000);
+        }
+      });
     </script>
   </body>
 </html>

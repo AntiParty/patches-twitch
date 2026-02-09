@@ -19,7 +19,7 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
  * Get correct redirect URI based on environment
  */
 const getRedirectUri = () => {
-    const uri = process.env.TWITCH_REDIRECT_URI || 
+    const uri = process.env.TWITCH_REDIRECT_URI ||
         (process.env.NODE_ENV === "production"
         ? "https://finalsrs.com/callback"
         : "http://localhost:3000/callback");
@@ -211,6 +211,24 @@ router.get("/callback", async (req: any, res: any) => {
         // Fetch current user from DB to get their role
         const channel = await Channel.findOne({ where: { username: twitchUsername } });
         const userRole = channel ? channel.role : 'Basic user';
+
+        // Migrate onboarding state for existing users who haven't been migrated yet
+        if (channel && channel.onboarding_step_completed === 0 && !channel.onboarding_completed) {
+            let inferredStep = 0;
+            // If bot is enabled, they've completed step 1
+            if (channel.bot_enabled) {
+                inferredStep = 1;
+            }
+            // If player_id is linked, they've completed step 2
+            if (channel.player_id) {
+                inferredStep = 2;
+            }
+            // Update if we inferred any progress
+            if (inferredStep > 0) {
+                await channel.update({ onboarding_step_completed: inferredStep });
+                logger.info(`[Auth] Migrated onboarding state for ${twitchUsername}: inferred step ${inferredStep}`);
+            }
+        }
 
         // Regenerate session to prevent session fixation and then store minimal user info
         if (req.session) {

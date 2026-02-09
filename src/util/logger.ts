@@ -1,4 +1,23 @@
 import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
+
+// Configure rotating file transports to prevent unbounded log file growth
+const errorRotateTransport: DailyRotateFile = new DailyRotateFile({
+  filename: 'logs/error-%DATE%.log',
+  datePattern: 'YYYY-MM-DD',
+  level: 'error',
+  maxSize: '10m',      // Rotate when file exceeds 10MB
+  maxFiles: '7d',      // Keep logs for 7 days
+  zippedArchive: true, // Compress old files
+});
+
+const combinedRotateTransport: DailyRotateFile = new DailyRotateFile({
+  filename: 'logs/combined-%DATE%.log',
+  datePattern: 'YYYY-MM-DD',
+  maxSize: '20m',      // Rotate when file exceeds 20MB
+  maxFiles: '7d',      // Keep logs for 7 days
+  zippedArchive: true, // Compress old files
+});
 
 const logger = winston.createLogger({
   level: 'info',
@@ -10,8 +29,9 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    errorRotateTransport,
+    combinedRotateTransport,
   ],
 });
+
 export default logger;

@@ -43,7 +43,7 @@ router.get('/api/my-analytics', requireUserAPI, async (req: any, res: any) => {
 
 /**
  * GET /api/my-analytics/summary
- * Get a summary of command analytics (last 7 days, 30 days, all time)
+ * Get a summary of command analytics (last 7 days, 30 days, 60 days, all time)
  */
 router.get('/api/my-analytics/summary', requireUserAPI, async (req: any, res: any) => {
   try {
@@ -55,17 +55,20 @@ router.get('/api/my-analytics/summary', requireUserAPI, async (req: any, res: an
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
     // Get analytics for different time periods
-    const [last7Days, last30Days, allTime] = await Promise.all([
+    const [last7Days, last30Days, last60Days, allTime] = await Promise.all([
       getCommandAnalytics(username, { startDate: sevenDaysAgo }),
       getCommandAnalytics(username, { startDate: thirtyDaysAgo }),
+      getCommandAnalytics(username, { startDate: sixtyDaysAgo }),
       getCommandAnalytics(username, {}),
     ]);
 
     res.json({
       last7Days,
       last30Days,
+      last60Days,
       allTime,
     });
   } catch (err) {

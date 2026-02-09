@@ -7,6 +7,7 @@ import axios from 'axios';
 import { Channel, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import { verifyOAuthState, encryptToken } from '@/util/crypto';
+import { checkTwitchSubscription } from '@/services/twitchSubscription.service';
 
 const router = Router();
 
@@ -28,10 +29,11 @@ const getRedirectUri = () => {
 
 /**
  * Generate Twitch OAuth URL for user login
+ * Includes user:read:subscriptions scope to check if user is subscribed to antiparty for premium
  */
 const getAuthUrl = () => {
     const scope = encodeURIComponent(
-        "channel:moderate user:read:chat user:bot channel:bot"
+        "channel:moderate user:read:chat user:bot channel:bot user:read:subscriptions"
     );
     return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${getRedirectUri()}&response_type=code&scope=${scope}&force_verify=true`;
 };
@@ -182,13 +184,28 @@ router.get("/callback", async (req: any, res: any) => {
         }
 
         // --- Normal Login Flow ---
-        // Upsert user in DB with encrypted tokens
+
+        // Check if user is subscribed to antiparty for premium access
+        let isPremium = false;
+        let subscriptionTier: string | null = null;
+        try {
+            const subStatus = await checkTwitchSubscription(access_token, twitchUserId);
+            isPremium = subStatus.isPremium;
+            subscriptionTier = subStatus.tier;
+            logger.info(`[Auth] Premium check for ${twitchUsername}: isPremium=${isPremium}, tier=${subscriptionTier}`);
+        } catch (subError) {
+            logger.error(`[Auth] Error checking premium status for ${twitchUsername}:`, subError);
+        }
+
+        // Upsert user in DB with encrypted tokens and subscription status
         await Channel.upsert({
             username: twitchUsername,
             access_token: encryptToken(access_token),
             refresh_token: encryptToken(refresh_token),
             token_expires_at: expirationTime,
             twitch_user_id: twitchUserId,
+            has_subscription: isPremium,
+            subscription_tier: subscriptionTier,
         });
 
         // Fetch current user from DB to get their role
@@ -208,7 +225,10 @@ router.get("/callback", async (req: any, res: any) => {
                     req.session.twitchUsername = twitchUsername;
                     req.session.role = userRole; // Store role in session
                     req.session.isAdmin = userRole === 'admin'; // Backward compatibility or convenience
-                    
+                    req.session.channelId = channel?.id; // Store channel ID for subscription checks
+                    req.session.hasSubscription = isPremium; // Premium via Twitch sub to antiparty
+                    req.session.subscriptionTier = subscriptionTier;
+
                     // If they have a dashboard-capable role, set the primary username for logs/admin
                     if (userRole === 'admin' || userRole === 'Staff') {
                         req.session.username = twitchUsername;

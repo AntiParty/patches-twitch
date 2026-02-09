@@ -8,6 +8,8 @@ import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidPlayerId } from '@/middleware/validation.middleware';
+import { getTierName } from '@/services/twitchSubscription.service';
+import { csrfProtection } from '@/middleware/csrf.middleware';
 
 const router = Router();
 
@@ -18,7 +20,7 @@ let userDashboardEnabled = true;
  * GET /dashboard
  * Render user dashboard with personalized data
  */
-router.get("/dashboard", requireUser, async (req: any, res: any) => {
+router.get("/dashboard", requireUser, csrfProtection, async (req: any, res: any) => {
     if (!userDashboardEnabled) {
         // Render auth.ejs with a message about dashboard being disabled
         return res.render("auth", {
@@ -62,6 +64,10 @@ router.get("/dashboard", requireUser, async (req: any, res: any) => {
         logger.error("Error fetching subscription/bot data for dashboard:", err);
     }
 
+    // Get premium status from session (Twitch subscription to antiparty)
+    const hasSubscription = req.session.hasSubscription || false;
+    const subscriptionTier = req.session.subscriptionTier || null;
+
     res.render("user-dashboard", {
         title: "FinalsRS - User dashboard",
         logoPath: "/assets/logo.png",
@@ -71,6 +77,10 @@ router.get("/dashboard", requireUser, async (req: any, res: any) => {
         userStats,
         subscription,
         customBot,
+        hasSubscription,
+        subscriptionTier,
+        tierName: getTierName(subscriptionTier),
+        csrfToken: req.csrfToken(),
     });
 });
 

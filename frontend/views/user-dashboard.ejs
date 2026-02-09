@@ -2366,40 +2366,44 @@
           </div>
 
           <div class="grid-2">
-            <!-- Subscription Status -->
+            <!-- Premium Status (Twitch Subscription) -->
             <div class="status-card">
-              <div class="card-title">Subscription Status</div>
-              <% if (subscription) { %>
+              <div class="card-title">Premium Status</div>
+              <% if (hasSubscription) { %>
               <div class="status-info">
-                <div class="status-item">
-                  <span class="label">Plan:</span>
-                  <span class="value"
-                    ><%= subscription.plan_type === 'custom_bot' ? 'Custom Bot' :
-                    subscription.plan_type %></span
-                  >
+                <div class="status-item" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                  <span style="width: 32px; height: 32px; background: rgba(34, 197, 94, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #22c55e; font-size: 16px;">✓</span>
+                  <span style="color: #22c55e; font-weight: 600;">Premium Active</span>
                 </div>
                 <div class="status-item">
-                  <span class="label">Status:</span>
-                  <span class="value status-<%= subscription.status %>"
-                    ><%= subscription.status %></span
-                  >
+                  <span class="label">Tier:</span>
+                  <span class="value" style="color: #9146ff; font-weight: 600;"><%= tierName %></span>
                 </div>
-                <% if (subscription.current_period_end) { %>
                 <div class="status-item">
-                  <span class="label">Renews:</span>
-                  <span class="value"
-                    ><%= new
-                    Date(subscription.current_period_end).toLocaleDateString()
-                    %></span
-                  >
+                  <span class="label">Via:</span>
+                  <span class="value">Twitch Sub to antiparty</span>
                 </div>
-                <% } %>
               </div>
-              <% } else { %>
-              <p style="color: var(--text-muted);">No active subscription found.</p>
-              <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.location.href='/subscribe'">
-                Subscribe Now
+              <button class="btn btn-ghost" style="margin-top: 16px;" onclick="refreshPremiumStatus()">
+                <i class="fas fa-sync-alt"></i> Refresh Status
               </button>
+              <% } else { %>
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <span style="width: 32px; height: 32px; background: rgba(255, 255, 255, 0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 16px;">☆</span>
+                <span style="color: var(--text-muted);">Not Subscribed</span>
+              </div>
+              <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Subscribe to antiparty on Twitch to unlock premium features like Custom Bot.</p>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="https://www.twitch.tv/subs/antiparty" target="_blank" class="btn btn-primary" style="background: #9146ff;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 6px;">
+                    <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                  </svg>
+                  Subscribe on Twitch
+                </a>
+                <button class="btn btn-ghost" onclick="refreshPremiumStatus()">
+                  <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+              </div>
               <% } %>
             </div>
 
@@ -2431,7 +2435,7 @@
               </div>
               <% } else { %>
               <p style="color: var(--text-muted);">No custom bot linked yet.</p>
-              <% if (subscription) { %>
+              <% if (hasSubscription) { %>
               <div style="display: flex; gap: 10px; align-items: center; margin-top: 1rem;">
                 <a href="/link-custom-bot" class="btn btn-primary" style="margin: 0;">Link Custom Bot</a>
                 <button class="btn btn-ghost" onclick="copyCustomBotAuthLink()" title="Copy Link to authorize in another browser">
@@ -2439,7 +2443,7 @@
                 </button>
               </div>
               <% } else { %>
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Subscription required to link custom bot.</p>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Premium subscription required to link custom bot.</p>
               <% } %>
               <% } %>
             </div>
@@ -2483,6 +2487,31 @@
                     } catch (e) {
                          console.error(e);
                          showToast('Error getting link', 'danger');
+                    }
+                }
+
+                async function refreshPremiumStatus() {
+                    try {
+                        showToast('Checking subscription status...', 'info');
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+                        const res = await fetch('/api/subscription/refresh', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
+                            }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            showToast(data.message, data.hasSubscription ? 'success' : 'warning');
+                            // Reload to reflect changes
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showToast(data.error || 'Failed to refresh status', 'danger');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        showToast('Error refreshing status', 'danger');
                     }
                 }
               </script>

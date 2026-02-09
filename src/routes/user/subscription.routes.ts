@@ -19,7 +19,7 @@ router.use(csrfErrorHandler);
  * Display subscription landing page
  * Premium is granted by subscribing to antiparty on Twitch
  */
-router.get('/subscribe', requireUser, async (req: Request, res: Response) => {
+router.get('/subscribe', requireUser, csrfProtection, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
 
@@ -34,6 +34,7 @@ router.get('/subscribe', requireUser, async (req: Request, res: Response) => {
       hasSubscription: req.session.hasSubscription,
       subscriptionTier: channel?.subscription_tier || null,
       tierName: getTierName(channel?.subscription_tier || null),
+      csrfToken: req.csrfToken(),
     });
   } catch (error) {
     logger.error('[Subscription] Error loading subscribe page:', error);
@@ -196,7 +197,7 @@ router.get('/api/subscription/status', requireUserAPI, async (req: Request, res:
  * POST /api/subscription/refresh
  * Refresh premium status by checking Twitch subscription to antiparty
  */
-router.post('/api/subscription/refresh', requireUserAPI, async (req: Request, res: Response) => {
+router.post('/api/subscription/refresh', requireUserAPI, csrfProtection, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
 

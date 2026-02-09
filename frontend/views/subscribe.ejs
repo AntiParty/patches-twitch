@@ -360,6 +360,8 @@
     </footer>
 
     <script>
+        const csrfToken = '<%= csrfToken %>';
+
         async function refreshStatus() {
             const btn = document.getElementById('refresh-btn');
             const text = document.getElementById('refresh-text');
@@ -371,7 +373,8 @@
                 const response = await fetch('/api/subscription/refresh', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
                     }
                 });
 

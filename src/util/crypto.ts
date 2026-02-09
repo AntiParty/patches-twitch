@@ -134,14 +134,18 @@ export function encryptToken(plaintext: string): string {
 /**
  * Decrypt encrypted tokens
  * Returns null if decryption fails
+ * @param encryptedData - The encrypted token data
+ * @param silent - If true, don't log errors (used for checking if token is encrypted)
  */
-export function decryptToken(encryptedData: string): string | null {
+export function decryptToken(encryptedData: string, silent: boolean = false): string | null {
   try {
     const combined = JSON.parse(Buffer.from(encryptedData, 'base64').toString());
     const { iv, tag, data } = combined;
 
     if (!iv || !tag || !data) {
-      logger.warn('[Crypto] Invalid encrypted token format');
+      if (!silent) {
+        logger.warn('[Crypto] Invalid encrypted token format');
+      }
       return null;
     }
 
@@ -157,7 +161,9 @@ export function decryptToken(encryptedData: string): string | null {
 
     return decrypted;
   } catch (err) {
-    logger.error('[Crypto] Failed to decrypt token:', err);
+    if (!silent) {
+      logger.error('[Crypto] Failed to decrypt token:', err);
+    }
     return null;
   }
 }

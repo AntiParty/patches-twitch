@@ -122,6 +122,7 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
 
   const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${process.env.TWITCH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${state}`;
 
+  logger.info(`[Custom Bot] Generated auth URL with redirect: ${redirectUri} (NODE_ENV=${process.env.NODE_ENV})`);
   res.json({ url: authUrl });
 });
 

@@ -98,7 +98,7 @@ router.get("/dashboard", requireUser, csrfProtection, async (req: any, res: any)
  * POST /api/link-account
  * Link THE FINALS player ID to Twitch account
  */
-router.post('/api/link-account', requireUserAPI, async (req: any, res: any) => {
+router.post('/api/link-account', requireUserAPI, csrfProtection, async (req: any, res: any) => {
     const { playerId } = req.body;
 
     if (!isValidPlayerId(playerId)) {
@@ -127,8 +127,9 @@ router.post('/api/link-account', requireUserAPI, async (req: any, res: any) => {
  * POST /api/disconnect-bot
  * Disconnect bot/service and delete user from database
  */
-router.post('/api/disconnect-bot', requireUserAPI, async (req: any, res: any) => {
+router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: any, res: any) => {
     const username = req.session.twitchUsername;
+    const channelId = req.session.channelId;
 
     try {
         // Cache user object before deletion
@@ -150,8 +151,25 @@ router.post('/api/disconnect-bot', requireUserAPI, async (req: any, res: any) =>
             logger.error(`[dashboard] Error notifying bot to remove channel for ${username}:`, botErr);
         }
 
-        // NOW Remove channel from DB
-        await Channel.destroy({ where: { username } });
+        // Remove custom bot account if exists
+        try {
+            if (channelId) {
+                await CustomBotAccount.destroy({ where: { channel_id: channelId } });
+                logger.info(`[dashboard] Deleted custom bot account for ${username}`);
+            }
+        } catch (customBotErr) {
+            logger.error(`[dashboard] Error deleting custom bot for ${username}:`, customBotErr);
+        }
+
+        // Remove subscription record if exists
+        try {
+            if (channelId) {
+                await Subscription.destroy({ where: { channel_id: channelId } });
+                logger.info(`[dashboard] Deleted subscription record for ${username}`);
+            }
+        } catch (subErr) {
+            logger.error(`[dashboard] Error deleting subscription for ${username}:`, subErr);
+        }
 
         // Remove all custom responses for this user
         try {
@@ -193,10 +211,16 @@ router.post('/api/disconnect-bot', requireUserAPI, async (req: any, res: any) =>
             logger.error(`[dashboard] Error deleting EventSub subscriptions for ${username}:`, eventsubErr);
         }
 
-        // Destroy session
-        req.session.destroy(() => { });
+        // NOW Remove channel from DB (do this last since other deletions depend on it)
+        await Channel.destroy({ where: { username } });
+
         logger.info(`[dashboard] ${username} disconnected and deleted their bot/service.`);
+
+        // Send response before destroying session
         res.json({ success: true });
+
+        // Destroy session after sending response
+        req.session.destroy(() => { });
     } catch (err) {
         logger.error('Error disconnecting bot/service:', err);
         res.status(500).json({ error: 'Failed to disconnect.' });
@@ -208,7 +232,7 @@ router.post('/api/disconnect-bot', requireUserAPI, async (req: any, res: any) =>
  * Toggles bot_enabled field
  */
 
-router.post('/api/toggle-bot', requireUserAPI, async (req: any, res: any) => {
+router.post('/api/toggle-bot', requireUserAPI, csrfProtection, async (req: any, res: any) => {
     const username = req.session.twitchUsername;
     try {
         const channelInstance = await Channel.findOne({ where: { username } });

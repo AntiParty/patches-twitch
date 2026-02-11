@@ -8,6 +8,8 @@ import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidPlayerId } from '@/middleware/validation.middleware';
+import { getTierName } from '@/services/twitchSubscription.service';
+import { csrfProtection } from '@/middleware/csrf.middleware';
 
 const router = Router();
 
@@ -18,7 +20,7 @@ let userDashboardEnabled = true;
  * GET /dashboard
  * Render user dashboard with personalized data
  */
-router.get("/dashboard", requireUser, async (req: any, res: any) => {
+router.get("/dashboard", requireUser, csrfProtection, async (req: any, res: any) => {
     if (!userDashboardEnabled) {
         // Render auth.ejs with a message about dashboard being disabled
         return res.render("auth", {
@@ -50,7 +52,10 @@ router.get("/dashboard", requireUser, async (req: any, res: any) => {
     // Fetch subscription and custom bot data
     let subscription = null;
     let customBot = null;
+    let channel = null;
     try {
+        channel = await Channel.findByPk(req.session.channelId);
+
         subscription = await Subscription.findOne({
             where: { channel_id: req.session.channelId }
         });
@@ -62,15 +67,30 @@ router.get("/dashboard", requireUser, async (req: any, res: any) => {
         logger.error("Error fetching subscription/bot data for dashboard:", err);
     }
 
+    // Check if user has premium access (Twitch sub, role bypass, or manual grant)
+    const role = req.session.role || 'Basic user';
+    const bypassRoles = ['subscriber', 'tester', 'Staff', 'admin'];
+    const hasRoleBypass = bypassRoles.includes(role);
+    const hasTwitchSub = channel?.has_subscription || false;
+    const hasSubscription = hasTwitchSub || hasRoleBypass;
+
     res.render("user-dashboard", {
         title: "FinalsRS - User dashboard",
         logoPath: "/assets/logo.png",
         username: req.session.twitchUsername,
-        role: req.session.role || 'Basic user',
+        role,
         isAdmin: req.session.isAdmin || false,
         userStats,
         subscription,
         customBot,
+        // Premium status
+        hasSubscription,
+        hasTwitchSub,
+        hasRoleBypass,
+        subscriptionTier: channel?.subscription_tier || null,
+        tierName: getTierName(channel?.subscription_tier || null),
+        // CSRF token for API calls
+        csrfToken: req.csrfToken(),
     });
 });
 

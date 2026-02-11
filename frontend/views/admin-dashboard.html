@@ -1377,8 +1377,12 @@
           <!-- Stats Cards -->
           <div class="stats-grid" id="subscription-stats">
             <div class="stat-card">
-              <div class="stat-value" id="stat-total-subscribers">-</div>
-              <div class="stat-label">Active Subscribers</div>
+              <div class="stat-value" id="stat-twitch-subscribers">-</div>
+              <div class="stat-label">Twitch Subs (antiparty)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="stat-manual-grants">-</div>
+              <div class="stat-label">Manual Grants</div>
             </div>
             <div class="stat-card">
               <div class="stat-value" id="stat-custom-bots">-</div>
@@ -1386,7 +1390,7 @@
             </div>
             <div class="stat-card">
               <div class="stat-value" id="stat-role-bypass">-</div>
-              <div class="stat-label">Role Bypass</div>
+              <div class="stat-label">Role Bypass (tester/staff/admin)</div>
             </div>
             <div class="stat-card">
               <div class="stat-value" id="stat-total-premium">-</div>
@@ -2864,7 +2868,8 @@
           const statsRes = await fetch('/admin/api/subscription-stats');
           const stats = await statsRes.json();
 
-          document.getElementById('stat-total-subscribers').innerText = stats.totalSubscribers || 0;
+          document.getElementById('stat-twitch-subscribers').innerText = stats.twitchSubscribers || 0;
+          document.getElementById('stat-manual-grants').innerText = stats.manualGrants || 0;
           document.getElementById('stat-custom-bots').innerText = stats.customBotUsers || 0;
           document.getElementById('stat-role-bypass').innerText = stats.roleBypass?.total || 0;
           document.getElementById('stat-total-premium').innerText = stats.totalPremiumAccess || 0;
@@ -2874,19 +2879,41 @@
           const subsData = await subsRes.json();
 
           const tbody = document.getElementById('subscribers-table-body');
+
+          // Helper to display Twitch subscription tier names
+          function getTierName(tier) {
+            switch (tier) {
+              case '1000': return 'Tier 1';
+              case '2000': return 'Tier 2';
+              case '3000': return 'Tier 3';
+              case 'custom_bot': return 'Manual Grant';
+              default: return tier || 'Unknown';
+            }
+          }
+
+          // Helper to get tier source badge
+          function getTierBadge(sub) {
+            if (sub.subscription?.isManualGrant) {
+              return '<span style="color: var(--warning); font-size: 11px;"> (manual)</span>';
+            }
+            if (sub.tier === '1000' || sub.tier === '2000' || sub.tier === '3000') {
+              return '<span style="color: var(--purple); font-size: 11px;"> (Twitch)</span>';
+            }
+            return '';
+          }
+
           if (subsData.subscriptions && subsData.subscriptions.length > 0) {
             tbody.innerHTML = subsData.subscriptions.map(sub => `
               <tr>
                 <td><strong>${sub.username}</strong></td>
-                <td>${sub.tier || 'custom_bot'}</td>
+                <td>${getTierName(sub.tier)}${getTierBadge(sub)}</td>
                 <td>
                   <span class="status-pill ${sub.subscription?.status === 'active' ? 'online' : 'offline'}">
-                    ${sub.subscription?.status || 'unknown'}
+                    ${sub.subscription?.status || 'active'}
                   </span>
-                  ${sub.subscription?.isManualGrant ? '<span style="color: var(--warning); font-size: 11px;"> (test)</span>' : ''}
                 </td>
                 <td>${sub.customBot ? sub.customBot.username : '<span style="color: var(--text-muted)">None</span>'}</td>
-                <td>${sub.subscription?.periodEnd ? new Date(sub.subscription.periodEnd).toLocaleDateString() : '-'}</td>
+                <td>${sub.subscription?.periodEnd ? new Date(sub.subscription.periodEnd).toLocaleDateString() : '<span style="color: var(--text-muted)">-</span>'}</td>
                 <td>
                   <button class="btn btn-sm" onclick="revokeSubscriptionById(${sub.id}, '${sub.username}')" style="background: var(--danger); padding: 5px 10px; font-size: 12px;">
                     Revoke

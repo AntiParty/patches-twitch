@@ -45,6 +45,41 @@ function stringifyEnv(vars: Record<string, string>, original: string): string {
   return out.join("\n");
 }
 
+/**
+ * Get the base URL for the application based on environment
+ * Uses BASE_URL env var, or falls back to environment-based default
+ */
+export function getBaseUrl(): string {
+  return process.env.BASE_URL ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://finalsrs.com'
+      : 'http://localhost:3000');
+}
+
+/**
+ * Get the Twitch OAuth redirect URI based on environment
+ */
+export function getTwitchRedirectUri(): string {
+  return process.env.TWITCH_REDIRECT_URI ||
+    (process.env.NODE_ENV === 'production'
+      ? 'https://finalsrs.com/callback'
+      : 'http://localhost:3000/callback');
+}
+
+/**
+ * Check if we're running in development mode
+ */
+export function isDevelopment(): boolean {
+  return process.env.NODE_ENV !== 'production';
+}
+
+/**
+ * Check if we're running in production mode
+ */
+export function isProduction(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
 export function updateEnvVariables(updates: Record<string, string>): { wroteFile: boolean; filePath: string } {
   // Update process.env immediately
   for (const [k, v] of Object.entries(updates)) {

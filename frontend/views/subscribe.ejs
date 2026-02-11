@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium - FinalsRS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="/assets/logo.png">
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #0f0f12;
+            --bg-card: #141418;
+            --border: #1f1f26;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --purple: #9146ff;
+            --purple-glow: rgba(145, 70, 255, 0.15);
+            --green: #22c55e;
+            --gold: #f5c26b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation */
+        nav {
+            padding: 16px 32px;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 20px;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+        }
+
+        /* Main Content */
+        .container {
+            flex: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 32px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--purple) 0%, var(--gold) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 48px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Status Card */
+        .status-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .status-card.active {
+            border-color: var(--green);
+            background: rgba(34, 197, 94, 0.05);
+        }
+
+        .status-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+        }
+
+        .status-icon.active {
+            background: rgba(34, 197, 94, 0.15);
+        }
+
+        .status-icon.inactive {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .status-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .status-tier {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--purple-glow);
+            color: var(--purple);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .status-desc {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 32px 0;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: left;
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .feature-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* CTA */
+        .cta-section {
+            margin-top: 48px;
+        }
+
+        .btn-twitch {
+            background: var(--purple);
+            color: white;
+            font-size: 16px;
+            padding: 16px 32px;
+            border-radius: 10px;
+        }
+
+        .btn-twitch:hover {
+            background: #a259ff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px var(--purple-glow);
+        }
+
+        .btn-twitch svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-refresh {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            margin-top: 16px;
+        }
+
+        .btn-refresh:hover {
+            border-color: var(--purple);
+            color: var(--text-primary);
+        }
+
+        .help-text {
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .help-text a {
+            color: var(--purple);
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            padding: 24px 32px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="/assets/logo.png" alt="FinalsRS">
+                FinalsRS
+            </a>
+            <a href="/dashboard" class="btn btn-ghost">Back to Dashboard</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>FinalsRS Premium</h1>
+        <p class="subtitle">
+            Unlock premium features by subscribing to antiparty on Twitch
+        </p>
+
+        <% if (hasSubscription) { %>
+            <!-- Active Subscription -->
+            <div class="status-card active">
+                <div class="status-icon active">
+                    &#10003;
+                </div>
+                <h2 class="status-title">Premium Active</h2>
+                <% if (subscriptionTier) { %>
+                    <div class="status-tier"><%= tierName %></div>
+                <% } %>
+                <p class="status-desc">
+                    Thank you for your support! You have full access to all premium features.
+                </p>
+            </div>
+        <% } else { %>
+            <!-- No Subscription -->
+            <div class="status-card">
+                <div class="status-icon inactive">
+                    &#9734;
+                </div>
+                <h2 class="status-title">Not Subscribed</h2>
+                <p class="status-desc">
+                    Subscribe to antiparty on Twitch to unlock premium features
+                </p>
+            </div>
+        <% } %>
+
+        <h3 style="margin-bottom: 16px; color: var(--text-secondary); font-weight: 600;">Premium Features</h3>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#128302;</div>
+                <div class="feature-title">Custom Bot Account</div>
+                <div class="feature-desc">Use your own Twitch account as the bot for personalized branding</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128200;</div>
+                <div class="feature-title">!predict Command</div>
+                <div class="feature-desc">Forecast future T500 cutoffs using historical trend analysis</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#127912;</div>
+                <div class="feature-title">Priority Support</div>
+                <div class="feature-desc">Get help faster with priority Discord support</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128161;</div>
+                <div class="feature-title">Early Access</div>
+                <div class="feature-desc">Try new features before they're released to everyone</div>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <% if (!hasSubscription) { %>
+                <a href="https://www.twitch.tv/subs/antiparty" target="_blank" class="btn btn-twitch">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                    </svg>
+                    Subscribe on Twitch
+                </a>
+            <% } %>
+
+            <button onclick="refreshStatus()" class="btn btn-refresh" id="refresh-btn">
+                <span id="refresh-text">&#8635; Refresh Status</span>
+            </button>
+
+            <p class="help-text">
+                Already subscribed? Click refresh to update your status.<br>
+                Need help? <a href="https://discord.com/invite/2UKzvzSEqA" target="_blank">Join our Discord</a>
+            </p>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2025 FinalsRS. Premium is granted via Twitch subscription to antiparty.
+    </footer>
+
+    <script>
+        const csrfToken = '<%= csrfToken %>';
+
+        async function refreshStatus() {
+            const btn = document.getElementById('refresh-btn');
+            const text = document.getElementById('refresh-text');
+
+            btn.disabled = true;
+            text.innerHTML = 'Checking...';
+
+            try {
+                const response = await fetch('/api/subscription/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Reload page to show updated status
+                    window.location.reload();
+                } else if (data.needsReauth) {
+                    // User needs to re-authorize for subscription scope
+                    text.innerHTML = 'Re-authorizing...';
+                    window.location.href = data.reauthUrl || '/reauth';
+                } else {
+                    text.innerHTML = 'Error - Try Again';
+                    setTimeout(() => {
+                        text.innerHTML = '&#8635; Refresh Status';
+                        btn.disabled = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error refreshing status:', error);
+                text.innerHTML = 'Error - Try Again';
+                setTimeout(() => {
+                    text.innerHTML = '&#8635; Refresh Status';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

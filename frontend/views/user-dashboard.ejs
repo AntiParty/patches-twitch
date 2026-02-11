@@ -2366,39 +2366,39 @@
           </div>
 
           <div class="grid-2">
-            <!-- Subscription Status -->
+            <!-- Premium Status -->
             <div class="status-card">
-              <div class="card-title">Subscription Status</div>
-              <% if (subscription) { %>
+              <div class="card-title">Premium Status</div>
+              <% if (hasSubscription) { %>
               <div class="status-info">
                 <div class="status-item">
-                  <span class="label">Plan:</span>
-                  <span class="value"
-                    ><%= subscription.plan_type === 'custom_bot' ? 'Custom Bot' :
-                    subscription.plan_type %></span
-                  >
-                </div>
-                <div class="status-item">
                   <span class="label">Status:</span>
-                  <span class="value status-<%= subscription.status %>"
-                    ><%= subscription.status %></span
-                  >
+                  <span class="value" style="color: var(--success);">Active</span>
                 </div>
-                <% if (subscription.current_period_end) { %>
+                <% if (hasTwitchSub) { %>
                 <div class="status-item">
-                  <span class="label">Renews:</span>
-                  <span class="value"
-                    ><%= new
-                    Date(subscription.current_period_end).toLocaleDateString()
-                    %></span
-                  >
+                  <span class="label">Source:</span>
+                  <span class="value" style="color: #9146ff;">Twitch Subscription</span>
+                </div>
+                <div class="status-item">
+                  <span class="label">Tier:</span>
+                  <span class="value"><%= tierName %></span>
+                </div>
+                <% } else if (hasRoleBypass) { %>
+                <div class="status-item">
+                  <span class="label">Source:</span>
+                  <span class="value" style="color: var(--warning);">Role Access (<%= role %>)</span>
                 </div>
                 <% } %>
               </div>
+              <button class="btn btn-ghost" style="margin-top: 16px;" onclick="refreshPremiumStatus()">
+                <i class="fas fa-sync"></i> Refresh Status
+              </button>
               <% } else { %>
-              <p style="color: var(--text-muted);">No active subscription found.</p>
+              <p style="color: var(--text-muted);">No active premium access.</p>
+              <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Subscribe to antiparty on Twitch to unlock premium features!</p>
               <button class="btn btn-primary" style="margin-top: 16px;" onclick="window.location.href='/subscribe'">
-                Subscribe Now
+                Get Premium
               </button>
               <% } %>
             </div>
@@ -2431,7 +2431,7 @@
               </div>
               <% } else { %>
               <p style="color: var(--text-muted);">No custom bot linked yet.</p>
-              <% if (subscription) { %>
+              <% if (hasSubscription) { %>
               <div style="display: flex; gap: 10px; align-items: center; margin-top: 1rem;">
                 <a href="/link-custom-bot" class="btn btn-primary" style="margin: 0;">Link Custom Bot</a>
                 <button class="btn btn-ghost" onclick="copyCustomBotAuthLink()" title="Copy Link to authorize in another browser">
@@ -2439,7 +2439,8 @@
                 </button>
               </div>
               <% } else { %>
-                <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Subscription required to link custom bot.</p>
+                <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Subscribe to antiparty on Twitch to link a custom bot.</p>
+                <a href="/subscribe" class="btn btn-primary" style="margin-top: 8px;">Get Premium</a>
               <% } %>
               <% } %>
             </div>
@@ -2483,6 +2484,35 @@
                     } catch (e) {
                          console.error(e);
                          showToast('Error getting link', 'danger');
+                    }
+                }
+
+                async function refreshPremiumStatus() {
+                    try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
+                        const res = await fetch('/api/subscription/refresh', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken
+                            }
+                        });
+                        const data = await res.json();
+
+                        if (data.needsReauth) {
+                            // User needs to re-authorize for subscription scope
+                            showToast('Re-authorizing with Twitch...', 'info');
+                            window.location.href = data.reauthUrl || '/reauth';
+                        } else if (data.success) {
+                            showToast(data.message, data.hasSubscription ? 'success' : 'info');
+                            // Reload page to reflect updated status
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showToast('Failed to refresh status', 'danger');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        showToast('Error refreshing status', 'danger');
                     }
                 }
               </script>

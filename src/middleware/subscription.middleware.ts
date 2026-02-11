@@ -6,13 +6,15 @@ import logger from '@/util/logger';
  * Middleware to require an active subscription for route access
  * Redirects to /subscribe if user doesn't have subscription
  */
-export function requireSubscription(req: Request, res: Response, next: NextFunction) {
+export function requireSubscription(req: Request, res: Response, next: NextFunction): void {
   if (!req.session.isUser) {
-    return res.redirect('/auth/twitch');
+    res.redirect('/auth/twitch');
+    return;
   }
 
   if (req.session.hasSubscription) {
-    return next();
+    next();
+    return;
   }
 
   // Allow subscribers, testers, staff, and admins to bypass subscription requirement
@@ -25,24 +27,27 @@ export function requireSubscription(req: Request, res: Response, next: NextFunct
     } else {
         logger.info(`[Subscription] User ${req.session.twitchUsername} bypassed subscription requirement (role: ${role})`);
     }
-    return next();
+    next();
+    return;
   }
 
   logger.info(`[Subscription] User ${req.session.twitchUsername} attempted to access subscription-only route without subscription`);
-  return res.redirect('/subscribe');
+  res.redirect('/subscribe');
 }
 
 /**
  * API version of subscription middleware
  * Returns 403 JSON error instead of redirecting
  */
-export function requireSubscriptionAPI(req: Request, res: Response, next: NextFunction) {
+export function requireSubscriptionAPI(req: Request, res: Response, next: NextFunction): void {
   if (!req.session.isUser) {
-    return res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Authentication required' });
+    return;
   }
 
   if (req.session.hasSubscription) {
-    return next();
+    next();
+    return;
   }
 
   // Allow subscribers, testers, staff, and admins to bypass subscription requirement
@@ -55,13 +60,15 @@ export function requireSubscriptionAPI(req: Request, res: Response, next: NextFu
     } else {
         logger.info(`[Subscription API] User ${req.session.twitchUsername} bypassed subscription requirement (role: ${role})`);
     }
-    return next();
+    next();
+    return;
   }
 
   logger.info(`[Subscription API] User ${req.session.twitchUsername} attempted to access subscription-only API without subscription`);
-  return res.status(403).json({ 
+  res.status(403).json({
     error: 'Subscription required',
-    message: 'This feature requires an active subscription. Please visit /subscribe to upgrade.'
+    message: 'Subscribe to antiparty on Twitch to unlock premium features!',
+    subscribeUrl: 'https://www.twitch.tv/subs/antiparty'
   });
 }
 

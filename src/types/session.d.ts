@@ -12,6 +12,7 @@ declare module 'express-session' {
         channelId?: number;
         hasSubscription?: boolean;
         subscriptionTier?: string | null;
+        hasSubscriptionScope?: boolean; // Whether user has user:read:subscriptions scope
 
         // Admin session properties
         isAdmin?: boolean;

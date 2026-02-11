@@ -6,7 +6,8 @@ import { Router, Request, Response } from 'express';
 import axios from 'axios';
 import { Channel, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
-import { verifyOAuthState, encryptToken } from '@/util/crypto';
+import { verifyOAuthState } from '@/util/crypto';
+import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
 
 const router = Router();
 
@@ -18,8 +19,10 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
  * Get correct redirect URI based on environment
  */
 const getRedirectUri = () => {
-    const uri = "https://finalsrs.com/callback";
-    logger.info(`[Auth] Using redirect URI: ${uri}`);
+    const uri = getTwitchRedirectUri();
+    if (isDevelopment()) {
+        logger.info(`[Auth] Using redirect URI: ${uri}`);
+    }
     return uri;
 };
 
@@ -28,7 +31,7 @@ const getRedirectUri = () => {
  */
 const getAuthUrl = () => {
     const scope = encodeURIComponent(
-        "channel:moderate user:read:chat user:bot channel:bot"
+        "channel:moderate user:read:chat user:bot channel:bot user:read:subscriptions"
     );
     return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${getRedirectUri()}&response_type=code&scope=${scope}&force_verify=true`;
 };
@@ -44,6 +47,17 @@ router.get("/login", (req: any, res: any) => {
     }
     const authUrl = getAuthUrl();
     logger.info(`Generated auth URL: ${authUrl}`);
+    res.redirect(authUrl);
+});
+
+/**
+ * GET /reauth
+ * Force re-authorization to get new scopes (like user:read:subscriptions)
+ * Users with old sessions need to re-auth to use subscription features
+ */
+router.get("/reauth", (req: any, res: any) => {
+    const authUrl = getAuthUrl();
+    logger.info(`[Auth] User ${req.session?.twitchUsername || 'unknown'} re-authorizing for new scopes`);
     res.redirect(authUrl);
 });
 
@@ -146,13 +160,13 @@ router.get("/callback", async (req: any, res: any) => {
                 { where: { channel_id: channelId } }
             );
 
-            // Upsert CustomBotAccount with encrypted tokens
+            // Upsert CustomBotAccount with tokens
              await CustomBotAccount.upsert({
                 channel_id: channelId,
                 bot_username: twitchUsername,
                 bot_twitch_user_id: twitchUserId,
-                bot_access_token: encryptToken(access_token),
-                bot_refresh_token: encryptToken(refresh_token),
+                bot_access_token: access_token,
+                bot_refresh_token: refresh_token,
                 bot_token_expires_at: expirationTime,
                 is_active: true,
                 created_at: new Date(),
@@ -179,11 +193,11 @@ router.get("/callback", async (req: any, res: any) => {
         }
 
         // --- Normal Login Flow ---
-        // Upsert user in DB with encrypted tokens
+        // Upsert user in DB with tokens
         await Channel.upsert({
             username: twitchUsername,
-            access_token: encryptToken(access_token),
-            refresh_token: encryptToken(refresh_token),
+            access_token: access_token,
+            refresh_token: refresh_token,
             token_expires_at: expirationTime,
             twitch_user_id: twitchUserId,
         });
@@ -203,9 +217,15 @@ router.get("/callback", async (req: any, res: any) => {
                     req.session.isUser = true;
                     req.session.twitchUserId = twitchUserId;
                     req.session.twitchUsername = twitchUsername;
+                    req.session.channelId = channel?.id; // Store channel ID for subscription checks
                     req.session.role = userRole; // Store role in session
                     req.session.isAdmin = userRole === 'admin'; // Backward compatibility or convenience
-                    
+                    req.session.hasSubscriptionScope = true; // Mark that user has new scopes
+
+                    // Store subscription status from DB
+                    req.session.hasSubscription = channel?.has_subscription || false;
+                    req.session.subscriptionTier = channel?.subscription_tier || null;
+
                     // If they have a dashboard-capable role, set the primary username for logs/admin
                     if (userRole === 'admin' || userRole === 'Staff') {
                         req.session.username = twitchUsername;

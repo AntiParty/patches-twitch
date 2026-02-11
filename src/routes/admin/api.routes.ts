@@ -466,25 +466,37 @@ router.get('/api/subscriptions', requireAdminAPI, async (req: any, res: any) => 
 router.get('/api/subscription-stats', requireAdminAPI, async (req: any, res: any) => {
     try {
         const { Subscription, CustomBotAccount } = await import('@/db');
+        const { Op } = await import('sequelize');
 
         const totalSubscribers = await Channel.count({ where: { has_subscription: true } });
         const activeSubscriptions = await Subscription.count({ where: { status: 'active' } });
         const customBotUsers = await CustomBotAccount.count({ where: { is_active: true } });
+
+        // Twitch subscribers (tier 1000, 2000, 3000)
+        const twitchSubscribers = await Channel.count({
+            where: {
+                has_subscription: true,
+                subscription_tier: { [Op.in]: ['1000', '2000', '3000'] }
+            }
+        });
+
+        // Manual grants (not Twitch tier)
+        const manualGrants = await Channel.count({
+            where: {
+                has_subscription: true,
+                subscription_tier: { [Op.notIn]: ['1000', '2000', '3000'] }
+            }
+        });
 
         // Role-based access (testers, staff, admins without subscription)
         const testerCount = await Channel.count({ where: { role: 'tester', has_subscription: false } });
         const staffCount = await Channel.count({ where: { role: 'Staff', has_subscription: false } });
         const adminCount = await Channel.count({ where: { role: 'admin', has_subscription: false } });
 
-        // Manual grants (test subscriptions)
-        const manualGrants = await Subscription.count({
-            where: {
-                status: 'active',
-            }
-        });
-
         res.json({
             totalSubscribers,
+            twitchSubscribers,
+            manualGrants,
             activeSubscriptions,
             customBotUsers,
             roleBypass: {
@@ -493,7 +505,6 @@ router.get('/api/subscription-stats', requireAdminAPI, async (req: any, res: any
                 admins: adminCount,
                 total: testerCount + staffCount + adminCount,
             },
-            manualGrants,
             totalPremiumAccess: totalSubscribers + testerCount + staffCount + adminCount,
         });
     } catch (err) {

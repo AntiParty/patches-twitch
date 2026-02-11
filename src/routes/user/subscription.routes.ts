@@ -5,8 +5,9 @@ import { requireSubscription, requireSubscriptionAPI } from '@/middleware/subscr
 import { csrfProtection, csrfErrorHandler } from '@/middleware/csrf.middleware';
 import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
-import axios from 'axios';
-import { signOAuthState, verifyOAuthState } from '@/util/crypto';
+import { signOAuthState } from '@/util/crypto';
+import { checkAndUpdatePremiumStatus, getTierName } from '@/services/twitchSubscription.service';
+import { getTwitchRedirectUri } from '@/util/envUtils';
 
 const router = Router();
 
@@ -16,15 +17,14 @@ router.use(csrfErrorHandler);
 /**
  * GET /subscribe
  * Display subscription landing page
+ * Premium is granted by subscribing to antiparty on Twitch
  */
-router.get('/subscribe', requireUser, async (req: Request, res: Response) => {
+router.get('/subscribe', requireUser, csrfProtection, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
-    
-    // Check if user already has subscription
-    const subscription = await Subscription.findOne({
-      where: { channel_id: channelId }
-    });
+
+    // Check current subscription status from DB
+    const channel = await Channel.findByPk(channelId);
 
     res.render('subscribe', {
       user: {
@@ -32,8 +32,9 @@ router.get('/subscribe', requireUser, async (req: Request, res: Response) => {
         has_subscription: req.session.hasSubscription
       },
       hasSubscription: req.session.hasSubscription,
-      subscription,
-      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      subscriptionTier: channel?.subscription_tier || null,
+      tierName: getTierName(channel?.subscription_tier || null),
+      csrfToken: req.csrfToken(),
     });
   } catch (error) {
     logger.error('[Subscription] Error loading subscribe page:', error);
@@ -48,7 +49,7 @@ router.get('/subscribe', requireUser, async (req: Request, res: Response) => {
 router.get('/subscription/manage', requireUser, requireSubscription, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
-    
+
     const subscription = await Subscription.findOne({
       where: { channel_id: channelId }
     });
@@ -84,9 +85,7 @@ router.get('/link-custom-bot', requireUser, requireSubscription, (req: Request, 
     timestamp: Date.now(),
   });
 
-  const redirectUri = process.env.TWITCH_REDIRECT_URI || (process.env.NODE_ENV === "production"
-    ? "https://finalsrs.com/callback"
-    : "http://localhost:3000/callback");
+  const redirectUri = getTwitchRedirectUri();
   const scopes = [
     'chat:read',
     'chat:edit',
@@ -112,9 +111,7 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
     timestamp: Date.now(),
   });
 
-  const redirectUri = process.env.TWITCH_REDIRECT_URI || (process.env.NODE_ENV === "production"
-    ? "https://finalsrs.com/callback"
-    : "http://localhost:3000/callback");
+  const redirectUri = getTwitchRedirectUri();
   const scopes = [
     'chat:read',
     'chat:edit',
@@ -127,12 +124,6 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
 
   res.json({ url: authUrl });
 });
-
-/**
- * GET /link-custom-bot/callback
- * Handle custom bot OAuth callback
- */
-
 
 /**
  * POST /api/subscription/unlink-bot
@@ -171,9 +162,7 @@ router.get('/api/subscription/status', requireUserAPI, async (req: Request, res:
   try {
     const channelId = req.session.channelId!;
 
-    const subscription = await Subscription.findOne({
-      where: { channel_id: channelId }
-    });
+    const channel = await Channel.findByPk(channelId);
 
     const customBot = await CustomBotAccount.findOne({
       where: { channel_id: channelId, is_active: true }
@@ -181,11 +170,8 @@ router.get('/api/subscription/status', requireUserAPI, async (req: Request, res:
 
     res.json({
       hasSubscription: req.session.hasSubscription,
-      subscription: subscription ? {
-        status: subscription.status,
-        planType: subscription.plan_type,
-        currentPeriodEnd: subscription.current_period_end,
-      } : null,
+      subscriptionTier: channel?.subscription_tier || null,
+      tierName: getTierName(channel?.subscription_tier || null),
       customBot: customBot ? {
         username: customBot.bot_username,
         isActive: customBot.is_active,
@@ -195,6 +181,71 @@ router.get('/api/subscription/status', requireUserAPI, async (req: Request, res:
     logger.error('[Subscription] Error getting status:', error);
     res.status(500).json({ error: 'Failed to get subscription status' });
   }
+});
+
+/**
+ * POST /api/subscription/refresh
+ * Refresh premium status by checking Twitch subscription to antiparty
+ */
+router.post('/api/subscription/refresh', requireUserAPI, csrfProtection, async (req: Request, res: Response) => {
+  try {
+    const channelId = req.session.channelId!;
+
+    // Check if user needs to re-authorize for subscription scope
+    if (!req.session.hasSubscriptionScope) {
+      logger.info(`[Subscription] User ${req.session.twitchUsername} needs to re-authorize for subscription scope`);
+      res.json({
+        success: false,
+        needsReauth: true,
+        message: 'Please re-authorize to enable subscription checking',
+        reauthUrl: '/reauth'
+      });
+      return;
+    }
+
+    logger.info(`[Subscription] User ${req.session.twitchUsername} requesting premium status refresh`);
+
+    // Check Twitch subscription and update database
+    const status = await checkAndUpdatePremiumStatus(channelId);
+
+    // Update session
+    req.session.hasSubscription = status.isPremium;
+    req.session.subscriptionTier = status.tier;
+
+    // Save session
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.json({
+      success: true,
+      hasSubscription: status.isPremium,
+      subscriptionTier: status.tier,
+      tierName: getTierName(status.tier),
+      message: status.isPremium
+        ? `Premium active! You're subscribed to antiparty (${getTierName(status.tier)})`
+        : 'No active subscription found. Subscribe to antiparty on Twitch to unlock premium features!'
+    });
+
+  } catch (error) {
+    logger.error('[Subscription] Error refreshing status:', error);
+    res.status(500).json({ error: 'Failed to refresh subscription status' });
+  }
+});
+
+/**
+ * GET /api/subscription/check
+ * Quick check if user has premium (no refresh, just session check)
+ */
+router.get('/api/subscription/check', requireUserAPI, (req: Request, res: Response) => {
+  res.json({
+    hasSubscription: req.session.hasSubscription || false,
+    subscriptionTier: req.session.subscriptionTier || null,
+    tierName: getTierName(req.session.subscriptionTier || null)
+  });
 });
 
 export default router;

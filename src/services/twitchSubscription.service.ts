@@ -107,7 +107,7 @@ export async function checkAndUpdatePremiumStatus(channelId: number): Promise<Su
                 tier: null,
                 giftedBy: null,
                 checkedAt: new Date()
-            };
+            }; 
         }
 
         if (!channel.access_token || !channel.twitch_user_id) {

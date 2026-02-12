@@ -174,17 +174,35 @@ router.get("/callback", async (req: any, res: any) => {
             });
             
             logger.info(`[Custom Bot] Linked bot ${twitchUsername} to user ${targetUsername}`);
-            
+
+            // Notify bot service to reconnect with the new custom bot
+            let swapSuccess = false;
+            try {
+                await axios.post("http://localhost:4000/reconnect-custom-bot", {
+                    twitch_user_id: targetChannel.twitch_user_id,
+                    username: targetUsername,
+                });
+                swapSuccess = true;
+                logger.info(`[Custom Bot] Bot swapped instantly for ${targetUsername}`);
+            } catch (swapError) {
+                logger.error(`[Custom Bot] Failed to swap bot instantly for ${targetUsername}:`, swapError);
+                // Continue anyway - user can manually refresh
+            }
+
             // Render specific Success HTML
+            const statusMessage = swapSuccess
+                ? `Bot <strong>${twitchUsername}</strong> is now active for <strong>${targetUsername}</strong>!`
+                : `Bot <strong>${twitchUsername}</strong> has been linked to <strong>${targetUsername}</strong>. Please refresh your dashboard to activate it.`;
+
             return res.send(`
                 <html>
                     <body style="background: #0f0f13; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif;">
                         <div style="text-align: center; background: #1f1f23; padding: 40px; border-radius: 8px; border: 1px solid #2d2d35;">
                             <h1 style="color: #00b35f; margin-bottom: 20px;">Success!</h1>
                             <p style="margin-bottom: 20px;">
-                                Bot <strong>${twitchUsername}</strong> has been linked to <strong>${targetUsername}</strong>.
+                                ${statusMessage}
                             </p>
-                            <p style="color: #adadb8;">You can now close this window and refresh your main dashboard.</p>
+                            <p style="color: #adadb8;">${swapSuccess ? 'You can now close this window.' : 'You can now close this window and refresh your main dashboard.'}</p>
                             <button onclick="window.close()" style="margin-top: 20px; padding: 10px 20px; background: #9147ff; color: white; border: none; border-radius: 4px; cursor: pointer;">Close Window</button>
                         </div>
                     </body>

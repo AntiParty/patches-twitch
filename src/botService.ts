@@ -69,6 +69,52 @@ dbReady.then(async () => {
     });
 
 
+    // Reconnect channel with custom bot (used after linking a custom bot account)
+    controlApp.post("/reconnect-custom-bot", async (req: any, res: any) => {
+      const { twitch_user_id, username } = req.body;
+      if (!twitch_user_id && !username) {
+        return res.status(400).send("Missing twitch_user_id or username");
+      }
+
+      try {
+        // Find the channel
+        let user = null;
+        if (twitch_user_id) {
+          user = await Channel.findOne({ where: { twitch_user_id } });
+        }
+        if (!user && username) {
+          user = await Channel.findOne({ where: { username } });
+        }
+
+        if (!user) {
+          return res.status(404).send("User not found in DB");
+        }
+
+        const uname = user.username;
+
+        // Stop the existing bot connection
+        await botManager.stopBotForUser(uname);
+        logger.info(`[ControlAPI] Stopped existing bot for ${uname}, reconnecting with custom bot...`);
+
+        // Small delay to ensure socket cleanup completes
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Start the bot fresh - this will pick up the custom bot from DB
+        await botManager.startBotForUser(
+          uname,
+          user.access_token || "",
+          user.refresh_token || "",
+          user.twitch_user_id || ""
+        );
+
+        res.json({ success: true, message: `Custom bot connected for ${uname}` });
+        logger.info(`[ControlAPI] Reconnected ${uname} with custom bot`);
+      } catch (err) {
+        logger.error("Failed to reconnect with custom bot:", err);
+        res.status(500).send("Internal error");
+      }
+    });
+
     // Remove channel and disconnect EventSub WebSocket
     controlApp.post("/remove-channel", async (req: any, res: any) => {
       const { twitch_user_id, username } = req.body;

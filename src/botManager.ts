@@ -69,9 +69,9 @@ export class BotManager {
     }
   }
 
-  public async stopBotForUser(username: string) {
+  public async stopBotForUser(username: string, intentional: boolean = true) {
     try {
-      await stopChatBot(username);
+      await stopChatBot(username, intentional);
       logger.info(`Bot stopped for ${username}`);
     } catch (error) {
       logger.error(`Failed to stop bot for ${username}:`, error);

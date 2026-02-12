@@ -414,68 +414,60 @@
             margin-top: 4px;
         }
 
-        /* Featured Streamers - Static Grid */
+        /* Featured Streamers - Clean Grid */
         .featured {
-            padding: 60px 32px;
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
+            padding: 48px 32px;
+            background: var(--bg-primary);
         }
 
-        .featured-container {
-            max-width: 900px;
+        .featured-inner {
+            max-width: 800px;
             margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            flex-wrap: wrap;
+            text-align: center;
         }
 
         .featured-label {
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
             color: var(--text-muted);
-            margin-right: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 28px;
+        }
+
+        .featured-grid {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .featured-item {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             color: var(--text-secondary);
             font-size: 14px;
             font-weight: 600;
             white-space: nowrap;
-            padding: 10px 16px;
+            padding: 8px 16px 8px 8px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 100px;
-            /* Pill shape looks more modern */
+            border-radius: 50px;
             transition: all 0.2s ease;
+            text-decoration: none;
         }
 
-        .featured-viewers {
-            font-size: 11px;
-            color: var(--red);
-            /* Red live indicator style */
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .featured-viewers::before {
-            content: '';
-            width: 4px;
-            height: 4px;
-            background: var(--red);
-            border-radius: 50%;
+        .featured-item:hover {
+            border-color: var(--purple);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(145, 70, 255, 0.15);
         }
 
         .featured-avatar {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--purple), var(--accent));
             display: flex;
@@ -495,66 +487,59 @@
             border-radius: 50%;
         }
 
-        /* When using an image, hide any text fallback */
-        .featured-avatar img + span {
-            display: none;
-        }
-
-        .featured-info {
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-
         .featured-name {
             font-weight: 600;
             color: var(--text-primary);
             font-size: 13px;
         }
 
-        .featured-title {
-            font-size: 11px;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .featured-title.partner {
+        .featured-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            font-weight: 700;
             color: var(--purple);
+            background: rgba(145, 70, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 4px;
         }
 
-        .featured-title.verified {
-            color: var(--accent);
-        }
-
-        .featured-count {
-            color: var(--text-muted);
+        .featured-more {
             font-size: 13px;
-            font-weight: 500;
+            color: var(--text-muted);
+            padding: 8px 16px;
         }
 
         /* How It Works Section */
         .how-it-works {
-            padding: 80px 32px;
-            background: var(--bg-primary);
+            padding: 64px 32px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
         }
 
         .how-it-works-container {
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
             display: flex;
-            align-items: center;
+            align-items: stretch;
             justify-content: center;
-            gap: 24px;
+            gap: 16px;
         }
 
         .step {
+            flex: 1;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 16px;
-            padding: 24px 28px;
+            text-align: center;
+            gap: 12px;
+            padding: 24px 20px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 12px;
             transition: all 0.2s;
         }
 
@@ -564,21 +549,21 @@
         }
 
         .step-number {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             background: linear-gradient(135deg, var(--accent), var(--purple));
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 18px;
+            font-size: 16px;
             color: #000;
             flex-shrink: 0;
         }
 
         .step-content h3 {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             margin-bottom: 4px;
         }
@@ -586,6 +571,7 @@
         .step-content p {
             font-size: 13px;
             color: var(--text-muted);
+            line-height: 1.5;
         }
 
         .step-content code {
@@ -594,21 +580,16 @@
             padding: 2px 6px;
             border-radius: 4px;
             font-family: 'SF Mono', Monaco, monospace;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .step-arrow {
-            font-size: 24px;
-            color: var(--text-muted);
+            display: none;
         }
 
-        @media (max-width: 900px) {
+        @media (max-width: 700px) {
             .how-it-works-container {
                 flex-direction: column;
-            }
-
-            .step-arrow {
-                transform: rotate(90deg);
             }
         }
 
@@ -682,25 +663,6 @@
             font-size: 13px;
         }
 
-        /* Updated Marquee Styles */
-        .marquee-track {
-            display: flex;
-            gap: 24px;
-            animation: marquee 50s linear infinite;
-            width: max-content;
-            padding: 10px 0;
-        }
-
-        /* Ensure the animation doesn't "jump" by having two identical sets of items */
-        @keyframes marquee {
-            0% {
-                transform: translateX(0);
-            }
-
-            100% {
-                transform: translateX(-50%);
-            }
-        }
 
         /* Twitch Chat Mockup */
         .twitch-chat-mockup {
@@ -1088,85 +1050,42 @@
 
     <!-- Featured Streamers -->
     <section class="featured">
-        <div class="featured-label">Trusted by top community members</div>
-        <div class="marquee-container">
-            <div class="marquee-track">
-                <!-- Use img inside featured-avatar for profile pics, or just text as fallback -->
-                <div class="featured-item">
+        <div class="featured-inner">
+            <div class="featured-label">Trusted by streamers</div>
+            <div class="featured-grid">
+                <a href="https://twitch.tv/antiparty" target="_blank" class="featured-item">
                     <div class="featured-avatar">
                         <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png" alt="antiparty">
                     </div>
-                    <span>antiparty</span>
-                    <span class="featured-viewers">15k</span>
-                </div>
-                <div class="featured-item">
-                    
+                    <span class="featured-name">antiparty</span>
+                    <span class="featured-badge">Partner</span>
+                </a>
+                <a href="https://twitch.tv/LeftClickSnipe" target="_blank" class="featured-item">
                     <div class="featured-avatar">
                         <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png" alt="LeftClickSnipe">
                     </div>
-                    <span>LeftClickSnipe</span>
-                    <span class="featured-viewers">8.2k</span>
-                </div>
-                <div class="featured-item">
+                    <span class="featured-name">LeftClickSnipe</span>
+                </a>
+                <a href="https://twitch.tv/Ekazoko" target="_blank" class="featured-item">
                     <div class="featured-avatar">
                         <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/c08fd4bf-44cc-40fd-9068-7ceba79a0569-profile_image-70x70.png" alt="Ekazoko">
                     </div>
-                    <span>Ekazoko</span>
-                    <span class="featured-viewers">24k</span>
-                </div>
-                <div class="featured-item">
-                    
+                    <span class="featured-name">Ekazoko</span>
+                    <span class="featured-badge">Partner</span>
+                </a>
+                <a href="https://twitch.tv/KS_Rachel" target="_blank" class="featured-item">
                     <div class="featured-avatar">
                         <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/7ca2298b-d08c-4c6d-bd61-56ca7f59f576-profile_image-70x70.jpeg" alt="KS_Rachel">
                     </div>
-                    <span>KS_Rachel</span>
-                    <span class="featured-viewers">2.4k</span>
-                </div>
-                <div class="featured-item">
+                    <span class="featured-name">KS_Rachel</span>
+                </a>
+                <a href="https://twitch.tv/its_gdawg" target="_blank" class="featured-item">
                     <div class="featured-avatar">
                         <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png" alt="its_gdawg">
                     </div>
-                    <span>its_gdawg</span>
-                    <span class="featured-viewers">500</span>
-                </div>
-                <!-- Duplicate set for seamless loop -->
-                <div class="featured-item">
-                    <div class="featured-avatar">
-                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png" alt="antiparty">
-                    </div>
-                    <span>antiparty</span>
-                    <span class="featured-viewers">15k</span>
-                </div>
-                <div class="featured-item">
-                    
-                    <div class="featured-avatar">
-                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/b984141b-9b35-48e3-b663-97384f44fce6-profile_image-70x70.png" alt="LeftClickSnipe">
-                    </div>
-                    <span>LeftClickSnipe</span>
-                    <span class="featured-viewers">8.2k</span>
-                </div>
-                <div class="featured-item">
-                    <div class="featured-avatar">
-                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/c08fd4bf-44cc-40fd-9068-7ceba79a0569-profile_image-70x70.png" alt="Ekazoko">
-                    </div>
-                    <span>Ekazoko</span>
-                    <span class="featured-viewers">24k</span>
-                </div>
-                <div class="featured-item">
-                    
-                    <div class="featured-avatar">
-                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/7ca2298b-d08c-4c6d-bd61-56ca7f59f576-profile_image-70x70.jpeg" alt="KS_Rachel">
-                    </div>
-                    <span>KS_Rachel</span>
-                    <span class="featured-viewers">2.4k</span>
-                </div>
-                <div class="featured-item">
-                    <div class="featured-avatar">
-                        <img src="https://static-cdn.jtvnw.net/jtv_user_pictures/ca6bfcac-5b9a-4edb-ac08-35f5a809855f-profile_image-70x70.png" alt="its_gdawg">
-                    </div>
-                    <span>its_gdawg</span>
-                    <span class="featured-viewers">500</span>
-                </div>
+                    <span class="featured-name">its_gdawg</span>
+                </a>
+                <span class="featured-more">+500 more</span>
             </div>
         </div>
     </section>
@@ -1178,23 +1097,21 @@
                 <div class="step-number">1</div>
                 <div class="step-content">
                     <h3>Connect Twitch</h3>
-                    <p>One click login with your Twitch account</p>
+                    <p>One-click login with your Twitch account</p>
                 </div>
             </div>
-            <div class="step-arrow">→</div>
             <div class="step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <h3>Link your IGN</h3>
-                    <p>Type <code>!link YourName#1234</code> in chat</p>
+                    <h3>Link IGN</h3>
+                    <p>Type <code>!link Name#1234</code></p>
                 </div>
             </div>
-            <div class="step-arrow">→</div>
             <div class="step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <h3>You're live</h3>
-                    <p>Chat uses <code>!rank</code>, <code>!peak</code>, and more</p>
+                    <h3>Done</h3>
+                    <p>Chat uses <code>!rank</code> <code>!peak</code> and more</p>
                 </div>
             </div>
         </div>
@@ -1373,7 +1290,7 @@
             </div>
         </div>
         <div class="footer-bottom">
-            <span>&copy; 2025 FinalsRS. All rights reserved.</span>
+            <span>&copy; 2026 FinalsRS. All rights reserved.</span>
             <span>Not affiliated with Embark Studios</span>
         </div>
     </footer>

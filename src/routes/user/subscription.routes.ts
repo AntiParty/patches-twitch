@@ -1,5 +1,6 @@
 // subscription.routes.ts
 import { Router, Request, Response } from 'express';
+import axios from 'axios';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
 import { requireSubscription, requireSubscriptionAPI } from '@/middleware/subscription.middleware';
 import { csrfProtection, csrfErrorHandler } from '@/middleware/csrf.middleware';
@@ -128,19 +129,44 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
 
 /**
  * POST /api/subscription/unlink-bot
- * Unlink custom bot account
+ * Unlink custom bot account and swap back to default bot
  */
 router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, requireSubscriptionAPI, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
+    const username = req.session.twitchUsername!;
 
+    // Deactivate the custom bot
     await CustomBotAccount.update(
       { is_active: false },
       { where: { channel_id: channelId } }
     );
 
-    logger.info(`[Custom Bot] User ${req.session.twitchUsername} unlinked custom bot`);
-    res.json({ success: true, message: 'Custom bot unlinked successfully' });
+    logger.info(`[Custom Bot] User ${username} unlinked custom bot`);
+
+    // Swap back to default bot instantly
+    let swapSuccess = false;
+    try {
+      const channel = await Channel.findByPk(channelId);
+      if (channel) {
+        await axios.post("http://localhost:4000/reconnect-custom-bot", {
+          twitch_user_id: channel.twitch_user_id,
+          username: username,
+        });
+        swapSuccess = true;
+        logger.info(`[Custom Bot] Swapped back to default bot for ${username}`);
+      }
+    } catch (swapError) {
+      logger.error(`[Custom Bot] Failed to swap back to default bot for ${username}:`, swapError);
+      // Continue anyway - bot will use default on next reconnect
+    }
+
+    res.json({
+      success: true,
+      message: swapSuccess
+        ? 'Custom bot unlinked and default bot activated'
+        : 'Custom bot unlinked. Default bot will be active on next reconnect.'
+    });
   } catch (error) {
     logger.error('[Custom Bot] Error unlinking bot:', error);
     res.status(500).json({ error: 'Failed to unlink custom bot' });

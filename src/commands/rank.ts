@@ -12,6 +12,35 @@ interface CommandContext {
   tags?: Record<string, any>;
 }
 
+/**
+ * Validates and sanitizes a player ID input
+ * Valid format: Name#1234 (alphanumeric name, # separator, 1-6 digits)
+ * Returns sanitized player ID or null if invalid
+ */
+function validatePlayerId(input: string): string | null {
+  if (!input || typeof input !== 'string') return null;
+
+  // Trim and limit length to prevent abuse
+  const trimmed = input.trim().slice(0, 50);
+
+  // Must contain exactly one # separator
+  const parts = trimmed.split('#');
+  if (parts.length !== 2) return null;
+
+  const [name, tag] = parts;
+
+  // Name: 1-30 alphanumeric characters, underscores, hyphens, spaces allowed
+  // More permissive to support international names
+  if (!name || name.length < 1 || name.length > 30) return null;
+  if (!/^[\w\s\-]+$/i.test(name)) return null;
+
+  // Tag: 1-6 digits only
+  if (!tag || !/^\d{1,6}$/.test(tag)) return null;
+
+  // Return sanitized version
+  return `${name}#${tag}`;
+}
+
 const processedMessages = new Set<string>();
 
 function getCacheDir() {
@@ -78,7 +107,7 @@ async function maybeSendCustomResponse(
   return false;
 }
 
-export const execute = async (ctx: CommandContext) => {
+export const execute = async (ctx: CommandContext, _channel?: string, _message?: string, _tags?: any, args?: string[]) => {
   const username = ctx.tags?.["display-name"] || ctx.user || "user";
   const messageId = ctx.tags?.["id"] || `msg_${Date.now()}`;
 
@@ -89,16 +118,44 @@ export const execute = async (ctx: CommandContext) => {
   const normalizedChannel = ctx.channel.replace("#", "");
 
   try {
-    const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } }) as any;
-    if (!channelInstance?.player_id?.trim()) {
-      await ctx.say(
-        `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`,
-        ctx.tags?.["id"]
-      );
-      return;
+    // Check if a player ID was provided as an argument (e.g., !rank carnifex#7330)
+    let finalsName: string | null = null;
+    let isLookup = false;
+    let lookupTarget: string | null = null;
+
+    if (args && args.length > 0) {
+      // Join args in case player name has spaces (e.g., "Some Name#1234")
+      const inputPlayerId = args.join(' ');
+      const validatedId = validatePlayerId(inputPlayerId);
+
+      if (validatedId) {
+        finalsName = validatedId.toLowerCase();
+        isLookup = true;
+        lookupTarget = validatedId; // Keep original case for display
+      } else if (inputPlayerId.includes('#')) {
+        // User tried to look up a player but format is invalid
+        await ctx.say(
+          `@${username}, invalid player format. Use: !rank PlayerName#1234`,
+          ctx.tags?.["id"]
+        );
+        return;
+      }
+      // If no # in the arg, ignore it and fall through to streamer lookup
     }
 
-    const finalsName = channelInstance.player_id.toLowerCase();
+    // If no valid player ID provided, use the streamer's linked account
+    if (!finalsName) {
+      const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } }) as any;
+      if (!channelInstance?.player_id?.trim()) {
+        await ctx.say(
+          `@${username}, no THE FINALS player name linked. Use !link FinalsName#1234`,
+          ctx.tags?.["id"]
+        );
+        return;
+      }
+      finalsName = channelInstance.player_id.toLowerCase();
+    }
+
     const regularData = await getLatestLeaderboardData();
     const worldTourData = await getLatestWorldTourData();
 
@@ -109,10 +166,12 @@ export const execute = async (ctx: CommandContext) => {
 
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
+      // Case-insensitive exact match first
       let player = data.find(p => p.name.toLowerCase() === name);
       if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find(p => p.name.toLowerCase().startsWith(baseName));
+        // Fallback: match by base name (before #)
+        const baseName = name.split("#")[0].toLowerCase();
+        player = data.find(p => p.name.toLowerCase().startsWith(baseName + "#"));
       }
       return player;
     };
@@ -131,55 +190,79 @@ export const execute = async (ctx: CommandContext) => {
       found: player || wtPlayer ? "true" : "false",
     };
 
-    const usedCustom = await maybeSendCustomResponse("rank", ctx, vars);
-    if (usedCustom) return;
+    // Only use custom response for streamer's own rank, not lookups
+    if (!isLookup) {
+      const usedCustom = await maybeSendCustomResponse("rank", ctx, vars);
+      if (usedCustom) return;
+    }
 
-    // Check if user has a goal set
-    const goal = await RankGoal.findOne({ where: { channel: normalizedChannel } }) as any;
+    // Check if user has a goal set (only for streamer's rank)
+    const goal = !isLookup
+      ? await RankGoal.findOne({ where: { channel: normalizedChannel } }) as any
+      : null;
 
+    // Build response - different prefix for lookups vs streamer
     let response = `@${username}, `;
+    const displayName = isLookup ? lookupTarget : null;
+
     if (player && wtPlayer) {
-      response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+      if (isLookup) {
+        response += `${displayName} is ${player.rankScore.toLocaleString()} RS in ${player.league} | WT rank: #${wtPlayer.rank}`;
+      } else {
+        response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
 
-      // Add goal information if exists
-      if (goal && !goal.achieved && player.rank > goal.target_rank) {
-        const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
-        const rsAway = (goal.target_rank_score || 0) - player.rankScore;
+        // Add goal information if exists
+        if (goal && !goal.achieved && player.rank > goal.target_rank) {
+          const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
+          const rsAway = (goal.target_rank_score || 0) - player.rankScore;
 
-        if (rsAway > 0) {
-          response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
-          if (targetPlayer?.league) {
-            response += ` (${targetPlayer.league})`;
+          if (rsAway > 0) {
+            response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
+            if (targetPlayer?.league) {
+              response += ` (${targetPlayer.league})`;
+            }
           }
         }
+
+        response += ` | WT rank: #${wtPlayer.rank}`;
       }
-
-      response += ` | WT rank: #${wtPlayer.rank}`;
     } else if (player) {
-      response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+      if (isLookup) {
+        response += `${displayName} is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+      } else {
+        response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
 
-      // Add goal information if exists
-      if (goal && !goal.achieved && player.rank > goal.target_rank) {
-        const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
-        const rsAway = (goal.target_rank_score || 0) - player.rankScore;
+        // Add goal information if exists
+        if (goal && !goal.achieved && player.rank > goal.target_rank) {
+          const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
+          const rsAway = (goal.target_rank_score || 0) - player.rankScore;
 
-        if (rsAway > 0) {
-          response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
-          if (targetPlayer?.league) {
-            response += ` (${targetPlayer.league})`;
+          if (rsAway > 0) {
+            response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
+            if (targetPlayer?.league) {
+              response += ` (${targetPlayer.league})`;
+            }
           }
         }
       }
     } else if (wtPlayer) {
-      response += `WT rank: #${wtPlayer.rank}`;
+      if (isLookup) {
+        response += `${displayName} WT rank: #${wtPlayer.rank}`;
+      } else {
+        response += `WT rank: #${wtPlayer.rank}`;
+      }
     } else {
-      response += `not found on regular or World Tour leaderboards.`;
+      if (isLookup) {
+        response += `${displayName} not found on regular or World Tour leaderboards.`;
+      } else {
+        response += `not found on regular or World Tour leaderboards.`;
+      }
     }
 
     await ctx.say(response, ctx.tags?.["id"]);
   } catch (err) {
     logger.error("[rank] Error executing command:", err);
-    await ctx.say(`@${username}, something went wrong fetching your rank.`, ctx.tags?.["id"]);
+    await ctx.say(`@${username}, something went wrong fetching rank data.`, ctx.tags?.["id"]);
   }
 };
 

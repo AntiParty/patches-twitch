@@ -2,7 +2,6 @@ import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
-import { getStreamStatusWithAutoRefresh } from "../util/twitchUtils";
 
 export interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -101,10 +100,23 @@ export const execute = async (
       return;
     }
 
-    // 2. Check stream status
-    const streamStatus = await getStreamStatusWithAutoRefresh(sanitizedChannel);
-    if (!streamStatus?.isLive) {
-      await ctx.say(`Stream is currently offline.`, ctx.tags?.["id"]);
+    // 2. Check for active session (managed by EventSub + poller)
+    let session = (await StreamSession.findOne({
+      where: { channel: sanitizedChannel },
+    })) as any;
+
+    if (!session) {
+      // Also try lowercase match (sessions are stored lowercase)
+      session = (await StreamSession.findOne({
+        where: { channel: sanitizedChannel.toLowerCase() },
+      })) as any;
+    }
+
+    if (!session) {
+      await ctx.say(
+        `@${username}, no active session found. Tracking begins automatically when the stream goes live.`,
+        ctx.tags?.["id"]
+      );
       return;
     }
 
@@ -135,26 +147,15 @@ export const execute = async (
 
     if (!player && !wtPlayer) {
       await ctx.say(
-        `@${username}, you aren't currently in the Top 1000 or WT leaderboard.`,
+        `@${username}, not currently found on the leaderboards.`,
         ctx.tags?.["id"]
       );
       return;
     }
 
-    // 5. Session logic
+    // 5. Calculate current stats
     const currentScore = player?.rankScore ?? 0;
     const currentWTRank = wtPlayer?.rank ?? null;
-    let session = (await StreamSession.findOne({
-      where: { channel: sanitizedChannel },
-    })) as any;
-
-    if (!session) {
-      await ctx.say(
-        `@${username}, no active session found. Tracking will begin automatically when you go live and your stream is detected.`,
-        ctx.tags?.["id"]
-      );
-      return;
-    }
 
     // 6. Calculate session diff
     const diff = currentScore - session.start_score;

@@ -5,7 +5,8 @@ import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/rec
 import logger from '../util/logger';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
-const alertedMissingSession: Set<string> = new Set();
+const alertedMissingSession: Map<string, number> = new Map(); // username -> timestamp of alert
+const ALERT_EXPIRY_MS = 6 * 60 * 60 * 1000; // Clear stale alerts after 6 hours
 
 let lastTokenRefreshTime = 0;
 const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // Refresh app token every 30 minutes
@@ -80,6 +81,16 @@ export const startStreamSessionPolling = async () => {
           );
       }
 
+      // --- Prune stale alert entries ---
+      // Remove alerts for users who went offline (so they can be re-alerted next time)
+      // and remove any entries older than 6 hours regardless
+      const now = Date.now();
+      for (const [alertUser, alertTime] of alertedMissingSession) {
+        if (!liveUsernamesLower.has(alertUser) || (now - alertTime > ALERT_EXPIRY_MS)) {
+          alertedMissingSession.delete(alertUser);
+        }
+      }
+
       // --- Clean up stale sessions for users who are offline ---
       // If EventSub missed the stream.offline event, the poller catches it here
       for (const session of activeSessions) {
@@ -88,7 +99,7 @@ export const startStreamSessionPolling = async () => {
           // This user has an active session but is not live according to Twitch API
           // Grace period: only clean up if session is older than 5 minutes
           // (avoids race condition where stream just ended and EventSub is about to fire)
-          const sessionAge = Date.now() - new Date(session.started_at).getTime();
+          const sessionAge = now - new Date(session.started_at).getTime();
           if (sessionAge > 5 * 60 * 1000) {
             await StreamSession.destroy({ where: { channel: session.channel } });
             logger.info(`[Poller] Cleaned up stale session for ${session.channel} (offline but session existed)`);
@@ -125,7 +136,7 @@ export const startStreamSessionPolling = async () => {
                 logger.error(`Failed to send unlinked account alert to ${user.username}:`, e);
               }
 
-              alertedMissingSession.add(userLower);
+              alertedMissingSession.set(userLower, now);
               continue;
             }
             const playerId = channel.player_id.toLowerCase();
@@ -151,7 +162,7 @@ export const startStreamSessionPolling = async () => {
                 title: 'Missing Stream Session',
                 description: `User ${user.username} is live on Twitch, but no session has started in the bot and not found in leaderboard caches.`,
               });
-              alertedMissingSession.add(userLower);
+              alertedMissingSession.set(userLower, now);
               continue;
             }
             const startScore = player?.rankScore ?? 0;

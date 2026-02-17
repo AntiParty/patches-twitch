@@ -12,6 +12,7 @@ interface IRCClient {
   connected: boolean;
   reconnectAttempts: number;
   reconnectTimeout?: NodeJS.Timeout;
+  heartbeatInterval?: NodeJS.Timeout;
   intentionalDisconnect?: boolean;
   customBotId?: string;
   customBotToken?: string;
@@ -249,6 +250,12 @@ export const startChatBot = async (
   let lastActivity = Date.now();
   const HEARTBEAT_INTERVAL = 60_000; // send PING every minute
   const MAX_NO_ACTIVITY = 600_000; // 10 minutes tolerance
+
+  // Clear any leftover heartbeat before creating a new one
+  if (clients[sanitizedUsername]?.heartbeatInterval) {
+    clearInterval(clients[sanitizedUsername].heartbeatInterval);
+  }
+
   const heartbeat = setInterval(() => {
     if (!clients[sanitizedUsername]?.connected) return;
     const now = Date.now();
@@ -264,6 +271,9 @@ export const startChatBot = async (
       logger.warn(`[DEBUG] Failed to write PING for ${sanitizedUsername}:`, e);
     }
   }, HEARTBEAT_INTERVAL);
+
+  // Store on client so it can be cleaned up from stopChatBot/reconnect
+  clients[sanitizedUsername].heartbeatInterval = heartbeat;
 
   socket.on("data", async (data) => {
     const rawData = data.toString();
@@ -452,13 +462,16 @@ export const startChatBot = async (
   );
   socket.on("close", () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
-    if (clients[sanitizedUsername]) {
-      clients[sanitizedUsername].connected = false;
-    }
+    // Always clear the heartbeat interval
     clearInterval(heartbeat);
-
     const client = clients[sanitizedUsername];
     if (client) {
+      if (client.heartbeatInterval) {
+        clearInterval(client.heartbeatInterval);
+        client.heartbeatInterval = undefined;
+      }
+      client.connected = false;
+
       if (client.reconnectTimeout) {
         clearTimeout(client.reconnectTimeout);
       }
@@ -477,6 +490,10 @@ export const stopChatBot = async (username: string, intentional = false) => {
   const client = clients[username];
   if (!client) return;
   try {
+    if (client.heartbeatInterval) {
+      clearInterval(client.heartbeatInterval);
+      client.heartbeatInterval = undefined;
+    }
     if (client.reconnectTimeout) {
       clearTimeout(client.reconnectTimeout);
     }
@@ -514,6 +531,11 @@ export const reconnectChatBot = async (
       };
     }
 
+    // Clear heartbeat and reconnect timers
+    if (client.heartbeatInterval) {
+      clearInterval(client.heartbeatInterval);
+      client.heartbeatInterval = undefined;
+    }
     if (client.reconnectTimeout) {
       clearTimeout(client.reconnectTimeout);
     }

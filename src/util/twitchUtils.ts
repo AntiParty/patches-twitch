@@ -20,18 +20,74 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ use
   const clientId = process.env.TWITCH_CLIENT_ID;
   // Prefer app access token for stream status checks (more reliable than bot token)
   const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
-  if (!clientId || !accessToken) return [];
+  if (!clientId || !accessToken || usernames.length === 0) return [];
+
   const results: { username: string, thumbnailUrl?: string }[] = [];
-  for (const username of usernames) {
+  const BATCH_SIZE = 100; // Twitch API supports up to 100 user_login params per request
+
+  for (let i = 0; i < usernames.length; i += BATCH_SIZE) {
+    const batch = usernames.slice(i, i + BATCH_SIZE);
     try {
-      const status = await getStreamStatusForUser(username, accessToken);
-      if (status.isLive) {
-        results.push({ username, thumbnailUrl: status.thumbnailUrl });
+      const params = batch.map(u => `user_login=${encodeURIComponent(u)}`).join('&');
+      const url = `https://api.twitch.tv/helix/streams?${params}&first=100`;
+
+      const response = await fetch(url, {
+        headers: {
+          'Client-ID': clientId,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        logger.error(`[getLiveStreams] Batch request failed: ${response.status} ${response.statusText}`);
+        continue;
+      }
+
+      const data: any = await response.json();
+      if (data.data && Array.isArray(data.data)) {
+        for (const stream of data.data) {
+          let thumb = stream.thumbnail_url || '';
+          if (thumb) {
+            thumb = thumb.replace('{width}', '320').replace('{height}', '180');
+          }
+          results.push({
+            username: stream.user_login.toLowerCase(),
+            thumbnailUrl: thumb || undefined,
+          });
+        }
+      }
+
+      // Handle pagination if there are more results
+      let cursor = data.pagination?.cursor;
+      while (cursor) {
+        const pageUrl = `${url}&after=${cursor}`;
+        const pageResp = await fetch(pageUrl, {
+          headers: {
+            'Client-ID': clientId,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        if (!pageResp.ok) break;
+        const pageData: any = await pageResp.json();
+        if (pageData.data && Array.isArray(pageData.data)) {
+          for (const stream of pageData.data) {
+            let thumb = stream.thumbnail_url || '';
+            if (thumb) {
+              thumb = thumb.replace('{width}', '320').replace('{height}', '180');
+            }
+            results.push({
+              username: stream.user_login.toLowerCase(),
+              thumbnailUrl: thumb || undefined,
+            });
+          }
+        }
+        cursor = pageData.pagination?.cursor;
       }
     } catch (err) {
-      // Optionally log error per user
+      logger.error(`[getLiveStreams] Error fetching batch ${i}-${i + batch.length}:`, err);
     }
   }
+
   return results;
 }
 

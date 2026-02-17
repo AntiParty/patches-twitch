@@ -1,4 +1,4 @@
-import { getLiveStreamsForUsers, refreshToken, getStreamStatusForUser } from '../util/twitchUtils';
+import { getLiveStreamsForUsers, refreshToken } from '../util/twitchUtils';
 import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
@@ -37,51 +37,77 @@ async function ensureAppTokenValid(): Promise<string> {
 export const startStreamSessionPolling = async () => {
   setInterval(async () => {
     try {
-      const trackedUsers = await getTrackedUsernames(); // Implement this to return usernames you want to track
-      
+      const trackedUsers = await getTrackedUsernames();
+
       // Ensure app token is valid before making requests
       await ensureAppTokenValid();
-      
-      const liveStreams = await getLiveStreamsForUsers(trackedUsers); // Twitch API call
+
+      const liveStreams = await getLiveStreamsForUsers(trackedUsers); // Batched Twitch API call
       const activeSessions = await getActiveSessions(); // DB query
-      
-      const liveUsernames = new Set(liveStreams.map(u => u.username));
-      
+
+      // Normalize all live usernames to lowercase for consistent comparison
+      const liveUsernamesLower = new Set(liveStreams.map(u => u.username.toLowerCase()));
+
       // Update LIVE users individually (to save their specific thumbnail URL)
       for (const liveUser of liveStreams) {
-          await Channel.update(
-              { 
-                  is_live: true, 
-                  stream_thumbnail_url: liveUser.thumbnailUrl || null 
-              },
-              { where: { username: liveUser.username } }
-          );
-      }
-      
-      // Update OFFLINE users (bulk is fine here)
-      const offlineUsernames = trackedUsers.filter(u => !liveUsernames.has(u));
-      if (offlineUsernames.length > 0) {
+          // Try exact match first, then case-insensitive
           const { Op } = require('sequelize');
           await Channel.update(
-              { 
-                  is_live: false, 
-                  stream_thumbnail_url: null 
+              {
+                  is_live: true,
+                  stream_thumbnail_url: liveUser.thumbnailUrl || null
               },
-              { 
-                  where: { 
-                      username: { [Op.in]: offlineUsernames } 
-                  } 
+              {
+                  where: sequelizeCaseInsensitiveWhere('username', liveUser.username)
               }
           );
       }
 
+      // Update OFFLINE users (bulk)
+      const offlineUsernames = trackedUsers.filter(u => !liveUsernamesLower.has(u.toLowerCase()));
+      if (offlineUsernames.length > 0) {
+          const { Op } = require('sequelize');
+          await Channel.update(
+              {
+                  is_live: false,
+                  stream_thumbnail_url: null
+              },
+              {
+                  where: {
+                      username: { [Op.in]: offlineUsernames }
+                  }
+              }
+          );
+      }
+
+      // --- Clean up stale sessions for users who are offline ---
+      // If EventSub missed the stream.offline event, the poller catches it here
+      for (const session of activeSessions) {
+        const sessionChannel = (session.channel || '').toLowerCase();
+        if (!liveUsernamesLower.has(sessionChannel)) {
+          // This user has an active session but is not live according to Twitch API
+          // Grace period: only clean up if session is older than 5 minutes
+          // (avoids race condition where stream just ended and EventSub is about to fire)
+          const sessionAge = Date.now() - new Date(session.started_at).getTime();
+          if (sessionAge > 5 * 60 * 1000) {
+            await StreamSession.destroy({ where: { channel: session.channel } });
+            logger.info(`[Poller] Cleaned up stale session for ${session.channel} (offline but session existed)`);
+          }
+        }
+      }
+
+      // --- Create sessions for live users who don't have one ---
       for (const user of liveStreams) {
-        const hasSession = activeSessions.some(s => s.channel === user.username);
+        const userLower = user.username.toLowerCase();
+        // Case-insensitive comparison
+        const hasSession = activeSessions.some(s => (s.channel || '').toLowerCase() === userLower);
         if (!hasSession) {
           // Only alert once per live session
-          if (!alertedMissingSession.has(user.username)) {
-            // Fetch channel info
-            let channel = await Channel.findOne({ where: { username: user.username } });
+          if (!alertedMissingSession.has(userLower)) {
+            // Fetch channel info - case-insensitive lookup
+            let channel = await Channel.findOne({
+              where: sequelizeCaseInsensitiveWhere('username', user.username)
+            });
             if (!channel?.player_id) {
               await sendDiscordAlert({
                 type: 'warning',
@@ -98,8 +124,8 @@ export const startStreamSessionPolling = async () => {
               } catch (e) {
                 logger.error(`Failed to send unlinked account alert to ${user.username}:`, e);
               }
-              
-              alertedMissingSession.add(user.username);
+
+              alertedMissingSession.add(userLower);
               continue;
             }
             const playerId = channel.player_id.toLowerCase();
@@ -125,14 +151,14 @@ export const startStreamSessionPolling = async () => {
                 title: 'Missing Stream Session',
                 description: `User ${user.username} is live on Twitch, but no session has started in the bot and not found in leaderboard caches.`,
               });
-              alertedMissingSession.add(user.username);
+              alertedMissingSession.add(userLower);
               continue;
             }
             const startScore = player?.rankScore ?? 0;
             const startWTRank = wtPlayer?.rank ?? null;
 
             await StreamSession.upsert({
-              channel: user.username.toLowerCase(),
+              channel: userLower,
               start_score: startScore,
               start_wt_rank: startWTRank,
               started_at: new Date()
@@ -142,12 +168,11 @@ export const startStreamSessionPolling = async () => {
               title: 'StreamSession Started Automatically',
               description: `User ${user.username} is live on Twitch and a new StreamSession was started automatically by polling.\nstart_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`,
             });
-            // Remove from alert set since session is now started
-            alertedMissingSession.delete(user.username);
+            alertedMissingSession.delete(userLower);
           }
         } else {
           // If session exists, remove from alert set so future alerts can happen after next offline/online
-          alertedMissingSession.delete(user.username);
+          alertedMissingSession.delete(userLower);
         }
       }
     } catch (err) {
@@ -155,3 +180,12 @@ export const startStreamSessionPolling = async () => {
     }
   }, POLL_INTERVAL_MS);
 };
+
+/**
+ * Helper: build a case-insensitive where clause for Sequelize
+ * Works with both SQLite (LIKE is case-insensitive) and Postgres (ILIKE)
+ */
+function sequelizeCaseInsensitiveWhere(column: string, value: string) {
+  const { fn, col, where: seqWhere } = require('sequelize');
+  return seqWhere(fn('lower', col(column)), value.toLowerCase());
+}

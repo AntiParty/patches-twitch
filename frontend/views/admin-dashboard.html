@@ -3,16 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Twitch Bot Admin</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>FinalsRS Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
       :root {
         --bg-app: #0f0f13;
@@ -28,428 +21,345 @@
         --danger: #e91916;
         --warning: #f5a524;
         --info: #3b82f6;
-        --shadow:
-          0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
         --radius: 8px;
-        --font-main: "Inter", sans-serif;
       }
 
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
 
       body {
-        background-color: var(--bg-app);
+        background: var(--bg-app);
         color: var(--text-main);
-        font-family: var(--font-main);
+        font-family: "Inter", sans-serif;
         height: 100vh;
         overflow: hidden;
       }
 
-      /* Layout */
       .app-container {
         display: grid;
-        grid-template-columns: 250px 1fr;
+        grid-template-columns: 220px 1fr;
         height: 100vh;
       }
 
-      /* Sidebar */
+      /* ── Sidebar ── */
       .sidebar {
-        background-color: var(--bg-sidebar);
+        background: var(--bg-sidebar);
         border-right: 1px solid var(--border);
         display: flex;
         flex-direction: column;
-        padding: 20px;
+        padding: 20px 14px;
+        overflow-y: auto;
       }
 
       .logo {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 40px;
-        padding: 0 10px;
+        gap: 10px;
+        margin-bottom: 32px;
+        padding: 0 6px;
       }
+      .logo i { font-size: 24px; color: var(--primary); }
+      .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: -.4px; }
 
-      .logo i {
-        font-size: 28px;
-        color: var(--primary);
-      }
-
-      .logo h1 {
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-      }
-
-      .nav-menu {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
+      .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 
       .nav-item {
-        padding: 12px 15px;
+        padding: 10px 12px;
         border-radius: var(--radius);
         cursor: pointer;
         color: var(--text-muted);
-        transition: all 0.2s;
+        transition: all .15s;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+        font-size: 14px;
         font-weight: 500;
+        user-select: none;
       }
-
-      .nav-item:hover {
-        background-color: var(--bg-hover);
-        color: var(--text-main);
-      }
-
-      .nav-item.active {
-        background-color: rgba(145, 71, 255, 0.15);
-        color: var(--primary);
-      }
-
-      .nav-item i {
-        width: 20px;
-        text-align: center;
-      }
+      .nav-item:hover { background: var(--bg-hover); color: var(--text-main); }
+      .nav-item.active { background: rgba(145,71,255,.15); color: var(--primary); }
+      .nav-item i { width: 18px; text-align: center; font-size: 14px; }
 
       .sidebar-footer {
         margin-top: auto;
-        padding-top: 20px;
+        padding-top: 16px;
         border-top: 1px solid var(--border);
       }
 
       .user-profile {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px;
+        gap: 8px;
+        padding: 8px;
         border-radius: var(--radius);
-        background-color: var(--bg-hover);
+        background: var(--bg-hover);
       }
-
       .user-avatar {
-        width: 32px;
-        height: 32px;
+        width: 30px; height: 30px;
         border-radius: 50%;
-        background-color: var(--primary);
+        background: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 13px;
+        flex-shrink: 0;
+      }
+      .user-name { font-weight: 600; font-size: 13px; }
+      .user-role { font-size: 11px; color: var(--text-muted); }
+
+      /* ── Main ── */
+      .main-content { overflow-y: auto; padding: 28px; position: relative; }
+
+      /* ── Sub-tab bar ── */
+      .subtab-bar {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
+        gap: 2px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 24px;
+      }
+      .subtab {
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        transition: all .15s;
+      }
+      .subtab:hover { color: var(--text-main); }
+      .subtab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+      /* ── View sections ── */
+      .view-section { display: none; animation: fadeIn .25s ease; }
+      .view-section.active { display: block; }
+      .sub-panel { display: none; }
+      .sub-panel.active { display: block; animation: fadeIn .2s ease; }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
       }
 
-      /* Main Content */
-      .main-content {
-        overflow-y: auto;
-        padding: 30px;
-        position: relative;
-      }
+      /* ── Role-based visibility ── */
+      .admin-only { display: none !important; }
+      body.is-admin .admin-only { display: flex !important; }
+      body.is-admin .admin-only.card { display: block !important; }
 
-      .header {
+      /* ── Page header ── */
+      .page-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
+        margin-bottom: 24px;
       }
+      .page-title { font-size: 22px; font-weight: 700; }
 
-      .page-title {
-        font-size: 24px;
-        font-weight: 700;
-      }
-
-      .global-actions {
-        display: flex;
-        gap: 10px;
-      }
-
-      /* Views */
-      .view-section {
-        display: none;
-        animation: fadeIn 0.3s ease;
-      }
-
-      .view-section.active {
-        display: block;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      /* Role-based Visibility */
-      .admin-only {
-        display: none !important;
-      }
-
-      body.is-admin .nav-item.admin-only {
-        display: flex !important;
-      }
-
-      body.is-admin .card.admin-only {
-        display: block !important;
-      }
-
-      /* Cards & Grid */
-      .grid-2 {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-      }
-
-      .grid-3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-      }
-
-      .grid-4 {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-      }
+      /* ── Cards & Grids ── */
+      .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+      .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
 
       .card {
-        background-color: var(--bg-card);
+        background: var(--bg-card);
         border-radius: var(--radius);
-        padding: 20px;
+        padding: 18px;
         border: 1px solid var(--border);
       }
-
       .card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 15px;
+        margin-bottom: 14px;
+      }
+      .card-title { font-size: 15px; font-weight: 600; }
+      .card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+      /* ── Stats grid (Subscriptions) ── */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+      .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        text-align: center;
+      }
+      .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+      .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+      /* ── Metric cards ── */
+      .metric-value { font-size: 26px; font-weight: 700; margin: 8px 0 4px; }
+      .metric-label { font-size: 13px; color: var(--text-muted); }
+
+      /* ── Progress bars ── */
+      .progress-bg { background: rgba(255,255,255,.1); height: 6px; border-radius: 3px; overflow: hidden; }
+      .progress-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
+
+      /* ── Quick Actions ── */
+      .quick-actions-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 4px;
       }
 
-      .card-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text-main);
-      }
-
-      /* Metrics */
-      .metric-value {
-        font-size: 28px;
-        font-weight: 700;
-        margin: 10px 0;
-      }
-
-      .metric-label {
-        font-size: 14px;
-        color: var(--text-muted);
-      }
-
-      .progress-bg {
-        background-color: rgba(255, 255, 255, 0.1);
-        height: 6px;
-        border-radius: 3px;
-        overflow: hidden;
-      }
-
-      .progress-fill {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 0.5s ease;
-      }
-
-      /* Buttons & Inputs */
+      /* ── Buttons ── */
       .btn {
-        padding: 8px 16px;
+        padding: 7px 14px;
         border-radius: 6px;
         border: none;
         cursor: pointer;
         font-weight: 500;
-        font-size: 14px;
-        transition: all 0.2s;
+        font-size: 13px;
+        transition: all .15s;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
+        font-family: inherit;
       }
+      .btn:disabled { opacity: .45; cursor: not-allowed; }
+      .btn-primary { background: var(--primary); color: #fff; }
+      .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+      .btn-danger { background: rgba(233,25,22,.1); color: var(--danger); border: 1px solid rgba(233,25,22,.2); }
+      .btn-danger:hover:not(:disabled) { background: rgba(233,25,22,.2); }
+      .btn-success { background: rgba(0,179,95,.1); color: var(--success); border: 1px solid rgba(0,179,95,.2); }
+      .btn-success:hover:not(:disabled) { background: rgba(0,179,95,.2); }
+      .btn-info { background: rgba(59,130,246,.15); color: var(--info); border: 1px solid rgba(59,130,246,.2); }
+      .btn-info:hover:not(:disabled) { background: rgba(59,130,246,.25); }
+      .btn-ghost { background: transparent; color: var(--text-muted); }
+      .btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-main); }
+      .btn-sm { padding: 4px 9px; font-size: 12px; }
 
-      .btn-primary {
-        background-color: var(--primary);
-        color: white;
-      }
-
-      .btn-primary:hover {
-        background-color: var(--primary-hover);
-      }
-
-      .btn-danger {
-        background-color: rgba(233, 25, 22, 0.1);
-        color: var(--danger);
-        border: 1px solid rgba(233, 25, 22, 0.2);
-      }
-
-      .btn-danger:hover {
-        background-color: rgba(233, 25, 22, 0.2);
-      }
-
-      .btn-success {
-        background-color: rgba(0, 179, 95, 0.1);
-        color: var(--success);
-        border: 1px solid rgba(0, 179, 95, 0.2);
-      }
-
-      .btn-success:hover {
-        background-color: rgba(0, 179, 95, 0.2);
-      }
-
-      .btn-ghost {
-        background-color: transparent;
-        color: var(--text-muted);
-      }
-
-      .btn-ghost:hover {
-        background-color: var(--bg-hover);
-        color: var(--text-main);
-      }
-
+      /* ── Inputs ── */
       .input {
-        background-color: var(--bg-app);
+        background: var(--bg-app);
         border: 1px solid var(--border);
         color: var(--text-main);
         padding: 8px 12px;
         border-radius: 6px;
         width: 100%;
-        font-size: 14px;
-      }
-
-      .input:focus {
-        outline: none;
-        border-color: var(--primary);
-      }
-
-      /* Tables & Lists */
-      .table-container {
-        overflow-x: auto;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-
-      th {
-        text-align: left;
-        padding: 12px;
-        color: var(--text-muted);
-        font-weight: 500;
-        border-bottom: 1px solid var(--border);
-      }
-
-      td {
-        padding: 12px;
-        border-bottom: 1px solid var(--border);
-        color: var(--text-main);
-      }
-
-      tr:last-child td {
-        border-bottom: none;
-      }
-
-      .log-container {
-        background-color: #000;
-        font-family: "JetBrains Mono", monospace;
-        padding: 15px;
-        border-radius: var(--radius);
-        height: 400px;
-        overflow-y: auto;
         font-size: 13px;
+        font-family: inherit;
       }
+      .input:focus { outline: none; border-color: var(--primary); }
+      label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--text-muted); }
 
-      .log-entry {
-        margin-bottom: 4px;
-        border-bottom: 1px solid #111;
-        padding-bottom: 2px;
-      }
+      /* ── Tables ── */
+      .table-container { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; }
+      th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--border); }
+      td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+      tr:last-child td { border-bottom: none; }
 
-      .log-time {
-        color: #666;
-        margin-right: 8px;
-      }
-
-      .log-info {
-        color: var(--info);
-      }
-
-      .log-warn {
-        color: var(--warning);
-      }
-
-      .log-error {
-        color: var(--danger);
-      }
-
-      /* Channels Grid */
-      .channels-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 15px;
-      }
-
+      /* ── Channels grid ── */
+      .channels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
       .channel-card {
-        background-color: var(--bg-card);
+        background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+        padding: 14px;
+        display: flex; flex-direction: column; gap: 10px;
+      }
+      .channel-header { display: flex; justify-content: space-between; align-items: center; }
+      .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 6px; }
+
+      /* ── Logs ── */
+      .log-container {
+        background: #000;
+        font-family: "JetBrains Mono", monospace;
+        padding: 14px;
+        border-radius: var(--radius);
+        height: 500px;
+        overflow-y: auto;
+        font-size: 12px;
+      }
+      .log-entry { margin-bottom: 3px; padding-bottom: 2px; border-bottom: 1px solid #111; }
+      .log-time { color: #555; margin-right: 6px; }
+      .log-info { color: var(--info); }
+      .log-warn { color: var(--warning); }
+      .log-error { color: var(--danger); }
+
+      /* ── Toast notifications ── */
+      #toast-container {
+        position: fixed;
+        bottom: 24px; right: 24px;
+        z-index: 9000;
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .toast {
+        padding: 12px 18px;
+        border-radius: var(--radius);
+        font-size: 13px;
+        font-weight: 500;
+        min-width: 240px;
+        max-width: 380px;
+        animation: slideUp .25s ease;
+        display: flex; align-items: center; gap: 10px;
+        border: 1px solid transparent;
+      }
+      .toast-success { background: rgba(0,179,95,.15); border-color: rgba(0,179,95,.3); color: var(--success); }
+      .toast-error   { background: rgba(233,25,22,.15); border-color: rgba(233,25,22,.3); color: var(--danger); }
+      .toast-info    { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.3); color: var(--info); }
+      .toast-warning { background: rgba(245,165,36,.15); border-color: rgba(245,165,36,.3); color: var(--warning); }
+
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
 
-      .channel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+      /* ── Modal overlay ── */
+      .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.75);
+        z-index: 5000;
+        display: flex; align-items: center; justify-content: center;
       }
-
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background-color: var(--success);
-        display: inline-block;
-        margin-right: 6px;
+      .modal-overlay.hidden { display: none; }
+      .modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        width: 420px;
+        max-width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,.5);
       }
+      .modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-header h3 { font-size: 16px; font-weight: 600; }
+      .modal-close {
+        background: none; border: none; color: var(--text-muted);
+        font-size: 20px; cursor: pointer; padding: 2px 6px;
+        border-radius: 4px; line-height: 1;
+      }
+      .modal-close:hover { background: var(--bg-hover); color: var(--text-main); }
+      .modal-body { padding: 18px 20px; }
+      .modal-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .modal-field { margin-bottom: 14px; }
+      .modal-message { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
 
-      /* Responsive */
+      /* ── Responsive ── */
       @media (max-width: 768px) {
-        .app-container {
-          grid-template-columns: 1fr;
-        }
-
-        .sidebar {
-          display: none;
-        }
-
-        /* Mobile menu needed in real app */
-        .grid-2,
-        .grid-3,
-        .grid-4 {
-          grid-template-columns: 1fr;
-        }
+        .app-container { grid-template-columns: 1fr; }
+        .sidebar { display: none; }
+        .grid-2, .grid-3, .grid-4, .stats-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
-
   <body>
     <div class="app-container">
-      <!-- Sidebar -->
+      <!-- ────── Sidebar ────── -->
       <aside class="sidebar">
         <div class="logo">
           <i class="fab fa-twitch"></i>
@@ -457,1671 +367,841 @@
         </div>
 
         <ul class="nav-menu">
-          <li class="nav-item active" onclick="switchView('dashboard')">
-            <i class="fas fa-home"></i> Dashboard
+          <li class="nav-item active" onclick="switchSection('overview')">
+            <i class="fas fa-th-large"></i> Overview
           </li>
-          <li class="nav-item admin-only" onclick="switchView('channels')">
-            <i class="fas fa-users"></i> Channels
+          <li class="nav-item admin-only" onclick="switchSection('users')">
+            <i class="fas fa-users"></i> Users
           </li>
-          <li class="nav-item admin-only" onclick="switchView('users')">
-            <i class="fas fa-user-shield"></i> Users
+          <li class="nav-item" onclick="switchSection('content')">
+            <i class="fas fa-file-alt"></i> Content
           </li>
-          <li class="nav-item admin-only" onclick="switchView('broadcast')">
-            <i class="fas fa-bullhorn"></i> Broadcast
+          <li class="nav-item" onclick="switchSection('bots')">
+            <i class="fas fa-robot"></i> Bots
           </li>
-          <li class="nav-item" onclick="switchView('drops')">
-            <i class="fas fa-gift"></i> Drops
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('commands')">
-            <i class="fas fa-terminal"></i> Commands
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('database')">
-            <i class="fas fa-database"></i> Database
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('simple-auth')">
-            <i class="fas fa-key"></i> Analyst Access
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('subscriptions')">
-            <i class="fas fa-crown"></i> Subscriptions
-          </li>
-          <li class="nav-item" onclick="switchView('analytics')">
-            <i class="fas fa-chart-bar"></i> Analytics
-          </li>
-          <li class="nav-item" onclick="switchView('feedback')">
-            <i class="fas fa-comments"></i> User Feedback
-          </li>
-          <li class="nav-item" onclick="window.location.href = '/statistics'">
-            <i class="fas fa-chart-line"></i> Statistics
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('logs')">
-            <i class="fas fa-file-code"></i> System Logs
-          </li>
-          <li class="nav-item admin-only" onclick="switchView('settings')">
-            <i class="fas fa-cog"></i> Settings
+          <li class="nav-item admin-only" onclick="switchSection('system')">
+            <i class="fas fa-cog"></i> System
           </li>
         </ul>
 
         <div class="sidebar-footer">
           <div class="user-profile">
-            <div class="user-avatar" id="sidebar-user-avatar">?</div>
+            <div class="user-avatar" id="sidebar-avatar">?</div>
             <div>
-              <div
-                id="sidebar-user-name"
-                style="font-weight: 600; font-size: 14px"
-              >
-                Loading...
-              </div>
-              <div
-                id="sidebar-user-role"
-                style="font-size: 12px; color: var(--text-muted)"
-              >
-                Please wait
-              </div>
+              <div class="user-name" id="sidebar-name">Loading...</div>
+              <div class="user-role" id="sidebar-role">Please wait</div>
             </div>
           </div>
         </div>
       </aside>
 
-      <!-- Main Content -->
+      <!-- ────── Main Content ────── -->
       <main class="main-content">
-        <!-- Dashboard View -->
-        <div id="view-dashboard" class="view-section active">
-          <div class="header">
-            <h2 class="page-title">Dashboard Overview</h2>
-            <div class="global-actions">
-              <button class="btn btn-primary" onclick="refreshAll()">
-                <i class="fas fa-sync-alt"></i> Refresh
-              </button>
-            </div>
+
+        <!-- ══════════════════════════════════════
+             OVERVIEW SECTION
+        ══════════════════════════════════════ -->
+        <div id="section-overview" class="view-section active">
+          <div class="page-header">
+            <h2 class="page-title">Overview</h2>
+            <button class="btn btn-ghost" onclick="refreshOverview()">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
           </div>
 
-          <div class="grid-4" style="margin-bottom: 30px">
+          <!-- Metric cards -->
+          <div class="grid-4" style="margin-bottom:20px;">
             <div class="card">
-              <div class="card-title">Connected Channels</div>
-              <div class="metric-value" id="dash-channels">0</div>
+              <div class="metric-label">Connected Channels</div>
+              <div class="metric-value" id="dash-channels">–</div>
               <div class="metric-label">Active connections</div>
             </div>
             <div class="card">
-              <div class="card-title">Commands Processed</div>
-              <div class="metric-value" id="dash-commands">0</div>
+              <div class="metric-label">Commands Processed</div>
+              <div class="metric-value" id="dash-commands">–</div>
               <div class="metric-label">Total interactions</div>
             </div>
             <div class="card">
-              <div class="card-title">Uptime</div>
-              <div
-                class="metric-value"
-                id="dash-uptime"
-                style="font-size: 20px"
-              >
-                0h 0m
-              </div>
+              <div class="metric-label">Uptime</div>
+              <div class="metric-value" id="dash-uptime" style="font-size:20px;">–</div>
               <div class="metric-label">Since last restart</div>
             </div>
             <div class="card">
-              <div class="card-title">System Status</div>
-              <div
-                class="metric-value"
-                style="color: var(--success); font-size: 20px"
-              >
-                <i class="fas fa-check-circle"></i> Healthy
+              <div class="metric-label">System Status</div>
+              <div class="metric-value" id="dash-status" style="font-size:18px; color:var(--text-muted);">
+                <i class="fas fa-circle-notch fa-spin"></i>
               </div>
-              <div class="metric-label">All systems operational</div>
+              <div class="metric-label" id="dash-status-label">Checking...</div>
             </div>
           </div>
 
+          <!-- Performance + Quick Actions -->
           <div class="grid-2">
             <div class="card">
               <div class="card-header">
                 <div class="card-title">System Performance</div>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 20px">
+              <div style="display:flex;flex-direction:column;gap:18px;">
                 <div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      margin-bottom: 5px;
-                    "
-                  >
+                  <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
                     <span class="metric-label">CPU Usage</span>
                     <span id="cpu-val">0%</span>
                   </div>
                   <div class="progress-bg">
-                    <div
-                      id="cpu-bar"
-                      class="progress-fill"
-                      style="width: 0%; background-color: var(--primary)"
-                    ></div>
+                    <div id="cpu-bar" class="progress-fill" style="width:0%;background:var(--primary)"></div>
                   </div>
                 </div>
                 <div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      margin-bottom: 5px;
-                    "
-                  >
+                  <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
                     <span class="metric-label">Memory Usage</span>
                     <span id="mem-val">0MB</span>
                   </div>
                   <div class="progress-bg">
-                    <div
-                      id="mem-bar"
-                      class="progress-fill"
-                      style="width: 0%; background-color: var(--info)"
-                    ></div>
+                    <div id="mem-bar" class="progress-fill" style="width:0%;background:var(--info)"></div>
                   </div>
                 </div>
                 <div>
-                  <div
-                    style="
-                      display: flex;
-                      justify-content: space-between;
-                      margin-bottom: 5px;
-                    "
-                  >
+                  <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
                     <span class="metric-label">Bot Latency</span>
                     <span id="lat-val">0ms</span>
                   </div>
                   <div class="progress-bg">
-                    <div
-                      id="lat-bar"
-                      class="progress-fill"
-                      style="width: 0%; background-color: var(--warning)"
-                    ></div>
+                    <div id="lat-bar" class="progress-fill" style="width:0%;background:var(--warning)"></div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div class="card admin-only" id="quick-actions-card">
+            <div class="card admin-only">
               <div class="card-header">
-                <div class="card-title">
-                  Quick Actions
-                  <button class="btn btn-primary" onclick="restartBot()">
-                    <i class="fas fa-power-off"></i> Restart Bot
-                  </button>
-                  <button class="btn btn-primary" onclick="refreshBotToken()">
-                    <i class="fas fa-key"></i> Refresh Token
-                  </button>
-                  <button class="btn btn-danger" onclick="pauseBot()">
-                    <i class="fas fa-pause"></i> Pause All Bots
-                  </button>
-                  <button class="btn btn-success" onclick="resumeBot()">
-                    <i class="fas fa-play"></i> Resume All Bots
-                  </button>
-                  <button
-                    class="btn"
-                    style="
-                      background-color: var(--info);
-                      color: white;
-                      grid-column: span 2;
-                    "
-                    onclick="triggerDeploy()"
-                  >
-                    <i class="fas fa-cloud-upload-alt"></i> Update System (Git
-                    Pull + Restart)
-                  </button>
+                <div class="card-title">Quick Actions</div>
+              </div>
+              <div class="quick-actions-grid">
+                <button class="btn btn-primary" onclick="restartBot()">
+                  <i class="fas fa-power-off"></i> Restart Bot
+                </button>
+                <button class="btn btn-primary" onclick="refreshBotToken()">
+                  <i class="fas fa-key"></i> Refresh Token
+                </button>
+                <button class="btn btn-danger" onclick="pauseBot()" disabled title="Coming soon">
+                  <i class="fas fa-pause"></i> Pause Bots
+                </button>
+                <button class="btn btn-success" onclick="resumeBot()" disabled title="Coming soon">
+                  <i class="fas fa-play"></i> Resume Bots
+                </button>
+                <button class="btn btn-info" onclick="window.open('/statistics','_blank')">
+                  <i class="fas fa-chart-line"></i> Open Statistics
+                </button>
+                <button class="btn" style="background:var(--warning);color:#000;" onclick="triggerDeploy()">
+                  <i class="fas fa-cloud-upload-alt"></i> Deploy Update
+                </button>
+              </div>
+              <div id="action-status" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════
+             USERS SECTION  (admin only)
+        ══════════════════════════════════════ -->
+        <div id="section-users" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Users</h2>
+            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <div class="subtab-bar">
+            <div class="subtab active" onclick="switchSubTab('users','channels')">Channels</div>
+            <div class="subtab" onclick="switchSubTab('users','manage')">Manage Users</div>
+            <div class="subtab" onclick="switchSubTab('users','subscriptions')">Subscriptions</div>
+          </div>
+
+          <!-- Channels sub-panel -->
+          <div id="users-channels" class="sub-panel active">
+            <div id="channels-list" class="channels-grid">
+              <div style="color:var(--text-muted);padding:20px;">Loading channels...</div>
+            </div>
+          </div>
+
+          <!-- Manage Users sub-panel -->
+          <div id="users-manage" class="sub-panel">
+            <div class="card">
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Twitch ID</th>
+                      <th>Role</th>
+                      <th style="width:200px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-body">
+                    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subscriptions sub-panel -->
+          <div id="users-subscriptions" class="sub-panel">
+            <!-- Stats -->
+            <div class="stats-grid" id="subscription-stats">
+              <div class="stat-card">
+                <div class="stat-value" id="stat-twitch-subscribers">–</div>
+                <div class="stat-label">Twitch Subs</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-manual-grants">–</div>
+                <div class="stat-label">Manual Grants</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-custom-bots">–</div>
+                <div class="stat-label">Custom Bots</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-role-bypass">–</div>
+                <div class="stat-label">Role Bypass</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" id="stat-total-premium">–</div>
+                <div class="stat-label">Total Premium</div>
+              </div>
+            </div>
+
+            <!-- Grant / Revoke -->
+            <div class="grid-2" style="margin-bottom:16px;">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title"><i class="fas fa-crown" style="color:var(--warning)"></i> Grant Subscription</div>
                 </div>
-              </div>
-              <div
-                id="action-status"
-                style="
-                  margin-top: 15px;
-                  font-size: 14px;
-                  color: var(--text-muted);
-                "
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Channels View -->
-        <div id="view-channels" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Connected Channels</h2>
-            <button class="btn btn-ghost" onclick="fetchChannels()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-          <div id="channels-list" class="channels-grid">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
-        <!-- Users View -->
-        <div id="view-users" class="view-section">
-          <div class="header">
-            <h2 class="page-title">User Management</h2>
-            <button class="btn btn-ghost" onclick="fetchUsers()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-          <div class="card">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Twitch ID</th>
-                    <th>Role</th>
-                    <th style="width: 200px">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="users-body">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Simple Auth View -->
-        <div id="view-simple-auth" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Analyst Access Management</h2>
-            <button class="btn btn-ghost" onclick="fetchSimpleUsers()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Temporary Users (JSON)</div>
-              <button
-                class="btn btn-primary"
-                onclick="showAddSimpleUserModal()"
-              >
-                <i class="fas fa-plus"></i> Add User
-              </button>
-            </div>
-            <div class="table-container">
-              <table class="table">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="simple-users-body">
-                  <!-- Loaded dynamically -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Add Simple User Modal -->
-        <div
-          id="add-simple-user-modal"
-          style="
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-          "
-        >
-          <div
-            style="
-              background: var(--bg-card);
-              padding: 20px;
-              border-radius: 8px;
-              width: 400px;
-              border: 1px solid var(--border);
-            "
-          >
-            <h3>Add Temporary User</h3>
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Username</label>
-              <input
-                id="new-simple-user"
-                class="input"
-                placeholder="Username"
-                style="width: 100%"
-              />
-            </div>
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Password</label>
-              <input
-                id="new-simple-pass"
-                class="input"
-                type="password"
-                placeholder="Password"
-                style="width: 100%"
-              />
-            </div>
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Role</label>
-              <select id="new-simple-role" class="input" style="width: 100%">
-                <option value="analyst">Analyst</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <div
-              style="
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-                margin-top: 15px;
-              "
-            >
-              <button
-                class="btn btn-ghost"
-                onclick="
-                  document.getElementById(
-                    'add-simple-user-modal',
-                  ).style.display = 'none'
-                "
-              >
-                Cancel
-              </button>
-              <button class="btn btn-primary" onclick="addSimpleUser()">
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Grant Subscription Modal -->
-        <div
-          id="grant-sub-modal"
-          style="
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-          "
-        >
-          <div
-            style="
-              background: var(--bg-card);
-              padding: 20px;
-              border-radius: 8px;
-              width: 400px;
-              border: 1px solid var(--border);
-            "
-          >
-            <h3>Grant Subscription</h3>
-            <p
-              id="grant-sub-user-display"
-              style="color: var(--text-muted); margin-bottom: 15px"
-            ></p>
-            <input type="hidden" id="grant-sub-userid" />
-
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px"
-                >Duration (Days)</label
-              >
-              <input
-                id="grant-sub-duration"
-                class="input"
-                type="number"
-                value="30"
-                style="width: 100%"
-              />
-            </div>
-
-            <div style="margin-bottom: 10px">
-              <label style="display: block; margin-bottom: 5px">Tier</label>
-              <select id="grant-sub-tier" class="input" style="width: 100%">
-                <option value="custom_bot">Custom Bot (Standard)</option>
-              </select>
-            </div>
-
-            <div
-              style="
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-                margin-top: 15px;
-              "
-            >
-              <button
-                class="btn btn-ghost"
-                onclick="
-                  document.getElementById('grant-sub-modal').style.display =
-                    'none'
-                "
-              >
-                Cancel
-              </button>
-              <button class="btn btn-primary" onclick="submitGrant()">
-                Grant
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Broadcast View -->
-        <div id="view-broadcast" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Broadcast Message</h2>
-          </div>
-          <div class="card" style="max-width: 800px">
-            <div style="margin-bottom: 20px">
-              <label
-                style="
-                  display: block;
-                  margin-bottom: 8px;
-                  color: var(--text-muted);
-                "
-                >Target Channels</label
-              >
-              <div
-                id="broadcast-targets"
-                style="
-                  padding: 10px;
-                  border: 1px solid var(--border);
-                  border-radius: var(--radius);
-                  min-height: 40px;
-                  display: flex;
-                  flex-wrap: wrap;
-                  gap: 5px;
-                "
-              >
-                <span
-                  style="
-                    color: var(--text-muted);
-                    font-style: italic;
-                    padding: 5px;
-                  "
-                  >Select channels from the 'Channels' tab or leave empty for
-                  ALL.</span
-                >
-              </div>
-            </div>
-            <div style="margin-bottom: 20px">
-              <label
-                style="
-                  display: block;
-                  margin-bottom: 8px;
-                  color: var(--text-muted);
-                "
-                >Message</label
-              >
-              <textarea
-                id="broadcast-msg"
-                class="input"
-                style="min-height: 120px; resize: vertical"
-                placeholder="Type your announcement..."
-              ></textarea>
-            </div>
-            <div style="display: flex; justify-content: flex-end">
-              <button class="btn btn-primary" onclick="sendBroadcast()">
-                <i class="fas fa-paper-plane"></i> Send Broadcast
-              </button>
-            </div>
-            <div id="broadcast-status" style="margin-top: 15px"></div>
-          </div>
-        </div>
-
-        <!-- Drops View -->
-        <div id="view-drops" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Manage Twitch Drops</h2>
-            <button class="btn btn-primary" onclick="saveDropsConfig()">
-              <i class="fas fa-save"></i> Save Changes
-            </button>
-          </div>
-
-          <!-- Global Settings -->
-          <div class="card" style="margin-bottom: 20px">
-            <div class="card-title" style="margin-bottom: 15px">
-              Global Settings
-            </div>
-            <div class="grid-2">
-              <div>
-                <label
-                  style="
-                    display: block;
-                    margin-bottom: 5px;
-                    color: var(--text-muted);
-                  "
-                  >Last Updated Text</label
-                >
-                <input
-                  id="drop-last-updated"
-                  class="input"
-                  placeholder="e.g. November 28, 2026"
-                />
-              </div>
-              <div>
-                <label
-                  style="
-                    display: block;
-                    margin-bottom: 5px;
-                    color: var(--text-muted);
-                  "
-                  >Featured Image URL</label
-                >
-                <div style="display: flex; gap: 10px">
-                  <input
-                    id="drop-featured-image"
-                    class="input"
-                    placeholder="Path to image"
-                  />
-                  <input
-                    type="file"
-                    id="drop-image-upload"
-                    style="display: none"
-                    accept="image/*"
-                    onchange="handleImageUpload(this)"
-                  />
-                  <button
-                    class="btn btn-ghost"
-                    onclick="
-                      document.getElementById('drop-image-upload').click()
-                    "
-                  >
-                    <i class="fas fa-upload"></i>
-                  </button>
+                <div class="modal-field">
+                  <label>Twitch Username</label>
+                  <input id="grant-sub-username" class="input" placeholder="username" />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Drops List -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Active Drops List</div>
-              <button class="btn btn-success" onclick="addDropItem()">
-                <i class="fas fa-plus"></i> Add Item
-              </button>
-            </div>
-            <div
-              id="drops-items-container"
-              style="display: flex; flex-direction: column; gap: 10px"
-            >
-              <!-- Rendered via JS -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Commands View -->
-        <div id="view-commands" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Custom Commands</h2>
-            <button class="btn btn-success" onclick="showAddCommandModal()">
-              <i class="fas fa-plus"></i> Add Command
-            </button>
-          </div>
-          <div class="card">
-            <div class="table-container">
-              <table id="commands-table">
-                <thead>
-                  <tr>
-                    <th>Trigger</th>
-                    <th>Response</th>
-                    <th style="width: 100px">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="commands-body">
-                  <!-- Populated by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <!-- Add Command Form (Inline for simplicity) -->
-          <div
-            id="add-command-panel"
-            class="card"
-            style="margin-top: 20px; display: none"
-          >
-            <div class="card-title" style="margin-bottom: 15px">
-              Add New Command
-            </div>
-            <div style="display: flex; gap: 10px">
-              <input
-                id="new-cmd-name"
-                class="input"
-                placeholder="!command"
-                style="flex: 1"
-              />
-              <input
-                id="new-cmd-resp"
-                class="input"
-                placeholder="Response text"
-                style="flex: 2"
-              />
-              <button class="btn btn-success" onclick="addNewCommand()">
-                Save
-              </button>
-              <button
-                class="btn btn-ghost"
-                onclick="
-                  document.getElementById('add-command-panel').style.display =
-                    'none'
-                "
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Database View -->
-        <div id="view-database" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Database Editor</h2>
-            <select
-              id="db-table-select"
-              class="input"
-              style="width: 200px"
-              onchange="loadDbTable()"
-            >
-              <option value="StreamSessions">StreamSessions</option>
-              <option value="Channels">Channels</option>
-              <option value="CustomResponse">CustomResponse</option>
-              <option value="RankGoals">RankGoals</option>
-              <option value="CommandUsage">CommandUsage</option>
-            </select>
-          </div>
-          <div id="db-editor-container">
-            <!-- Table content goes here -->
-          </div>
-        </div>
-
-        <!-- Logs View -->
-        <div id="view-logs" class="view-section">
-          <div class="header">
-            <h2 class="page-title">System Logs</h2>
-            <div style="display: flex; gap: 10px">
-              <button class="btn btn-ghost" onclick="fetchLogs()">
-                <i class="fas fa-sync"></i> Refresh
-              </button>
-              <span
-                style="
-                  font-size: 12px;
-                  color: var(--text-muted);
-                  align-self: center;
-                "
-                >Auto-refreshing every 20s</span
-              >
-            </div>
-          </div>
-          <div id="logs-viewer" class="log-container">
-            <!-- Logs go here -->
-          </div>
-        </div>
-
-        <!-- Analytics View -->
-        <div id="view-analytics" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Command Analytics</h2>
-            <button class="btn btn-ghost" onclick="loadAnalytics()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-
-          <!-- Summary Cards -->
-          <div class="grid-3" style="margin-bottom: 30px">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Total Commands</div>
-                <i class="fas fa-terminal" style="color: var(--text-muted)"></i>
-              </div>
-              <div
-                style="font-size: 32px; font-weight: 700"
-                id="analytics-total"
-              >
-                -
-              </div>
-              <div class="card-subtitle">All time</div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Unique Users</div>
-                <i class="fas fa-users" style="color: var(--text-muted)"></i>
-              </div>
-              <div
-                style="font-size: 32px; font-weight: 700"
-                id="analytics-unique"
-              >
-                -
-              </div>
-              <div class="card-subtitle">Used the bot</div>
-            </div>
-
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Success Rate</div>
-                <i
-                  class="fas fa-check-circle"
-                  style="color: var(--text-muted)"
-                ></i>
-              </div>
-              <div
-                style="font-size: 32px; font-weight: 700"
-                id="analytics-success"
-              >
-                -
-              </div>
-              <div class="card-subtitle">Commands executed</div>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <!-- Command Usage Chart -->
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 20px">
-                Command Usage (Last 24 Hours)
-              </div>
-              <div
-                id="hourly-chart-container"
-                style="
-                  height: 200px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  color: var(--text-muted);
-                "
-              >
-                Loading chart...
-              </div>
-            </div>
-
-            <!-- Top Commands -->
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 20px">
-                Top Commands
-              </div>
-              <div
-                id="top-commands-list"
-                style="display: flex; flex-direction: column; gap: 12px"
-              >
-                <div
-                  style="
-                    text-align: center;
-                    padding: 20px;
-                    color: var(--text-muted);
-                  "
-                >
-                  Loading...
+                <div class="modal-field">
+                  <label>Duration (days)</label>
+                  <input id="grant-sub-days" class="input" type="number" value="30" min="1" max="365" />
                 </div>
+                <button class="btn btn-primary" onclick="grantSubscription()">
+                  <i class="fas fa-gift"></i> Grant
+                </button>
+                <div id="grant-sub-result" style="margin-top:8px;font-size:13px;"></div>
               </div>
-            </div>
-          </div>
 
-          <!-- Command Details Table -->
-          <div class="card" style="margin-top: 24px">
-            <div class="card-title" style="margin-bottom: 20px">
-              Command Statistics
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Command</th>
-                    <th>Usage</th>
-                    <th>Success Rate</th>
-                    <th>Avg Response Time</th>
-                  </tr>
-                </thead>
-                <tbody id="command-stats-table">
-                  <tr>
-                    <td
-                      colspan="4"
-                      style="
-                        text-align: center;
-                        padding: 20px;
-                        color: var(--text-muted);
-                      "
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Recent Commands -->
-          <div class="card" style="margin-top: 24px">
-            <div class="card-title" style="margin-bottom: 20px">
-              Recent Commands
-            </div>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Command</th>
-                    <th>User</th>
-                    <th>Status</th>
-                    <th>Response Time</th>
-                  </tr>
-                </thead>
-                <tbody id="recent-commands-table">
-                  <tr>
-                    <td
-                      colspan="5"
-                      style="
-                        text-align: center;
-                        padding: 20px;
-                        color: var(--text-muted);
-                      "
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feedback View -->
-        <div id="view-feedback" class="view-section">
-          <div class="header">
-            <h2 class="page-title">User Feedback</h2>
-            <button class="btn btn-ghost" onclick="fetchFeedback()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-          <div class="card">
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>User</th>
-                    <th>Type</th>
-                    <th>Message</th>
-                    <th style="width: 100px">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="feedback-body">
-                  <tr>
-                    <td
-                      colspan="5"
-                      style="
-                        text-align: center;
-                        padding: 20px;
-                        color: var(--text-muted);
-                      "
-                    >
-                      Loading feedback...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Subscriptions View -->
-        <div id="view-subscriptions" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Subscription Management</h2>
-            <button class="btn btn-primary" onclick="refreshSubscriptionStats()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
-          </div>
-
-          <!-- Stats Cards -->
-          <div class="stats-grid" id="subscription-stats">
-            <div class="stat-card">
-              <div class="stat-value" id="stat-twitch-subscribers">-</div>
-              <div class="stat-label">Twitch Subs (antiparty)</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-manual-grants">-</div>
-              <div class="stat-label">Manual Grants</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-custom-bots">-</div>
-              <div class="stat-label">Custom Bots</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-role-bypass">-</div>
-              <div class="stat-label">Role Bypass (tester/staff/admin)</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-value" id="stat-total-premium">-</div>
-              <div class="stat-label">Total Premium Access</div>
-            </div>
-          </div>
-
-          <div class="grid-2">
-            <!-- Grant Subscription -->
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 15px">
-                <i class="fas fa-crown" style="color: var(--warning)"></i>
-                Grant Test Subscription
-              </div>
-              <div style="margin-bottom: 15px">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
-                  Username
-                </label>
-                <input
-                  id="grant-sub-username"
-                  type="text"
-                  class="input"
-                  placeholder="Enter Twitch username"
-                />
-              </div>
-              <div style="margin-bottom: 15px">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
-                  Duration (days)
-                </label>
-                <input
-                  id="grant-sub-days"
-                  type="number"
-                  class="input"
-                  value="30"
-                  min="1"
-                  max="365"
-                />
-              </div>
-              <button class="btn btn-primary" onclick="grantSubscription()">
-                <i class="fas fa-gift"></i> Grant Subscription
-              </button>
-              <div id="grant-sub-result" style="margin-top: 10px; font-size: 14px;"></div>
-            </div>
-
-            <!-- Revoke Subscription -->
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 15px">
-                <i class="fas fa-ban" style="color: var(--danger)"></i>
-                Revoke Subscription
-              </div>
-              <div style="margin-bottom: 15px">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
-                  Username
-                </label>
-                <input
-                  id="revoke-sub-username"
-                  type="text"
-                  class="input"
-                  placeholder="Enter Twitch username"
-                />
-              </div>
-              <button class="btn btn-danger" onclick="revokeSubscription()">
-                <i class="fas fa-times"></i> Revoke Subscription
-              </button>
-              <div id="revoke-sub-result" style="margin-top: 10px; font-size: 14px;"></div>
-            </div>
-          </div>
-
-          <!-- Set Role -->
-          <div class="card" style="margin-top: 20px;">
-            <div class="card-title" style="margin-bottom: 15px">
-              <i class="fas fa-user-shield" style="color: var(--info)"></i>
-              Set User Role (for Testing)
-            </div>
-            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-              <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
-                  Username
-                </label>
-                <input
-                  id="set-role-username"
-                  type="text"
-                  class="input"
-                  placeholder="Enter Twitch username"
-                />
-              </div>
-              <div style="flex: 1; min-width: 200px;">
-                <label style="display: block; margin-bottom: 5px; color: var(--text-muted)">
-                  Role
-                </label>
-                <select id="set-role-select" class="input">
-                  <option value="Basic user">Basic user</option>
-                  <option value="tester">tester (bypass subscription)</option>
-                  <option value="analyst">analyst</option>
-                  <option value="Staff">Staff (bypass subscription)</option>
-                  <option value="admin">admin (bypass subscription)</option>
-                </select>
-              </div>
-              <div style="display: flex; align-items: flex-end;">
-                <button class="btn btn-primary" onclick="setUserRole()">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title"><i class="fas fa-user-shield" style="color:var(--info)"></i> Set User Role</div>
+                </div>
+                <div class="modal-field">
+                  <label>Twitch Username</label>
+                  <input id="set-role-username" class="input" placeholder="username" />
+                </div>
+                <div class="modal-field">
+                  <label>Role</label>
+                  <select id="set-role-select" class="input">
+                    <option value="Basic user">Basic user</option>
+                    <option value="subscriber">subscriber (early access)</option>
+                    <option value="tester">tester (bypass subscription)</option>
+                    <option value="analyst">analyst</option>
+                    <option value="Staff">Staff</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" onclick="setUserRoleByUsername()">
                   <i class="fas fa-save"></i> Set Role
                 </button>
+                <div id="set-role-result" style="margin-top:8px;font-size:13px;"></div>
               </div>
             </div>
-            <div id="set-role-result" style="margin-top: 10px; font-size: 14px;"></div>
-          </div>
 
-          <!-- Active Subscribers List -->
-          <div class="card" style="margin-top: 20px;">
-            <div class="card-title" style="margin-bottom: 15px">
-              <i class="fas fa-list" style="color: var(--primary)"></i>
-              Active Subscribers
-            </div>
-            <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Tier</th>
-                    <th>Status</th>
-                    <th>Custom Bot</th>
-                    <th>Expires</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="subscribers-table-body">
-                  <tr>
-                    <td colspan="6" style="text-align: center; color: var(--text-muted);">
-                      Loading...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- Active subscribers table -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title"><i class="fas fa-list" style="color:var(--primary)"></i> Active Subscribers</div>
+                <button class="btn btn-ghost btn-sm" onclick="refreshSubscriptionStats()"><i class="fas fa-sync"></i> Refresh</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Username</th><th>Tier</th><th>Status</th><th>Custom Bot</th><th>Expires</th><th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="subscribers-table-body">
+                    <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Settings View -->
-        <div id="view-settings" class="view-section">
-          <div class="header">
-            <h2 class="page-title">Settings</h2>
+        <!-- ══════════════════════════════════════
+             CONTENT SECTION
+        ══════════════════════════════════════ -->
+        <div id="section-content" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Content</h2>
+            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
           </div>
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-title" style="margin-bottom: 15px">
-                API Configuration
-              </div>
-              <div style="margin-bottom: 15px">
-                <label
-                  style="
-                    display: block;
-                    margin-bottom: 5px;
-                    color: var(--text-muted);
-                  "
-                  >Admin API Key</label
-                >
-                <input
-                  id="settings-api-key"
-                  type="password"
-                  class="input"
-                  placeholder="Enter API Key"
-                />
-                <div
-                  style="
-                    font-size: 12px;
-                    color: var(--text-muted);
-                    margin-top: 5px;
-                  "
-                >
-                  Required for sensitive actions (Restart, Broadcast).
+
+          <div class="subtab-bar">
+            <div class="subtab active" onclick="switchSubTab('content','drops')">Drops</div>
+            <div class="subtab" onclick="switchSubTab('content','commands')">Commands</div>
+            <div class="subtab" onclick="switchSubTab('content','feedback')">Feedback</div>
+          </div>
+
+          <!-- Drops sub-panel -->
+          <div id="content-drops" class="sub-panel active">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+              <button class="btn btn-primary" onclick="saveDropsConfig()">
+                <i class="fas fa-save"></i> Save Changes
+              </button>
+            </div>
+            <div class="card" style="margin-bottom:16px;">
+              <div class="card-title" style="margin-bottom:14px;">Global Settings</div>
+              <div class="grid-2">
+                <div>
+                  <label>Last Updated Text</label>
+                  <input id="drop-last-updated" class="input" placeholder="e.g. November 28, 2026" />
+                </div>
+                <div>
+                  <label>Featured Image URL</label>
+                  <div style="display:flex;gap:8px;">
+                    <input id="drop-featured-image" class="input" placeholder="Path to image" />
+                    <input type="file" id="drop-image-upload" style="display:none;" accept="image/*" onchange="handleImageUpload(this)" />
+                    <button class="btn btn-ghost" onclick="document.getElementById('drop-image-upload').click()">
+                      <i class="fas fa-upload"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <button class="btn btn-primary" onclick="saveSettings()">
-                Save Key
-              </button>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Active Drops</div>
+                <button class="btn btn-success btn-sm" onclick="addDropItem()">
+                  <i class="fas fa-plus"></i> Add Item
+                </button>
+              </div>
+              <div id="drops-items-container" style="display:flex;flex-direction:column;gap:10px;">
+                <div style="color:var(--text-muted);text-align:center;padding:20px;">Loading...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Commands sub-panel -->
+          <div id="content-commands" class="sub-panel">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Custom Commands</div>
+                <button class="btn btn-success btn-sm" onclick="openAddCommandModal()">
+                  <i class="fas fa-plus"></i> Add Command
+                </button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr><th>Trigger</th><th>Response</th><th style="width:80px;">Actions</th></tr>
+                  </thead>
+                  <tbody id="commands-body">
+                    <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feedback sub-panel -->
+          <div id="content-feedback" class="sub-panel">
+            <div class="card">
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr><th>Date</th><th>User</th><th>Type</th><th>Message</th><th style="width:80px;">Actions</th></tr>
+                  </thead>
+                  <tbody id="feedback-body">
+                    <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══════════════════════════════════════
+             BOTS SECTION
+        ══════════════════════════════════════ -->
+        <div id="section-bots" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">Bots</h2>
+            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <div class="subtab-bar">
+            <div class="subtab active" onclick="switchSubTab('bots','analytics')">Analytics</div>
+            <div class="subtab" onclick="switchSubTab('bots','broadcast')">Broadcast</div>
+            <div class="subtab admin-only" onclick="switchSubTab('bots','logs')">System Logs</div>
+          </div>
+
+          <!-- Analytics sub-panel -->
+          <div id="bots-analytics" class="sub-panel active">
+            <div class="grid-3" style="margin-bottom:20px;">
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Total Commands</div>
+                  <i class="fas fa-terminal" style="color:var(--text-muted);"></i>
+                </div>
+                <div style="font-size:30px;font-weight:700;" id="analytics-total">–</div>
+                <div class="card-subtitle">All time</div>
+              </div>
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Unique Users</div>
+                  <i class="fas fa-users" style="color:var(--text-muted);"></i>
+                </div>
+                <div style="font-size:30px;font-weight:700;" id="analytics-unique">–</div>
+                <div class="card-subtitle">Used the bot</div>
+              </div>
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">Success Rate</div>
+                  <i class="fas fa-check-circle" style="color:var(--text-muted);"></i>
+                </div>
+                <div style="font-size:30px;font-weight:700;" id="analytics-success">–</div>
+                <div class="card-subtitle">Commands executed</div>
+              </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom:20px;">
+              <div class="card">
+                <div class="card-title" style="margin-bottom:16px;">Usage (Last 24 Hours)</div>
+                <div id="hourly-chart-container" style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">
+                  Loading chart...
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-title" style="margin-bottom:16px;">Top Commands</div>
+                <div id="top-commands-list" style="display:flex;flex-direction:column;gap:10px;">
+                  <div style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="margin-bottom:20px;">
+              <div class="card-title" style="margin-bottom:14px;">Command Statistics</div>
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Command</th><th>Usage</th><th>Success Rate</th><th>Avg Response</th></tr></thead>
+                  <tbody id="command-stats-table">
+                    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div class="card">
-              <div class="card-title" style="margin-bottom: 15px">
-                Feature Flags
+              <div class="card-title" style="margin-bottom:14px;">Recent Commands</div>
+              <div class="table-container">
+                <table>
+                  <thead><tr><th>Time</th><th>Command</th><th>User</th><th>Status</th><th>Response</th></tr></thead>
+                  <tbody id="recent-commands-table">
+                    <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
               </div>
-              <div
-                style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: space-between;
-                  margin-bottom: 10px;
-                "
-              >
-                <span>User Dashboard Access</span>
-                <button
-                  id="toggle-dashboard-btn"
-                  class="btn btn-success"
-                  onclick="toggleUserDashboard()"
-                >
-                  Enabled
+            </div>
+          </div>
+
+          <!-- Broadcast sub-panel -->
+          <div id="bots-broadcast" class="sub-panel">
+            <div class="card" style="max-width:800px;">
+              <div class="modal-field">
+                <label>Target Channels</label>
+                <div id="broadcast-targets" style="padding:8px;border:1px solid var(--border);border-radius:6px;min-height:36px;display:flex;flex-wrap:wrap;gap:5px;">
+                  <span style="color:var(--text-muted);font-style:italic;font-size:13px;">Select channels from Users → Channels or leave empty for ALL.</span>
+                </div>
+              </div>
+              <div class="modal-field">
+                <label>Message</label>
+                <textarea id="broadcast-msg" class="input" style="min-height:110px;resize:vertical;" placeholder="Type your announcement..."></textarea>
+              </div>
+              <div style="display:flex;justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="sendBroadcast()">
+                  <i class="fas fa-paper-plane"></i> Send Broadcast
                 </button>
               </div>
             </div>
           </div>
+
+          <!-- Logs sub-panel -->
+          <div id="bots-logs" class="sub-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-circle" style="color:var(--success);font-size:8px;"></i> Auto-refreshing every 20s</span>
+              <button class="btn btn-ghost btn-sm" onclick="fetchLogs()"><i class="fas fa-sync"></i> Refresh Now</button>
+            </div>
+            <div id="logs-viewer" class="log-container"></div>
+          </div>
         </div>
+
+        <!-- ══════════════════════════════════════
+             SYSTEM SECTION  (admin only)
+        ══════════════════════════════════════ -->
+        <div id="section-system" class="view-section">
+          <div class="page-header">
+            <h2 class="page-title">System</h2>
+            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <div class="subtab-bar">
+            <div class="subtab active" onclick="switchSubTab('system','database')">Database</div>
+            <div class="subtab" onclick="switchSubTab('system','settings')">Settings</div>
+            <div class="subtab" onclick="switchSubTab('system','analyst')">Analyst Access</div>
+          </div>
+
+          <!-- Database sub-panel -->
+          <div id="system-database" class="sub-panel active">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <label style="margin:0;white-space:nowrap;">Table:</label>
+              <select id="db-table-select" class="input" style="width:200px;" onchange="loadDbTable()">
+                <option value="StreamSessions">StreamSessions</option>
+                <option value="Channels">Channels</option>
+                <option value="CustomResponse">CustomResponse</option>
+                <option value="RankGoals">RankGoals</option>
+                <option value="CommandUsage">CommandUsage</option>
+              </select>
+            </div>
+            <div id="db-editor-container">
+              <div style="color:var(--text-muted);padding:20px;text-align:center;">Select a table above.</div>
+            </div>
+          </div>
+
+          <!-- Settings sub-panel -->
+          <div id="system-settings" class="sub-panel">
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-title" style="margin-bottom:14px;">API Configuration</div>
+                <div class="modal-field">
+                  <label>Admin API Key</label>
+                  <input id="settings-api-key" type="password" class="input" placeholder="Enter API Key" />
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Required for Restart Bot and Broadcast.</div>
+                </div>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Key</button>
+              </div>
+              <div class="card">
+                <div class="card-title" style="margin-bottom:14px;">Feature Flags</div>
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <span style="font-size:14px;">User Dashboard Access</span>
+                  <button id="toggle-dashboard-btn" class="btn btn-success" onclick="toggleUserDashboard()">Enabled</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analyst Access sub-panel -->
+          <div id="system-analyst" class="sub-panel">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Temporary Users (JSON)</div>
+                <button class="btn btn-primary btn-sm" onclick="openAddSimpleUserModal()">
+                  <i class="fas fa-plus"></i> Add User
+                </button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr><th>Username</th><th>Role</th><th>Created At</th><th>Actions</th></tr>
+                  </thead>
+                  <tbody id="simple-users-body">
+                    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
 
+    <!-- ── Toast Container ── -->
+    <div id="toast-container"></div>
+
+    <!-- ── Modal Overlay ── -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-title">Modal</h3>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div id="modal-body" class="modal-body"></div>
+        <div id="modal-footer" class="modal-footer"></div>
+      </div>
+    </div>
+
     <script>
-      // --- State & Config ---
+      // ══════════════════════════════════════════════════════════════
+      // STATE & CONFIG
+      // ══════════════════════════════════════════════════════════════
       let CSRF_TOKEN = null;
-      const API_KEY_STORAGE = "twitch_bot_api_key";
+      const API_KEY_STORAGE = 'twitch_bot_api_key';
       let selectedChannels = new Set();
-      let performanceInterval = null;
+      let currentSection = 'overview';
+      let currentSubTabs = {};   // { sectionId: activeSubTabId }
+      let modalConfirmCallback = null;
+      let modalSubmitCallback = null;
 
-      // --- Initialization ---
-      document.addEventListener("DOMContentLoaded", async () => {
+      // ══════════════════════════════════════════════════════════════
+      // TOAST NOTIFICATIONS  (replaces alert())
+      // ══════════════════════════════════════════════════════════════
+      function toast(message, type = 'info', duration = 4000) {
+        const icons = { success: 'check-circle', error: 'times-circle', warning: 'exclamation-triangle', info: 'info-circle' };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.innerHTML = `<i class="fas fa-${icons[type] || 'info-circle'}"></i><span>${escapeHtml(message)}</span>`;
+        container.appendChild(el);
+        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, duration);
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // MODAL SYSTEM  (replaces confirm(), prompt())
+      // ══════════════════════════════════════════════════════════════
+      function closeModal() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        modalConfirmCallback = null;
+        modalSubmitCallback = null;
+      }
+
+      function showConfirm(title, message, onConfirm) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').innerHTML = `<p class="modal-message">${escapeHtml(message)}</p>`;
+        document.getElementById('modal-footer').innerHTML = `
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-danger" id="modal-confirm-btn">Confirm</button>
+        `;
+        modalConfirmCallback = onConfirm;
+        document.getElementById('modal-confirm-btn').onclick = () => { closeModal(); onConfirm(); };
+        document.getElementById('modal-overlay').classList.remove('hidden');
+      }
+
+      function showPrompt(title, fields, onSubmit) {
+        document.getElementById('modal-title').textContent = title;
+        const fieldsHtml = fields.map(f => `
+          <div class="modal-field">
+            <label>${escapeHtml(f.label)}</label>
+            ${f.type === 'select'
+              ? `<select id="mf-${f.id}" class="input">${f.options.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}</select>`
+              : `<input id="mf-${f.id}" class="input" type="${f.type || 'text'}" placeholder="${escapeHtml(f.placeholder || '')}" value="${escapeHtml(f.default || '')}" />`
+            }
+          </div>
+        `).join('');
+        document.getElementById('modal-body').innerHTML = fieldsHtml;
+        document.getElementById('modal-footer').innerHTML = `
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" id="modal-submit-btn">Submit</button>
+        `;
+        modalSubmitCallback = onSubmit;
+        document.getElementById('modal-submit-btn').onclick = () => {
+          const values = {};
+          fields.forEach(f => { values[f.id] = document.getElementById(`mf-${f.id}`).value; });
+          closeModal();
+          onSubmit(values);
+        };
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        // Focus first input
+        const first = document.querySelector('#modal-body .input');
+        if (first) first.focus();
+      }
+
+      // Close on overlay click
+      document.getElementById('modal-overlay').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+      });
+
+      // ══════════════════════════════════════════════════════════════
+      // NAVIGATION
+      // ══════════════════════════════════════════════════════════════
+      function switchSection(sectionId) {
+        // Role guard
+        const adminSections = ['users', 'system'];
+        if (adminSections.includes(sectionId) && window.USER_ROLE !== 'admin') {
+          console.warn('Unauthorized access attempt to ' + sectionId);
+          return;
+        }
+
+        currentSection = sectionId;
+
+        // Update sidebar
+        document.querySelectorAll('.nav-item').forEach(el => {
+          el.classList.remove('active');
+          if (el.getAttribute('onclick')?.includes(`'${sectionId}'`)) el.classList.add('active');
+        });
+
+        // Show section
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        const section = document.getElementById(`section-${sectionId}`);
+        if (section) section.classList.add('active');
+
+        // Trigger loads on first visit
+        if (sectionId === 'users') {
+          const sub = currentSubTabs['users'] || 'channels';
+          triggerSubLoad('users', sub);
+        } else if (sectionId === 'content') {
+          const sub = currentSubTabs['content'] || 'drops';
+          triggerSubLoad('content', sub);
+        } else if (sectionId === 'bots') {
+          const sub = currentSubTabs['bots'] || 'analytics';
+          triggerSubLoad('bots', sub);
+        } else if (sectionId === 'system') {
+          const sub = currentSubTabs['system'] || 'database';
+          triggerSubLoad('system', sub);
+        }
+      }
+
+      function switchSubTab(sectionId, tabId) {
+        currentSubTabs[sectionId] = tabId;
+
+        // Update tab bar within the section
+        const section = document.getElementById(`section-${sectionId}`);
+        if (!section) return;
+        section.querySelectorAll('.subtab').forEach(el => {
+          el.classList.remove('active');
+          if (el.getAttribute('onclick')?.includes(`'${tabId}'`)) el.classList.add('active');
+        });
+
+        // Show sub-panel
+        section.querySelectorAll('.sub-panel').forEach(el => el.classList.remove('active'));
+        const panel = document.getElementById(`${sectionId}-${tabId}`);
+        if (panel) panel.classList.add('active');
+
+        triggerSubLoad(sectionId, tabId);
+      }
+
+      function triggerSubLoad(sectionId, tabId) {
+        const key = `${sectionId}-${tabId}`;
+        if (key === 'users-channels') fetchChannels();
+        else if (key === 'users-manage') fetchUsers();
+        else if (key === 'users-subscriptions') refreshSubscriptionStats();
+        else if (key === 'content-drops') loadDropsConfig();
+        else if (key === 'content-commands') fetchCommands();
+        else if (key === 'content-feedback') fetchFeedback();
+        else if (key === 'bots-analytics') loadAnalytics();
+        else if (key === 'bots-logs') fetchLogs();
+        else if (key === 'system-database') loadDbTable();
+        else if (key === 'system-analyst') fetchSimpleUsers();
+        else if (key === 'system-settings') loadDashboardToggleState();
+      }
+
+      function refreshCurrentSubTab() {
+        const sub = currentSubTabs[currentSection];
+        if (sub) triggerSubLoad(currentSection, sub);
+        else if (currentSection === 'overview') refreshOverview();
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // INITIALIZATION
+      // ══════════════════════════════════════════════════════════════
+      document.addEventListener('DOMContentLoaded', async () => {
         await ensureCsrfToken();
-
-        // Check user role first to set UI state correctly
         await checkUserRole();
-
         loadSettings();
-
-        // Initial Data Load
-        refreshAll();
-
-        // Start polling
+        refreshOverview();
         startPolling();
-
-        // Setup DB listener
-        document
-          .getElementById("db-table-select")
-          .addEventListener("change", loadDbTable);
       });
 
       async function checkUserRole() {
         try {
-          const res = await fetch("/admin/api/me");
+          const res = await fetch('/admin/api/me');
           const data = await res.json();
           window.USER_ROLE = data.role;
-
-          // Update sidebar info
-          document.getElementById("sidebar-user-name").innerText =
-            data.username;
-          document.getElementById("sidebar-user-role").innerText = data.role;
-          document.getElementById("sidebar-user-avatar").innerText =
-            data.username.charAt(0).toUpperCase();
-
-          // Add body class for CSS-based revealing
-          if (data.role === "admin") {
-            document.body.classList.add("is-admin");
-          } else {
-            document.body.classList.remove("is-admin");
-          }
-
-          // If currently on an admin-only view, and not an admin, switch to dashboard
-          const adminOnlyViews = [
-            "channels",
-            "users",
-            "broadcast",
-            "commands",
-            "database",
-            "logs",
-            "settings",
-            "subscriptions",
-          ];
-
-          if (data.role !== "admin") {
-            const currentActive = document.querySelector(".nav-item.active");
-            if (currentActive) {
-              const onclickAttr = currentActive.getAttribute("onclick") || "";
-              if (adminOnlyViews.some((v) => onclickAttr.includes(`'${v}'`))) {
-                switchView("dashboard");
-              }
-            }
+          document.getElementById('sidebar-name').textContent = data.username;
+          document.getElementById('sidebar-role').textContent = data.role;
+          document.getElementById('sidebar-avatar').textContent = data.username.charAt(0).toUpperCase();
+          if (data.role === 'admin') {
+            document.body.classList.add('is-admin');
           }
         } catch (err) {
-          console.error("Failed to check user role:", err);
+          console.error('Failed to check user role:', err);
         }
       }
-
-      function switchView(viewId) {
-        // Security check for Staff
-        const adminOnlyViews = [
-          "channels",
-          "users",
-          "broadcast",
-          "commands",
-          "database",
-          "logs",
-          "settings",
-          "subscriptions",
-        ];
-        if (window.USER_ROLE === "Staff" && adminOnlyViews.includes(viewId)) {
-          console.warn("Unauthorized access attempt to " + viewId);
-          return;
-        }
-
-        // Update Sidebar
-        document.querySelectorAll(".nav-item").forEach((el) => {
-          el.classList.remove("active");
-          const onclickAttr = el.getAttribute("onclick") || "";
-          if (onclickAttr.includes(`'${viewId}'`)) {
-            el.classList.add("active");
-          }
-        });
-
-        // Update Main Content
-        document
-          .querySelectorAll(".view-section")
-          .forEach((el) => el.classList.remove("active"));
-        const targetView = document.getElementById(`view-${viewId}`);
-        if (targetView) targetView.classList.add("active");
-
-        // Trigger specific loads
-        if (viewId === "database") loadDbTable();
-        if (viewId === "logs") fetchLogs();
-        if (viewId === "channels") fetchChannels();
-        if (viewId === "users") fetchUsers();
-        if (viewId === "drops") loadDropsConfig();
-        if (viewId === "analytics") loadAnalytics();
-        if (viewId === "feedback") fetchFeedback();
-      }
-
-      function refreshAll() {
-        fetchBotStatus();
-        fetchPerformance();
-
-        // Only fetch admin-restricted data if user is not Staff
-        if (window.USER_ROLE !== "Staff") {
-          fetchChannels();
-          fetchLogs();
-          fetchCommands();
-          fetchFeedback();
-        }
-      }
-
-      // --- Drops Management ---
-      async function loadDropsConfig() {
-        const container = document.getElementById("drops-items-container");
-        container.innerHTML =
-          '<div style="padding:20px; text-align:center;">Loading...</div>';
-        try {
-          const res = await fetch("/admin/api/drops");
-          if (!res.ok) throw new Error("Failed to load");
-          const data = await res.json();
-
-          // Globals
-          document.getElementById("drop-last-updated").value =
-            data.lastUpdated || "";
-          document.getElementById("drop-featured-image").value =
-            data.featuredImage || "";
-
-          // Items
-          container.innerHTML = "";
-          if (data.drops && Array.isArray(data.drops)) {
-            data.drops.forEach((drop) => addDropItem(drop));
-          }
-        } catch (err) {
-          container.innerHTML = `<div style="color:var(--danger)">Error: ${err.message}</div>`;
-        }
-      }
-
-      // --- Analytics ---
-      async function loadAnalytics() {
-        try {
-          const res = await fetch("/admin/api/analytics");
-          const data = await res.json();
-
-          // Update summary cards
-          const totalEl = document.getElementById("analytics-total");
-          const uniqueEl = document.getElementById("analytics-unique");
-          const successEl = document.getElementById("analytics-success");
-
-          if (totalEl)
-            totalEl.innerText = data.totalUsage?.toLocaleString() || "0";
-          if (uniqueEl)
-            uniqueEl.innerText = data.uniqueUsers?.toLocaleString() || "0";
-
-          // Calculate overall success rate
-          const totalCommands =
-            data.usageByCommand?.reduce((sum, cmd) => sum + cmd.count, 0) || 0;
-          const totalSuccess =
-            data.usageByCommand?.reduce(
-              (sum, cmd) => sum + cmd.successCount,
-              0,
-            ) || 0;
-          const successRate =
-            totalCommands > 0
-              ? ((totalSuccess / totalCommands) * 100).toFixed(1)
-              : "0";
-
-          if (successEl) successEl.innerText = successRate + "%";
-
-          // Update top commands list
-          const topCommandsList = document.getElementById("top-commands-list");
-          if (topCommandsList) {
-            if (data.usageByCommand?.length) {
-              topCommandsList.innerHTML = data.usageByCommand
-                .slice(0, 5)
-                .map(
-                  (cmd, idx) => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--bg-hover);border-radius:var(--radius)">
-                  <div style="display:flex;align-items:center;gap:12px">
-                    <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">
-                      ${idx + 1}
-                    </div>
-                    <div>
-                      <div style="font-weight:600;color:var(--primary)">!${
-                        cmd.command
-                      }</div>
-                      <div style="font-size:12px;color:var(--text-muted)">${
-                        cmd.count
-                      } uses</div>
-                    </div>
-                  </div>
-                  <div style="text-align:right">
-                    <div style="font-size:12px;color:var(--text-muted)">
-                      ${cmd.successRate.toFixed(1)}% success
-                    </div>
-                  </div>
-                </div>
-              `,
-                )
-                .join("");
-            } else {
-              topCommandsList.innerHTML =
-                '<div style="text-align:center;padding:20px;color:var(--text-muted)">No commands used yet</div>';
-            }
-          }
-
-          // Update command stats table
-          const statsTable = document.getElementById("command-stats-table");
-          if (statsTable) {
-            if (data.usageByCommand?.length) {
-              statsTable.innerHTML = data.usageByCommand
-                .map(
-                  (cmd) => `
-                <tr>
-                  <td><strong style="color:var(--primary)">!${
-                    cmd.command
-                  }</strong></td>
-                  <td>${cmd.count.toLocaleString()}</td>
-                  <td>
-                    <span style="color:${
-                      cmd.successRate >= 95
-                        ? "var(--success)"
-                        : cmd.successRate >= 80
-                          ? "var(--warning)"
-                          : "var(--danger)"
-                    }">
-                      ${cmd.successRate.toFixed(1)}%
-                    </span>
-                  </td>
-                  <td>${cmd.avgResponseTime || 0}ms</td>
-                </tr>
-              `,
-                )
-                .join("");
-            } else {
-              statsTable.innerHTML =
-                '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">No command data available</td></tr>';
-            }
-          }
-
-          // Update recent commands table
-          const recentTable = document.getElementById("recent-commands-table");
-          if (recentTable) {
-            if (data.recentCommands?.length) {
-              recentTable.innerHTML = data.recentCommands
-                .slice(0, 20)
-                .map((cmd) => {
-                  const date = new Date(cmd.timestamp);
-                  const timeStr = date.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
-                  return `
-                  <tr>
-                    <td>${timeStr}</td>
-                    <td><strong>!${cmd.command}</strong></td>
-                    <td>${cmd.user}</td>
-                    <td>
-                      <span style="color:${
-                        cmd.success ? "var(--success)" : "var(--danger)"
-                      }">
-                        ${cmd.success ? "✓ Success" : "✗ Failed"}
-                      </span>
-                    </td>
-                    <td>${cmd.responseTime || 0}ms</td>
-                  </tr>
-                `;
-                })
-                .join("");
-            } else {
-              recentTable.innerHTML =
-                '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No recent commands</td></tr>';
-            }
-          }
-
-          // Update hourly chart
-          const chartContainer = document.getElementById(
-            "hourly-chart-container",
-          );
-          if (chartContainer) {
-            if (data.hourlyUsage?.length) {
-              const maxCount = Math.max(
-                ...data.hourlyUsage.map((h) => h.count),
-              );
-              chartContainer.innerHTML = `
-              <div style="width:100%;display:flex;align-items:flex-end;gap:4px;height:180px;padding:10px 0">
-                ${data.hourlyUsage
-                  .map((h) => {
-                    const height = maxCount ? (h.count / maxCount) * 100 : 0;
-                    const hour = new Date(h.hour).getHours();
-                    return `
-                      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-                        <div style="width:100%;background:var(--bg-hover);border-radius:4px 4px 0 0;position:relative;min-height:100px">
-                          <div style="width:100%;background:linear-gradient(180deg,var(--primary),var(--primary-hover));height:${height}%;border-radius:4px 4px 0 0"></div>
-                          <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600">
-                            ${h.count}
-                          </div>
-                        </div>
-                        <div style="font-size:10px;color:var(--text-muted)">${hour}:00</div>
-                      </div>
-                    `;
-                  })
-                  .join("")}
-              </div>
-            `;
-            } else {
-              chartContainer.innerHTML =
-                '<div style="text-align:center;color:var(--text-muted)">No data for the last 24 hours</div>';
-            }
-          }
-        } catch (err) {
-          console.error("Failed to load analytics:", err);
-        }
-      }
-
-      function addDropItem(data = {}) {
-        const container = document.getElementById("drops-items-container");
-        const id = Date.now() + Math.random().toString().slice(2, 5);
-
-        const div = document.createElement("div");
-        div.className = "drop-edit-row";
-        div.id = `drop-row-${id}`;
-        div.style.cssText =
-          "display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:10px; align-items:center; background:var(--bg-app); padding:10px; border-radius:6px; border:1px solid var(--border);";
-
-        div.innerHTML = `
-              <div>
-                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Name</label>
-                  <input class="input drop-name" value="${escapeHtml(
-                    data.name || "",
-                  )}" placeholder="Item Name">
-              </div>
-              <div>
-                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Category</label>
-                  <input class="input drop-cat" value="${escapeHtml(
-                    data.category || "",
-                  )}" placeholder="Category">
-              </div>
-              <div>
-                  <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:2px;">Duration</label>
-                  <input class="input drop-dur" value="${escapeHtml(
-                    data.duration || "",
-                  )}" placeholder="e.g. 1 hour">
-              </div>
-              <div style="display:flex; align-items:flex-end; height:100%;">
-                  <button class="btn btn-danger" style="padding:8px;" onclick="removeDropItem('${id}')"><i class="fas fa-trash"></i></button>
-              </div>
-          `;
-        container.appendChild(div);
-      }
-
-      function removeDropItem(id) {
-        const el = document.getElementById(`drop-row-${id}`);
-        if (el) el.remove();
-      }
-
-      async function saveDropsConfig() {
-        const lastUpdated = document.getElementById("drop-last-updated").value;
-        const featuredImage = document.getElementById(
-          "drop-featured-image",
-        ).value;
-
-        const drops = [];
-        document.querySelectorAll(".drop-edit-row").forEach((row) => {
-          drops.push({
-            name: row.querySelector(".drop-name").value,
-            category: row.querySelector(".drop-cat").value,
-            duration: row.querySelector(".drop-dur").value,
-            icon: "circle", // Default
-          });
-        });
-
-        const config = { lastUpdated, featuredImage, drops };
-
-        try {
-          await ensureCsrfToken();
-          const res = await fetch("/admin/api/drops", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "CSRF-Token": CSRF_TOKEN,
-            },
-            body: JSON.stringify(config),
-          });
-          const data = await res.json();
-          if (data.success) alert("Saved!");
-          else alert("Error: " + data.error);
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      }
-
-      function escapeHtml(text) {
-        if (!text) return "";
-        return text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#039;");
-      }
-
-      // Initial check for dashboard state
 
       function startPolling() {
         setInterval(fetchPerformance, 5000);
-        setInterval(fetchLogs, 20000);
+        setInterval(() => {
+          if (currentSection === 'bots' && currentSubTabs['bots'] === 'logs') fetchLogs();
+        }, 20000);
       }
 
-      // --- API Helpers ---
-      async function ensureCsrfToken() {
-        if (CSRF_TOKEN) return CSRF_TOKEN;
-        try {
-          const res = await fetch("/admin/api/csrf");
-          const data = await res.json();
-          CSRF_TOKEN = data?.csrfToken || null;
-        } catch {}
-        return CSRF_TOKEN;
-      }
-
-      async function handleImageUpload(input) {
-        if (!input.files || !input.files[0]) return;
-        const file = input.files[0];
-        const formData = new FormData();
-        formData.append("image", file);
-
-        try {
-          await ensureCsrfToken();
-          const res = await fetch("/admin/api/upload", {
-            method: "POST",
-            headers: {
-              "CSRF-Token": CSRF_TOKEN,
-            },
-            body: formData,
-          });
-          const data = await res.json();
-          if (data.success) {
-            document.getElementById("drop-featured-image").value = data.url;
-            alert("Image uploaded successfully!");
-          } else {
-            alert("Upload failed: " + (data.error || "Unknown error"));
-          }
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      }
-
-      function getApiKey() {
-        return (
-          document.getElementById("settings-api-key").value ||
-          localStorage.getItem(API_KEY_STORAGE)
-        );
-      }
-
-      function loadSettings() {
-        const key = localStorage.getItem(API_KEY_STORAGE);
-        if (key) document.getElementById("settings-api-key").value = key;
-      }
-
-      function saveSettings() {
-        const key = document.getElementById("settings-api-key").value;
-        localStorage.setItem(API_KEY_STORAGE, key);
-        alert("Settings Saved");
-      }
-
-      // --- Dashboard & Metrics ---
-      async function fetchPerformance() {
-        try {
-          const res = await fetch("/admin/api/performance");
-          const metrics = await res.json();
-
-          if (metrics && metrics.cpu) {
-            document.getElementById("cpu-val").textContent =
-              metrics.cpu.usage.toFixed(1) + "%";
-            document.getElementById("cpu-bar").style.width =
-              metrics.cpu.usage + "%";
-
-            const memUsed = (metrics.memory.used / 1024 / 1024).toFixed(0);
-            const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
-            const memPercent =
-              (metrics.memory.used / metrics.memory.total) * 100;
-            document.getElementById("mem-val").textContent =
-              `${memUsed}MB / ${memTotal}MB`;
-            document.getElementById("mem-bar").style.width = memPercent + "%";
-
-            if (metrics.botLatency) {
-              document.getElementById("lat-val").textContent =
-                metrics.botLatency.toFixed(0) + "ms";
-              document.getElementById("lat-bar").style.width =
-                Math.min(metrics.botLatency, 100) + "%";
-            }
-          }
-        } catch (e) {
-          console.error(e);
-        }
+      // ══════════════════════════════════════════════════════════════
+      // OVERVIEW
+      // ══════════════════════════════════════════════════════════════
+      function refreshOverview() {
+        fetchBotStatus();
+        fetchPerformance();
       }
 
       async function fetchBotStatus() {
         try {
-          const res = await fetch("/admin/api/stats");
+          const res = await fetch('/admin/api/stats');
           const data = await res.json();
           if (data.stats) {
-            document.getElementById("dash-commands").textContent =
-              data.stats.commandsProcessed.toLocaleString();
-            document.getElementById("dash-uptime").textContent = formatUptime(
-              data.stats.uptime,
-            );
+            document.getElementById('dash-commands').textContent = data.stats.commandsProcessed.toLocaleString();
+            document.getElementById('dash-uptime').textContent = formatUptime(data.stats.uptime);
           }
         } catch (e) {}
+      }
+
+      async function fetchPerformance() {
+        try {
+          const res = await fetch('/admin/api/performance');
+          const metrics = await res.json();
+          if (metrics?.cpu) {
+            const cpuPct = metrics.cpu.usage;
+            document.getElementById('cpu-val').textContent = cpuPct.toFixed(1) + '%';
+            document.getElementById('cpu-bar').style.width = cpuPct + '%';
+            document.getElementById('cpu-bar').style.background =
+              cpuPct >= 80 ? 'var(--danger)' : cpuPct >= 60 ? 'var(--warning)' : 'var(--primary)';
+
+            const memUsed = (metrics.memory.used / 1024 / 1024).toFixed(0);
+            const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
+            const memPct = (metrics.memory.used / metrics.memory.total) * 100;
+            document.getElementById('mem-val').textContent = `${memUsed}MB / ${memTotal}MB`;
+            document.getElementById('mem-bar').style.width = memPct + '%';
+
+            if (metrics.botLatency) {
+              document.getElementById('lat-val').textContent = metrics.botLatency.toFixed(0) + 'ms';
+              document.getElementById('lat-bar').style.width = Math.min(metrics.botLatency, 100) + '%';
+            }
+
+            // Dynamic system status
+            const statusEl = document.getElementById('dash-status');
+            const labelEl = document.getElementById('dash-status-label');
+            if (cpuPct >= 80 || memPct >= 90) {
+              statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i>';
+              statusEl.style.color = 'var(--danger)';
+              labelEl.textContent = 'High load detected';
+            } else if (cpuPct >= 60 || memPct >= 75) {
+              statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--warning)"></i>';
+              statusEl.style.color = 'var(--warning)';
+              labelEl.textContent = 'Moderate load';
+            } else {
+              statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Healthy';
+              statusEl.style.color = 'var(--success)';
+              labelEl.textContent = 'All systems operational';
+            }
+          }
+        } catch (e) { console.error(e); }
       }
 
       function formatUptime(seconds) {
@@ -2130,953 +1210,904 @@
         return `${h}h ${m}m`;
       }
 
-      // --- Channels ---
-      async function fetchUsers() {
-        const body = document.getElementById("users-body");
-        body.innerHTML =
-          '<tr><td colspan="4" style="text-align:center;padding:20px;">Loading users...</td></tr>';
-
-        try {
-          const res = await fetch("/admin/api/users");
-          const data = await res.json();
-
-          if (!data.users) throw new Error("No users found");
-
-          body.innerHTML = "";
-          data.users.forEach((user) => {
-            const tr = document.createElement("tr");
-            const banBtn = user.banned
-              ? `<button class="btn btn-success" style="padding:4px 8px; font-size:12px;" onclick="toggleBan('${user.id}', '${user.username}', true)">Unban</button>`
-              : `<button class="btn btn-danger" style="padding:4px 8px; font-size:12px;" onclick="toggleBan('${user.id}', '${user.username}', false)">Ban</button>`;
-
-            const banStatus = user.banned
-              ? `<span style="color:var(--danger); font-size:12px; display:block;">(Banned)</span>`
-              : "";
-
-            tr.innerHTML = `
-              <td>
-                <strong>${user.username}</strong>
-                ${banStatus}
-              </td>
-              <td><code style="font-size:12px; color:var(--text-muted);">${
-                user.twitch_user_id || "N/A"
-              }</code></td>
-              <td>
-                <select class="input" style="padding:4px; font-size:12px; width:auto;" onchange="setUserRole('${
-                  user.username
-                }', this.value)">
-                  <option value="Basic user" ${
-                    user.role === "Basic user" ? "selected" : ""
-                  }>Basic user</option>
-                  <option value="tester" ${
-                    user.role === "tester" ? "selected" : ""
-                  }>Tester</option>
-                  <option value="Staff" ${
-                    user.role === "Staff" ? "selected" : ""
-                  }>Staff</option>
-                  <option value="admin" ${
-                    user.role === "admin" ? "selected" : ""
-                  }>Admin</option>
-                </select>
-              </td>
-              <td style="display:flex; gap:10px; align-items:center;">
-                <span id="role-status-${
-                  user.username
-                }" style="font-size:12px; color:var(--success);"></span>
-                <button class="btn btn-primary" style="padding:4px 8px; font-size:12px;" onclick="openGrantModal('${user.id}', '${user.username}')">Grant Sub</button>
-                ${banBtn}
-              </td>
-            `;
-            body.appendChild(tr);
-          });
-        } catch (err) {
-          body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--danger);">Error: ${err.message}</td></tr>`;
-        }
-      }
-
-      async function setUserRole(username, role) {
-        const statusEl = document.getElementById(`role-status-${username}`);
-        statusEl.textContent = "Saving...";
-        statusEl.style.color = "var(--text-muted)";
-
-        try {
-          await ensureCsrfToken();
-          const res = await fetch("/admin/api/users/set-role", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "CSRF-Token": CSRF_TOKEN,
-            },
-            body: JSON.stringify({ username, role }),
-          });
-
-          const data = await res.json();
-          if (data.success) {
-            statusEl.textContent = "Saved ✓";
-            statusEl.style.color = "var(--success)";
-            setTimeout(() => {
-              statusEl.textContent = "";
-            }, 2000);
-          } else {
-            statusEl.textContent = "Error ✗";
-            statusEl.style.color = "var(--danger)";
-            alert(data.error || "Failed to update role");
-          }
-        } catch (err) {
-          statusEl.textContent = "Error ✗";
-          statusEl.style.color = "var(--danger)";
-          alert("Network error: " + err.message);
-        }
-      }
-
-      async function toggleBan(userId, username, isBanned) {
-        if (isBanned) {
-          if (!confirm(`Unban ${username}?`)) return;
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/users/${userId}/unban`, {
-              method: "POST",
-              headers: { "CSRF-Token": CSRF_TOKEN },
-            });
-            const data = await res.json();
-            if (data.success) {
-              alert("User unbanned");
-              fetchUsers();
-            } else {
-              alert("Error: " + data.error);
-            }
-          } catch (err) {
-            alert("Error: " + err.message);
-          }
-        } else {
-          const reason = prompt(`Reason for banning ${username}:`);
-          if (reason === null) return; // cancelled
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/users/${userId}/ban`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "CSRF-Token": CSRF_TOKEN,
-              },
-              body: JSON.stringify({ reason }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              alert("User banned");
-              fetchUsers();
-            } else {
-              alert("Error: " + data.error);
-            }
-          } catch (err) {
-            alert("Error: " + err.message);
-          }
-        }
-      }
-
+      // ══════════════════════════════════════════════════════════════
+      // CHANNELS
+      // ══════════════════════════════════════════════════════════════
       async function fetchChannels() {
+        const list = document.getElementById('channels-list');
+        list.innerHTML = '<div style="color:var(--text-muted);padding:20px;">Loading channels...</div>';
         try {
-          const res = await fetch("/admin/api/channels");
+          const res = await fetch('/admin/api/channels');
           const data = await res.json();
-          const list = document.getElementById("channels-list");
-          list.innerHTML = "";
-
+          list.innerHTML = '';
           let count = 0;
           if (data.channels) {
             count = data.channels.length;
-            data.channels.forEach((chData) => {
-              const ch = typeof chData === "string" ? chData : chData.username;
-              const role = typeof chData === "string" ? "" : chData.role;
+            data.channels.forEach(chData => {
+              const ch = typeof chData === 'string' ? chData : chData.username;
+              const role = typeof chData === 'string' ? '' : chData.role;
+              const isSelected = selectedChannels.has(ch);
               list.innerHTML += `
                 <div class="channel-card">
                   <div class="channel-header">
-                    <div style="font-weight:600;">
-                      <span class="status-dot"></span>${ch}
-                      <span style="font-size:10px; color:var(--text-muted); margin-left:5px;">[${
-                        role || "Basic user"
-                      }]</span>
+                    <div style="font-weight:600;font-size:14px;">
+                      <span class="status-dot"></span>${escapeHtml(ch)}
+                      <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">[${escapeHtml(role || 'Basic user')}]</span>
                     </div>
-                    <button class="btn btn-ghost" style="padding:4px;" onclick="toggleChannelSelection('${ch}')">
-                      <i class="fas ${
-                        selectedChannels.has(ch)
-                          ? "fa-check-square"
-                          : "fa-plus-square"
-                      }"></i>
+                    <button class="btn btn-ghost btn-sm" onclick="toggleChannelSelection('${escapeHtml(ch)}')" title="Select for broadcast">
+                      <i class="fas ${isSelected ? 'fa-check-square' : 'fa-plus-square'}"></i>
                     </button>
                   </div>
-                  <div style="display:flex; gap:5px;">
-                    <input id="msg-${ch}" class="input" placeholder="Message..." style="padding:4px 8px; font-size:12px;">
-                    <button class="btn btn-primary" style="padding:4px 8px;" onclick="sendToChannel('${ch}')"><i class="fas fa-paper-plane"></i></button>
+                  <div style="display:flex;gap:6px;">
+                    <input id="msg-${escapeHtml(ch)}" class="input" placeholder="Message..." style="padding:5px 8px;font-size:12px;">
+                    <button class="btn btn-primary btn-sm" onclick="sendToChannel('${escapeHtml(ch)}')">
+                      <i class="fas fa-paper-plane"></i>
+                    </button>
                   </div>
-                </div>
-              `;
+                </div>`;
             });
           }
-          document.getElementById("dash-channels").textContent = count;
+          document.getElementById('dash-channels').textContent = count;
         } catch (e) {
-          document.getElementById("channels-list").innerHTML =
-            '<div style="color:var(--danger)">Failed to load channels</div>';
+          list.innerHTML = '<div style="color:var(--danger);padding:20px;">Failed to load channels</div>';
         }
       }
 
       function toggleChannelSelection(ch) {
         if (selectedChannels.has(ch)) selectedChannels.delete(ch);
         else selectedChannels.add(ch);
-        fetchChannels(); // Re-render to update icons
+        fetchChannels();
         updateBroadcastTargets();
       }
 
       function updateBroadcastTargets() {
-        const container = document.getElementById("broadcast-targets");
+        const container = document.getElementById('broadcast-targets');
         if (selectedChannels.size === 0) {
-          container.innerHTML =
-            "<span style=\"color:var(--text-muted); font-style:italic; padding:5px;\">Select channels from the 'Channels' tab or leave empty for ALL.</span>";
+          container.innerHTML = '<span style="color:var(--text-muted);font-style:italic;font-size:13px;">Select channels from Users → Channels or leave empty for ALL.</span>';
           return;
         }
-        container.innerHTML = "";
-        selectedChannels.forEach((ch) => {
-          container.innerHTML += `<span style="background:var(--primary); color:white; padding:2px 8px; border-radius:12px; font-size:12px;">${ch}</span>`;
+        container.innerHTML = '';
+        selectedChannels.forEach(ch => {
+          container.innerHTML += `<span style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:12px;font-size:12px;">${escapeHtml(ch)}</span>`;
         });
       }
 
       async function sendToChannel(ch) {
-        const msg = document.getElementById(`msg-${ch}`).value;
+        const input = document.getElementById(`msg-${ch}`);
+        const msg = input?.value;
         if (!msg) return;
         const key = getApiKey();
-        if (!key) return alert("API Key required in Settings");
-
+        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
         try {
           await ensureCsrfToken();
-          await fetch("/admin/api/message", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "CSRF-Token": CSRF_TOKEN,
-            },
+          await fetch('/admin/api/message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
             body: JSON.stringify({ channel: ch, message: msg, key }),
           });
-          document.getElementById(`msg-${ch}`).value = "";
-          alert(`Sent to ${ch}`);
-        } catch (e) {
-          alert("Failed to send");
+          input.value = '';
+          toast(`Sent to ${ch}`, 'success');
+        } catch (e) { toast('Failed to send', 'error'); }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // USERS
+      // ══════════════════════════════════════════════════════════════
+      async function fetchUsers() {
+        const body = document.getElementById('users-body');
+        body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading users...</td></tr>';
+        try {
+          const res = await fetch('/admin/api/users');
+          const data = await res.json();
+          if (!data.users) throw new Error('No users found');
+          body.innerHTML = '';
+          data.users.forEach(user => {
+            const banBtn = user.banned
+              ? `<button class="btn btn-success btn-sm" onclick="doUnban('${user.id}', '${escapeHtml(user.username)}')">Unban</button>`
+              : `<button class="btn btn-danger btn-sm" onclick="doBan('${user.id}', '${escapeHtml(user.username)}')">Ban</button>`;
+            const banBadge = user.banned ? `<span style="color:var(--danger);font-size:11px;display:block;">(Banned)</span>` : '';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>
+                <strong>${escapeHtml(user.username)}</strong>
+                ${banBadge}
+              </td>
+              <td><code style="font-size:11px;color:var(--text-muted);">${escapeHtml(user.twitch_user_id || 'N/A')}</code></td>
+              <td>
+                <select class="input" style="padding:4px;font-size:12px;width:auto;" onchange="setUserRoleInline('${escapeHtml(user.username)}', this.value)">
+                  <option value="Basic user" ${user.role === 'Basic user' ? 'selected' : ''}>Basic user</option>
+                  <option value="subscriber" ${user.role === 'subscriber' ? 'selected' : ''}>subscriber</option>
+                  <option value="tester" ${user.role === 'tester' ? 'selected' : ''}>Tester</option>
+                  <option value="Staff" ${user.role === 'Staff' ? 'selected' : ''}>Staff</option>
+                  <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                </select>
+                <span id="role-status-${escapeHtml(user.username)}" style="font-size:11px;margin-left:4px;"></span>
+              </td>
+              <td style="display:flex;gap:6px;align-items:center;">
+                <button class="btn btn-primary btn-sm" onclick="openGrantSubModal('${user.id}', '${escapeHtml(user.username)}')">Grant Sub</button>
+                ${banBtn}
+              </td>`;
+            body.appendChild(tr);
+          });
+        } catch (err) {
+          body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
         }
       }
 
-      // --- Broadcast ---
-      async function sendBroadcast() {
-        const msg = document.getElementById("broadcast-msg").value;
-        const key = getApiKey();
-        if (!msg || !key) return alert("Message and API Key required");
-
-        const targets =
-          selectedChannels.size > 0 ? Array.from(selectedChannels) : null; // null means all
-
+      async function setUserRoleInline(username, role) {
+        const statusEl = document.getElementById(`role-status-${username}`);
+        if (statusEl) { statusEl.textContent = '…'; statusEl.style.color = 'var(--text-muted)'; }
         try {
           await ensureCsrfToken();
-          // If targets is null, we might need a loop or a backend endpoint that handles "all".
-          // The current backend /admin/api/message takes a single channel.
-          // Wait, the backend logic I saw earlier:
-          // app.post("/admin/api/message", ... { channel, message } ... axios.post(..., { channel, message })
-          // And botManager.sendMessage(message, channel) handles "all" if channel is undefined.
-          // So if I send channel: undefined (or null), it should broadcast.
-
-          if (targets) {
-            // Send to specific list
-            for (const ch of targets) {
-              await fetch("/admin/api/message", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "CSRF-Token": CSRF_TOKEN,
-                },
-                body: JSON.stringify({ channel: ch, message: msg, key }),
-              });
-            }
+          const res = await fetch('/admin/api/users/set-role', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ username, role }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            if (statusEl) { statusEl.textContent = '✓'; statusEl.style.color = 'var(--success)'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
           } else {
-            // Send to all
-            await fetch("/admin/api/message", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "CSRF-Token": CSRF_TOKEN,
-              },
-              body: JSON.stringify({ message: msg, key }), // channel undefined
+            if (statusEl) { statusEl.textContent = '✗'; statusEl.style.color = 'var(--danger)'; }
+            toast(data.error || 'Failed to update role', 'error');
+          }
+        } catch (err) {
+          toast('Network error: ' + err.message, 'error');
+        }
+      }
+
+      function doBan(userId, username) {
+        showPrompt(`Ban ${username}`, [
+          { id: 'reason', label: 'Reason for ban', placeholder: 'Enter reason...' }
+        ], async (vals) => {
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/users/${userId}/ban`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              body: JSON.stringify({ reason: vals.reason }),
             });
-          }
-
-          document.getElementById("broadcast-msg").value = "";
-          document.getElementById("broadcast-status").innerHTML =
-            '<span style="color:var(--success)">Broadcast Sent!</span>';
-          setTimeout(
-            () => (document.getElementById("broadcast-status").innerHTML = ""),
-            3000,
-          );
-        } catch (e) {
-          document.getElementById("broadcast-status").innerHTML =
-            '<span style="color:var(--danger)">Broadcast Failed</span>';
-        }
-      }
-
-      // --- Commands ---
-      async function fetchCommands() {
-        const res = await fetch("/admin/api/commands");
-        const data = await res.json();
-        const tbody = document.getElementById("commands-body");
-        tbody.innerHTML = "";
-        if (data.commands) {
-          data.commands.forEach((cmd) => {
-            tbody.innerHTML += `
-              <tr>
-                <td style="font-weight:600; color:var(--primary);">${cmd.command}</td>
-                <td>${cmd.response}</td>
-                <td>
-                  <button class="btn btn-ghost" style="padding:4px;" onclick="deleteCommand('${cmd.command}')"><i class="fas fa-trash"></i></button>
-                </td>
-              </tr>
-            `;
-          });
-        }
-      }
-
-      function showAddCommandModal() {
-        document.getElementById("add-command-panel").style.display = "block";
-      }
-
-      async function addNewCommand() {
-        const name = document.getElementById("new-cmd-name").value;
-        const resp = document.getElementById("new-cmd-resp").value;
-        if (!name || !resp) return;
-
-        await ensureCsrfToken();
-        await fetch("/admin/api/commands", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": CSRF_TOKEN,
-          },
-          body: JSON.stringify({ name, response: resp }),
+            const data = await res.json();
+            if (data.success) { toast(`${username} banned`, 'success'); fetchUsers(); }
+            else toast(data.error || 'Ban failed', 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
         });
-
-        document.getElementById("new-cmd-name").value = "";
-        document.getElementById("new-cmd-resp").value = "";
-        document.getElementById("add-command-panel").style.display = "none";
-        fetchCommands();
       }
 
-      async function deleteCommand(name) {
-        if (!confirm("Delete " + name + "?")) return;
-        await ensureCsrfToken();
-        await fetch("/admin/api/commands/" + encodeURIComponent(name), {
-          method: "DELETE",
-          headers: { "CSRF-Token": CSRF_TOKEN },
+      function doUnban(userId, username) {
+        showConfirm(`Unban ${username}?`, `This will restore ${username}'s access to the bot.`, async () => {
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/users/${userId}/unban`, {
+              method: 'POST',
+              headers: { 'CSRF-Token': CSRF_TOKEN },
+            });
+            const data = await res.json();
+            if (data.success) { toast(`${username} unbanned`, 'success'); fetchUsers(); }
+            else toast(data.error || 'Unban failed', 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
         });
-        fetchCommands();
       }
 
-      // --- Database ---
-      async function loadDbTable() {
-        const table = document.getElementById("db-table-select").value;
-        const container = document.getElementById("db-editor-container");
-        container.innerHTML =
-          '<div style="color:var(--text-muted)">Loading...</div>';
-
-        const res = await fetch(`/admin/db/${table}`);
-        const data = await res.json();
-        const rows = data.rows || [];
-
-        if (rows.length === 0) {
-          container.innerHTML =
-            '<div style="padding:20px; text-align:center; color:var(--text-muted)">No records found</div>';
-          return;
-        }
-
-        const keys = Object.keys(rows[0]);
-        let html = '<div class="table-container"><table><thead><tr>';
-        keys.forEach((k) => (html += `<th>${k}</th>`));
-        html += "<th>Actions</th></tr></thead><tbody>";
-
-        rows.forEach((row) => {
-          html += "<tr>";
-          keys.forEach((k) => {
-            let val = row[k] !== null ? row[k] : "";
-            if (table === "Channels" && k.includes("token")) val = "••••••";
-            html += `<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${val}</td>`;
-          });
-          // Use first key as ID
-          const id = row[keys[0]];
-          html += `<td>
-            <button class="btn btn-ghost" onclick='deleteDbRow("${table}", "${id}")'><i class="fas fa-trash"></i></button>
-          </td></tr>`;
+      function openGrantSubModal(userId, username) {
+        showPrompt(`Grant Subscription — ${username}`, [
+          { id: 'days', label: 'Duration (days)', type: 'number', default: '30' },
+          { id: 'tier', label: 'Tier', type: 'select', options: [{ value: 'custom_bot', label: 'Custom Bot (Standard)' }] }
+        ], async (vals) => {
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/users/${userId}/grant-subscription`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              body: JSON.stringify({ durationDays: parseInt(vals.days) || 30, tier: vals.tier }),
+            });
+            const data = await res.json();
+            if (data.success) { toast(data.message, 'success'); fetchUsers(); }
+            else toast(data.error || 'Grant failed', 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
         });
-        html += "</tbody></table></div>";
-        container.innerHTML = html;
       }
 
-      async function deleteDbRow(table, id) {
-        if (!confirm("Delete row?")) return;
-        await fetch(`/admin/db/${table}/${id}`, { method: "DELETE" });
-        loadDbTable();
-      }
-
-      // --- Logs ---
-      async function fetchLogs() {
-        const res = await fetch("/admin/api/logs");
-        const logs = await res.json();
-        const viewer = document.getElementById("logs-viewer");
-        viewer.innerHTML = "";
-        if (logs.entries) {
-          logs.entries.forEach((entry) => {
-            const time = new Date(entry.timestamp).toLocaleTimeString();
-            const levelClass =
-              entry.level === "info"
-                ? "log-info"
-                : entry.level === "warn"
-                  ? "log-warn"
-                  : "log-error";
-            viewer.innerHTML += `
-              <div class="log-entry">
-                <span class="log-time">[${time}]</span>
-                <span class="${levelClass}">${entry.message}</span>
-              </div>
-            `;
-          });
-          viewer.scrollTop = viewer.scrollHeight;
-        }
-      }
-
-      // --- Actions ---
-      async function restartBot() {
-        const key = getApiKey();
-        if (!key) return alert("API Key required");
-        await ensureCsrfToken();
-        const res = await fetch("/admin/api/restart-bot", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": CSRF_TOKEN,
-          },
-          body: JSON.stringify({ key }),
-        });
-        const data = await res.json();
-        alert(data.success ? "Restarting..." : "Failed");
-      }
-
-      async function pauseBot() {
-        const key = getApiKey();
-        if (!key) return alert("API Key required");
-        await ensureCsrfToken();
-        const res = await fetch("/admin/api/pause-bot", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": CSRF_TOKEN,
-          },
-          body: JSON.stringify({ key }),
-        });
-        alert("Pause requested");
-      }
-
-      async function resumeBot() {
-        const key = getApiKey();
-        if (!key) return alert("API Key required");
-        await ensureCsrfToken();
-        const res = await fetch("/admin/api/resume-bot", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": CSRF_TOKEN,
-          },
-          body: JSON.stringify({ key }),
-        });
-        alert("Resume requested");
-      }
-
-      async function refreshBotToken() {
-        await ensureCsrfToken();
-        await fetch("/admin/api/refresh-bot-token", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": CSRF_TOKEN,
-          },
-          body: JSON.stringify({}),
-        });
-        alert("Token refresh requested");
-      }
-
-      async function triggerDeploy() {
-        const key = getApiKey();
-        if (!key) return alert("API Key required");
-        if (
-          !confirm(
-            "This will pull the latest code from Git and restart the bot. Continue?",
-          )
-        )
-          return;
-        await ensureCsrfToken();
-        try {
-          const res = await fetch("/admin/api/deploy", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "CSRF-Token": CSRF_TOKEN,
-              "x-deploy-token": "supersecret",
-            },
-            body: JSON.stringify({ key }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            document.getElementById("action-status").innerHTML =
-              '<span style="color:var(--success)">Deploy initiated. Bot restarting...</span>';
-            const msg =
-              data.message || data.error || data.details || "Unknown error";
-            document.getElementById("action-status").innerHTML =
-              '<span style="color:var(--danger)">Deploy failed: ' +
-              msg +
-              "</span>";
-          }
-        } catch (e) {
-          document.getElementById("action-status").innerHTML =
-            '<span style="color:var(--danger)">Deploy request failed</span>';
-        }
-      }
-
-      async function toggleUserDashboard() {
-        // Check current state
-        const btn = document.getElementById("toggle-dashboard-btn");
-        const isEnabled = btn.innerText === "Enabled";
-        const newState = !isEnabled;
-
-        await ensureCsrfToken();
-        const res = await fetch("/admin/api/user-dashboard-access", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "CSRF-Token": CSRF_TOKEN,
-          },
-          body: JSON.stringify({ enabled: newState }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          btn.innerText = newState ? "Enabled" : "Disabled";
-          btn.className = newState ? "btn btn-success" : "btn btn-danger";
-        }
-      }
-
-      // Initial check for dashboard state
-      fetch("/admin/api/user-dashboard-access")
-        .then((r) => r.json())
-        .then((d) => {
-          const btn = document.getElementById("toggle-dashboard-btn");
-          btn.innerText = d.enabled ? "Enabled" : "Disabled";
-          btn.className = d.enabled ? "btn btn-success" : "btn btn-danger";
-        });
-      // --- Simple Auth ---
-      // --- Simple Auth ---
-      window.fetchSimpleUsers = async function () {
-        console.log("Fetching simple users...");
-        try {
-          const res = await fetch("/admin/api/simple-users");
-          const users = await res.json();
-          const tbody = document.getElementById("simple-users-body");
-          tbody.innerHTML = "";
-
-          if (users.length === 0) {
-            tbody.innerHTML =
-              '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted)">No users found</td></tr>';
-            return;
-          }
-
-          users.forEach((u) => {
-            const date = new Date(u.createdAt).toLocaleDateString();
-            tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${u.username}</strong></td>
-                        <td>${u.role}</td>
-                        <td style="color:var(--text-muted)">${date}</td>
-                        <td>
-                            <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteSimpleUser('${u.username}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      };
-
-      window.showAddSimpleUserModal = function () {
-        document.getElementById("add-simple-user-modal").style.display = "flex";
-      };
-
-      window.addSimpleUser = async function () {
-        const username = document.getElementById("new-simple-user").value;
-        const password = document.getElementById("new-simple-pass").value;
-        const role = document.getElementById("new-simple-role").value;
-
-        if (!username || !password)
-          return alert("Username and password required");
-
-        try {
-          await ensureCsrfToken();
-          const res = await fetch("/admin/api/simple-users", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "CSRF-Token": CSRF_TOKEN,
-            },
-            body: JSON.stringify({ username, password, role }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            document.getElementById("add-simple-user-modal").style.display =
-              "none";
-            document.getElementById("new-simple-user").value = "";
-            document.getElementById("new-simple-pass").value = "";
-            fetchSimpleUsers();
-          } else {
-            alert("Error: " + data.error);
-          }
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
-
-      window.deleteSimpleUser = async function (username) {
-        if (!confirm("Delete user " + username + "?")) return;
-        try {
-          await ensureCsrfToken();
-          const res = await fetch(
-            "/admin/api/simple-users/" + encodeURIComponent(username),
-            {
-              method: "DELETE",
-              headers: { "CSRF-Token": CSRF_TOKEN },
-            },
-          );
-          const data = await res.json();
-          if (data.success) {
-            fetchSimpleUsers();
-          } else {
-            alert("Error: " + data.error);
-          }
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      };
-      // --- Feedback Management ---
-      async function fetchFeedback() {
-        const body = document.getElementById("feedback-body");
-        try {
-          const res = await fetch("/admin/api/feedback");
-          const data = await res.json();
-
-          if (!data.feedback || data.feedback.length === 0) {
-            body.innerHTML =
-              '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No feedback matches found</td></tr>';
-            return;
-          }
-
-          body.innerHTML = data.feedback
-            .map((f) => {
-              const date = new Date(f.created_at).toLocaleString();
-              const typeClass =
-                f.type === "bug"
-                  ? "color:var(--danger)"
-                  : f.type === "feature"
-                    ? "color:var(--info)"
-                    : "color:var(--text-muted)";
-              return `
-              <tr>
-                <td style="font-size:12px;color:var(--text-muted)">${date}</td>
-                <td><strong>${f.username || "Anonymous"}</strong></td>
-                <td><span style="${typeClass};font-weight:600;font-size:12px;text-transform:uppercase;">${f.type}</span></td>
-                <td style="max-width:400px;word-break:break-word;">${escapeHtml(f.message)}</td>
-                <td>
-                  <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteFeedback(${f.id})"><i class="fas fa-trash"></i></button>
-                </td>
-              </tr>
-            `;
-            })
-            .join("");
-        } catch (err) {
-          body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger)">Error loading feedback: ${err.message}</td></tr>`;
-        }
-      }
-
-      async function deleteFeedback(id) {
-        if (!confirm("Remove this feedback entry?")) return;
-        try {
-          await ensureCsrfToken();
-          const res = await fetch(`/admin/api/feedback/${id}`, {
-            method: "DELETE",
-            headers: { "CSRF-Token": CSRF_TOKEN },
-          });
-          if (res.ok) fetchFeedback();
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      }
-
-      // --- Subscription Grant ---
-      function openGrantModal(userId, username) {
-        document.getElementById("grant-sub-userid").value = userId;
-        document.getElementById("grant-sub-user-display").innerText =
-          "User: " + username;
-        document.getElementById("grant-sub-modal").style.display = "flex";
-      }
-
-      async function submitGrant() {
-        const userId = document.getElementById("grant-sub-userid").value;
-        const duration = document.getElementById("grant-sub-duration").value;
-        const tier = document.getElementById("grant-sub-tier").value;
-
-        try {
-          await ensureCsrfToken();
-          const res = await fetch(
-            `/admin/api/users/${userId}/grant-subscription`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "CSRF-Token": CSRF_TOKEN,
-              },
-              body: JSON.stringify({ durationDays: duration, tier }),
-            },
-          );
-          const data = await res.json();
-          if (data.success) {
-            alert(data.message);
-            document.getElementById("grant-sub-modal").style.display = "none";
-            fetchUsers(); // Refresh grid
-          } else {
-            alert("Error: " + data.error);
-          }
-        } catch (err) {
-          alert("Error: " + err.message);
-        }
-      }
-
-      // ========================================
-      // SUBSCRIPTION MANAGEMENT FUNCTIONS
-      // ========================================
-
+      // ══════════════════════════════════════════════════════════════
+      // SUBSCRIPTIONS
+      // ══════════════════════════════════════════════════════════════
       async function refreshSubscriptionStats() {
         try {
-          // Fetch stats
-          const statsRes = await fetch('/admin/api/subscription-stats');
+          const [statsRes, subsRes] = await Promise.all([
+            fetch('/admin/api/subscription-stats'),
+            fetch('/admin/api/subscriptions'),
+          ]);
           const stats = await statsRes.json();
-
-          document.getElementById('stat-twitch-subscribers').innerText = stats.twitchSubscribers || 0;
-          document.getElementById('stat-manual-grants').innerText = stats.manualGrants || 0;
-          document.getElementById('stat-custom-bots').innerText = stats.customBotUsers || 0;
-          document.getElementById('stat-role-bypass').innerText = stats.roleBypass?.total || 0;
-          document.getElementById('stat-total-premium').innerText = stats.totalPremiumAccess || 0;
-
-          // Fetch subscribers list
-          const subsRes = await fetch('/admin/api/subscriptions');
           const subsData = await subsRes.json();
 
+          document.getElementById('stat-twitch-subscribers').textContent = stats.twitchSubscribers ?? 0;
+          document.getElementById('stat-manual-grants').textContent = stats.manualGrants ?? 0;
+          document.getElementById('stat-custom-bots').textContent = stats.customBotUsers ?? 0;
+          document.getElementById('stat-role-bypass').textContent = stats.roleBypass?.total ?? 0;
+          document.getElementById('stat-total-premium').textContent = stats.totalPremiumAccess ?? 0;
+
           const tbody = document.getElementById('subscribers-table-body');
-
-          // Helper to display Twitch subscription tier names
-          function getTierName(tier) {
-            switch (tier) {
-              case '1000': return 'Tier 1';
-              case '2000': return 'Tier 2';
-              case '3000': return 'Tier 3';
-              case 'custom_bot': return 'Manual Grant';
-              default: return tier || 'Unknown';
-            }
-          }
-
-          // Helper to get tier source badge
-          function getTierBadge(sub) {
-            if (sub.subscription?.isManualGrant) {
-              return '<span style="color: var(--warning); font-size: 11px;"> (manual)</span>';
-            }
-            if (sub.tier === '1000' || sub.tier === '2000' || sub.tier === '3000') {
-              return '<span style="color: var(--purple); font-size: 11px;"> (Twitch)</span>';
-            }
-            return '';
-          }
-
-          if (subsData.subscriptions && subsData.subscriptions.length > 0) {
+          if (subsData.subscriptions?.length) {
             tbody.innerHTML = subsData.subscriptions.map(sub => `
               <tr>
-                <td><strong>${sub.username}</strong></td>
-                <td>${getTierName(sub.tier)}${getTierBadge(sub)}</td>
+                <td><strong>${escapeHtml(sub.username)}</strong></td>
+                <td>${escapeHtml(tierName(sub.tier))}</td>
+                <td><span style="color:${sub.subscription?.status === 'active' ? 'var(--success)' : 'var(--text-muted)'};">${escapeHtml(sub.subscription?.status || 'active')}</span></td>
+                <td>${sub.customBot ? escapeHtml(sub.customBot.username) : '<span style="color:var(--text-muted);">None</span>'}</td>
+                <td>${sub.subscription?.periodEnd ? new Date(sub.subscription.periodEnd).toLocaleDateString() : '–'}</td>
                 <td>
-                  <span class="status-pill ${sub.subscription?.status === 'active' ? 'online' : 'offline'}">
-                    ${sub.subscription?.status || 'active'}
-                  </span>
+                  <button class="btn btn-danger btn-sm" onclick="revokeSubscriptionById(${sub.id}, '${escapeHtml(sub.username)}')">Revoke</button>
                 </td>
-                <td>${sub.customBot ? sub.customBot.username : '<span style="color: var(--text-muted)">None</span>'}</td>
-                <td>${sub.subscription?.periodEnd ? new Date(sub.subscription.periodEnd).toLocaleDateString() : '<span style="color: var(--text-muted)">-</span>'}</td>
-                <td>
-                  <button class="btn btn-sm" onclick="revokeSubscriptionById(${sub.id}, '${sub.username}')" style="background: var(--danger); padding: 5px 10px; font-size: 12px;">
-                    Revoke
-                  </button>
-                </td>
-              </tr>
-            `).join('');
+              </tr>`).join('');
           } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No active subscribers</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No active subscribers</td></tr>';
           }
-        } catch (err) {
-          console.error('Failed to refresh subscription stats:', err);
-        }
+        } catch (err) { console.error('Failed to refresh subscription stats:', err); }
+      }
+
+      function tierName(tier) {
+        const map = { '1000': 'Tier 1', '2000': 'Tier 2', '3000': 'Tier 3', 'custom_bot': 'Manual Grant' };
+        return map[tier] || tier || 'Unknown';
       }
 
       async function grantSubscription() {
         const username = document.getElementById('grant-sub-username').value.trim().toLowerCase();
         const days = parseInt(document.getElementById('grant-sub-days').value) || 30;
         const resultDiv = document.getElementById('grant-sub-result');
-
-        if (!username) {
-          resultDiv.innerHTML = '<span style="color: var(--danger)">Please enter a username</span>';
-          return;
-        }
-
+        if (!username) { resultDiv.innerHTML = '<span style="color:var(--danger)">Enter a username</span>'; return; }
         try {
-          // First, find the user ID
           const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
           const searchData = await searchRes.json();
-
           const user = searchData.users?.find(u => u.username.toLowerCase() === username);
-          if (!user) {
-            resultDiv.innerHTML = `<span style="color: var(--danger)">User "${username}" not found</span>`;
-            return;
-          }
-
-          // Grant subscription
+          if (!user) { resultDiv.innerHTML = `<span style="color:var(--danger)">User "${escapeHtml(username)}" not found</span>`; return; }
+          await ensureCsrfToken();
           const res = await fetch(`/admin/api/users/${user.id}/grant-subscription`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': CSRF_TOKEN
-            },
-            body: JSON.stringify({ durationDays: days, tier: 'custom_bot' })
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ durationDays: days, tier: 'custom_bot' }),
           });
-
           const data = await res.json();
           if (data.success) {
-            resultDiv.innerHTML = `<span style="color: var(--success)">${data.message}</span>`;
+            resultDiv.innerHTML = `<span style="color:var(--success)">${escapeHtml(data.message)}</span>`;
             document.getElementById('grant-sub-username').value = '';
             refreshSubscriptionStats();
           } else {
-            resultDiv.innerHTML = `<span style="color: var(--danger)">${data.error}</span>`;
+            resultDiv.innerHTML = `<span style="color:var(--danger)">${escapeHtml(data.error)}</span>`;
           }
-        } catch (err) {
-          resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
-        }
+        } catch (err) { resultDiv.innerHTML = `<span style="color:var(--danger)">Error: ${escapeHtml(err.message)}</span>`; }
       }
 
-      async function revokeSubscription() {
-        const username = document.getElementById('revoke-sub-username').value.trim().toLowerCase();
-        const resultDiv = document.getElementById('revoke-sub-result');
-
-        if (!username) {
-          resultDiv.innerHTML = '<span style="color: var(--danger)">Please enter a username</span>';
-          return;
-        }
-
-        try {
-          // First, find the user ID
-          const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
-          const searchData = await searchRes.json();
-
-          const user = searchData.users?.find(u => u.username.toLowerCase() === username);
-          if (!user) {
-            resultDiv.innerHTML = `<span style="color: var(--danger)">User "${username}" not found</span>`;
-            return;
+      function revokeSubscriptionById(userId, username) {
+        showConfirm(`Revoke subscription from ${username}?`,
+          `This will remove premium access and deactivate their custom bot.`,
+          async () => {
+            try {
+              await ensureCsrfToken();
+              const res = await fetch(`/admin/api/users/${userId}/revoke-subscription`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              });
+              const data = await res.json();
+              if (data.success) { toast('Subscription revoked', 'success'); refreshSubscriptionStats(); }
+              else toast('Error: ' + data.error, 'error');
+            } catch (err) { toast('Error: ' + err.message, 'error'); }
           }
-
-          await revokeSubscriptionById(user.id, username);
-          resultDiv.innerHTML = `<span style="color: var(--success)">Subscription revoked from ${username}</span>`;
-          document.getElementById('revoke-sub-username').value = '';
-        } catch (err) {
-          resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
-        }
+        );
       }
 
-      async function revokeSubscriptionById(userId, username) {
-        if (!confirm(`Are you sure you want to revoke the subscription from ${username}?`)) {
-          return;
-        }
-
-        try {
-          const res = await fetch(`/admin/api/users/${userId}/revoke-subscription`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': CSRF_TOKEN
-            }
-          });
-
-          const data = await res.json();
-          if (data.success) {
-            refreshSubscriptionStats();
-          } else {
-            alert('Error: ' + data.error);
-          }
-        } catch (err) {
-          alert('Error: ' + err.message);
-        }
-      }
-
-      async function setUserRole() {
+      async function setUserRoleByUsername() {
         const username = document.getElementById('set-role-username').value.trim().toLowerCase();
         const role = document.getElementById('set-role-select').value;
         const resultDiv = document.getElementById('set-role-result');
-
-        if (!username) {
-          resultDiv.innerHTML = '<span style="color: var(--danger)">Please enter a username</span>';
-          return;
-        }
-
+        if (!username) { resultDiv.innerHTML = '<span style="color:var(--danger)">Enter a username</span>'; return; }
         try {
-          // First, find the user ID
           const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
           const searchData = await searchRes.json();
-
           const user = searchData.users?.find(u => u.username.toLowerCase() === username);
-          if (!user) {
-            resultDiv.innerHTML = `<span style="color: var(--danger)">User "${username}" not found</span>`;
-            return;
-          }
-
+          if (!user) { resultDiv.innerHTML = `<span style="color:var(--danger)">User "${escapeHtml(username)}" not found</span>`; return; }
+          await ensureCsrfToken();
           const res = await fetch(`/admin/api/users/${user.id}/set-role`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': CSRF_TOKEN
-            },
-            body: JSON.stringify({ role })
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ role }),
           });
-
           const data = await res.json();
           if (data.success) {
-            resultDiv.innerHTML = `<span style="color: var(--success)">${data.message}</span>`;
+            resultDiv.innerHTML = `<span style="color:var(--success)">${escapeHtml(data.message)}</span>`;
             document.getElementById('set-role-username').value = '';
-            refreshSubscriptionStats();
           } else {
-            resultDiv.innerHTML = `<span style="color: var(--danger)">${data.error}</span>`;
+            resultDiv.innerHTML = `<span style="color:var(--danger)">${escapeHtml(data.error)}</span>`;
           }
+        } catch (err) { resultDiv.innerHTML = `<span style="color:var(--danger)">Error: ${escapeHtml(err.message)}</span>`; }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // DROPS
+      // ══════════════════════════════════════════════════════════════
+      async function loadDropsConfig() {
+        const container = document.getElementById('drops-items-container');
+        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">Loading...</div>';
+        try {
+          const res = await fetch('/admin/api/drops');
+          if (!res.ok) throw new Error('Failed to load');
+          const data = await res.json();
+          document.getElementById('drop-last-updated').value = data.lastUpdated || '';
+          document.getElementById('drop-featured-image').value = data.featuredImage || '';
+          container.innerHTML = '';
+          if (data.drops?.length) data.drops.forEach(drop => addDropItem(drop));
+        } catch (err) { container.innerHTML = `<div style="color:var(--danger)">Error: ${escapeHtml(err.message)}</div>`; }
+      }
+
+      function addDropItem(data = {}) {
+        const container = document.getElementById('drops-items-container');
+        const id = Date.now() + Math.random().toString().slice(2,5);
+        const div = document.createElement('div');
+        div.id = `drop-row-${id}`;
+        div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 38px;gap:8px;align-items:center;background:var(--bg-app);padding:10px;border-radius:6px;border:1px solid var(--border);';
+        div.innerHTML = `
+          <div>
+            <label>Name</label>
+            <input class="input drop-name" value="${escapeHtml(data.name||'')}" placeholder="Item Name">
+          </div>
+          <div>
+            <label>Category</label>
+            <input class="input drop-cat" value="${escapeHtml(data.category||'')}" placeholder="Category">
+          </div>
+          <div>
+            <label>Duration</label>
+            <input class="input drop-dur" value="${escapeHtml(data.duration||'')}" placeholder="e.g. 1 hour">
+          </div>
+          <div style="display:flex;align-items:flex-end;height:100%;">
+            <button class="btn btn-danger btn-sm" onclick="document.getElementById('drop-row-${id}').remove()">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>`;
+        container.appendChild(div);
+      }
+
+      async function saveDropsConfig() {
+        const drops = [];
+        document.querySelectorAll('.drop-edit-row, [id^=drop-row-]').forEach(row => {
+          drops.push({
+            name: row.querySelector('.drop-name').value,
+            category: row.querySelector('.drop-cat').value,
+            duration: row.querySelector('.drop-dur').value,
+            icon: 'circle',
+          });
+        });
+        const config = {
+          lastUpdated: document.getElementById('drop-last-updated').value,
+          featuredImage: document.getElementById('drop-featured-image').value,
+          drops,
+        };
+        try {
+          await ensureCsrfToken();
+          const res = await fetch('/admin/api/drops', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify(config),
+          });
+          const data = await res.json();
+          if (data.success) toast('Drops config saved!', 'success');
+          else toast('Error: ' + data.error, 'error');
+        } catch (err) { toast('Error: ' + err.message, 'error'); }
+      }
+
+      async function handleImageUpload(input) {
+        if (!input.files?.[0]) return;
+        const formData = new FormData();
+        formData.append('image', input.files[0]);
+        try {
+          await ensureCsrfToken();
+          const res = await fetch('/admin/api/upload', {
+            method: 'POST',
+            headers: { 'CSRF-Token': CSRF_TOKEN },
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.success) {
+            document.getElementById('drop-featured-image').value = data.url;
+            toast('Image uploaded!', 'success');
+          } else { toast('Upload failed: ' + data.error, 'error'); }
+        } catch (err) { toast('Error: ' + err.message, 'error'); }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // COMMANDS  (wired to /admin/db/CustomResponse)
+      // ══════════════════════════════════════════════════════════════
+      async function fetchCommands() {
+        const tbody = document.getElementById('commands-body');
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>';
+        try {
+          const res = await fetch('/admin/api/commands');
+          const data = await res.json();
+          if (!data.commands?.length) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">No custom commands yet</td></tr>';
+            return;
+          }
+          tbody.innerHTML = data.commands.map(cmd => `
+            <tr>
+              <td><strong style="color:var(--primary);">!${escapeHtml(cmd.command)}</strong></td>
+              <td style="max-width:400px;word-break:break-word;">${escapeHtml(cmd.response)}</td>
+              <td>
+                <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteCommand('${escapeHtml(cmd.command)}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>`).join('');
         } catch (err) {
-          resultDiv.innerHTML = `<span style="color: var(--danger)">Error: ${err.message}</span>`;
+          tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
         }
       }
 
-      // Load subscription stats when switching to subscriptions view
-      const originalSwitchView = switchView;
-      switchView = function(viewId) {
-        originalSwitchView(viewId);
-        if (viewId === 'subscriptions') {
-          refreshSubscriptionStats();
+      function openAddCommandModal() {
+        showPrompt('Add Custom Command', [
+          { id: 'name', label: 'Command trigger (without !)', placeholder: 'e.g. hello' },
+          { id: 'response', label: 'Response text', placeholder: 'What the bot replies...' },
+        ], async (vals) => {
+          if (!vals.name || !vals.response) { toast('Both fields are required', 'error'); return; }
+          try {
+            await ensureCsrfToken();
+            // Use the DB route which supports full CRUD
+            const res = await fetch('/admin/db/CustomResponse', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              body: JSON.stringify({ command: vals.name.replace(/^!/, ''), response: vals.response }),
+            });
+            const data = await res.json();
+            if (data.success || data.id || res.ok) {
+              toast('Command added!', 'success');
+              fetchCommands();
+            } else {
+              toast(data.error || 'Failed to add command', 'error');
+            }
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
+        });
+      }
+
+      function deleteCommand(name) {
+        showConfirm(`Delete !${name}?`, 'This command will be permanently removed.', async () => {
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/commands/${encodeURIComponent(name)}`, {
+              method: 'DELETE',
+              headers: { 'CSRF-Token': CSRF_TOKEN },
+            });
+            if (res.ok) { toast('Command deleted', 'success'); fetchCommands(); }
+            else toast('Failed to delete command', 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
+        });
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // FEEDBACK
+      // ══════════════════════════════════════════════════════════════
+      async function fetchFeedback() {
+        const body = document.getElementById('feedback-body');
+        try {
+          const res = await fetch('/admin/api/feedback');
+          const data = await res.json();
+          if (!data.feedback?.length) {
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No feedback yet</td></tr>';
+            return;
+          }
+          body.innerHTML = data.feedback.map(f => {
+            const date = new Date(f.created_at).toLocaleString();
+            const typeColor = f.type === 'bug' ? 'var(--danger)' : f.type === 'feature' ? 'var(--info)' : 'var(--text-muted)';
+            return `
+              <tr>
+                <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${date}</td>
+                <td><strong>${escapeHtml(f.username || 'Anonymous')}</strong></td>
+                <td><span style="color:${typeColor};font-weight:600;font-size:11px;text-transform:uppercase;">${escapeHtml(f.type)}</span></td>
+                <td style="max-width:400px;word-break:break-word;">${escapeHtml(f.message)}</td>
+                <td>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteFeedback(${f.id})">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>`;
+          }).join('');
+        } catch (err) {
+          body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
         }
-      };
+      }
+
+      function deleteFeedback(id) {
+        showConfirm('Remove feedback entry?', 'This action cannot be undone.', async () => {
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/feedback/${id}`, {
+              method: 'DELETE',
+              headers: { 'CSRF-Token': CSRF_TOKEN },
+            });
+            if (res.ok) { toast('Feedback removed', 'success'); fetchFeedback(); }
+            else toast('Failed to delete feedback', 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
+        });
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // ANALYTICS
+      // ══════════════════════════════════════════════════════════════
+      async function loadAnalytics() {
+        try {
+          const res = await fetch('/admin/api/analytics');
+          const data = await res.json();
+
+          const totalCommands = data.usageByCommand?.reduce((s,c) => s+c.count, 0) || 0;
+          const totalSuccess = data.usageByCommand?.reduce((s,c) => s+c.successCount, 0) || 0;
+          const successRate = totalCommands > 0 ? ((totalSuccess/totalCommands)*100).toFixed(1) : '0';
+
+          document.getElementById('analytics-total').textContent = data.totalUsage?.toLocaleString() || '0';
+          document.getElementById('analytics-unique').textContent = data.uniqueUsers?.toLocaleString() || '0';
+          document.getElementById('analytics-success').textContent = successRate + '%';
+
+          // Top commands
+          const topList = document.getElementById('top-commands-list');
+          if (data.usageByCommand?.length) {
+            topList.innerHTML = data.usageByCommand.slice(0,5).map((cmd, idx) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg-hover);border-radius:var(--radius);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">${idx+1}</div>
+                  <div>
+                    <div style="font-weight:600;color:var(--primary);">!${escapeHtml(cmd.command)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${cmd.count} uses</div>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);">${cmd.successRate.toFixed(1)}% success</div>
+              </div>`).join('');
+          } else {
+            topList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No commands used yet</div>';
+          }
+
+          // Stats table
+          const statsTable = document.getElementById('command-stats-table');
+          if (data.usageByCommand?.length) {
+            statsTable.innerHTML = data.usageByCommand.map(cmd => `
+              <tr>
+                <td><strong style="color:var(--primary);">!${escapeHtml(cmd.command)}</strong></td>
+                <td>${cmd.count.toLocaleString()}</td>
+                <td><span style="color:${cmd.successRate>=95?'var(--success)':cmd.successRate>=80?'var(--warning)':'var(--danger)'};">${cmd.successRate.toFixed(1)}%</span></td>
+                <td>${cmd.avgResponseTime||0}ms</td>
+              </tr>`).join('');
+          } else {
+            statsTable.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">No data</td></tr>';
+          }
+
+          // Recent commands table
+          const recentTable = document.getElementById('recent-commands-table');
+          if (data.recentCommands?.length) {
+            recentTable.innerHTML = data.recentCommands.slice(0,20).map(cmd => {
+              const t = new Date(cmd.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+              return `
+                <tr>
+                  <td>${t}</td>
+                  <td><strong>!${escapeHtml(cmd.command)}</strong></td>
+                  <td>${escapeHtml(cmd.user)}</td>
+                  <td><span style="color:${cmd.success?'var(--success)':'var(--danger)'};">${cmd.success?'✓ Success':'✗ Failed'}</span></td>
+                  <td>${cmd.responseTime||0}ms</td>
+                </tr>`;
+            }).join('');
+          } else {
+            recentTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No recent commands</td></tr>';
+          }
+
+          // Hourly chart
+          const chartContainer = document.getElementById('hourly-chart-container');
+          if (data.hourlyUsage?.length) {
+            const maxCount = Math.max(...data.hourlyUsage.map(h => h.count));
+            chartContainer.innerHTML = `
+              <div style="width:100%;display:flex;align-items:flex-end;gap:3px;height:180px;padding:10px 0;">
+                ${data.hourlyUsage.map(h => {
+                  const height = maxCount ? (h.count/maxCount)*100 : 0;
+                  const hour = new Date(h.hour).getHours();
+                  return `
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                      <div style="width:100%;background:var(--bg-hover);border-radius:3px 3px 0 0;position:relative;min-height:100px;">
+                        <div style="position:absolute;bottom:0;width:100%;background:linear-gradient(180deg,var(--primary),var(--primary-hover));height:${height}%;border-radius:3px 3px 0 0;"></div>
+                        ${h.count > 0 ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;">${h.count}</div>` : ''}
+                      </div>
+                      <div style="font-size:9px;color:var(--text-muted);">${hour}:00</div>
+                    </div>`;
+                }).join('')}
+              </div>`;
+          } else {
+            chartContainer.innerHTML = '<div style="text-align:center;color:var(--text-muted);">No data for the last 24 hours</div>';
+          }
+        } catch (err) { console.error('Failed to load analytics:', err); }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // BROADCAST
+      // ══════════════════════════════════════════════════════════════
+      async function sendBroadcast() {
+        const msg = document.getElementById('broadcast-msg').value;
+        const key = getApiKey();
+        if (!msg) { toast('Message is required', 'error'); return; }
+        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
+        const targets = selectedChannels.size > 0 ? Array.from(selectedChannels) : null;
+        try {
+          await ensureCsrfToken();
+          if (targets) {
+            for (const ch of targets) {
+              await fetch('/admin/api/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+                body: JSON.stringify({ channel: ch, message: msg, key }),
+              });
+            }
+          } else {
+            await fetch('/admin/api/message', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              body: JSON.stringify({ message: msg, key }),
+            });
+          }
+          document.getElementById('broadcast-msg').value = '';
+          toast('Broadcast sent!', 'success');
+        } catch (e) { toast('Broadcast failed', 'error'); }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // LOGS
+      // ══════════════════════════════════════════════════════════════
+      async function fetchLogs() {
+        try {
+          const res = await fetch('/admin/api/logs');
+          const logs = await res.json();
+          const viewer = document.getElementById('logs-viewer');
+          viewer.innerHTML = '';
+          if (logs.entries) {
+            logs.entries.forEach(entry => {
+              const time = new Date(entry.timestamp).toLocaleTimeString();
+              const cls = entry.level === 'info' ? 'log-info' : entry.level === 'warn' ? 'log-warn' : 'log-error';
+              viewer.innerHTML += `
+                <div class="log-entry">
+                  <span class="log-time">[${time}]</span>
+                  <span class="${cls}">${escapeHtml(entry.message)}</span>
+                </div>`;
+            });
+            viewer.scrollTop = viewer.scrollHeight;
+          }
+        } catch (e) { console.error('Failed to fetch logs:', e); }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // DATABASE EDITOR
+      // ══════════════════════════════════════════════════════════════
+      async function loadDbTable() {
+        const table = document.getElementById('db-table-select').value;
+        const container = document.getElementById('db-editor-container');
+        container.innerHTML = '<div style="color:var(--text-muted);padding:20px;">Loading...</div>';
+        try {
+          const res = await fetch(`/admin/db/${table}`);
+          const data = await res.json();
+          const rows = data.rows || [];
+          if (!rows.length) {
+            container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">No records found</div>';
+            return;
+          }
+          const keys = Object.keys(rows[0]);
+          let html = '<div class="card"><div class="table-container"><table><thead><tr>';
+          keys.forEach(k => { html += `<th>${escapeHtml(k)}</th>`; });
+          html += '<th>Actions</th></tr></thead><tbody>';
+          rows.forEach(row => {
+            html += '<tr>';
+            keys.forEach(k => {
+              let val = row[k] !== null ? String(row[k]) : '';
+              if (table === 'Channels' && k.includes('token')) val = '••••••';
+              html += `<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(val)}</td>`;
+            });
+            const id = row[keys[0]];
+            html += `<td><button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick='deleteDbRow("${table}","${id}")'><i class="fas fa-trash"></i></button></td></tr>`;
+          });
+          html += '</tbody></table></div></div>';
+          container.innerHTML = html;
+        } catch (err) {
+          container.innerHTML = `<div style="color:var(--danger);padding:20px;">Error: ${escapeHtml(err.message)}</div>`;
+        }
+      }
+
+      function deleteDbRow(table, id) {
+        showConfirm('Delete row?', `Permanently remove row ${id} from ${table}.`, async () => {
+          await fetch(`/admin/db/${table}/${id}`, { method: 'DELETE' });
+          loadDbTable();
+        });
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // SIMPLE AUTH (Analyst Access)
+      // ══════════════════════════════════════════════════════════════
+      async function fetchSimpleUsers() {
+        const tbody = document.getElementById('simple-users-body');
+        try {
+          const res = await fetch('/admin/api/simple-users');
+          const users = await res.json();
+          if (!users.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">No users found</td></tr>';
+            return;
+          }
+          tbody.innerHTML = users.map(u => `
+            <tr>
+              <td><strong>${escapeHtml(u.username)}</strong></td>
+              <td>${escapeHtml(u.role)}</td>
+              <td style="color:var(--text-muted);font-size:12px;">${new Date(u.createdAt).toLocaleDateString()}</td>
+              <td>
+                <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteSimpleUser('${escapeHtml(u.username)}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>`).join('');
+        } catch (err) { console.error(err); }
+      }
+
+      function openAddSimpleUserModal() {
+        showPrompt('Add Analyst User', [
+          { id: 'username', label: 'Username', placeholder: 'Username' },
+          { id: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
+          { id: 'role', label: 'Role', type: 'select', options: [{ value: 'analyst', label: 'Analyst' }, { value: 'admin', label: 'Admin' }] },
+        ], async (vals) => {
+          if (!vals.username || !vals.password) { toast('Username and password required', 'error'); return; }
+          try {
+            await ensureCsrfToken();
+            const res = await fetch('/admin/api/simple-users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              body: JSON.stringify({ username: vals.username, password: vals.password, role: vals.role }),
+            });
+            const data = await res.json();
+            if (data.success) { toast('User added', 'success'); fetchSimpleUsers(); }
+            else toast('Error: ' + data.error, 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
+        });
+      }
+
+      function deleteSimpleUser(username) {
+        showConfirm(`Delete user ${username}?`, 'This will remove their login access.', async () => {
+          try {
+            await ensureCsrfToken();
+            const res = await fetch(`/admin/api/simple-users/${encodeURIComponent(username)}`, {
+              method: 'DELETE',
+              headers: { 'CSRF-Token': CSRF_TOKEN },
+            });
+            const data = await res.json();
+            if (data.success) { toast('User deleted', 'success'); fetchSimpleUsers(); }
+            else toast('Error: ' + data.error, 'error');
+          } catch (err) { toast('Error: ' + err.message, 'error'); }
+        });
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // SETTINGS
+      // ══════════════════════════════════════════════════════════════
+      function loadSettings() {
+        const key = localStorage.getItem(API_KEY_STORAGE);
+        if (key) document.getElementById('settings-api-key').value = key;
+      }
+
+      function saveSettings() {
+        const key = document.getElementById('settings-api-key').value;
+        localStorage.setItem(API_KEY_STORAGE, key);
+        toast('API key saved', 'success');
+      }
+
+      function getApiKey() {
+        return document.getElementById('settings-api-key').value || localStorage.getItem(API_KEY_STORAGE);
+      }
+
+      async function loadDashboardToggleState() {
+        try {
+          const res = await fetch('/admin/api/user-dashboard-access');
+          const d = await res.json();
+          const btn = document.getElementById('toggle-dashboard-btn');
+          btn.textContent = d.enabled ? 'Enabled' : 'Disabled';
+          btn.className = d.enabled ? 'btn btn-success' : 'btn btn-danger';
+        } catch (e) {}
+      }
+
+      async function toggleUserDashboard() {
+        const btn = document.getElementById('toggle-dashboard-btn');
+        const newState = btn.textContent.trim() !== 'Enabled';
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/user-dashboard-access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ enabled: newState }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          btn.textContent = newState ? 'Enabled' : 'Disabled';
+          btn.className = newState ? 'btn btn-success' : 'btn btn-danger';
+          toast(`User dashboard ${newState ? 'enabled' : 'disabled'}`, 'success');
+        }
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // BOT ACTIONS
+      // ══════════════════════════════════════════════════════════════
+      async function restartBot() {
+        const key = getApiKey();
+        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
+        showConfirm('Restart Bot?', 'This will restart the bot process via PM2.', async () => {
+          await ensureCsrfToken();
+          const res = await fetch('/admin/api/restart-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+            body: JSON.stringify({ key }),
+          });
+          const data = await res.json();
+          if (data.success) toast('Restarting bot...', 'success');
+          else toast('Restart failed', 'error');
+        });
+      }
+
+      async function pauseBot() { toast('Pause bot is not yet implemented', 'warning'); }
+      async function resumeBot() { toast('Resume bot is not yet implemented', 'warning'); }
+
+      async function refreshBotToken() {
+        await ensureCsrfToken();
+        const res = await fetch('/admin/api/refresh-bot-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        toast(data.success ? 'Token refresh requested' : 'Refresh failed', data.success ? 'success' : 'error');
+      }
+
+      async function triggerDeploy() {
+        const key = getApiKey();
+        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
+        showConfirm('Deploy Update?', 'This will pull the latest code from Git and restart the bot.', async () => {
+          const statusEl = document.getElementById('action-status');
+          await ensureCsrfToken();
+          try {
+            const res = await fetch('/admin/api/deploy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
+              body: JSON.stringify({ key }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              toast('Deploy initiated. Bot restarting...', 'success');
+              if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)">Deploy initiated</span>';
+            } else {
+              toast('Deploy failed: ' + (data.error || data.message || 'Unknown error'), 'error');
+              if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger)">Deploy failed</span>';
+            }
+          } catch (e) {
+            toast('Deploy request failed', 'error');
+          }
+        });
+      }
+
+      // ══════════════════════════════════════════════════════════════
+      // UTILITIES
+      // ══════════════════════════════════════════════════════════════
+      async function ensureCsrfToken() {
+        if (CSRF_TOKEN) return CSRF_TOKEN;
+        try {
+          const res = await fetch('/admin/api/csrf');
+          const data = await res.json();
+          CSRF_TOKEN = data?.csrfToken || null;
+        } catch {}
+        return CSRF_TOKEN;
+      }
+
+      function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      // Initial load of dashboard toggle for Settings (lazy)
+      document.getElementById('section-system')
+        ?.querySelector('.subtab[onclick*="settings"]')
+        ?.addEventListener('click', loadDashboardToggleState);
     </script>
   </body>
 </html>

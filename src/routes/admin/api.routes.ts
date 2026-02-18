@@ -605,10 +605,11 @@ router.get('/api/commands', requireAdminAPI, async (req: any, res: any) => {
     try {
         const { CustomResponse } = await import('@/db');
         const commands = await CustomResponse.findAll({
-            attributes: ['channel', 'command', 'response']
+            attributes: ['id', 'channel', 'command', 'response']
         });
 
         const formatted = commands.map((c: any) => ({
+            id: c.id,
             channel: c.channel,
             command: c.command,
             response: c.response
@@ -618,6 +619,24 @@ router.get('/api/commands', requireAdminAPI, async (req: any, res: any) => {
     } catch (err) {
         logger.error('Error fetching all custom commands:', err);
         res.status(500).json({ error: 'Failed to fetch commands.' });
+    }
+});
+
+/**
+ * DELETE /admin/api/commands/:name
+ * Delete a custom command by trigger name
+ */
+router.delete('/api/commands/:name', requireAdminAPI, async (req: any, res: any) => {
+    const { name } = req.params;
+    try {
+        const { CustomResponse } = await import('@/db');
+        const deleted = await CustomResponse.destroy({ where: { command: name } });
+        if (deleted === 0) return res.status(404).json({ error: 'Command not found' });
+        await logAdminAction(req.session?.username, req.session?.role, `DELETE_COMMAND:${name}`);
+        res.json({ success: true });
+    } catch (err) {
+        logger.error('Error deleting command:', err);
+        res.status(500).json({ error: 'Failed to delete command.' });
     }
 });
 

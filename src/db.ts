@@ -46,6 +46,7 @@ class Channel extends Model {
   declare stream_thumbnail_url: string | null;
   declare has_subscription: boolean;
   declare subscription_tier: string | null;
+  declare notify_chat_reminders: boolean;
 }
 
 
@@ -188,6 +189,11 @@ Channel.init(
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    notify_chat_reminders: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {
@@ -473,6 +479,17 @@ async function runMigrations() {
         defaultValue: null,
       });
       logger.info('[Migration] subscription_tier column added successfully.');
+    }
+
+    // Add notify_chat_reminders column if missing
+    if (!tableInfo.notify_chat_reminders) {
+      logger.info('[Migration] Adding notify_chat_reminders column to Channels table...');
+      await queryInterface.addColumn('Channels', 'notify_chat_reminders', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      });
+      logger.info('[Migration] notify_chat_reminders column added successfully.');
     }
   } catch (err) {
     logger.error('[Migration] Migration error:', err);

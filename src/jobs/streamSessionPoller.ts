@@ -7,6 +7,8 @@ import logger from '../util/logger';
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
 const alertedMissingSession: Map<string, number> = new Map(); // username -> timestamp of alert
 const ALERT_EXPIRY_MS = 6 * 60 * 60 * 1000; // Clear stale alerts after 6 hours
+const liveDetectedTime: Map<string, number> = new Map(); // username -> first-detected-live timestamp
+const LEADERBOARD_GRACE_PERIOD_MS = 5 * 60 * 1000; // 5 minutes before firing leaderboard-miss alert
 
 let lastTokenRefreshTime = 0;
 const TOKEN_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // Refresh app token every 30 minutes
@@ -48,6 +50,13 @@ export const startStreamSessionPolling = async () => {
 
       // Normalize all live usernames to lowercase for consistent comparison
       const liveUsernamesLower = new Set(liveStreams.map(u => u.username.toLowerCase()));
+      const now = Date.now();
+
+      // Track first time each user is detected as live this session
+      for (const liveUser of liveStreams) {
+        const uLower = liveUser.username.toLowerCase();
+        if (!liveDetectedTime.has(uLower)) liveDetectedTime.set(uLower, now);
+      }
 
       // Update LIVE users individually (to save their specific thumbnail URL)
       for (const liveUser of liveStreams) {
@@ -84,11 +93,15 @@ export const startStreamSessionPolling = async () => {
       // --- Prune stale alert entries ---
       // Remove alerts for users who went offline (so they can be re-alerted next time)
       // and remove any entries older than 6 hours regardless
-      const now = Date.now();
       for (const [alertUser, alertTime] of alertedMissingSession) {
         if (!liveUsernamesLower.has(alertUser) || (now - alertTime > ALERT_EXPIRY_MS)) {
           alertedMissingSession.delete(alertUser);
         }
+      }
+
+      // Clean up liveDetectedTime for users who are now offline
+      for (const [u] of liveDetectedTime) {
+        if (!liveUsernamesLower.has(u)) liveDetectedTime.delete(u);
       }
 
       // --- Clean up stale sessions for users who are offline ---
@@ -126,14 +139,18 @@ export const startStreamSessionPolling = async () => {
                 description: `User ${user.username} is live on Twitch, but no session has started in the bot and no linked THE FINALS account.`,
               });
 
-              try {
-                const { botManager } = await import('../botManager');
-                await botManager.sendMessage(
-                  `Hey @${user.username}, I see you're live! To track your leaderboard stats, please link your account using !link <EmbarkID>.`,
-                  user.username
-                );
-              } catch (e) {
-                logger.error(`Failed to send unlinked account alert to ${user.username}:`, e);
+              // Only send the Twitch chat reminder if the user hasn't suppressed it
+              const notifyEnabled = channel?.get('notify_chat_reminders') !== false;
+              if (notifyEnabled) {
+                try {
+                  const { botManager } = await import('../botManager');
+                  await botManager.sendMessage(
+                    `Hey @${user.username}, I see you're live! Link your THE FINALS account with !link <EmbarkID> to track your stats. Type !suppress to disable these reminders.`,
+                    user.username
+                  );
+                } catch (e) {
+                  logger.error(`Failed to send unlinked account alert to ${user.username}:`, e);
+                }
               }
 
               alertedMissingSession.set(userLower, now);
@@ -157,6 +174,14 @@ export const startStreamSessionPolling = async () => {
             const wtPlayer = findPlayer(worldTourData, playerId);
 
             if (!player && !wtPlayer) {
+              // Grace period: wait 5 minutes before alerting — the leaderboard cache may still
+              // be warming up right after stream start (cache can be up to ~1 hour old).
+              const detectedAt = liveDetectedTime.get(userLower) ?? now;
+              const withinGrace = (now - detectedAt) < LEADERBOARD_GRACE_PERIOD_MS;
+              if (withinGrace) {
+                // Skip this poll cycle, will retry once grace period expires
+                continue;
+              }
               await sendDiscordAlert({
                 type: 'warning',
                 title: 'Missing Stream Session',

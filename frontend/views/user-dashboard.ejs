@@ -1871,7 +1871,7 @@
                       >{wtRank}</code
                     >
                     <div style="color: var(--text-muted); margin-top: 2px">
-                      World Tour rank
+                      Cashout rank
                     </div>
                   </div>
                   <div
@@ -2306,7 +2306,7 @@
                     id="check-hide-wt"
                     onchange="saveOverlayConfig()"
                   />
-                  <span style="font-size: 13px">Hide WT Rank</span>
+                  <span style="font-size: 13px">Hide Cashout Rank</span>
                 </label>
                 <label
                   style="
@@ -3792,7 +3792,7 @@
         let responseText =
           val ||
           (cmd === "rank" ?
-            "Your rank is {rankScore} RS in {league} | WT rank: {wtRank}" :
+            "Your rank is {rankScore} RS in {league} | Cashout rank: {wtRank}" :
             `(Default response for !${cmd})`);
 
         // Replace variables with mock data

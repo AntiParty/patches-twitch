@@ -90,7 +90,8 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
     const wtPlayer = findPlayer(worldTourData, playerId);
 
     if (!player && !wtPlayer) {
-      logger.warn(`${broadcasterName} not found in leaderboard caches`);
+      logger.warn(`[EventSub] ${broadcasterName} not found in leaderboard caches — scheduling retry in 5 min`);
+      setTimeout(() => handleStreamOnline(broadcasterName, broadcasterId), 5 * 60 * 1000);
       return;
     }
     const startScore = player?.rankScore ?? 0;

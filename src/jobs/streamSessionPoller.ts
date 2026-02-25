@@ -126,20 +126,18 @@ export const startStreamSessionPolling = async () => {
         // Case-insensitive comparison
         const hasSession = activeSessions.some(s => (s.channel || '').toLowerCase() === userLower);
         if (!hasSession) {
-          // Only alert once per live session
-          if (!alertedMissingSession.has(userLower)) {
-            // Fetch channel info - case-insensitive lookup
-            let channel = await Channel.findOne({
-              where: sequelizeCaseInsensitiveWhere('username', user.username)
-            });
-            if (!channel?.player_id) {
+          let channel = await Channel.findOne({
+            where: sequelizeCaseInsensitiveWhere('username', user.username)
+          });
+
+          // --- 1. No linked account ---
+          if (!channel?.player_id) {
+            if (!alertedMissingSession.has(userLower)) {
               await sendDiscordAlert({
                 type: 'warning',
                 title: 'Missing Stream Session',
                 description: `User ${user.username} is live on Twitch, but no session has started in the bot and no linked THE FINALS account.`,
               });
-
-              // Only send the Twitch chat reminder if the user hasn't suppressed it
               const notifyEnabled = channel?.get('notify_chat_reminders') !== false;
               if (notifyEnabled) {
                 try {
@@ -152,62 +150,62 @@ export const startStreamSessionPolling = async () => {
                   logger.error(`Failed to send unlinked account alert to ${user.username}:`, e);
                 }
               }
-
               alertedMissingSession.set(userLower, now);
-              continue;
             }
-            const playerId = channel.player_id.toLowerCase();
-            const cachedData = await getLatestLeaderboardData();
-            const worldTourData = await getLatestWorldTourData();
+            continue;
+          }
 
-            const findPlayer = (data: any[] | null, name: string) => {
-              if (!data) return null;
-              let player = data.find(p => p.name.toLowerCase() === name);
-              if (!player && name.includes("#")) {
-                const baseName = name.split("#")[0];
-                player = data.find(p => p.name.toLowerCase().startsWith(baseName));
-              }
-              return player;
-            };
+          // --- 2. Has player_id — always attempt session creation (not gated by alert state) ---
+          const playerId = channel.player_id.toLowerCase();
+          const cachedData = await getLatestLeaderboardData();
+          const worldTourData = await getLatestWorldTourData();
 
-            const player = findPlayer(cachedData, playerId);
-            const wtPlayer = findPlayer(worldTourData, playerId);
+          const findPlayer = (data: any[] | null, name: string) => {
+            if (!data) return null;
+            let player = data.find(p => p.name.toLowerCase() === name);
+            if (!player && name.includes("#")) {
+              const baseName = name.split("#")[0];
+              player = data.find(p => p.name.toLowerCase().startsWith(baseName));
+            }
+            return player;
+          };
 
-            if (!player && !wtPlayer) {
-              // Grace period: wait 5 minutes before alerting — the leaderboard cache may still
-              // be warming up right after stream start (cache can be up to ~1 hour old).
-              const detectedAt = liveDetectedTime.get(userLower) ?? now;
-              const withinGrace = (now - detectedAt) < LEADERBOARD_GRACE_PERIOD_MS;
-              if (withinGrace) {
-                // Skip this poll cycle, will retry once grace period expires
-                continue;
-              }
+          const player = findPlayer(cachedData, playerId);
+          const wtPlayer = findPlayer(worldTourData, playerId);
+
+          if (!player && !wtPlayer) {
+            const detectedAt = liveDetectedTime.get(userLower) ?? now;
+            const withinGrace = (now - detectedAt) < LEADERBOARD_GRACE_PERIOD_MS;
+            if (withinGrace) continue;
+
+            // Alert once, then keep retrying silently on future polls
+            if (!alertedMissingSession.has(userLower)) {
               await sendDiscordAlert({
                 type: 'warning',
                 title: 'Missing Stream Session',
                 description: `User ${user.username} is live on Twitch, but no session has started in the bot and not found in leaderboard caches.`,
               });
               alertedMissingSession.set(userLower, now);
-              continue;
             }
-            const startScore = player?.rankScore ?? 0;
-            const startWTRank = wtPlayer?.rank ?? null;
-
-            await StreamSession.upsert({
-              channel: userLower,
-              start_score: startScore,
-              start_wt_rank: startWTRank,
-              started_at: new Date()
-            });
-            await sendDiscordAlert({
-              type: 'info',
-              title: 'StreamSession Started Automatically',
-              description: `User ${user.username} is live on Twitch and a new StreamSession was started automatically by polling.\nstart_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`,
-            });
-            alertedMissingSession.delete(userLower);
+            continue; // retry every 60s — no 6-hour lock
           }
+
+          // --- 3. Player found — create session ---
+          const startScore = player?.rankScore ?? 0;
+          const startWTRank = wtPlayer?.rank ?? null;
+          await StreamSession.upsert({
+            channel: userLower,
+            start_score: startScore,
+            start_wt_rank: startWTRank,
+            started_at: new Date()
+          });
+          await sendDiscordAlert({
+            type: 'info',
+            title: 'StreamSession Started Automatically',
+            description: `User ${user.username} is live and session started.\nstart_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`,
+          });
+          alertedMissingSession.delete(userLower);
         } else {
-          // If session exists, remove from alert set so future alerts can happen after next offline/online
           alertedMissingSession.delete(userLower);
         }
       }

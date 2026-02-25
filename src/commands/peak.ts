@@ -5,7 +5,7 @@ import path from 'path';
 import logger from '../util/logger';
 
 export const name = 'peak';
-export const description = 'Show your peak rank across all seasons (including World Tour)';
+export const description = 'Show your peak rank across all seasons (including Cashout)';
 
 // Helper to get all leaderboard files
 async function getLeaderboardFiles() {
@@ -151,7 +151,7 @@ export async function execute(ctx: any, channel: string, message: string, args: 
 
   if (peaks.regular && peaks.worldTour) {
     await ctx.say(
-      `Peak rank: #${peaks.regular.rank} ${peaks.regular.league || ''} (${peaks.regular.rankScore?.toLocaleString() || 'N/A'} RS) in ${seasonDisplay(peaks.regular.season)} | WT peak: #${peaks.worldTour.rank} (${seasonDisplay(peaks.worldTour.season)})`
+      `Peak rank: #${peaks.regular.rank} ${peaks.regular.league || ''} (${peaks.regular.rankScore?.toLocaleString() || 'N/A'} RS) in ${seasonDisplay(peaks.regular.season)} | Cashout peak: #${peaks.worldTour.rank} (${seasonDisplay(peaks.worldTour.season)})`
     );
   } else if (peaks.regular) {
     await ctx.say(
@@ -159,7 +159,7 @@ export async function execute(ctx: any, channel: string, message: string, args: 
     );
   } else if (peaks.worldTour) {
     await ctx.say(
-      `WT peak: #${peaks.worldTour.rank} (${seasonDisplay(peaks.worldTour.season)})`
+      `Cashout peak: #${peaks.worldTour.rank} (${seasonDisplay(peaks.worldTour.season)})`
     );
   } else {
     await ctx.say(`No peak rank found for linked account (${playerId}).`);
@@ -170,7 +170,7 @@ function seasonDisplay(season: string) {
   if (season.startsWith('regular')) {
     return `Season ${season.replace('regular_s', '')}`;
   } else if (season.startsWith('worldTour')) {
-    return `World Tour Season ${season.replace('worldTour_s', '')}`;
+    return `Cashout Season ${season.replace('worldTour_s', '')}`;
   }
   return season;
 }

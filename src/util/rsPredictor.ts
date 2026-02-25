@@ -8,7 +8,7 @@ const HISTORY_RETENTION_DAYS = 30; // 30 days of history
 const PREDICTION_WINDOW_DAYS = 5; // Look at last 5 days for trend analysis
 
 // Season 9 Configuration
-const S9_END_DATE = new Date("2026-03-19T10:00:00Z"); // Approx 55 days from Jan 23, 2026
+const S9_END_DATE = new Date("2026-03-26T10:00:00Z"); // Extended +7 days
 
 interface HistoryEntry {
   timestamp: number;

@@ -87,7 +87,7 @@ async function getLatestWorldTourData() {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : null;
   } catch (err) {
-    logger.error("Failed to read World Tour leaderboard cache file:", err);
+    logger.error("Failed to read Cashout leaderboard cache file:", err);
     return null;
   }
 }
@@ -207,7 +207,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
 
     if (player && wtPlayer) {
       if (isLookup) {
-        response += `${displayName} is ${player.rankScore.toLocaleString()} RS in ${player.league} | WT rank: #${wtPlayer.rank}`;
+        response += `${displayName} is ${player.rankScore.toLocaleString()} RS in ${player.league} | Cashout rank: #${wtPlayer.rank}`;
       } else {
         response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
 
@@ -224,7 +224,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
           }
         }
 
-        response += ` | WT rank: #${wtPlayer.rank}`;
+        response += ` | Cashout rank: #${wtPlayer.rank}`;
       }
     } else if (player) {
       if (isLookup) {
@@ -247,15 +247,15 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       }
     } else if (wtPlayer) {
       if (isLookup) {
-        response += `${displayName} WT rank: #${wtPlayer.rank}`;
+        response += `${displayName} Cashout rank: #${wtPlayer.rank}`;
       } else {
-        response += `WT rank: #${wtPlayer.rank}`;
+        response += `Cashout rank: #${wtPlayer.rank}`;
       }
     } else {
       if (isLookup) {
-        response += `${displayName} not found on regular or World Tour leaderboards.`;
+        response += `${displayName} not found on regular or Cashout leaderboards.`;
       } else {
-        response += `not found on regular or World Tour leaderboards.`;
+        response += `not found on regular or Cashout leaderboards.`;
       }
     }
 

@@ -22,10 +22,10 @@ Shows your current rank and RS in THE FINALS.
 @User, current rank is 48,234 RS in Diamond 1. 18,234 RS away from rank #100 (Ruby)
 ```
 
-**With Cashout:**
+**With World Tour:**
 
 ```
-@User, current rank is 48,234 RS in Diamond 1. 18,234 RS away from rank #100 (Ruby) | Cashout rank: #523
+@User, current rank is 48,234 RS in Diamond 1. 18,234 RS away from rank #100 (Ruby) | WT rank: #523
 ```
 
 ---
@@ -146,7 +146,7 @@ Customize bot responses.
 | `{league}`   | League (e.g. Diamond 1)                   |
 | `{gain}`     | Session RS gain/loss (Only for `!record`) |
 | `{season}`   | Season number (Only for `!peak`)          |
-| `{wt_rank}`  | Cashout Rank                              |
+| `{wt_rank}`  | World Tour Rank                           |
 
 ---
 
@@ -274,7 +274,7 @@ Create dynamic responses that change based on your stats:
 **Example 3: Detailed Stats**
 
 ```
-!editcmd rank #{rank} {league} ({rankScore} RS) | Cashout: #{wtRank} | Grinding to the top!
+!editcmd rank #{rank} {league} ({rankScore} RS) | WT: #{wtRank} | Grinding to the top!
 ```
 
 ---

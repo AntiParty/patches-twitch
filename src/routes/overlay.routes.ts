@@ -171,7 +171,7 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
             logger.error(`[Overlay] Error reading regular leaderboard for ${finalsName}:`, err);
         }
 
-        // 2. Fetch Cashout Data
+        // 2. Fetch World Tour Data
         let wtRank = "N/A";
         try {
             const wtFile = await getLatestCacheFile("worldTour_s");
@@ -186,7 +186,7 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
                 }
             }
         } catch (err) {
-            logger.error(`[Overlay] Error reading Cashout leaderboard for ${finalsName}:`, err);
+            logger.error(`[Overlay] Error reading World Tour leaderboard for ${finalsName}:`, err);
         }
 
         // Get rank goal if exists

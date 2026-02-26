@@ -56,7 +56,7 @@ export async function getLatestWorldTourData() {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : null;
   } catch (err) {
-    logger.error("[record] Failed to read Cashout leaderboard cache:", err);
+    logger.error("[record] Failed to read World Tour leaderboard cache:", err);
     return null;
   }
 }
@@ -171,9 +171,9 @@ export const execute = async (
       const wtDiff = session.start_wt_rank - currentWTRank;
       const wtSign = wtDiff > 0 ? "+" : wtDiff < 0 ? "-" : "±";
     const absWtDiff = Math.abs(wtDiff);
-      response += ` | Cashout rank: #${currentWTRank} (${wtSign}${absWtDiff} from start)`;
+      response += ` | WT rank: #${currentWTRank} (${wtSign}${absWtDiff} from start)`;
     } else if (wtPlayer) {
-      response += ` | Cashout rank: #${currentWTRank}`;
+      response += ` | WT rank: #${currentWTRank}`;
     }
 
     // 7. Try custom response

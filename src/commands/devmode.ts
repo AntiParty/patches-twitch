@@ -1,7 +1,8 @@
 import { devModeChannels } from "@/util/ircBot";
+import logger from "@/util/logger";
 
 interface CommandContext {
-  say: (message: string, replyParentId?: string) => Promise<void>; // 👈 updated
+  say: (message: string, replyParentId?: string) => Promise<void>;
   raw: (line: string) => void;
   user: string;
   channel: string;
@@ -21,18 +22,17 @@ export const execute = async (
         }
 
         const channelName = _channel.replace("#", "").toLowerCase();
+        const messageId = ctx.tags?.["id"];
 
         if (devModeChannels.has(channelName)) {
             devModeChannels.delete(channelName);
-            ctx.say(`[Admin] Dev mode DISABLED. Production bot is now ACTIVE in #${channelName}.`);
+            await ctx.say(`[Admin] Dev mode DISABLED. Production bot is now ACTIVE in #${channelName}.`, messageId);
         } else {
             devModeChannels.add(channelName);
-            // If we are in PROD, we announce we are going silent.
-            // If we are in DEV, this message comes from the dev bot, which is fine.
-            ctx.say(`[Admin] Dev mode ENABLED. Production bot will now be SILENT in #${channelName}.`);
+            await ctx.say(`[Admin] Dev mode ENABLED. Production bot will now be SILENT in #${channelName}.`, messageId);
         }
     } catch (error) {
-        console.error('Error executing devmode command:', error);
+        logger.error('[devmode] Error executing devmode command:', error);
     }
 }
 

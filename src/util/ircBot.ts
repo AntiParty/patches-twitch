@@ -378,7 +378,7 @@ export const startChatBot = async (
       // we silence the bot (except for !devmode toggle command).
       // -----------------------------------------------------------------------
       if (devModeChannels.has(channelName) && process.env.NODE_ENV !== 'development') {
-        if (commandKey !== '!devmode') {
+        if (commandKey !== '!devmode' && commandKey !== '!dev') {
            logger.info(`[DevMode] Silencing command ${commandKey} in #${channelName}`);
            continue; 
         }

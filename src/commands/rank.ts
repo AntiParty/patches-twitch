@@ -253,9 +253,9 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       }
     } else {
       if (isLookup) {
-        response += `${displayName} not found on regular or Cashout leaderboards.`;
+        response += `${displayName} not found on ranked or Cashout leaderboards.`;
       } else {
-        response += `not found on regular or Cashout leaderboards.`;
+        response += `not found on ranked or Cashout leaderboards.`;
       }
     }
 

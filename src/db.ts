@@ -704,6 +704,72 @@ CustomBotAccount.init(
 );
 
 
+// PeakRank model - stores best rank ever achieved per channel
+class PeakRank extends Model {
+  declare channel: string;
+  declare player_id: string;
+  declare regular_rank: number | null;
+  declare regular_rs: number | null;
+  declare regular_league: string | null;
+  declare regular_season: string | null;
+  declare wt_rank: number | null;
+  declare wt_season: string | null;
+  declare updated_at: Date;
+}
+
+PeakRank.init(
+  {
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    player_id: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    regular_rank: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    regular_rs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    regular_league: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    regular_season: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    wt_rank: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    wt_season: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'PeakRank',
+    tableName: 'PeakRanks',
+    timestamps: false,
+    indexes: [
+      { fields: ['channel'], unique: true },
+      { fields: ['player_id'] },
+    ],
+  }
+);
+
 export async function getActiveSessions() {
   const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
   return await StreamSession.findAll({
@@ -715,4 +781,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };

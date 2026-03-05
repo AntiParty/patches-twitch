@@ -6,6 +6,7 @@ import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import logger from '@/util/logger';
 import exp from 'constants';
 import { updateRSHistory } from '@/util/rsPredictor';
+import { updatePeakRanks } from '@/jobs/peakUpdater';
 
 let lastUpdate = Date.now();
 const updateIntervalMs = 35 * 60 * 1000; // 35 minutes 
@@ -56,6 +57,12 @@ async function updateAllCachesRateLimited() {
     await updateRSHistory();
   } catch (e) {
     logger.error("Error updating RS history:", e);
+  }
+
+  try {
+    await updatePeakRanks();
+  } catch (e) {
+    logger.error("Error updating peak ranks:", e);
   }
 
   lastUpdate = Date.now(); // Update lastUpdate after all caches are updated

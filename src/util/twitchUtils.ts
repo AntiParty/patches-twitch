@@ -258,8 +258,19 @@ const refreshLocks: Record<string, boolean> = {};
 const refreshRetries: Record<string, number> = {};
 const refreshRetryTimers: Record<string, NodeJS.Timeout> = {}; // Track retry timers for cleanup
 const refreshCooldowns: Record<string, number> = {}; // Track cooldown expiry times
+const refreshPermanentFailed = new Set<string>(); // Users whose tokens are permanently revoked (400 invalid grant)
 const MAX_REFRESH_RETRIES = 5;
 const COOLDOWN_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+
+// Call this when a user successfully re-authenticates to clear the permanent failure flag
+export function clearRefreshPermanentFailed(username: string) {
+  const key = String(username || '').toLowerCase();
+  refreshPermanentFailed.delete(key);
+  refreshRetries[key] = 0;
+  refreshLocks[key] = false;
+  delete refreshCooldowns[key];
+  clearRetryTimer(key);
+}
 
 // Helper function to clear retry timer for a user
 function clearRetryTimer(key: string) {
@@ -285,6 +296,11 @@ export const refreshAccessToken = async (channel: any) => {
 
   if (!clientId || !clientSecret) {
     throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
+  }
+
+  // If token was permanently revoked (400 invalid grant), do not retry until user re-auths
+  if (refreshPermanentFailed.has(key)) {
+    return null;
   }
 
   // Check if we're in cooldown period
@@ -372,11 +388,12 @@ export const refreshAccessToken = async (channel: any) => {
       // Always clear lock on error
       refreshLocks[key] = false;
 
-      // If error is unrecoverable (400), mark as needing re-auth and don't retry
+      // If error is unrecoverable (400), mark as permanently failed and don't retry
       if (response.status === 400) {
         logger.error(`[${username}] Received 400 (invalid grant). Refresh token may be revoked. User needs to re-authenticate.`);
+        refreshPermanentFailed.add(key);
         refreshRetries[key] = MAX_REFRESH_RETRIES;
-        refreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+        delete refreshCooldowns[key];
 
         // Notify user via Discord
         try {

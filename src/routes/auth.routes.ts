@@ -8,6 +8,7 @@ import { Channel, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import { verifyOAuthState } from '@/util/crypto';
 import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
+import { clearRefreshPermanentFailed } from '@/util/twitchUtils';
 
 const router = Router();
 
@@ -219,6 +220,9 @@ router.get("/callback", async (req: any, res: any) => {
             token_expires_at: expirationTime,
             twitch_user_id: twitchUserId,
         });
+
+        // Clear any permanent token failure state so refresh can resume
+        clearRefreshPermanentFailed(twitchUsername);
 
         // Fetch current user from DB to get their role
         const channel = await Channel.findOne({ where: { username: twitchUsername } });

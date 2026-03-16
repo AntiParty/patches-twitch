@@ -1776,6 +1776,7 @@
               </div>
 
               <div
+                id="cmd-variables-panel"
                 style="
                   margin-top: 24px;
                   padding-top: 20px;
@@ -1783,111 +1784,37 @@
                 "
               >
                 <div
-                  class="card-title"
                   style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
                     margin-bottom: 12px;
-                    font-size: 14px;
-                    color: var(--text-muted);
                   "
                 >
-                  Available Variables
+                  <div
+                    class="card-title"
+                    style="font-size: 14px; color: var(--text-muted)"
+                  >
+                    Available Variables
+                    <span
+                      id="cmd-variables-label"
+                      style="
+                        margin-left: 6px;
+                        font-size: 11px;
+                        color: var(--primary);
+                        font-weight: 400;
+                      "
+                    ></span>
+                  </div>
+                  <span
+                    style="font-size: 11px; color: var(--text-muted)"
+                    >Click to insert</span
+                  >
                 </div>
-                <div
-                  style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 12px;
-                  "
-                >
-                  <div
-                    style="
-                      font-size: 12px;
-                      background: var(--bg-app);
-                      padding: 8px;
-                      border-radius: 4px;
-                    "
-                  >
-                    <code style="color: var(--primary); font-weight: 700"
-                      >{username}</code
-                    >
-                    <div style="color: var(--text-muted); margin-top: 2px">
-                      Viewer's display name
-                    </div>
-                  </div>
-                  <div
-                    style="
-                      font-size: 12px;
-                      background: var(--bg-app);
-                      padding: 8px;
-                      border-radius: 4px;
-                    "
-                  >
-                    <code style="color: var(--primary); font-weight: 700"
-                      >{rank}</code
-                    >
-                    <div style="color: var(--text-muted); margin-top: 2px">
-                      Global leaderboard rank
-                    </div>
-                  </div>
-                  <div
-                    style="
-                      font-size: 12px;
-                      background: var(--bg-app);
-                      padding: 8px;
-                      border-radius: 4px;
-                    "
-                  >
-                    <code style="color: var(--primary); font-weight: 700"
-                      >{league}</code
-                    >
-                    <div style="color: var(--text-muted); margin-top: 2px">
-                      League (e.g. Diamond 1)
-                    </div>
-                  </div>
-                  <div
-                    style="
-                      font-size: 12px;
-                      background: var(--bg-app);
-                      padding: 8px;
-                      border-radius: 4px;
-                    "
-                  >
-                    <code style="color: var(--primary); font-weight: 700"
-                      >{score}</code
-                    >
-                    <div style="color: var(--text-muted); margin-top: 2px">
-                      Total Rank Score (RS)
-                    </div>
-                  </div>
-                  <div
-                    style="
-                      font-size: 12px;
-                      background: var(--bg-app);
-                      padding: 8px;
-                      border-radius: 4px;
-                    "
-                  >
-                    <code style="color: var(--primary); font-weight: 700"
-                      >{wtRank}</code
-                    >
-                    <div style="color: var(--text-muted); margin-top: 2px">
-                      World Tour rank
-                    </div>
-                  </div>
-                  <div
-                    style="
-                      font-size: 12px;
-                      background: var(--bg-app);
-                      padding: 8px;
-                      border-radius: 4px;
-                    "
-                  >
-                    <code style="color: var(--primary); font-weight: 700"
-                      >{rankScore}</code
-                    >
-                    <div style="color: var(--text-muted); margin-top: 2px">
-                      Alias for {score}
-                    </div>
+                <div id="cmd-variables" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <!-- Populated by JS when a command input is focused -->
+                  <div style="grid-column: 1/-1; color: var(--text-muted); font-size: 12px; text-align: center; padding: 8px 0;">
+                    Focus a command input above to see its variables.
                   </div>
                 </div>
               </div>
@@ -1903,19 +1830,12 @@
                   <i class="fas fa-users"></i>
                 </div>
                 <div class="chat-body" id="chat-preview-body">
-                  <div class="chat-msg">
-                    <span class="chat-badges">
-                      <div class="badge badge-mod"></div>
-                    </span>
-                    <span class="user-name">Streamer</span>:
-                    <span class="msg-content">Hey bot, what's my rank?</span>
-                  </div>
-                  <div class="chat-msg">
+                  <div class="chat-msg" id="preview-trigger-msg" style="display:none">
                     <span class="chat-badges">
                       <div class="badge badge-sub"></div>
                     </span>
                     <span class="user-name">Viewer123</span>:
-                    <span class="msg-content">!rank</span>
+                    <span class="msg-content" id="preview-trigger-text">!rank</span>
                   </div>
                   <div
                     class="chat-msg"
@@ -1924,8 +1844,8 @@
                   >
                     <span class="chat-badges"></span>
                     <span class="user-name bot">FinalsRS</span>:
-                    <span class="msg-content"
-                      >Select a command to preview...</span
+                    <span class="msg-content" id="preview-response-text"
+                      >Focus a command input to preview...</span
                     >
                   </div>
                 </div>
@@ -3439,6 +3359,120 @@
       console.log("DASHBOARD SCRIPT LOADED");
 
 
+      // --- Per-command variable definitions ---
+      const cmdVars = {
+        rank: [
+          { v: "username", desc: "Viewer's display name" },
+          { v: "rank",     desc: "Global leaderboard rank" },
+          { v: "league",   desc: "League (e.g. Diamond 1)" },
+          { v: "score",    desc: "Rank Score (RS)" },
+          { v: "wtRank",   desc: "World Tour rank" },
+          { v: "found",    desc: "true/false — on leaderboard?" },
+        ],
+        record: [
+          { v: "username",  desc: "Viewer's display name" },
+          { v: "sessionRS", desc: "RS gained/lost this stream" },
+          { v: "gain",      desc: "Alias for {sessionRS}" },
+          { v: "currentRS", desc: "Current RS total" },
+          { v: "startRS",   desc: "RS at stream start" },
+          { v: "wtRank",    desc: "Current World Tour rank" },
+          { v: "wtDiff",    desc: "WT rank change this stream" },
+        ],
+        peak: [
+          { v: "rank",     desc: "Best rank ever achieved" },
+          { v: "league",   desc: "League at peak rank" },
+          { v: "score",    desc: "RS at peak rank" },
+          { v: "season",   desc: "Season of peak rank" },
+          { v: "wtRank",   desc: "Best World Tour rank" },
+          { v: "wtSeason", desc: "Season of WT peak" },
+        ],
+      };
+
+      // Per-command mock values for the live preview
+      const cmdMockVars = {
+        rank: {
+          username: "<%= username %>",
+          rank: "142",
+          league: "Diamond 1",
+          score: "45,210",
+          rankScore: "45,210",
+          wtRank: "89",
+          wt_rank: "89",
+          found: "true",
+        },
+        record: {
+          username: "<%= username %>",
+          sessionRS: "+312",
+          gain: "+312",
+          currentRS: "45,210",
+          score: "45,210",
+          startRS: "44,898",
+          wtDiff: "-3",
+          wtRank: "89",
+        },
+        peak: {
+          rank: "23",
+          league: "Ruby",
+          score: "52,100",
+          rankScore: "52,100",
+          season: "Season 8",
+          wtRank: "15",
+          wt_rank: "15",
+          wtSeason: "World Tour Season 8",
+          wt_season: "World Tour Season 8",
+        },
+      };
+
+      // What the bot says when there is no custom response set
+      const cmdDefaults = {
+        rank:   "@{username}, current rank is {score} RS in {league} | WT rank: #{wtRank}",
+        record: "@{username}, session RS: {sessionRS} ({currentRS} RS) | WT rank: #{wtRank}",
+        peak:   "Peak rank: #{rank} {league} ({score} RS) in {season} | WT peak: #{wtRank} ({wtSeason})",
+      };
+
+      // Render the variable chips for a given command
+      function updateVariables(cmd) {
+        const panel = document.getElementById("cmd-variables");
+        const label = document.getElementById("cmd-variables-label");
+        const vars = cmdVars[cmd];
+        if (!panel || !vars) return;
+
+        if (label) label.textContent = `for !${cmd}`;
+
+        panel.innerHTML = vars.map(({ v, desc }) => `
+          <div
+            onclick="insertVariable('${cmd}', '{${v}}')"
+            title="Click to insert"
+            style="
+              font-size: 12px;
+              background: var(--bg-app);
+              padding: 8px 10px;
+              border-radius: 4px;
+              cursor: pointer;
+              border: 1px solid transparent;
+              transition: border-color 0.15s;
+            "
+            onmouseenter="this.style.borderColor='var(--primary)'"
+            onmouseleave="this.style.borderColor='transparent'"
+          >
+            <code style="color: var(--primary); font-weight: 700">{${v}}</code>
+            <div style="color: var(--text-muted); margin-top: 2px">${desc}</div>
+          </div>
+        `).join("");
+      }
+
+      // Insert a variable at the cursor position in the active input
+      function insertVariable(cmd, variable) {
+        const input = document.getElementById(`input-${cmd}`);
+        if (!input) return;
+        const start = input.selectionStart ?? input.value.length;
+        const end = input.selectionEnd ?? input.value.length;
+        input.value = input.value.slice(0, start) + variable + input.value.slice(end);
+        input.focus();
+        input.selectionStart = input.selectionEnd = start + variable.length;
+        updatePreview(cmd, input.value);
+      }
+
       // --- Commands & Preview ---
       async function fetchCommands() {
         const list = document.getElementById("commands-list");
@@ -3461,18 +3495,34 @@
           for (const cmd of allowed) {
             const found = data.commands.find((c) => c.name === cmd);
             const val = found ? found.response : "";
+            const isCustom = val.trim().length > 0;
             html += `
-                 <div style="background: var(--bg-hover); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
-                   <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                     <span style="font-weight: 600; color: var(--primary);">!${cmd}</span>
-                     <span style="font-size: 12px; color: var(--text-muted);">Custom Response</span>
-                   </div>
-                   <div style="display: flex; gap: 10px;">
-                     <input id="input-${cmd}" class="input" value="${val}" placeholder="Enter response..." oninput="updatePreview('${cmd}', this.value)" onfocus="updatePreview('${cmd}', this.value)">
-                     <button class="btn btn-success btn-sm" onclick="saveCommand('${cmd}')">Save</button>
-                   </div>
-                 </div>
-               `;
+              <div style="background: var(--bg-hover); padding: 16px; border-radius: var(--radius); border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <span style="font-weight: 600; color: var(--primary);">!${cmd}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    ${isCustom ? `<span style="font-size: 11px; color: var(--success); background: rgba(0,179,95,0.12); padding: 2px 7px; border-radius: 10px;">Custom</span>` : `<span style="font-size: 11px; color: var(--text-muted);">Default</span>`}
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      style="font-size: 11px; padding: 2px 8px; color: var(--text-muted);"
+                      onclick="resetCommand('${cmd}')"
+                      title="Reset to default bot response"
+                    >Reset</button>
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                  <input
+                    id="input-${cmd}"
+                    class="input"
+                    value="${val.replace(/"/g, '&quot;')}"
+                    placeholder="Leave blank to use the default response…"
+                    oninput="updatePreview('${cmd}', this.value)"
+                    onfocus="updateVariables('${cmd}'); updatePreview('${cmd}', this.value);"
+                  >
+                  <button class="btn btn-success btn-sm" onclick="saveCommand('${cmd}')">Save</button>
+                </div>
+              </div>
+            `;
           }
           list.innerHTML = html;
         } catch (e) {
@@ -3766,45 +3816,29 @@
         }
       }
 
-      const mockVars = {
-        username: "<%= username %>",
-        user: "<%= username %>",
-        rank: "#123",
-        league: "Diamond 1",
-        rankScore: "45,210",
-        score: "45,210",
-        wtRank: "#456",
-        found: "true",
-      };
-
       function updatePreview(cmd, val) {
-        const previewMsg = document.getElementById("preview-response-msg");
-        const content = previewMsg.querySelector(".msg-content");
-        const user = previewMsg.querySelector(".user-name");
-        const viewerName = document.querySelector(".chat-msg .user-name");
+        const triggerMsg  = document.getElementById("preview-trigger-msg");
+        const triggerText = document.getElementById("preview-trigger-text");
+        const responseMsg = document.getElementById("preview-response-msg");
+        const responseText = document.getElementById("preview-response-text");
+        if (!responseMsg || !responseText) return;
 
-        // Update the user message to match the command (!rank, !record, etc)
-        const userMsgs = document.querySelectorAll(".chat-msg .msg-content");
-        if (userMsgs.length >= 2) {
-          userMsgs[1].innerText = `!${cmd}`;
-        }
+        // Show the viewer trigger line
+        if (triggerMsg) triggerMsg.style.display = "";
+        if (triggerText) triggerText.innerText = `!${cmd}`;
 
-        let responseText =
-          val ||
-          (cmd === "rank" ?
-            "Your rank is {rankScore} RS in {league} | WT rank: {wtRank}" :
-            `(Default response for !${cmd})`);
+        const mock = cmdMockVars[cmd] || {};
+        const isCustom = val && val.trim().length > 0;
 
-        // Replace variables with mock data
-        responseText = responseText.replace(/\{(\w+)\}/g, (match, v) => {
-          return mockVars[v] || match;
-        });
+        // Use the custom response if set, otherwise show the actual default
+        let text = isCustom ? val : (cmdDefaults[cmd] || `(Default response for !${cmd})`);
 
-        user.innerText = "FinalsRS";
-        content.innerText = responseText;
-        content.style.fontSize = "13px";
-        content.style.color = val ? "#efeff1" : "#adadb8";
-        previewMsg.style.opacity = "1";
+        // Substitute mock values
+        text = text.replace(/\{(\w+)\}/g, (match, v) => mock[v] !== undefined ? mock[v] : match);
+
+        responseText.innerText = text;
+        responseText.style.color = isCustom ? "#efeff1" : "#adadb8";
+        responseMsg.style.opacity = "1";
       }
 
       async function saveCommand(cmd) {
@@ -3820,20 +3854,20 @@
           const res = await fetch("/api/my-commands", {
             method: "POST",
             headers: getCsrfHeaders(),
-            body: JSON.stringify({
-              name: cmd,
-              response: val,
-            }),
+            body: JSON.stringify({ name: cmd, response: val }),
           });
           const data = await res.json();
 
           if (data.success) {
             btn.innerText = "Saved";
-            showToast(`Command !${cmd} updated`, "success");
+            showToast(`!${cmd} updated`, "success");
+            // Update the Custom/Default badge without re-fetching
+            const badge = btn.closest("div[style]").previousElementSibling?.querySelector("span:nth-child(2)");
             setTimeout(() => {
               btn.innerText = originalText;
               btn.disabled = false;
-            }, 2000);
+              fetchCommands(); // re-render to update Custom/Default badge
+            }, 1200);
           } else {
             showToast(data.error || "Failed", "danger");
             btn.innerText = originalText;
@@ -3843,6 +3877,37 @@
           showToast("Error connecting to server", "danger");
           btn.innerText = originalText;
           btn.disabled = false;
+        }
+      }
+
+      async function resetCommand(cmd) {
+        const input = document.getElementById(`input-${cmd}`);
+        if (!input) return;
+
+        const confirmed = await showConfirm(
+          `Reset !${cmd}`,
+          `Remove your custom response for !${cmd}? The bot will use its built-in default.`
+        );
+        if (!confirmed) return;
+
+        input.value = "";
+        updatePreview(cmd, "");
+
+        try {
+          const res = await fetch("/api/my-commands", {
+            method: "POST",
+            headers: getCsrfHeaders(),
+            body: JSON.stringify({ name: cmd, response: "" }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            showToast(`!${cmd} reset to default`, "success");
+            fetchCommands();
+          } else {
+            showToast(data.error || "Failed to reset", "danger");
+          }
+        } catch (e) {
+          showToast("Error connecting to server", "danger");
         }
       }
 

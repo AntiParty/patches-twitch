@@ -771,11 +771,11 @@ PeakRank.init(
 );
 
 export async function getActiveSessions() {
-  const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   return await StreamSession.findAll({
     where: {
       started_at: {
-        [Op.gte]: eightHoursAgo
+        [Op.gte]: twentyFourHoursAgo
       }
     }
   });

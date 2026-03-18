@@ -6,7 +6,7 @@
 
 // MDT is UTC-6. MST (winter) is UTC-7, but the game's update schedule is
 // pinned to MDT regardless of DST, so we always use -6.
-const UPDATE_HOUR_UTC = 9; // 03:00 MDT (UTC-6) = 09:00 UTC
+const UPDATE_HOUR_UTC = 10; // 04:00 MDT (UTC-6) = 10:00 UTC
 const UPDATE_DAY = 4;      // Thursday (0 = Sunday … 6 = Saturday)
 
 function getNextUpdateMs(): number {
@@ -51,4 +51,4 @@ export const execute = async (ctx: { say: (msg: string, replyId?: string) => Pro
 };
 
 export const aliases = ["nextupdate", "updatetime", "rankupdate"];
-export const description = "Shows time until the next weekly ranked RS update (Thursdays 3 AM MDT).";
+export const description = "Shows time until the next weekly ranked RS update (Thursdays 4 AM MDT).";

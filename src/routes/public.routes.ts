@@ -6,7 +6,8 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { Channel, CommandUsage } from '@/db';
+import { Channel, CommandUsage, StreamSession } from '@/db';
+import { PerformanceMetric } from '@/dbMetrics';
 import { Referral } from '@/dbMetrics';
 import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
@@ -815,10 +816,30 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
         const startOfDay = new Date(now);
         startOfDay.setHours(0, 0, 0, 0);
         const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-        const [channels, usersSeen, commandsToday, recentRows, topChannels, topCommands] = await Promise.all([
+        const [
+            channels,
+            liveChannels,
+            activeSessions,
+            usersSeen,
+            commandsToday,
+            commandsSuccessToday,
+            recentCmdRows,
+            topChannels,
+            topCommands,
+            latestPerf,
+            perfRows,
+            expiringTokenChannels,
+        ] = await Promise.all([
             // Active channels (bot enabled)
             Channel.count({ where: { bot_enabled: true } }),
+
+            // Currently live
+            Channel.count({ where: { is_live: true } }),
+
+            // Active stream sessions
+            StreamSession.count(),
 
             // Distinct users ever seen
             CommandUsage.count({ distinct: true, col: 'user' } as any),
@@ -826,7 +847,10 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             // Commands fired today
             CommandUsage.count({ where: { timestamp: { [Op.gte]: startOfDay } } }),
 
-            // Raw timestamps for the last 60 min (for bucketing)
+            // Successful commands today (for success rate)
+            CommandUsage.count({ where: { timestamp: { [Op.gte]: startOfDay }, success: true } }),
+
+            // Raw timestamps for the last 60 min (for cmd/min bucketing)
             CommandUsage.findAll({
                 where: { timestamp: { [Op.gte]: sixtyMinsAgo } },
                 attributes: ['timestamp'],
@@ -858,23 +882,96 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
                 limit: 8,
                 raw: true,
             }),
+
+            // Latest performance snapshot
+            PerformanceMetric.findOne({
+                order: [['timestamp', 'DESC']],
+                raw: true,
+            }),
+
+            // Performance rows for the last 60 min (for time-series graphs)
+            PerformanceMetric.findAll({
+                where: { timestamp: { [Op.gte]: sixtyMinsAgo } },
+                attributes: ['timestamp', 'cpuUsage', 'memoryUsed', 'memoryTotal', 'botLatencyMs'],
+                order: [['timestamp', 'ASC']],
+                raw: true,
+            }),
+
+            // Channels with tokens expiring within 24h (potential alerts)
+            Channel.findAll({
+                where: {
+                    bot_enabled: true,
+                    token_expires_at: { [Op.lt]: tomorrow, [Op.gt]: now },
+                },
+                attributes: ['username', 'token_expires_at'],
+                raw: true,
+            }),
         ]);
 
-        // Build 60 one-minute buckets filled with zeros
-        const buckets: Record<string, number> = {};
+        // ── Build cmd/min buckets (60 × 1-minute slots) ──────────────────────
+        const cmdBuckets: Record<string, number> = {};
         for (let i = 59; i >= 0; i--) {
             const d = new Date(now.getTime() - i * 60 * 1000);
             const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            buckets[key] = 0;
+            cmdBuckets[key] = 0;
         }
-        for (const row of recentRows as any[]) {
+        for (const row of recentCmdRows as any[]) {
             const d = new Date(row.timestamp);
             const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            if (key in buckets) buckets[key]++;
+            if (key in cmdBuckets) cmdBuckets[key]++;
         }
-        const minuteGraph = Object.entries(buckets).map(([minute, count]) => ({ minute, count }));
+        const minuteGraph = Object.entries(cmdBuckets).map(([minute, count]) => ({ minute, count }));
 
-        res.json({ channels, usersSeen, commandsToday, minuteGraph, topChannels, topCommands });
+        // ── Build perf graph: average per minute across raw rows ─────────────
+        const perfBuckets: Record<string, { cpu: number[]; memMB: number[]; latencyMs: number[] }> = {};
+        for (let i = 59; i >= 0; i--) {
+            const d = new Date(now.getTime() - i * 60 * 1000);
+            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            perfBuckets[key] = { cpu: [], memMB: [], latencyMs: [] };
+        }
+        for (const row of perfRows as any[]) {
+            const d = new Date(row.timestamp);
+            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            if (key in perfBuckets) {
+                if (row.cpuUsage != null)    perfBuckets[key].cpu.push(row.cpuUsage);
+                if (row.memoryUsed != null)  perfBuckets[key].memMB.push(row.memoryUsed / 1_000_000);
+                if (row.botLatencyMs != null) perfBuckets[key].latencyMs.push(row.botLatencyMs);
+            }
+        }
+        const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+        const perfGraph = Object.entries(perfBuckets).map(([minute, v]) => ({
+            minute,
+            cpu:       avg(v.cpu),
+            memMB:     avg(v.memMB),
+            latencyMs: avg(v.latencyMs),
+        }));
+
+        // ── Alerts ────────────────────────────────────────────────────────────
+        const alerts = (expiringTokenChannels as any[]).map((c) => ({
+            type: 'token_expiry',
+            channel: c.username,
+            expiresAt: c.token_expires_at,
+        }));
+
+        const successRate = commandsToday > 0
+            ? Math.round((commandsSuccessToday / commandsToday) * 1000) / 10
+            : 100;
+
+        res.json({
+            channels,
+            liveChannels,
+            activeSessions,
+            usersSeen,
+            commandsToday,
+            successRate,
+            uptime: Math.floor(process.uptime()),
+            latestPerf: latestPerf ?? null,
+            minuteGraph,
+            perfGraph,
+            topChannels,
+            topCommands,
+            alerts,
+        });
     } catch (err) {
         logger.error('[Metrics] Error fetching internal metrics:', err);
         res.status(500).json({ error: 'Failed to fetch metrics.' });

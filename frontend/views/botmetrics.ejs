@@ -9,14 +9,18 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #0e0e10;
-      --surface: #18181b;
-      --border:  #2a2a2e;
-      --text:    #efeff1;
-      --muted:   #adadb8;
-      --primary: #9147ff;
-      --success: #00b35f;
-      --danger:  #f87171;
+      --bg:       #0e0e10;
+      --surface:  #18181b;
+      --surface2: #1f1f23;
+      --border:   #2a2a2e;
+      --text:     #efeff1;
+      --muted:    #adadb8;
+      --purple:   #9147ff;
+      --amber:    #f59e0b;
+      --red:      #ef4444;
+      --blue:     #3b82f6;
+      --green:    #22c55e;
+      --danger:   #f87171;
     }
 
     body {
@@ -27,390 +31,666 @@
       min-height: 100vh;
     }
 
+    /* ── Header ─────────────────────────────────────── */
     header {
-      padding: 16px 28px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
       background: var(--surface);
-    }
-
-    header h1 {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 52px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 20px;
     }
 
-    header h1 span.dot {
-      width: 8px;
-      height: 8px;
-      background: var(--success);
+    .header-title {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      display: inline-block;
+      background: var(--green);
       animation: pulse 2s infinite;
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50%       { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
     }
 
-    #last-updated {
+    .header-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+
+    .header-vitals {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .vital {
+      display: flex;
+      align-items: center;
+      gap: 5px;
       font-size: 12px;
       color: var(--muted);
     }
 
+    .vital .val {
+      color: var(--text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .vital .label { font-size: 11px; }
+
+    .header-right {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Main layout ─────────────────────────────────── */
     main {
-      max-width: 1100px;
+      max-width: 1200px;
       margin: 0 auto;
-      padding: 28px 24px;
+      padding: 24px 20px;
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: 20px;
     }
 
-    /* ── Stat Cards ─────────────────────────────── */
+    /* ── Stat cards ──────────────────────────────────── */
     .cards {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
     }
 
-    @media (max-width: 640px) {
-      .cards { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 900px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 520px) { .cards { grid-template-columns: repeat(2, 1fr); } }
 
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px 22px;
+      border-radius: 8px;
+      padding: 16px 18px;
     }
 
-    .card .label {
-      font-size: 11px;
+    .card-label {
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       color: var(--muted);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
-    .card .value {
-      font-size: 32px;
+    .card-value {
+      font-size: 28px;
       font-weight: 700;
       color: var(--text);
       line-height: 1;
+      font-variant-numeric: tabular-nums;
     }
 
-    .card .sub {
-      font-size: 12px;
+    .card-sub {
+      font-size: 11px;
       color: var(--muted);
-      margin-top: 6px;
+      margin-top: 5px;
     }
 
-    /* ── Graph card ─────────────────────────────── */
+    .card-value.success { color: var(--green); }
+    .card-value.warn    { color: var(--amber); }
+    .card-value.live    { color: var(--purple); }
+
+    /* ── Graph grid ──────────────────────────────────── */
+    .graph-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 700px) { .graph-grid { grid-template-columns: 1fr; } }
+
     .graph-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px 22px;
+      border-radius: 8px;
+      padding: 16px 18px;
     }
 
-    .graph-card .card-header {
+    .graph-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
 
-    .graph-card .card-title {
-      font-size: 13px;
+    .graph-title {
+      font-size: 12px;
       font-weight: 600;
       color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 7px;
     }
 
-    .graph-card .card-hint {
-      font-size: 11px;
+    .graph-title .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .graph-hint {
+      font-size: 10px;
       color: var(--muted);
     }
 
     .chart-wrap {
       position: relative;
-      height: 200px;
+      height: 160px;
     }
 
-    /* ── Tables ─────────────────────────────────── */
-    .tables {
+    /* ── Bottom 3-col ─────────────────────────────────── */
+    .bottom-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
     }
 
-    @media (max-width: 640px) {
-      .tables { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 800px) { .bottom-row { grid-template-columns: 1fr; } }
 
     .table-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 18px 20px;
+      border-radius: 8px;
+      padding: 16px 18px;
     }
 
-    .table-card .card-title {
-      font-size: 13px;
+    .table-card .section-title {
+      font-size: 12px;
       font-weight: 600;
-      margin-bottom: 14px;
       color: var(--text);
+      margin-bottom: 14px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
 
     th {
       text-align: left;
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      padding-bottom: 8px;
+      padding-bottom: 7px;
       border-bottom: 1px solid var(--border);
     }
 
     td {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
       color: var(--text);
+      vertical-align: middle;
     }
-
-    td:last-child { text-align: right; color: var(--muted); }
 
     tr:last-child td { border-bottom: none; }
 
-    .bar-cell {
+    .bar-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       justify-content: flex-end;
     }
 
-    .bar {
-      height: 4px;
-      background: var(--primary);
+    .mini-bar {
+      height: 3px;
       border-radius: 2px;
-      min-width: 4px;
-      opacity: 0.7;
+      min-width: 3px;
     }
 
-    /* ── Loading skeleton ───────────────────────── */
-    .skeleton {
-      background: linear-gradient(90deg, var(--border) 25%, #333 50%, var(--border) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s infinite;
-      border-radius: 4px;
+    .count-val { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    /* ── Alerts panel ─────────────────────────────────── */
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
     }
 
-    @keyframes shimmer {
-      0%   { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
+    .alert-item:last-child { border-bottom: none; }
+
+    .alert-icon {
+      font-size: 14px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    .alert-body { font-size: 12px; }
+    .alert-body .alert-title { color: var(--text); font-weight: 600; }
+    .alert-body .alert-sub   { color: var(--muted); margin-top: 2px; }
+
+    .all-clear {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 80px;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .all-clear .check { font-size: 22px; color: var(--green); }
+
+    /* ── Section label ────────────────────────────────── */
+    .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: -6px;
     }
   </style>
 </head>
 <body>
 
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
 <header>
-  <h1><span class="dot"></span> Bot Metrics</h1>
-  <span id="last-updated">Loading…</span>
+  <div class="header-title">
+    <span class="live-dot"></span>
+    Bot Metrics
+  </div>
+
+  <div class="header-sep"></div>
+
+  <div class="header-vitals">
+    <div class="vital">
+      <span class="label">CPU</span>
+      <span class="val" id="h-cpu">—</span>
+    </div>
+    <div class="vital">
+      <span class="label">MEM</span>
+      <span class="val" id="h-mem">—</span>
+    </div>
+    <div class="vital">
+      <span class="label">LATENCY</span>
+      <span class="val" id="h-latency">—</span>
+    </div>
+    <div class="vital">
+      <span class="label">CHANNELS</span>
+      <span class="val" id="h-conn">—</span>
+    </div>
+    <div class="vital">
+      <span class="label">UPTIME</span>
+      <span class="val" id="h-uptime">—</span>
+    </div>
+  </div>
+
+  <div class="header-right" id="last-updated">Loading…</div>
 </header>
 
 <main>
 
-  <!-- Stat Cards -->
+  <!-- ── Stat cards ─────────────────────────────────────────────────────── -->
   <div class="cards">
     <div class="card">
-      <div class="label">Active Channels</div>
-      <div class="value" id="stat-channels">—</div>
-      <div class="sub">bot enabled</div>
+      <div class="card-label">Active Channels</div>
+      <div class="card-value" id="s-channels">—</div>
+      <div class="card-sub">bot enabled</div>
     </div>
     <div class="card">
-      <div class="label">Users Seen</div>
-      <div class="value" id="stat-users">—</div>
-      <div class="sub">distinct users (all time)</div>
+      <div class="card-label">Currently Live</div>
+      <div class="card-value live" id="s-live">—</div>
+      <div class="card-sub">is_live = true</div>
     </div>
     <div class="card">
-      <div class="label">Commands Today</div>
-      <div class="value" id="stat-today">—</div>
-      <div class="sub">since midnight</div>
+      <div class="card-label">Active Sessions</div>
+      <div class="card-value" id="s-sessions">—</div>
+      <div class="card-sub">stream sessions</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Users Seen</div>
+      <div class="card-value" id="s-users">—</div>
+      <div class="card-sub">all time</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Commands Today</div>
+      <div class="card-value" id="s-cmds">—</div>
+      <div class="card-sub">since midnight</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Success Rate</div>
+      <div class="card-value success" id="s-success">—</div>
+      <div class="card-sub">today</div>
     </div>
   </div>
 
-  <!-- Commands/min Graph -->
-  <div class="graph-card">
-    <div class="card-header">
-      <span class="card-title">Commands per Minute</span>
-      <span class="card-hint">last 60 minutes · refreshes every 30s</span>
+  <!-- ── Graphs row 1 ───────────────────────────────────────────────────── -->
+  <div class="section-label">Last 60 Minutes</div>
+  <div class="graph-grid">
+    <div class="graph-card">
+      <div class="graph-header">
+        <div class="graph-title">
+          <span class="dot" style="background:var(--purple)"></span>
+          Commands / min
+        </div>
+        <span class="graph-hint">command executions</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-cmd"></canvas></div>
     </div>
-    <div class="chart-wrap">
-      <canvas id="cmd-chart"></canvas>
+
+    <div class="graph-card">
+      <div class="graph-header">
+        <div class="graph-title">
+          <span class="dot" style="background:var(--amber)"></span>
+          Bot Latency
+        </div>
+        <span class="graph-hint">ms · IRC response time</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-latency"></canvas></div>
     </div>
   </div>
 
-  <!-- Top Tables -->
-  <div class="tables">
+  <!-- ── Graphs row 2 ───────────────────────────────────────────────────── -->
+  <div class="graph-grid">
+    <div class="graph-card">
+      <div class="graph-header">
+        <div class="graph-title">
+          <span class="dot" style="background:var(--red)"></span>
+          CPU Usage
+        </div>
+        <span class="graph-hint">% · process</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-cpu"></canvas></div>
+    </div>
+
+    <div class="graph-card">
+      <div class="graph-header">
+        <div class="graph-title">
+          <span class="dot" style="background:var(--blue)"></span>
+          Memory
+        </div>
+        <span class="graph-hint">MB · heap used</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-mem"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── Bottom row ─────────────────────────────────────────────────────── -->
+  <div class="section-label">Today</div>
+  <div class="bottom-row">
+
     <div class="table-card">
-      <div class="card-title">Top Channels Today</div>
+      <div class="section-title">Top Channels</div>
       <table>
-        <thead>
-          <tr><th>Channel</th><th style="text-align:right">Commands</th></tr>
-        </thead>
+        <thead><tr><th>Channel</th><th style="text-align:right">Cmds</th></tr></thead>
         <tbody id="tbl-channels">
-          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:12px 0">Loading…</td></tr>
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:14px 0">Loading…</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="table-card">
-      <div class="card-title">Top Commands Today</div>
-      <table>
-        <thead>
-          <tr><th>Command</th><th style="text-align:right">Uses</th></tr>
-        </thead>
-        <tbody id="tbl-commands">
-          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:12px 0">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
 
+    <div class="table-card">
+      <div class="section-title">Top Commands</div>
+      <table>
+        <thead><tr><th>Command</th><th style="text-align:right">Uses</th></tr></thead>
+        <tbody id="tbl-commands">
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:14px 0">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-card">
+      <div class="section-title">Alerts</div>
+      <div id="alerts-panel">
+        <div class="all-clear"><span class="check">✓</span>Loading…</div>
+      </div>
+    </div>
+
+  </div>
 </main>
 
 <script>
-  // ── Chart setup ─────────────────────────────────────────────────────────────
-  const ctx = document.getElementById('cmd-chart').getContext('2d');
-  const chart = new Chart(ctx, {
+// ── Chart factory ──────────────────────────────────────────────────────────
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 300 },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#18181b',
+      borderColor: '#2a2a2e',
+      borderWidth: 1,
+      titleColor: '#efeff1',
+      bodyColor: '#adadb8',
+      padding: 8,
+    },
+  },
+  scales: {
+    x: {
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      ticks: { color: '#adadb8', font: { size: 10 }, maxTicksLimit: 10, maxRotation: 0 },
+    },
+    y: {
+      beginAtZero: true,
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      ticks: { color: '#adadb8', font: { size: 10 } },
+    },
+  },
+};
+
+function makeChart(id, color, yLabel, yMax) {
+  const ctx = document.getElementById(id).getContext('2d');
+  const opts = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  if (yMax != null) opts.scales.y.max = yMax;
+  if (yLabel) {
+    opts.plugins.tooltip.callbacks = { label: c => `${c.parsed.y != null ? c.parsed.y.toFixed(1) : '—'} ${yLabel}` };
+  }
+  return new Chart(ctx, {
     type: 'line',
     data: {
       labels: [],
       datasets: [{
-        label: 'commands/min',
         data: [],
-        borderColor: '#9147ff',
-        backgroundColor: 'rgba(145,71,255,0.12)',
-        borderWidth: 2,
+        borderColor: color,
+        backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.10)').replace('#', 'rgba(').replace(/^rgba\(([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}),/, (_, r, g, b) => `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},`),
+        borderWidth: 1.5,
         pointRadius: 0,
         fill: true,
         tension: 0.4,
+        spanGaps: true,
       }]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 400 },
-      scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.05)' },
-          ticks: {
-            color: '#adadb8',
-            font: { size: 11 },
-            maxTicksLimit: 12,
-            maxRotation: 0,
-          },
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: 'rgba(255,255,255,0.05)' },
-          ticks: {
-            color: '#adadb8',
-            font: { size: 11 },
-            stepSize: 1,
-          },
-        },
-      },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#18181b',
-          borderColor: '#2a2a2e',
-          borderWidth: 1,
-          titleColor: '#efeff1',
-          bodyColor: '#adadb8',
-          callbacks: {
-            label: ctx => `${ctx.parsed.y} commands`,
-          },
-        },
-      },
-    },
+    options: opts,
   });
+}
 
-  // ── Render helpers ───────────────────────────────────────────────────────────
-  function fmt(n) {
-    return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+// Use cleaner color helper
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function makeChart2(id, hex, yLabel, yMax) {
+  const ctx = document.getElementById(id).getContext('2d');
+  const opts = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  if (yMax != null) opts.scales.y.max = yMax;
+  opts.plugins.tooltip.callbacks = {
+    label: c => c.parsed.y != null ? `${c.parsed.y.toFixed(1)} ${yLabel}` : 'no data',
+  };
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderColor: hex,
+        backgroundColor: hexToRgba(hex, 0.1),
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.4,
+        spanGaps: true,
+      }]
+    },
+    options: opts,
+  });
+}
+
+const charts = {
+  cmd:     makeChart2('chart-cmd',     '#9147ff', 'cmds',  null),
+  latency: makeChart2('chart-latency', '#f59e0b', 'ms',    null),
+  cpu:     makeChart2('chart-cpu',     '#ef4444', '%',     100),
+  mem:     makeChart2('chart-mem',     '#3b82f6', 'MB',    null),
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function fmt(n) {
+  if (n == null) return '—';
+  return n >= 1_000_000 ? (n/1_000_000).toFixed(1)+'M'
+       : n >= 1_000     ? (n/1_000).toFixed(1)+'k'
+       : String(n);
+}
+
+function fmtUptime(secs) {
+  if (secs == null) return '—';
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function fmtMs(ms) { return ms != null ? ms.toFixed(0)+'ms' : '—'; }
+function fmtMB(bytes) { return bytes != null ? (bytes/1_000_000).toFixed(0)+' MB' : '—'; }
+function fmtPct(v) { return v != null ? v.toFixed(1)+'%' : '—'; }
+
+function updateChart(chart, pts, key) {
+  chart.data.labels  = pts.map(p => p.minute);
+  chart.data.datasets[0].data = pts.map(p => p[key] != null ? +p[key].toFixed(2) : null);
+  chart.update('none');
+}
+
+function renderTable(tbodyId, rows, nameKey, color) {
+  const tbody = document.getElementById(tbodyId);
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:14px 0">No data yet.</td></tr>';
+    return;
   }
+  const max = Math.max(...rows.map(r => Number(r.count)), 1);
+  tbody.innerHTML = rows.map(r => {
+    const pct = Math.round((Number(r.count) / max) * 60);
+    return `<tr>
+      <td>${r[nameKey]}</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="mini-bar" style="width:${pct}px;background:${color};opacity:0.6"></div>
+          <span class="count-val">${fmt(Number(r.count))}</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
 
-  function renderTable(tbodyId, rows, nameKey) {
-    const tbody = document.getElementById(tbodyId);
-    if (!rows || rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:12px 0">No data yet today.</td></tr>';
-      return;
+function renderAlerts(alerts) {
+  const panel = document.getElementById('alerts-panel');
+  if (!alerts || alerts.length === 0) {
+    panel.innerHTML = '<div class="all-clear"><span class="check">✓</span>All clear</div>';
+    return;
+  }
+  panel.innerHTML = alerts.map(a => {
+    if (a.type === 'token_expiry') {
+      const exp = new Date(a.expiresAt);
+      const minsLeft = Math.round((exp - Date.now()) / 60_000);
+      const timeStr = minsLeft < 60 ? `${minsLeft}m` : `${Math.round(minsLeft/60)}h`;
+      return `<div class="alert-item">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-body">
+          <div class="alert-title">${a.channel}</div>
+          <div class="alert-sub">Token expires in ${timeStr}</div>
+        </div>
+      </div>`;
     }
-    const max = Math.max(...rows.map(r => Number(r.count)));
-    tbody.innerHTML = rows.map(r => {
-      const pct = max > 0 ? Math.round((Number(r.count) / max) * 80) : 0;
-      return `<tr>
-        <td>${r[nameKey]}</td>
-        <td>
-          <div class="bar-cell">
-            <div class="bar" style="width:${pct}px"></div>
-            ${fmt(Number(r.count))}
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
+    return '';
+  }).join('');
+}
+
+// ── Fetch & render ─────────────────────────────────────────────────────────
+let lastFetch = null;
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/internal/metrics');
+    if (res.status === 401) { location.href = '/botmetrics/login'; return; }
+    const d = await res.json();
+
+    // Header vitals
+    const p = d.latestPerf;
+    document.getElementById('h-cpu').textContent     = p ? fmtPct(p.cpuUsage)                 : '—';
+    document.getElementById('h-mem').textContent     = p ? fmtMB(p.memoryUsed)                : '—';
+    document.getElementById('h-latency').textContent = p ? fmtMs(p.botLatencyMs)              : '—';
+    document.getElementById('h-conn').textContent    = p ? (p.connectedChannels ?? '—')        : '—';
+    document.getElementById('h-uptime').textContent  = fmtUptime(d.uptime);
+
+    // Stat cards
+    document.getElementById('s-channels').textContent = fmt(d.channels);
+    document.getElementById('s-live').textContent     = fmt(d.liveChannels);
+    document.getElementById('s-sessions').textContent = fmt(d.activeSessions);
+    document.getElementById('s-users').textContent    = fmt(d.usersSeen);
+    document.getElementById('s-cmds').textContent     = fmt(d.commandsToday);
+
+    const sr = document.getElementById('s-success');
+    sr.textContent = d.successRate != null ? d.successRate + '%' : '—';
+    sr.className = 'card-value ' + (d.successRate >= 98 ? 'success' : d.successRate >= 90 ? '' : 'warn');
+
+    // Graphs
+    updateChart(charts.cmd,     d.minuteGraph, 'count');
+    updateChart(charts.latency, d.perfGraph,   'latencyMs');
+    updateChart(charts.cpu,     d.perfGraph,   'cpu');
+    updateChart(charts.mem,     d.perfGraph,   'memMB');
+
+    // Tables
+    renderTable('tbl-channels', d.topChannels, 'channel', '#9147ff');
+    renderTable('tbl-commands', d.topCommands, 'command', '#3b82f6');
+
+    // Alerts
+    renderAlerts(d.alerts);
+
+    lastFetch = Date.now();
+    tick();
+  } catch (e) {
+    console.error('Metrics fetch failed', e);
   }
+}
 
-  // ── Fetch & update ───────────────────────────────────────────────────────────
-  let lastFetch = null;
+function tick() {
+  if (!lastFetch) return;
+  const s = Math.round((Date.now() - lastFetch) / 1000);
+  document.getElementById('last-updated').textContent =
+    s < 5 ? 'Just updated' : `Updated ${s}s ago · refreshes every 30s`;
+}
 
-  async function refresh() {
-    try {
-      const res = await fetch('/api/internal/metrics');
-      if (res.status === 401) { location.href = '/botmetrics/login'; return; }
-      const d = await res.json();
-
-      document.getElementById('stat-channels').textContent = fmt(d.channels);
-      document.getElementById('stat-users').textContent    = fmt(d.usersSeen);
-      document.getElementById('stat-today').textContent    = fmt(d.commandsToday);
-
-      chart.data.labels  = d.minuteGraph.map(p => p.minute);
-      chart.data.datasets[0].data = d.minuteGraph.map(p => p.count);
-      chart.update();
-
-      renderTable('tbl-channels', d.topChannels, 'channel');
-      renderTable('tbl-commands', d.topCommands, 'command');
-
-      lastFetch = Date.now();
-      tick();
-    } catch (e) {
-      console.error('Metrics fetch failed', e);
-    }
-  }
-
-  function tick() {
-    if (!lastFetch) return;
-    const secs = Math.round((Date.now() - lastFetch) / 1000);
-    document.getElementById('last-updated').textContent =
-      secs < 5 ? 'Just updated' : `Updated ${secs}s ago`;
-  }
-
-  refresh();
-  setInterval(refresh, 30_000);
-  setInterval(tick, 1_000);
+refresh();
+setInterval(refresh, 30_000);
+setInterval(tick, 1_000);
 </script>
 </body>
 </html>

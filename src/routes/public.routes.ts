@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { Channel } from '@/db';
+import { Channel, CommandUsage } from '@/db';
 import { Referral } from '@/dbMetrics';
 import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
@@ -753,5 +753,132 @@ router.post('/api/feedback', rateLimitFeedback, async (req: Request, res: Respon
 router.get('/analytics-dashboard', (req: Request, res: Response) => {
     res.sendFile(path.join(viewsPath, 'analytics-dashboard.html'));
 })
+
+// ─── Internal Bot Metrics ────────────────────────────────────────────────────
+
+/**
+ * GET /botmetrics/login
+ * Simple password-protected login for the internal metrics page.
+ */
+router.get('/botmetrics/login', (req: any, res: Response) => {
+    const csrfToken = req.csrfToken ? req.csrfToken() : '';
+    const error = req.query.error ? 'Invalid password.' : '';
+    res.send(`<!DOCTYPE html><html><head><title>Metrics Login</title><style>*{box-sizing:border-box}body{font-family:-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#0e0e10;color:#efeff1}.card{background:#18181b;padding:2rem 2.5rem;border-radius:10px;border:1px solid #2a2a2e;width:320px}.h{font-size:18px;font-weight:700;margin:0 0 1.5rem;color:#efeff1}.err{background:#3d1515;color:#f87171;padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:1rem}.lbl{font-size:12px;color:#adadb8;margin-bottom:4px}.inp{display:block;width:100%;padding:9px 12px;border-radius:6px;border:1px solid #2a2a2e;background:#0e0e10;color:#efeff1;font-size:14px;margin-bottom:1rem}.inp:focus{outline:none;border-color:var(--p,#9147ff)}.btn{width:100%;padding:10px;border:none;border-radius:6px;background:#9147ff;color:#fff;font-size:14px;font-weight:600;cursor:pointer}.btn:hover{background:#772ce8}</style></head><body><div class="card"><p class="h">Bot Metrics</p>${error ? `<div class="err">${error}</div>` : ''}<form method="POST" action="/botmetrics/login"><div class="lbl">Password</div><input class="inp" name="password" type="password" placeholder="Enter metrics password" autofocus required><input type="hidden" name="_csrf" value="${csrfToken}"><button class="btn" type="submit">Sign in</button></form></div></body></html>`);
+});
+
+/**
+ * POST /botmetrics/login
+ * Validate metrics password from METRICS_PASSWORD env var.
+ */
+router.post('/botmetrics/login', (req: any, res: Response) => {
+    const { password } = req.body;
+    const metricsPassword = process.env.METRICS_PASSWORD;
+
+    if (!metricsPassword) {
+        logger.warn('[Metrics] METRICS_PASSWORD env var is not set.');
+        return res.redirect('/botmetrics/login?error=1');
+    }
+
+    if (password === metricsPassword) {
+        req.session.isMetrics = true;
+        logger.info('[Metrics] Metrics login successful.');
+        return res.redirect('/botmetrics');
+    }
+
+    logger.warn('[Metrics] Failed metrics login attempt.');
+    res.redirect('/botmetrics/login?error=1');
+});
+
+/**
+ * GET /botmetrics
+ * Internal metrics dashboard.
+ */
+router.get('/botmetrics', (req: any, res: Response) => {
+    if (!req.session?.isMetrics) {
+        return res.redirect('/botmetrics/login');
+    }
+    res.render('botmetrics');
+});
+
+/**
+ * GET /api/internal/metrics
+ * Returns live bot metrics data. Requires isMetrics session.
+ */
+router.get('/api/internal/metrics', async (req: any, res: any) => {
+    if (!req.session?.isMetrics) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const { Op } = await import('sequelize');
+        const now = new Date();
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+        const [channels, usersSeen, commandsToday, recentRows, topChannels, topCommands] = await Promise.all([
+            // Active channels (bot enabled)
+            Channel.count({ where: { bot_enabled: true } }),
+
+            // Distinct users ever seen
+            CommandUsage.count({ distinct: true, col: 'user' } as any),
+
+            // Commands fired today
+            CommandUsage.count({ where: { timestamp: { [Op.gte]: startOfDay } } }),
+
+            // Raw timestamps for the last 60 min (for bucketing)
+            CommandUsage.findAll({
+                where: { timestamp: { [Op.gte]: sixtyMinsAgo } },
+                attributes: ['timestamp'],
+                raw: true,
+            }),
+
+            // Top channels today
+            CommandUsage.findAll({
+                where: { timestamp: { [Op.gte]: startOfDay } },
+                attributes: [
+                    'channel',
+                    [CommandUsage.sequelize!.fn('COUNT', CommandUsage.sequelize!.col('id')), 'count'],
+                ],
+                group: ['channel'],
+                order: [[CommandUsage.sequelize!.literal('count'), 'DESC']] as any,
+                limit: 8,
+                raw: true,
+            }),
+
+            // Top commands today
+            CommandUsage.findAll({
+                where: { timestamp: { [Op.gte]: startOfDay } },
+                attributes: [
+                    'command',
+                    [CommandUsage.sequelize!.fn('COUNT', CommandUsage.sequelize!.col('id')), 'count'],
+                ],
+                group: ['command'],
+                order: [[CommandUsage.sequelize!.literal('count'), 'DESC']] as any,
+                limit: 8,
+                raw: true,
+            }),
+        ]);
+
+        // Build 60 one-minute buckets filled with zeros
+        const buckets: Record<string, number> = {};
+        for (let i = 59; i >= 0; i--) {
+            const d = new Date(now.getTime() - i * 60 * 1000);
+            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            buckets[key] = 0;
+        }
+        for (const row of recentRows as any[]) {
+            const d = new Date(row.timestamp);
+            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            if (key in buckets) buckets[key]++;
+        }
+        const minuteGraph = Object.entries(buckets).map(([minute, count]) => ({ minute, count }));
+
+        res.json({ channels, usersSeen, commandsToday, minuteGraph, topChannels, topCommands });
+    } catch (err) {
+        logger.error('[Metrics] Error fetching internal metrics:', err);
+        res.status(500).json({ error: 'Failed to fetch metrics.' });
+    }
+});
 
 export default router;

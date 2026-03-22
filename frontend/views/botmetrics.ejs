@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bot Metrics</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0e0e10;
+      --surface: #18181b;
+      --border:  #2a2a2e;
+      --text:    #efeff1;
+      --muted:   #adadb8;
+      --primary: #9147ff;
+      --success: #00b35f;
+      --danger:  #f87171;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    header h1 span.dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    #last-updated {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Stat Cards ─────────────────────────────── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .cards { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+
+    .card .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .card .value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .card .sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── Graph card ─────────────────────────────── */
+    .graph-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+
+    .graph-card .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .graph-card .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .graph-card .card-hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 200px;
+    }
+
+    /* ── Tables ─────────────────────────────────── */
+    .tables {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .tables { grid-template-columns: 1fr; }
+    }
+
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .table-card .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: var(--text);
+    }
+
+    td:last-child { text-align: right; color: var(--muted); }
+
+    tr:last-child td { border-bottom: none; }
+
+    .bar-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .bar {
+      height: 4px;
+      background: var(--primary);
+      border-radius: 2px;
+      min-width: 4px;
+      opacity: 0.7;
+    }
+
+    /* ── Loading skeleton ───────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--border) 25%, #333 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span> Bot Metrics</h1>
+  <span id="last-updated">Loading…</span>
+</header>
+
+<main>
+
+  <!-- Stat Cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="label">Active Channels</div>
+      <div class="value" id="stat-channels">—</div>
+      <div class="sub">bot enabled</div>
+    </div>
+    <div class="card">
+      <div class="label">Users Seen</div>
+      <div class="value" id="stat-users">—</div>
+      <div class="sub">distinct users (all time)</div>
+    </div>
+    <div class="card">
+      <div class="label">Commands Today</div>
+      <div class="value" id="stat-today">—</div>
+      <div class="sub">since midnight</div>
+    </div>
+  </div>
+
+  <!-- Commands/min Graph -->
+  <div class="graph-card">
+    <div class="card-header">
+      <span class="card-title">Commands per Minute</span>
+      <span class="card-hint">last 60 minutes · refreshes every 30s</span>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cmd-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- Top Tables -->
+  <div class="tables">
+    <div class="table-card">
+      <div class="card-title">Top Channels Today</div>
+      <table>
+        <thead>
+          <tr><th>Channel</th><th style="text-align:right">Commands</th></tr>
+        </thead>
+        <tbody id="tbl-channels">
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:12px 0">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-card">
+      <div class="card-title">Top Commands Today</div>
+      <table>
+        <thead>
+          <tr><th>Command</th><th style="text-align:right">Uses</th></tr>
+        </thead>
+        <tbody id="tbl-commands">
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:12px 0">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // ── Chart setup ─────────────────────────────────────────────────────────────
+  const ctx = document.getElementById('cmd-chart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'commands/min',
+        data: [],
+        borderColor: '#9147ff',
+        backgroundColor: 'rgba(145,71,255,0.12)',
+        borderWidth: 2,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#adadb8',
+            font: { size: 11 },
+            maxTicksLimit: 12,
+            maxRotation: 0,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#adadb8',
+            font: { size: 11 },
+            stepSize: 1,
+          },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#18181b',
+          borderColor: '#2a2a2e',
+          borderWidth: 1,
+          titleColor: '#efeff1',
+          bodyColor: '#adadb8',
+          callbacks: {
+            label: ctx => `${ctx.parsed.y} commands`,
+          },
+        },
+      },
+    },
+  });
+
+  // ── Render helpers ───────────────────────────────────────────────────────────
+  function fmt(n) {
+    return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n);
+  }
+
+  function renderTable(tbodyId, rows, nameKey) {
+    const tbody = document.getElementById(tbodyId);
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:12px 0">No data yet today.</td></tr>';
+      return;
+    }
+    const max = Math.max(...rows.map(r => Number(r.count)));
+    tbody.innerHTML = rows.map(r => {
+      const pct = max > 0 ? Math.round((Number(r.count) / max) * 80) : 0;
+      return `<tr>
+        <td>${r[nameKey]}</td>
+        <td>
+          <div class="bar-cell">
+            <div class="bar" style="width:${pct}px"></div>
+            ${fmt(Number(r.count))}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Fetch & update ───────────────────────────────────────────────────────────
+  let lastFetch = null;
+
+  async function refresh() {
+    try {
+      const res = await fetch('/api/internal/metrics');
+      if (res.status === 401) { location.href = '/botmetrics/login'; return; }
+      const d = await res.json();
+
+      document.getElementById('stat-channels').textContent = fmt(d.channels);
+      document.getElementById('stat-users').textContent    = fmt(d.usersSeen);
+      document.getElementById('stat-today').textContent    = fmt(d.commandsToday);
+
+      chart.data.labels  = d.minuteGraph.map(p => p.minute);
+      chart.data.datasets[0].data = d.minuteGraph.map(p => p.count);
+      chart.update();
+
+      renderTable('tbl-channels', d.topChannels, 'channel');
+      renderTable('tbl-commands', d.topCommands, 'command');
+
+      lastFetch = Date.now();
+      tick();
+    } catch (e) {
+      console.error('Metrics fetch failed', e);
+    }
+  }
+
+  function tick() {
+    if (!lastFetch) return;
+    const secs = Math.round((Date.now() - lastFetch) / 1000);
+    document.getElementById('last-updated').textContent =
+      secs < 5 ? 'Just updated' : `Updated ${secs}s ago`;
+  }
+
+  refresh();
+  setInterval(refresh, 30_000);
+  setInterval(tick, 1_000);
+</script>
+</body>
+</html>

@@ -457,10 +457,13 @@
     </div>
 
     <div class="table-card">
-      <div class="section-title">Alerts</div>
-      <div id="alerts-panel">
-        <div class="all-clear"><span class="check">✓</span>Loading…</div>
-      </div>
+      <div class="section-title">Command Success Rate</div>
+      <table>
+        <thead><tr><th>Status</th><th style="text-align:right">Count</th></tr></thead>
+        <tbody id="tbl-success">
+          <tr><td colspan="2" style="color:var(--muted);text-align:center;padding:14px 0">Loading…</td></tr>
+        </tbody>
+      </table>
     </div>
 
   </div>
@@ -580,7 +583,12 @@ function fmtUptime(secs) {
 }
 
 function fmtMs(ms) { return ms != null ? ms.toFixed(0)+'ms' : '—'; }
-function fmtMB(bytes) { return bytes != null ? (bytes/1_000_000).toFixed(0)+' MB' : '—'; }
+function fmtMem(bytes) {
+  if (bytes == null) return '—';
+  const mib = bytes / 1_048_576;
+  if (mib >= 1024) return (mib / 1024).toFixed(1) + ' GB';
+  return mib.toFixed(0) + ' MB';
+}
 function fmtPct(v) { return v != null ? v.toFixed(1)+'%' : '—'; }
 
 function updateChart(chart, pts, key) {
@@ -610,27 +618,27 @@ function renderTable(tbodyId, rows, nameKey, color) {
   }).join('');
 }
 
-function renderAlerts(alerts) {
-  const panel = document.getElementById('alerts-panel');
-  if (!alerts || alerts.length === 0) {
-    panel.innerHTML = '<div class="all-clear"><span class="check">✓</span>All clear</div>';
+function renderSuccessBreakdown(commandsToday, successRate) {
+  const tbody = document.getElementById('tbl-success');
+  if (!commandsToday) {
+    tbody.innerHTML = '<tr><td colspan="2" style="color:var(--muted);text-align:center;padding:14px 0">No data yet.</td></tr>';
     return;
   }
-  panel.innerHTML = alerts.map(a => {
-    if (a.type === 'token_expiry') {
-      const exp = new Date(a.expiresAt);
-      const minsLeft = Math.round((exp - Date.now()) / 60_000);
-      const timeStr = minsLeft < 60 ? `${minsLeft}m` : `${Math.round(minsLeft/60)}h`;
-      return `<div class="alert-item">
-        <span class="alert-icon">⚠️</span>
-        <div class="alert-body">
-          <div class="alert-title">${a.channel}</div>
-          <div class="alert-sub">Token expires in ${timeStr}</div>
-        </div>
-      </div>`;
-    }
-    return '';
-  }).join('');
+  const succCount = Math.round(commandsToday * (successRate / 100));
+  const failCount = commandsToday - succCount;
+  tbody.innerHTML = `
+    <tr>
+      <td style="color:var(--green)">Success</td>
+      <td><div class="bar-wrap"><div class="mini-bar" style="width:60px;background:var(--green);opacity:0.6"></div><span class="count-val">${fmt(succCount)}</span></div></td>
+    </tr>
+    <tr>
+      <td style="color:var(--danger)">Failed</td>
+      <td><div class="bar-wrap">${failCount > 0 ? `<div class="mini-bar" style="width:${Math.round((failCount/commandsToday)*60)}px;background:var(--danger);opacity:0.6"></div>` : ''}<span class="count-val">${fmt(failCount)}</span></div></td>
+    </tr>
+    <tr>
+      <td style="color:var(--muted)">Total</td>
+      <td><div class="bar-wrap"><span class="count-val">${fmt(commandsToday)}</span></div></td>
+    </tr>`;
 }
 
 // ── Fetch & render ─────────────────────────────────────────────────────────
@@ -645,7 +653,7 @@ async function refresh() {
     // Header vitals
     const p = d.latestPerf;
     document.getElementById('h-cpu').textContent     = p ? fmtPct(p.cpuUsage)                 : '—';
-    document.getElementById('h-mem').textContent     = p ? fmtMB(p.memoryUsed)                : '—';
+    document.getElementById('h-mem').textContent     = p ? fmtMem(p.memoryUsed)               : '—';
     document.getElementById('h-latency').textContent = p ? fmtMs(p.botLatencyMs)              : '—';
     document.getElementById('h-conn').textContent    = p ? (p.connectedChannels ?? '—')        : '—';
     document.getElementById('h-uptime').textContent  = fmtUptime(d.uptime);
@@ -671,8 +679,8 @@ async function refresh() {
     renderTable('tbl-channels', d.topChannels, 'channel', '#9147ff');
     renderTable('tbl-commands', d.topCommands, 'command', '#3b82f6');
 
-    // Alerts
-    renderAlerts(d.alerts);
+    // Success breakdown
+    renderSuccessBreakdown(d.commandsToday, d.successRate);
 
     lastFetch = Date.now();
     tick();

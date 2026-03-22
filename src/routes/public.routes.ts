@@ -816,7 +816,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
         const startOfDay = new Date(now);
         startOfDay.setHours(0, 0, 0, 0);
         const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
         const [
             channels,
@@ -830,7 +829,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             topCommands,
             latestPerf,
             perfRows,
-            expiringTokenChannels,
         ] = await Promise.all([
             // Active channels (bot enabled)
             Channel.count({ where: { bot_enabled: true } }),
@@ -897,15 +895,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
                 raw: true,
             }),
 
-            // Channels with tokens expiring within 24h (potential alerts)
-            Channel.findAll({
-                where: {
-                    bot_enabled: true,
-                    token_expires_at: { [Op.lt]: tomorrow, [Op.gt]: now },
-                },
-                attributes: ['username', 'token_expires_at'],
-                raw: true,
-            }),
         ]);
 
         // ── Build cmd/min buckets (60 × 1-minute slots) ──────────────────────
@@ -934,7 +923,7 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
             if (key in perfBuckets) {
                 if (row.cpuUsage != null)    perfBuckets[key].cpu.push(row.cpuUsage);
-                if (row.memoryUsed != null)  perfBuckets[key].memMB.push(row.memoryUsed / 1_000_000);
+                if (row.memoryUsed != null)  perfBuckets[key].memMB.push(row.memoryUsed / 1_048_576);
                 if (row.botLatencyMs != null) perfBuckets[key].latencyMs.push(row.botLatencyMs);
             }
         }
@@ -944,13 +933,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             cpu:       avg(v.cpu),
             memMB:     avg(v.memMB),
             latencyMs: avg(v.latencyMs),
-        }));
-
-        // ── Alerts ────────────────────────────────────────────────────────────
-        const alerts = (expiringTokenChannels as any[]).map((c) => ({
-            type: 'token_expiry',
-            channel: c.username,
-            expiresAt: c.token_expires_at,
         }));
 
         const successRate = commandsToday > 0
@@ -970,7 +952,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             perfGraph,
             topChannels,
             topCommands,
-            alerts,
         });
     } catch (err) {
         logger.error('[Metrics] Error fetching internal metrics:', err);

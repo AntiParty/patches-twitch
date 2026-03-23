@@ -64,26 +64,26 @@ export function getMessageRates(
 ): { minute: string; in: number; out: number }[] {
     const now = Date.now();
     const numBuckets = Math.ceil(windowMs / bucketMs);
+    const minutesInBucket = Math.ceil(bucketMs / 60_000);
     const result: { minute: string; in: number; out: number }[] = [];
 
     for (let i = numBuckets - 1; i >= 0; i--) {
-        // The start of this bucket
-        const bucketStart = new Date(now - (i + 1) * bucketMs);
-        const bucketEnd   = new Date(now - i * bucketMs);
+        // Bucket reference point: `now - i * bucketMs`.
+        // i=0 → now (most recent), i=numBuckets-1 → oldest.
+        // Label matches buildBucketKeys in the API route so graphs stay in sync.
+        const refMs = now - i * bucketMs;
+        const ref   = new Date(refMs);
+        const label = `${String(ref.getHours()).padStart(2, '0')}:${String(ref.getMinutes()).padStart(2, '0')}`;
 
-        // Build a label from the bucket's start time
-        const label = `${String(bucketStart.getHours()).padStart(2, '0')}:${String(bucketStart.getMinutes()).padStart(2, '0')}`;
-
-        // Sum all 1-min slots that fall inside this bucket
+        // Sum Map entries for all 1-min slots covered by this bucket.
+        // Walk backwards from refMs by 60s per step (same direction as buildBucketKeys).
         let totalIn = 0;
         let totalOut = 0;
 
-        // Iterate over the range of minutes covered by this bucket
-        const minutesInBucket = Math.ceil(bucketMs / 60_000);
         for (let m = 0; m < minutesInBucket; m++) {
-            const minuteTs = new Date(bucketStart.getTime() + m * 60_000);
-            if (minuteTs >= bucketEnd) break;
-            const key = `${String(minuteTs.getHours()).padStart(2, '0')}:${String(minuteTs.getMinutes()).padStart(2, '0')}`;
+            const slotMs  = refMs - m * 60_000;
+            const slotDate = new Date(slotMs);
+            const key = `${String(slotDate.getHours()).padStart(2, '0')}:${String(slotDate.getMinutes()).padStart(2, '0')}`;
             const slot = buckets.get(key);
             if (slot) {
                 totalIn  += slot[0];

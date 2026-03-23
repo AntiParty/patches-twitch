@@ -905,13 +905,14 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             return keys;
         }
 
-        // Assigns a row's timestamp to the correct bucket label
+        // Assigns a row's timestamp to the correct bucket label.
+        // bucketIndex=0 → most recent bucket (ref = now), matching buildBucketKeys i=0.
         function toBucketKey(ts: Date): string {
             const msFromNow = now.getTime() - ts.getTime();
             const bucketIndex = Math.floor(msFromNow / bucketMs);
             if (bucketIndex < 0 || bucketIndex >= numBuckets) return '';
-            const bucketStart = new Date(now.getTime() - (bucketIndex + 1) * bucketMs);
-            return `${String(bucketStart.getHours()).padStart(2, '0')}:${String(bucketStart.getMinutes()).padStart(2, '0')}`;
+            const bucketRef = new Date(now.getTime() - bucketIndex * bucketMs);
+            return `${String(bucketRef.getHours()).padStart(2, '0')}:${String(bucketRef.getMinutes()).padStart(2, '0')}`;
         }
 
         const bucketKeys = buildBucketKeys();

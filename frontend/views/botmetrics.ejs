@@ -306,6 +306,51 @@
       color: var(--muted);
       margin-bottom: -6px;
     }
+
+    /* ── Range selector ───────────────────────────────── */
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: -6px;
+    }
+
+    .range-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .range-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      font-family: inherit;
+    }
+
+    .range-btn:hover { border-color: var(--purple); color: var(--text); }
+
+    .range-btn.active {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: #fff;
+    }
+
+    /* ── Chat graph — full width ──────────────────────── */
+    .graph-card-wide {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+    }
   </style>
 </head>
 <body>
@@ -381,8 +426,16 @@
     </div>
   </div>
 
+  <!-- ── Range selector + graph section header ─────────────────────────── -->
+  <div class="range-row">
+    <span class="range-label" id="graph-section-label">Last 60 Minutes</span>
+    <button class="range-btn" data-range="30m" onclick="setRange('30m')">30m</button>
+    <button class="range-btn active" data-range="1h" onclick="setRange('1h')">1h</button>
+    <button class="range-btn" data-range="3h" onclick="setRange('3h')">3h</button>
+    <button class="range-btn" data-range="6h" onclick="setRange('6h')">6h</button>
+  </div>
+
   <!-- ── Graphs row 1 ───────────────────────────────────────────────────── -->
-  <div class="section-label">Last 60 Minutes</div>
   <div class="graph-grid">
     <div class="graph-card">
       <div class="graph-header">
@@ -430,6 +483,26 @@
       </div>
       <div class="chart-wrap"><canvas id="chart-mem"></canvas></div>
     </div>
+  </div>
+
+  <!-- ── Chat rate graph (full width) ──────────────────────────────────── -->
+  <div class="graph-card-wide">
+    <div class="graph-header">
+      <div class="graph-title">
+        <span class="dot" style="background:var(--green)"></span>
+        Chat Messages
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">
+          <span style="display:inline-block;width:10px;height:3px;background:var(--green);border-radius:2px;opacity:0.8"></span> in
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">
+          <span style="display:inline-block;width:10px;height:2px;background:var(--purple);border-radius:2px"></span> out (bot)
+        </span>
+        <span class="graph-hint" id="chat-bucket-hint">per 1 min</span>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-chat"></canvas></div>
   </div>
 
   <!-- ── Bottom row ─────────────────────────────────────────────────────── -->
@@ -564,6 +637,79 @@ const charts = {
   mem:     makeChart2('chart-mem',     '#3b82f6', 'MB',    null),
 };
 
+// ── Chat chart (two datasets: in + out) ────────────────────────────────────
+const chatCtx = document.getElementById('chart-chat').getContext('2d');
+const chartChat = new Chart(chatCtx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: 'in',
+        data: [],
+        borderColor: '#22c55e',
+        backgroundColor: hexToRgba('#22c55e', 0.12),
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.4,
+        spanGaps: true,
+      },
+      {
+        label: 'out (bot)',
+        data: [],
+        borderColor: '#9147ff',
+        backgroundColor: 'transparent',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.4,
+        spanGaps: true,
+      },
+    ],
+  },
+  options: {
+    ...JSON.parse(JSON.stringify(CHART_DEFAULTS)),
+    plugins: {
+      ...JSON.parse(JSON.stringify(CHART_DEFAULTS)).plugins,
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#18181b',
+        borderColor: '#2a2a2e',
+        borderWidth: 1,
+        titleColor: '#efeff1',
+        bodyColor: '#adadb8',
+        padding: 8,
+        callbacks: {
+          label: c => `${c.dataset.label}: ${c.parsed.y ?? 0}`,
+        },
+      },
+    },
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 300 },
+  },
+});
+
+// ── Range state ─────────────────────────────────────────────────────────────
+let currentRange = '1h';
+
+const RANGE_LABELS = {
+  '30m': 'Last 30 Minutes',
+  '1h':  'Last 60 Minutes',
+  '3h':  'Last 3 Hours',
+  '6h':  'Last 6 Hours',
+};
+
+function setRange(r) {
+  currentRange = r;
+  document.querySelectorAll('.range-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === r);
+  });
+  document.getElementById('graph-section-label').textContent = RANGE_LABELS[r] || 'Last 60 Minutes';
+  refresh();
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 function fmt(n) {
   if (n == null) return '—';
@@ -646,16 +792,16 @@ let lastFetch = null;
 
 async function refresh() {
   try {
-    const res = await fetch('/api/internal/metrics');
+    const res = await fetch(`/api/internal/metrics?range=${currentRange}`);
     if (res.status === 401) { location.href = '/botmetrics/login'; return; }
     const d = await res.json();
 
     // Header vitals
     const p = d.latestPerf;
-    document.getElementById('h-cpu').textContent     = p ? fmtPct(p.cpuUsage)                 : '—';
-    document.getElementById('h-mem').textContent     = p ? fmtMem(p.memoryUsed)               : '—';
-    document.getElementById('h-latency').textContent = p ? fmtMs(p.botLatencyMs)              : '—';
-    document.getElementById('h-conn').textContent    = p ? (p.connectedChannels ?? '—')        : '—';
+    document.getElementById('h-cpu').textContent     = p ? fmtPct(p.cpuUsage)          : '—';
+    document.getElementById('h-mem').textContent     = p ? fmtMem(p.memoryUsed)         : '—';
+    document.getElementById('h-latency').textContent = p ? fmtMs(p.botLatencyMs)        : '—';
+    document.getElementById('h-conn').textContent    = p ? (p.connectedChannels ?? '—') : '—';
     document.getElementById('h-uptime').textContent  = fmtUptime(d.uptime);
 
     // Stat cards
@@ -674,6 +820,16 @@ async function refresh() {
     updateChart(charts.latency, d.perfGraph,   'latencyMs');
     updateChart(charts.cpu,     d.perfGraph,   'cpu');
     updateChart(charts.mem,     d.perfGraph,   'memMB');
+
+    // Chat rate graph (two datasets)
+    if (d.chatGraph) {
+      const hint = document.getElementById('chat-bucket-hint');
+      if (hint && d.bucketLabel) hint.textContent = `per ${d.bucketLabel}`;
+      chartChat.data.labels = d.chatGraph.map(p => p.minute);
+      chartChat.data.datasets[0].data = d.chatGraph.map(p => p.in);
+      chartChat.data.datasets[1].data = d.chatGraph.map(p => p.out);
+      chartChat.update('none');
+    }
 
     // Tables
     renderTable('tbl-channels', d.topChannels, 'channel', '#9147ff');

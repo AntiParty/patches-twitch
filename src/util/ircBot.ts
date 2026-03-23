@@ -3,6 +3,7 @@ import axios from "axios";
 import { Channel } from "../db";
 import { commandCounter, incrementCommandsProcessed } from "../server";
 import logger from "./logger";
+import { trackMessageIn, trackMessageOut } from "./messageRateTracker";
 import { refreshToken as getAppAccessToken } from "./twitchUtils";
 
 interface IRCClient {
@@ -139,6 +140,7 @@ export async function sendChatMessage(
   }
 
   try {
+    trackMessageOut();
     const resp = await axios.post(
       "https://api.twitch.tv/helix/chat/messages",
       body,
@@ -348,6 +350,9 @@ export const startChatBot = async (
         // Message is from a different room (e.g., hosted channel), ignore
         continue;
       }
+
+      // Count every incoming message for the metrics dashboard
+      trackMessageIn();
 
       // Only process messages that start with '!'
       if (!message.trim().startsWith("!")) {

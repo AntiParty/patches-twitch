@@ -802,8 +802,9 @@ router.get('/botmetrics', (req: any, res: Response) => {
 });
 
 /**
- * GET /api/internal/metrics
+ * GET /api/internal/metrics?range=30m|1h|3h|6h
  * Returns live bot metrics data. Requires isMetrics session.
+ * Always returns 60 graph buckets regardless of range.
  */
 router.get('/api/internal/metrics', async (req: any, res: any) => {
     if (!req.session?.isMetrics) {
@@ -812,10 +813,25 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
 
     try {
         const { Op } = await import('sequelize');
+        const { getMessageRates } = await import('@/util/messageRateTracker');
+
+        // ── Resolve time range ────────────────────────────────────────────────
+        const RANGES: Record<string, { windowMs: number; bucketMs: number; label: string }> = {
+            '30m': { windowMs: 30 * 60_000,      bucketMs: 60_000,       label: '1 min'  },
+            '1h':  { windowMs: 60 * 60_000,      bucketMs: 60_000,       label: '1 min'  },
+            '3h':  { windowMs: 3 * 60 * 60_000,  bucketMs: 3 * 60_000,   label: '3 min'  },
+            '6h':  { windowMs: 6 * 60 * 60_000,  bucketMs: 6 * 60_000,   label: '6 min'  },
+        };
+        const rangeKey = (typeof req.query.range === 'string' && RANGES[req.query.range])
+            ? req.query.range
+            : '1h';
+        const { windowMs, bucketMs, label: bucketLabel } = RANGES[rangeKey];
+        const numBuckets = Math.ceil(windowMs / bucketMs);
+
         const now = new Date();
         const startOfDay = new Date(now);
         startOfDay.setHours(0, 0, 0, 0);
-        const sixtyMinsAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const windowStart = new Date(now.getTime() - windowMs);
 
         const [
             channels,
@@ -830,32 +846,20 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             latestPerf,
             perfRows,
         ] = await Promise.all([
-            // Active channels (bot enabled)
             Channel.count({ where: { bot_enabled: true } }),
-
-            // Currently live
             Channel.count({ where: { is_live: true } }),
-
-            // Active stream sessions
             StreamSession.count(),
-
-            // Distinct users ever seen
             CommandUsage.count({ distinct: true, col: 'user' } as any),
-
-            // Commands fired today
             CommandUsage.count({ where: { timestamp: { [Op.gte]: startOfDay } } }),
-
-            // Successful commands today (for success rate)
             CommandUsage.count({ where: { timestamp: { [Op.gte]: startOfDay }, success: true } }),
 
-            // Raw timestamps for the last 60 min (for cmd/min bucketing)
+            // Cmd timestamps for the selected window
             CommandUsage.findAll({
-                where: { timestamp: { [Op.gte]: sixtyMinsAgo } },
+                where: { timestamp: { [Op.gte]: windowStart } },
                 attributes: ['timestamp'],
                 raw: true,
             }),
 
-            // Top channels today
             CommandUsage.findAll({
                 where: { timestamp: { [Op.gte]: startOfDay } },
                 attributes: [
@@ -868,7 +872,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
                 raw: true,
             }),
 
-            // Top commands today
             CommandUsage.findAll({
                 where: { timestamp: { [Op.gte]: startOfDay } },
                 attributes: [
@@ -881,59 +884,67 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
                 raw: true,
             }),
 
-            // Latest performance snapshot
-            PerformanceMetric.findOne({
-                order: [['timestamp', 'DESC']],
-                raw: true,
-            }),
+            PerformanceMetric.findOne({ order: [['timestamp', 'DESC']], raw: true }),
 
-            // Performance rows for the last 60 min (for time-series graphs)
+            // Perf rows for the selected window
             PerformanceMetric.findAll({
-                where: { timestamp: { [Op.gte]: sixtyMinsAgo } },
+                where: { timestamp: { [Op.gte]: windowStart } },
                 attributes: ['timestamp', 'cpuUsage', 'memoryUsed', 'memoryTotal', 'botLatencyMs'],
                 order: [['timestamp', 'ASC']],
                 raw: true,
             }),
-
         ]);
 
-        // ── Build cmd/min buckets (60 × 1-minute slots) ──────────────────────
-        const cmdBuckets: Record<string, number> = {};
-        for (let i = 59; i >= 0; i--) {
-            const d = new Date(now.getTime() - i * 60 * 1000);
-            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            cmdBuckets[key] = 0;
+        // ── Helper: build N buckets of bucketMs width going back from now ─────
+        function buildBucketKeys(): string[] {
+            const keys: string[] = [];
+            for (let i = numBuckets - 1; i >= 0; i--) {
+                const d = new Date(now.getTime() - i * bucketMs);
+                keys.push(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+            }
+            return keys;
         }
-        for (const row of recentCmdRows as any[]) {
-            const d = new Date(row.timestamp);
-            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            if (key in cmdBuckets) cmdBuckets[key]++;
-        }
-        const minuteGraph = Object.entries(cmdBuckets).map(([minute, count]) => ({ minute, count }));
 
-        // ── Build perf graph: average per minute across raw rows ─────────────
-        const perfBuckets: Record<string, { cpu: number[]; memMB: number[]; latencyMs: number[] }> = {};
-        for (let i = 59; i >= 0; i--) {
-            const d = new Date(now.getTime() - i * 60 * 1000);
-            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            perfBuckets[key] = { cpu: [], memMB: [], latencyMs: [] };
+        // Assigns a row's timestamp to the correct bucket label
+        function toBucketKey(ts: Date): string {
+            const msFromNow = now.getTime() - ts.getTime();
+            const bucketIndex = Math.floor(msFromNow / bucketMs);
+            if (bucketIndex < 0 || bucketIndex >= numBuckets) return '';
+            const bucketStart = new Date(now.getTime() - (bucketIndex + 1) * bucketMs);
+            return `${String(bucketStart.getHours()).padStart(2, '0')}:${String(bucketStart.getMinutes()).padStart(2, '0')}`;
         }
+
+        const bucketKeys = buildBucketKeys();
+
+        // ── Commands graph ────────────────────────────────────────────────────
+        const cmdBuckets: Record<string, number> = Object.fromEntries(bucketKeys.map(k => [k, 0]));
+        for (const row of recentCmdRows as any[]) {
+            const key = toBucketKey(new Date(row.timestamp));
+            if (key && key in cmdBuckets) cmdBuckets[key]++;
+        }
+        const minuteGraph = bucketKeys.map(k => ({ minute: k, count: cmdBuckets[k] }));
+
+        // ── Perf graph ────────────────────────────────────────────────────────
+        const perfBuckets: Record<string, { cpu: number[]; memMB: number[]; latencyMs: number[] }> =
+            Object.fromEntries(bucketKeys.map(k => [k, { cpu: [], memMB: [], latencyMs: [] }]));
         for (const row of perfRows as any[]) {
-            const d = new Date(row.timestamp);
-            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-            if (key in perfBuckets) {
-                if (row.cpuUsage != null)    perfBuckets[key].cpu.push(row.cpuUsage);
-                if (row.memoryUsed != null)  perfBuckets[key].memMB.push(row.memoryUsed / 1_048_576);
+            const key = toBucketKey(new Date(row.timestamp));
+            if (key && key in perfBuckets) {
+                if (row.cpuUsage != null)     perfBuckets[key].cpu.push(row.cpuUsage);
+                if (row.memoryUsed != null)   perfBuckets[key].memMB.push(row.memoryUsed / 1_048_576);
                 if (row.botLatencyMs != null) perfBuckets[key].latencyMs.push(row.botLatencyMs);
             }
         }
         const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-        const perfGraph = Object.entries(perfBuckets).map(([minute, v]) => ({
-            minute,
-            cpu:       avg(v.cpu),
-            memMB:     avg(v.memMB),
-            latencyMs: avg(v.latencyMs),
+        const perfGraph = bucketKeys.map(k => ({
+            minute:    k,
+            cpu:       avg(perfBuckets[k].cpu),
+            memMB:     avg(perfBuckets[k].memMB),
+            latencyMs: avg(perfBuckets[k].latencyMs),
         }));
+
+        // ── Chat rate graph (in-memory tracker) ──────────────────────────────
+        const chatGraph = getMessageRates(windowMs, bucketMs);
 
         const successRate = commandsToday > 0
             ? Math.round((commandsSuccessToday / commandsToday) * 1000) / 10
@@ -950,8 +961,11 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             latestPerf: latestPerf ?? null,
             minuteGraph,
             perfGraph,
+            chatGraph,
             topChannels,
             topCommands,
+            range: rangeKey,
+            bucketLabel,
         });
     } catch (err) {
         logger.error('[Metrics] Error fetching internal metrics:', err);

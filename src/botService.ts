@@ -279,6 +279,15 @@ dbReady.then(async () => {
       return res.json(result);
     });
 
+    // Expose in-memory chat rate data to the web server process
+    controlApp.get("/metrics/chat", (req: any, res: any) => {
+      const range  = (req.query.range  as string) || '1h';
+      const window = (req.query.window as string) || String(60 * 60_000);
+      const bucket = (req.query.bucket as string) || String(60_000);
+      const { getMessageRates } = require('./util/messageRateTracker');
+      res.json(getMessageRates(Number(window), Number(bucket)));
+    });
+
     controlApp.listen(4000, () => {
       logger.info("Bot control API running on http://localhost:4000");
     });

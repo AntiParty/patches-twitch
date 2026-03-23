@@ -813,7 +813,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
 
     try {
         const { Op } = await import('sequelize');
-        const { getMessageRates } = await import('@/util/messageRateTracker');
 
         // ── Resolve time range ────────────────────────────────────────────────
         const RANGES: Record<string, { windowMs: number; bucketMs: number; label: string }> = {
@@ -944,8 +943,17 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             latencyMs: avg(perfBuckets[k].latencyMs),
         }));
 
-        // ── Chat rate graph (in-memory tracker) ──────────────────────────────
-        const chatGraph = getMessageRates(windowMs, bucketMs);
+        // ── Chat rate graph — fetched from bot process (localhost:4000) ──────
+        let chatGraph: { minute: string; in: number; out: number }[] = [];
+        try {
+            const chatRes = await axios.get(
+                `http://localhost:4000/metrics/chat?window=${windowMs}&bucket=${bucketMs}`,
+                { timeout: 1500 }
+            );
+            if (Array.isArray(chatRes.data)) chatGraph = chatRes.data;
+        } catch {
+            // Bot process unreachable — return empty graph, don't fail the whole response
+        }
 
         const successRate = commandsToday > 0
             ? Math.round((commandsSuccessToday / commandsToday) * 1000) / 10

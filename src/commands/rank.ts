@@ -266,4 +266,4 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
   }
 };
 
-export const aliases = ["r"];
+export const aliases = ["r", "rs", "rankscore"];

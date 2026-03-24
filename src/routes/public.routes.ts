@@ -618,17 +618,21 @@ router.get('/api/rs-prediction', async (req: Request, res: Response) => {
         }
 
         res.json({
-            currentRS: prediction.currentRS,
-            dailyChange: prediction.dailyChange,
-            safeRS: prediction.safeRS,
-            safeRS_min: prediction.safeRS_min,
-            safeRS_max: prediction.safeRS_max,
-            remainingDays: prediction.remainingDays,
-            dataPointsUsed: prediction.dataPointsUsed,
-            confidence: prediction.confidence,
-            standardError: prediction.standardError,
-            isSeasonEndRush: prediction.isSeasonEndRush,
-            rushMultiplier: prediction.rushMultiplier
+            currentRS:            prediction.currentRS,
+            dailyChange:          prediction.dailyChange,
+            safeRS:               prediction.safeRS,
+            safeRS_min:           prediction.safeRS_min,
+            safeRS_max:           prediction.safeRS_max,
+            remainingDays:        prediction.remainingDays,
+            dataPointsUsed:       prediction.dataPointsUsed,
+            confidence:           prediction.confidence,
+            standardError:        prediction.standardError,
+            isSeasonEndRush:      prediction.isSeasonEndRush,
+            rushMultiplier:       prediction.rushMultiplier,
+            model:                prediction.model,
+            historicalPrediction: prediction.historicalPrediction,
+            historicalRange:      prediction.historicalRange,
+            historicalR2:         prediction.historicalR2,
         });
 
     } catch (err) {

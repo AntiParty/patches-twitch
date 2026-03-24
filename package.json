@@ -28,6 +28,7 @@
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
+    "eventsource": "^4.1.0",
     "express": "^4.21.2",
     "express-rate-limit": "^8.0.1",
     "express-session": "^1.18.2",

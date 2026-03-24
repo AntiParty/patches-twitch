@@ -2,160 +2,253 @@
 import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
+import { EventSource } from 'eventsource';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import logger from '@/util/logger';
-import exp from 'constants';
 import { updateRSHistory } from '@/util/rsPredictor';
 import { updatePeakRanks } from '@/jobs/peakUpdater';
 
-let lastUpdate = Date.now();
-const updateIntervalMs = 35 * 60 * 1000; // 35 minutes 
+// ── New API ──────────────────────────────────────────────────────────────────
+const NEW_REGULAR_API_URL = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/leaderboard/';
+const NEW_EVENTS_URL      = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/events/leaderboard/';
 
-const REGULAR_SEASON_START = 1;
-const WORLD_TOUR_SEASON_START = 3;
-// Update this if new seasons are added
-const REGULAR_SEASON_END = 9;
-const WORLD_TOUR_SEASON_END = 9;
+// ── Old API (World Tour only — not available on new API yet) ─────────────────
+// Only the current season is fetched on each update; old seasons are already
+// on disk from the initial migration and don't change.
+const WORLD_TOUR_CURRENT_SEASON = 9;
 
-function getApiUrl(type: 'regular' | 'worldTour', season: number) {
-  if (type === 'regular') {
-    return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}/crossplay`;
-  } else {
-    return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}worldtour/crossplay`;
-  }
+function getWorldTourApiUrl(season: number) {
+  return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}worldtour/crossplay`;
 }
 
 function getCachePath(type: 'regular' | 'worldTour', season: number) {
-  if (type === 'regular') {
-    return path.resolve(__dirname, `../../cache/regular_s${season}.json`);
-  } else {
-    return path.resolve(__dirname, `../../cache/worldTour_s${season}.json`);
-  }
+  const filename = type === 'regular'
+    ? `regular_s${season}.json`
+    : `worldTour_s${season}.json`;
+  return path.resolve(__dirname, `../../cache/${filename}`);
 }
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function updateAllCachesRateLimited() {
-  const regularSeasons = Array.from({ length: REGULAR_SEASON_END - REGULAR_SEASON_START + 1 }, (_, i) => REGULAR_SEASON_START + i);
-  const worldTourSeasons = Array.from({ length: WORLD_TOUR_SEASON_END - WORLD_TOUR_SEASON_START + 1 }, (_, i) => WORLD_TOUR_SEASON_START + i);
-
-  const delayBetweenRequests = 500; // ms delay between each request (customizable)
-
-  for (const season of regularSeasons) {
-    await updateCache('regular', season);
-    await delay(delayBetweenRequests);
-  }
-
-  for (const season of worldTourSeasons) {
-    await updateCache('worldTour', season);
-    await delay(delayBetweenRequests);
-  }
-
-  try {
-    await updateRSHistory();
-  } catch (e) {
-    logger.error("Error updating RS history:", e);
-  }
-
-  try {
-    await updatePeakRanks();
-  } catch (e) {
-    logger.error("Error updating peak ranks:", e);
-  }
-
-  lastUpdate = Date.now(); // Update lastUpdate after all caches are updated
-  sendInfoToDiscord(`Cache update completed at ${new Date().toLocaleString()}`);
+// ── Field normalizer ─────────────────────────────────────────────────────────
+// Maps new API field names → old cache field names so all consumers work unchanged.
+function normalizePlayer(p: any) {
+  return {
+    rank:         p.rank,
+    change:       p.rankChange ?? 0,
+    name:         p.id,            // id  → name
+    steamName:    p.steamId  ?? '',
+    psnName:      p.psnId   ?? '',
+    xboxName:     p.xboxId  ?? '',
+    clubTag:      p.clubTag  ?? '',
+    leagueNumber: p.league,        // league (number) → leagueNumber
+    league:       p.leagueName,    // leagueName (string) → league
+    rankScore:    p.points,        // points → rankScore
+  };
 }
 
-async function updateCache(type: 'regular' | 'worldTour', season: number) {
-  const url = getApiUrl(type, season);
-  const cachePath = getCachePath(type, season);
+// ── ETag state (for 2-hour fallback poll) ────────────────────────────────────
+let storedETag = '';
+let currentRegularSeason = 9; // updated from x-seasonid header on each fetch
 
+// ── Fetch regular leaderboard + write cache ──────────────────────────────────
+export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean> {
   try {
-    logger.info(`Fetching ${type} leaderboard data for season ${season}...`);
-    const response = await axios.get(url);
+    // ETag check — skip full GET if leaderboard hasn't changed
+    if (!forceWrite && storedETag) {
+      try {
+        const head = await axios.head(NEW_REGULAR_API_URL, { timeout: 5000 });
+        const newETag = head.headers['etag'];
+        if (newETag && newETag === storedETag) {
+          logger.info('[CacheUpdater] Regular leaderboard unchanged (ETag match), skipping.');
+          return false;
+        }
+      } catch {
+        // HEAD failed — fall through to full GET
+      }
+    }
+
+    const response = await axios.get(NEW_REGULAR_API_URL, { timeout: 15000 });
+
     if (response.status !== 200) {
-      throw new Error(`${type} API (season ${season}) returned status ${response.status}`);
+      throw new Error(`New API returned status ${response.status}`);
     }
 
-    const leaderboardData = response.data.data;
-    if (!Array.isArray(leaderboardData)) {
-      throw new Error(`Invalid ${type} leaderboard data format for season ${season}`);
+    const raw: any[] = response.data;
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new Error('New API returned empty or non-array response');
     }
 
-    await fs.writeFile(cachePath, JSON.stringify(leaderboardData, null, 2), 'utf8');
-    logger.info(`${type} cache for season ${season} updated with ${leaderboardData.length} entries.`);
+    // Read season from header
+    const seasonHeader = response.headers['x-seasonid'] as string | undefined;
+    if (seasonHeader) {
+      const parsed = parseInt(seasonHeader.replace('s', ''), 10);
+      if (!isNaN(parsed)) currentRegularSeason = parsed;
+    }
+
+    // Store new ETag
+    const newETag = response.headers['etag'];
+    if (newETag) storedETag = newETag;
+
+    // Normalize and write
+    const normalized = raw.map(normalizePlayer);
+    const cachePath = getCachePath('regular', currentRegularSeason);
+    await fs.writeFile(cachePath, JSON.stringify(normalized, null, 2), 'utf8');
+    logger.info(`[CacheUpdater] Regular S${currentRegularSeason} cache updated — ${normalized.length} entries.`);
+
+    // Post-update hooks
+    try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }
+    try { await updatePeakRanks();  } catch (e) { logger.error('[CacheUpdater] updatePeakRanks error:', e); }
+
+    return true;
   } catch (error) {
-    logger.error(`Error updating ${type} cache for season ${season}:`, error);
+    logger.error('[CacheUpdater] Failed to fetch regular leaderboard:', error);
+    return false;
+  }
+}
+
+// ── World Tour (old API, unchanged) ──────────────────────────────────────────
+async function updateWorldTourCache(season: number) {
+  const url       = getWorldTourApiUrl(season);
+  const cachePath = getCachePath('worldTour', season);
+
+  try {
+    const response = await axios.get(url, { timeout: 15000 });
+    if (response.status !== 200) throw new Error(`WT API (S${season}) status ${response.status}`);
+
+    const data = response.data.data;
+    if (!Array.isArray(data)) throw new Error(`Invalid WT data for S${season}`);
+
+    await fs.writeFile(cachePath, JSON.stringify(data, null, 2), 'utf8');
+    logger.info(`[CacheUpdater] World Tour S${season} cache updated — ${data.length} entries.`);
+  } catch (error) {
+    logger.error(`[CacheUpdater] Failed to update World Tour S${season}:`, error);
     try {
-      const cachedData = await fs.readFile(cachePath, 'utf8');
-      logger.info(`Loaded fallback ${type} cache for season ${season} with ${JSON.parse(cachedData).length} entries.`);
+      const cached = await fs.readFile(cachePath, 'utf8');
+      logger.info(`[CacheUpdater] Using fallback WT S${season} cache (${JSON.parse(cached).length} entries).`);
     } catch {
-      logger.error(`No valid fallback ${type} cache found for season ${season}.`);
+      logger.error(`[CacheUpdater] No fallback WT S${season} cache available.`);
     }
   }
 }
 
-export async function updateAllCaches() {
-  const regularSeasons = Array.from({ length: REGULAR_SEASON_END - REGULAR_SEASON_START + 1 }, (_, i) => REGULAR_SEASON_START + i);
-  const worldTourSeasons = Array.from({ length: WORLD_TOUR_SEASON_END - WORLD_TOUR_SEASON_START + 1 }, (_, i) => WORLD_TOUR_SEASON_START + i);
-
-  const updatePromises = [
-    ...regularSeasons.map(season => updateCache('regular', season)),
-    ...worldTourSeasons.map(season => updateCache('worldTour', season)),
-  ];
-  await Promise.all(updatePromises);
-  lastUpdate = Date.now(); // Update lastUpdate after all caches are updated
+async function updateAllWorldTourCaches() {
+  await updateWorldTourCache(WORLD_TOUR_CURRENT_SEASON);
 }
 
-export function startCacheUpdater(intervalMs = 45 * 60 * 1000) {
-  // Run immediately first
-  updateAllCachesRateLimited().catch(logger.error);
+// ── EventSource — real-time leaderboard updates ──────────────────────────────
+let es: InstanceType<typeof EventSource> | null = null;
+let esRetryDelay = 500;
+const ES_MAX_RETRY = 60_000;
 
-  // Then run every interval
-  setInterval(() => {
-    updateAllCachesRateLimited().catch(logger.error);
-  }, intervalMs);
+function startEventSource() {
+  if (es) { es.close(); es = null; }
+
+  logger.info('[CacheUpdater] Connecting to leaderboard event stream…');
+  es = new EventSource(NEW_EVENTS_URL);
+
+  es.addEventListener('update', async () => {
+    logger.info('[CacheUpdater] Leaderboard update event received — fetching…');
+    const updated = await fetchAndWriteRegular(true); // force write on SSE event
+    if (updated) {
+      esRetryDelay = 500; // reset backoff on successful update
+      sendInfoToDiscord(`[Cache] Regular leaderboard updated via event stream (S${currentRegularSeason}).`);
+    }
+  });
+
+  es.onerror = () => {
+    logger.warn(`[CacheUpdater] Event stream error — reconnecting in ${esRetryDelay}ms…`);
+    es?.close();
+    es = null;
+    setTimeout(() => {
+      esRetryDelay = Math.min(esRetryDelay * 2, ES_MAX_RETRY);
+      startEventSource();
+    }, esRetryDelay);
+  };
+
+  es.onopen = () => {
+    logger.info('[CacheUpdater] Event stream connected.');
+    esRetryDelay = 500;
+  };
 }
 
-export function getNextCacheUpdateInfo(intervalMs = 45 * 60 * 1000) {
+// ── Public API ────────────────────────────────────────────────────────────────
+let lastUpdate = Date.now();
+
+export function startCacheUpdater() {
+  // 1. Immediate first fetch (regular + world tour)
+  Promise.all([
+    fetchAndWriteRegular(true),
+    updateAllWorldTourCaches(),
+  ])
+    .then(() => {
+      lastUpdate = Date.now();
+      sendInfoToDiscord(`[Cache] Initial cache load complete (S${currentRegularSeason}).`);
+    })
+    .catch(logger.error);
+
+  // 2. Real-time updates via EventSource
+  startEventSource();
+
+  // 3. 2-hour fallback poll (ETag-gated, won't re-write if unchanged)
+  const FALLBACK_INTERVAL = 2 * 60 * 60 * 1000;
+  setInterval(async () => {
+    const updated = await fetchAndWriteRegular();
+    await updateAllWorldTourCaches();
+    if (updated) {
+      lastUpdate = Date.now();
+      sendInfoToDiscord(`[Cache] Fallback poll updated regular leaderboard (S${currentRegularSeason}).`);
+    }
+  }, FALLBACK_INTERVAL);
+}
+
+export function getNextCacheUpdateInfo(intervalMs = 2 * 60 * 60 * 1000) {
   const now = Date.now();
   const nextUpdateAt = Math.max(0, lastUpdate + intervalMs);
   const msLeft = Math.max(0, nextUpdateAt - now);
   return { nextUpdateAt, msLeft };
 }
 
+// ── Helpers used by other modules ─────────────────────────────────────────────
 function getRegularCachePath(season: number) {
   return path.resolve(__dirname, `../../cache/regular_s${season}.json`);
 }
 
 async function loadRegularSeasonData(season: number) {
   const cachePath = getRegularCachePath(season);
-  const raw = await fs.readFile(cachePath, "utf8");
+  const raw = await fs.readFile(cachePath, 'utf8');
   return JSON.parse(raw);
 }
+
 export async function getRubyRankThreshold() {
   try {
-    const data = await loadRegularSeasonData(REGULAR_SEASON_END);
+    const data = await loadRegularSeasonData(currentRegularSeason);
 
     if (!data || data.length < 500) {
-      logger.error(`Season ${REGULAR_SEASON_END} does not have 500 players.`);
+      logger.error(`[CacheUpdater] S${currentRegularSeason} has fewer than 500 players.`);
       return undefined;
     }
 
-    // Leaderboard is already sorted, so index 499 = rank 500
-    const entry = data[499];
-    
+    const entry = data[499]; // sorted by rank, index 499 = rank 500
     return {
-      season: REGULAR_SEASON_END,
-      league: entry.league,
+      season:    currentRegularSeason,
+      league:    entry.league,
       threshold: entry.rankScore,
-      player: entry.name,
+      player:    entry.name,
     };
   } catch (err) {
-    logger.error("Failed to get Ruby threshold:", err);
+    logger.error('[CacheUpdater] Failed to get Ruby threshold:', err);
     return undefined;
   }
+}
+
+// Legacy export kept for any callers that use updateAllCaches() directly
+export async function updateAllCaches() {
+  await Promise.all([
+    fetchAndWriteRegular(true),
+    updateAllWorldTourCaches(),
+  ]);
+  lastUpdate = Date.now();
 }

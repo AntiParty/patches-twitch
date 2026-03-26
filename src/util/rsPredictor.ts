@@ -2,20 +2,43 @@ import fs from "fs/promises";
 import path from "path";
 import logger from "@/util/logger";
 
-const HISTORY_FILE    = path.resolve(__dirname, "../../cache/rs_history.json");
-const CACHE_DIR       = path.resolve(__dirname, "../../cache");
-const REGULAR_S9_FILE = path.resolve(__dirname, "../../cache/regular_s9.json");
+const HISTORY_FILE = path.resolve(__dirname, "../../cache/rs_history.json");
+const CACHE_DIR    = path.resolve(__dirname, "../../cache");
+const META_FILE    = path.resolve(__dirname, "../../cache/meta.json");
 
-const HISTORY_RETENTION_DAYS = 30;  // keep 30 days of history
-const PREDICTION_WINDOW_DAYS = 30;  // use all retained history for regression
+const HISTORY_RETENTION_DAYS = 30;
+const PREDICTION_WINDOW_DAYS = 30;
 
-// Cross-season: which past seasons have comparable RS (S1/S2/S3 use different systems)
-const CROSS_SEASON_FIRST = 4;
-const CROSS_SEASON_LAST  = 8;
-const CURRENT_SEASON     = 9;
+// First season with comparable RS values (S1–S3 used different systems)
+const CROSS_SEASON_MIN_FIRST = 4;
 
-// Season 9 Configuration
-const S9_END_DATE = new Date("2026-03-26T10:00:00Z");
+interface CacheMeta {
+  season:       number;
+  seasonId:     string;
+  updatedAt:    string | null;
+  transitioning: boolean;
+}
+
+async function readMeta(): Promise<CacheMeta> {
+  try {
+    const raw = await fs.readFile(META_FILE, "utf8");
+    return JSON.parse(raw) as CacheMeta;
+  } catch {
+    // meta.json not written yet — default to season 9 for backwards compat
+    return { season: 9, seasonId: "s9", updatedAt: null, transitioning: false };
+  }
+}
+
+/**
+ * Returns seconds until season end, or Infinity if SEASON_END_DATE env var is unset.
+ * Set SEASON_END_DATE=2026-06-26T10:00:00Z in .env at the start of each new season.
+ */
+function getSeasonEndDate(): Date | null {
+  const env = process.env.SEASON_END_DATE;
+  if (!env) return null;
+  const d = new Date(env);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 interface HistoryEntry {
   timestamp: number;
@@ -90,7 +113,11 @@ interface CrossSeasonResult {
 async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeasonResult | null> {
   const seasonData: { season: number; rs: number }[] = [];
 
-  for (let s = CROSS_SEASON_FIRST; s <= CROSS_SEASON_LAST; s++) {
+  // Use last 5 completed seasons (those with cache files), starting from CROSS_SEASON_MIN_FIRST
+  const crossFirst = Math.max(CROSS_SEASON_MIN_FIRST, targetSeason - 5);
+  const crossLast  = targetSeason - 1;
+
+  for (let s = crossFirst; s <= crossLast; s++) {
     try {
       const filePath = path.join(CACHE_DIR, `regular_s${s}.json`);
       const raw  = await fs.readFile(filePath, "utf8");
@@ -183,7 +210,9 @@ function calculateWeightedRegression(points: HistoryEntry[]): {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export function getRemainingDays(): number {
-  const diff = S9_END_DATE.getTime() - Date.now();
+  const endDate = getSeasonEndDate();
+  if (!endDate) return 30; // neutral default when env var not set
+  const diff = endDate.getTime() - Date.now();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
@@ -221,17 +250,19 @@ export interface PredictionResult {
  */
 export async function updateRSHistory(): Promise<void> {
   try {
-    const dataRaw = await fs.readFile(REGULAR_S9_FILE, "utf8");
-    const data    = JSON.parse(dataRaw);
+    const meta      = await readMeta();
+    const cacheFile = path.join(CACHE_DIR, `regular_s${meta.season}.json`);
+    const dataRaw   = await fs.readFile(cacheFile, "utf8");
+    const data      = JSON.parse(dataRaw);
 
     if (!data || data.length < 500) {
-      logger.warn("[RSPredictor] Insufficient data in regular_s9.json to track Top 500.");
+      logger.warn(`[RSPredictor] Insufficient data in regular_s${meta.season}.json to track Top 500.`);
       return;
     }
 
     const rank500 = data.find((p: any) => p.rank === 500);
     if (!rank500) {
-      logger.warn("[RSPredictor] Rank 500 player not found in regular_s9.json");
+      logger.warn(`[RSPredictor] Rank 500 player not found in regular_s${meta.season}.json`);
       return;
     }
 
@@ -278,7 +309,8 @@ export async function getRSPrediction(
     const now           = Date.now();
 
     // ── Model A: cross-season prediction ──────────────────────────────────
-    const crossSeason = await getCrossSeasonPrediction(CURRENT_SEASON);
+    const meta = await readMeta();
+    const crossSeason = await getCrossSeasonPrediction(meta.season);
 
     const historicalRange = crossSeason
       ? {

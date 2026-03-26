@@ -28,6 +28,16 @@ function getCachePath(type: 'regular' | 'worldTour', season: number) {
   return path.resolve(__dirname, `../../cache/${filename}`);
 }
 
+const META_FILE = path.resolve(__dirname, '../../cache/meta.json');
+
+async function writeMeta(season: number, seasonId: string, updatedAt: string | null, transitioning: boolean) {
+  try {
+    await fs.writeFile(META_FILE, JSON.stringify({ season, seasonId, updatedAt, transitioning }, null, 2), 'utf8');
+  } catch (e) {
+    logger.error('[CacheUpdater] Failed to write meta.json:', e);
+  }
+}
+
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -77,15 +87,18 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
     }
 
     const raw: any[] = response.data;
-    if (!Array.isArray(raw) || raw.length === 0) {
-      throw new Error('New API returned empty or non-array response');
-    }
 
-    // Read season from header
+    // Read season from header before checking data length
     const seasonHeader = response.headers['x-seasonid'] as string | undefined;
     if (seasonHeader) {
       const parsed = parseInt(seasonHeader.replace('s', ''), 10);
       if (!isNaN(parsed)) currentRegularSeason = parsed;
+    }
+
+    if (!Array.isArray(raw) || raw.length === 0) {
+      // New season just started — leaderboard not populated yet
+      await writeMeta(currentRegularSeason, seasonHeader ?? `s${currentRegularSeason}`, null, true);
+      throw new Error('New API returned empty or non-array response');
     }
 
     // Store new ETag
@@ -97,6 +110,9 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
     const cachePath = getCachePath('regular', currentRegularSeason);
     await fs.writeFile(cachePath, JSON.stringify(normalized, null, 2), 'utf8');
     logger.info(`[CacheUpdater] Regular S${currentRegularSeason} cache updated — ${normalized.length} entries.`);
+
+    // Write meta.json so other modules know the current season
+    await writeMeta(currentRegularSeason, seasonHeader ?? `s${currentRegularSeason}`, new Date().toISOString(), false);
 
     // Post-update hooks
     try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }

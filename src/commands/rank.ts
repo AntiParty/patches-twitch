@@ -43,6 +43,15 @@ function validatePlayerId(input: string): string | null {
 
 const processedMessages = new Set<string>();
 
+async function getTransitionSuffix(): Promise<string> {
+  try {
+    const raw  = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
+    const meta = JSON.parse(raw);
+    if (meta?.transitioning) return ` [S${meta.season} API not found — waiting on Embark]`;
+  } catch { /* meta.json missing — no suffix */ }
+  return "";
+}
+
 function getCacheDir() {
   return path.resolve(__dirname, "../../cache");
 }
@@ -257,6 +266,11 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       } else {
         response += `not found on ranked or WT leaderboards.`;
       }
+    }
+
+    // Append transition notice when S10 just started but leaderboard isn't live yet
+    if (player || wtPlayer) {
+      response += await getTransitionSuffix();
     }
 
     await ctx.say(response, ctx.tags?.["id"]);

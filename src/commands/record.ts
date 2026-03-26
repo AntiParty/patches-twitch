@@ -16,6 +16,15 @@ function getCacheDir() {
   return path.resolve(__dirname, "../../cache");
 }
 
+async function getTransitionSuffix(): Promise<string> {
+  try {
+    const raw  = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
+    const meta = JSON.parse(raw);
+    if (meta?.transitioning) return ` [S${meta.season} API not found — waiting on Embark]`;
+  } catch { /* meta.json missing — no suffix */ }
+  return "";
+}
+
 export async function getLatestCacheFile(prefix: string): Promise<string | null> {
   try {
     const files = await fs.readdir(getCacheDir());
@@ -190,7 +199,8 @@ export const execute = async (
     const usedCustom = await maybeSendCustomResponse("record", ctx, vars);
     if (usedCustom) return;
 
-  await ctx.say(response, ctx.tags?.["id"]);
+    response += await getTransitionSuffix();
+    await ctx.say(response, ctx.tags?.["id"]);
   } catch (error) {
     logger.error("[record] Error in record command:", error);
     await ctx.say(

@@ -1,6 +1,18 @@
 import { Channel } from "../db";
 import { getRSPrediction } from "../util/rsPredictor";
 import logger from "../util/logger";
+import fs from "fs/promises";
+import path from "path";
+
+async function isSeasonTransitioning(): Promise<{ transitioning: boolean; season: number }> {
+  try {
+    const raw  = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
+    const meta = JSON.parse(raw);
+    return { transitioning: !!meta?.transitioning, season: meta?.season ?? 0 };
+  } catch {
+    return { transitioning: false, season: 0 };
+  }
+}
 
 const ALLOWED_ROLES = ["tester", "admin", "staff", "owner"];
 
@@ -27,6 +39,12 @@ export const execute = async (
     if (args[0]) {
       const parsed = parseInt(args[0], 10);
       if (!isNaN(parsed) && parsed > 0 && parsed <= 365) days = parsed;
+    }
+
+    const { transitioning, season } = await isSeasonTransitioning();
+    if (transitioning) {
+      await ctx.say(`S${season} API not found — waiting on Embark.`, messageId);
+      return;
     }
 
     const prediction = await getRSPrediction(days);

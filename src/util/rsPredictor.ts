@@ -30,11 +30,23 @@ async function readMeta(): Promise<CacheMeta> {
 }
 
 /**
- * Returns seconds until season end, or Infinity if SEASON_END_DATE env var is unset.
- * Set SEASON_END_DATE=2026-06-26T10:00:00Z in .env at the start of each new season.
+ * Returns the season end date from SEASON_END_DATE env var, or null if unset.
+ * Set SEASON_END_DATE=2026-07-09T12:00:00Z in .env at the start of each new season.
  */
 function getSeasonEndDate(): Date | null {
   const env = process.env.SEASON_END_DATE;
+  if (!env) return null;
+  const d = new Date(env);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Returns the season start date from SEASON_START_DATE env var, or null if unset.
+ * Used to reclaim untagged rs_history entries that predate season-tagging support.
+ * Set SEASON_START_DATE=2026-03-26T12:00:00Z in .env when setting SEASON_END_DATE.
+ */
+function getSeasonStartDate(): Date | null {
+  const env = process.env.SEASON_START_DATE;
   if (!env) return null;
   const d = new Date(env);
   return isNaN(d.getTime()) ? null : d;
@@ -331,11 +343,15 @@ export async function getRSPrediction(
 
     // Filter to current-season entries only — keeps old seasons in the file for
     // historical reference but prevents S(n-1) RS values from corrupting S(n) slope.
-    // Entries without a season tag (pre-S10 data) are treated as current-season for
-    // backwards-compat until they age out of the 30-day retention window.
-    const currentSeasonHistory = history.filter(
-      e => e.season === undefined || e.season === meta.season
-    );
+    // Untagged entries written after SEASON_START_DATE are reclaimed as current-season
+    // (they predate season-tagging support but are valid S(n) data). Untagged entries
+    // before SEASON_START_DATE — or when the env var is unset — are excluded.
+    const seasonStart = getSeasonStartDate();
+    const currentSeasonHistory = history.filter(e => {
+      if (e.season === meta.season) return true;
+      if (e.season !== undefined) return false; // tagged to a different season
+      return seasonStart !== null && e.timestamp >= seasonStart.getTime();
+    });
 
     // No current-season live data — fall back to cross-season only
     if (currentSeasonHistory.length === 0) {

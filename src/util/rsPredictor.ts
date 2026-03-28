@@ -43,6 +43,7 @@ function getSeasonEndDate(): Date | null {
 interface HistoryEntry {
   timestamp: number;
   rankScore: number;
+  season?: number; // tagged at write time; absent on pre-S10 entries (treated as current)
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -269,6 +270,7 @@ export async function updateRSHistory(): Promise<void> {
     const currentEntry: HistoryEntry = {
       timestamp: Date.now(),
       rankScore: rank500.rankScore,
+      season:    meta.season,
     };
 
     let history: HistoryEntry[] = [];
@@ -327,8 +329,16 @@ export async function getRSPrediction(
       history = [];
     }
 
-    // No live data at all — fall back to cross-season only
-    if (history.length === 0) {
+    // Filter to current-season entries only — keeps old seasons in the file for
+    // historical reference but prevents S(n-1) RS values from corrupting S(n) slope.
+    // Entries without a season tag (pre-S10 data) are treated as current-season for
+    // backwards-compat until they age out of the 30-day retention window.
+    const currentSeasonHistory = history.filter(
+      e => e.season === undefined || e.season === meta.season
+    );
+
+    // No current-season live data — fall back to cross-season only
+    if (currentSeasonHistory.length === 0) {
       if (!crossSeason) return null;
 
       return {
@@ -350,14 +360,14 @@ export async function getRSPrediction(
       };
     }
 
-    const latest = history[history.length - 1];
+    const latest = currentSeasonHistory[currentSeasonHistory.length - 1];
 
     // Dedup to one value per calendar day, then apply window
-    const dedupedHistory = dedupByDay(history);
+    const dedupedHistory = dedupByDay(currentSeasonHistory);
     const windowStart    = now - PREDICTION_WINDOW_DAYS * oneDayMs;
     let relevant         = dedupedHistory.filter(e => e.timestamp >= windowStart);
 
-    // Fallback: if window has < 2 points, use all deduped history
+    // Fallback: if window has < 2 points, use all deduped current-season history
     if (relevant.length < 2) relevant = dedupedHistory;
 
     // ── Run current-season regression ──────────────────────────────────────

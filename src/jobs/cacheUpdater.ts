@@ -15,7 +15,7 @@ const NEW_EVENTS_URL      = 'https://www.davg25.com/app/the-finals-leaderboard-t
 // ── Old API (World Tour only — not available on new API yet) ─────────────────
 // Only the current season is fetched on each update; old seasons are already
 // on disk from the initial migration and don't change.
-const WORLD_TOUR_CURRENT_SEASON = 9;
+// Season number is read from currentRegularSeason (updated on every successful regular fetch).
 
 function getWorldTourApiUrl(season: number) {
   return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}worldtour/crossplay`;
@@ -151,7 +151,7 @@ async function updateWorldTourCache(season: number) {
 }
 
 async function updateAllWorldTourCaches() {
-  await updateWorldTourCache(WORLD_TOUR_CURRENT_SEASON);
+  await updateWorldTourCache(currentRegularSeason);
 }
 
 // ── EventSource — real-time leaderboard updates ──────────────────────────────

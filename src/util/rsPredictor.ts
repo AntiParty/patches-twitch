@@ -2,9 +2,8 @@ import fs from "fs/promises";
 import path from "path";
 import logger from "@/util/logger";
 
-const HISTORY_FILE = path.resolve(__dirname, "../../cache/rs_history.json");
-const CACHE_DIR    = path.resolve(__dirname, "../../cache");
-const META_FILE    = path.resolve(__dirname, "../../cache/meta.json");
+const CACHE_DIR = path.resolve(__dirname, "../../cache");
+const META_FILE = path.resolve(__dirname, "../../cache/meta.json");
 
 const HISTORY_RETENTION_DAYS = 30;
 const PREDICTION_WINDOW_DAYS = 30;
@@ -24,14 +23,18 @@ async function readMeta(): Promise<CacheMeta> {
     const raw = await fs.readFile(META_FILE, "utf8");
     return JSON.parse(raw) as CacheMeta;
   } catch {
-    // meta.json not written yet — default to season 9 for backwards compat
     return { season: 9, seasonId: "s9", updatedAt: null, transitioning: false };
   }
 }
 
+/** Per-season history file: cache/rs_history_s10.json, rs_history_s9.json, etc. */
+function getHistoryFile(season: number): string {
+  return path.join(CACHE_DIR, `rs_history_s${season}.json`);
+}
+
 /**
  * Returns the season end date from SEASON_END_DATE env var, or null if unset.
- * Set SEASON_END_DATE=2026-07-09T12:00:00Z in .env at the start of each new season.
+ * Set SEASON_END_DATE=2026-07-09T13:30:00Z in .env at the start of each new season.
  */
 function getSeasonEndDate(): Date | null {
   const env = process.env.SEASON_END_DATE;
@@ -40,25 +43,12 @@ function getSeasonEndDate(): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * Returns the season start date from SEASON_START_DATE env var, or null if unset.
- * Used to reclaim untagged rs_history entries that predate season-tagging support.
- * Set SEASON_START_DATE=2026-03-26T12:00:00Z in .env when setting SEASON_END_DATE.
- */
-function getSeasonStartDate(): Date | null {
-  const env = process.env.SEASON_START_DATE;
-  if (!env) return null;
-  const d = new Date(env);
-  return isNaN(d.getTime()) ? null : d;
-}
-
 interface HistoryEntry {
   timestamp: number;
   rankScore: number;
-  season?: number; // tagged at write time; absent on pre-S10 entries (treated as current)
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * Collapse history to one entry per UTC calendar day (last reading of the day wins).
@@ -67,8 +57,8 @@ interface HistoryEntry {
 function dedupByDay(history: HistoryEntry[]): HistoryEntry[] {
   const map = new Map<string, HistoryEntry>();
   for (const e of history) {
-    const day = new Date(e.timestamp).toISOString().slice(0, 10); // "YYYY-MM-DD"
-    map.set(day, e); // later entry overwrites earlier same-day entry
+    const day = new Date(e.timestamp).toISOString().slice(0, 10);
+    map.set(day, e);
   }
   return [...map.values()].sort((a, b) => a.timestamp - b.timestamp);
 }
@@ -88,9 +78,9 @@ function linearRegression(xs: number[], ys: number[]): {
 
   let Sxx = 0, Sxy = 0, SyTot = 0;
   for (let i = 0; i < n; i++) {
-    Sxx    += (xs[i] - xBar) ** 2;
-    Sxy    += (xs[i] - xBar) * (ys[i] - yBar);
-    SyTot  += (ys[i] - yBar) ** 2;
+    Sxx   += (xs[i] - xBar) ** 2;
+    Sxy   += (xs[i] - xBar) * (ys[i] - yBar);
+    SyTot += (ys[i] - yBar) ** 2;
   }
 
   const slope     = Sxx !== 0 ? Sxy / Sxx : 0;
@@ -101,14 +91,14 @@ function linearRegression(xs: number[], ys: number[]): {
     ssRes += (ys[i] - (intercept + slope * xs[i])) ** 2;
   }
 
-  const r2         = SyTot !== 0 ? 1 - ssRes / SyTot : 0;
-  const stdDev     = Math.sqrt(ssRes / Math.max(1, n - 2));
-  const margin     = Math.round(1.96 * stdDev);
+  const r2     = SyTot !== 0 ? 1 - ssRes / SyTot : 0;
+  const stdDev = Math.sqrt(ssRes / Math.max(1, n - 2));
+  const margin = Math.round(1.96 * stdDev);
 
   return { slope, intercept, r2, margin };
 }
 
-// ── Cross-season model ───────────────────────────────────────────────────────
+// ── Cross-season model ────────────────────────────────────────────────────────
 
 interface CrossSeasonResult {
   predicted: number;
@@ -126,7 +116,6 @@ interface CrossSeasonResult {
 async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeasonResult | null> {
   const seasonData: { season: number; rs: number }[] = [];
 
-  // Use last 5 completed seasons (those with cache files), starting from CROSS_SEASON_MIN_FIRST
   const crossFirst = Math.max(CROSS_SEASON_MIN_FIRST, targetSeason - 5);
   const crossLast  = targetSeason - 1;
 
@@ -163,16 +152,10 @@ async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeas
     `R²=${r2.toFixed(3)}, margin=±${margin}, seasons=[${xs.join(",")}]`
   );
 
-  return {
-    predicted,
-    margin,
-    r2,
-    seasonsUsed: xs,
-    seasonData,
-  };
+  return { predicted, margin, r2, seasonsUsed: xs, seasonData };
 }
 
-// ── Weighted regression (existing, for current-season trend) ─────────────────
+// ── Weighted regression (current-season trend) ────────────────────────────────
 
 function calculateWeightedRegression(points: HistoryEntry[]): {
   slope: number; intercept: number; standardError: number;
@@ -186,7 +169,7 @@ function calculateWeightedRegression(points: HistoryEntry[]): {
   let sumW = 0, sumWX = 0, sumWY = 0;
 
   for (let i = 0; i < n; i++) {
-    const w = 0.3 + (i / (n - 1)) * 0.7;  // ramp 0.3 → 1.0
+    const w = 0.3 + (i / (n - 1)) * 0.7; // ramp 0.3 → 1.0
     weights[i] = w;
     sumW  += w;
     sumWX += w * (points[i].timestamp - x0);
@@ -220,11 +203,11 @@ function calculateWeightedRegression(points: HistoryEntry[]): {
   return { slope, intercept, standardError, xBar, Sxx, sumW };
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export function getRemainingDays(): number {
   const endDate = getSeasonEndDate();
-  if (!endDate) return 30; // neutral default when env var not set
+  if (!endDate) return 30;
   const diff = endDate.getTime() - Date.now();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
@@ -249,7 +232,6 @@ export interface PredictionResult {
   standardError: number;
   isSeasonEndRush: boolean;
   rushMultiplier: number;
-  // New: dual-model fields
   model: "historical" | "trend" | "blended";
   historicalPrediction: number | null;
   historicalRange: { min: number; max: number } | null;
@@ -257,7 +239,7 @@ export interface PredictionResult {
 }
 
 /**
- * Appends the current rank-500 RS to rs_history.json.
+ * Appends the current rank-500 RS to the season-specific history file.
  * Only writes a new entry when the RS has actually changed — if it's the same,
  * the existing entry's timestamp is updated in place (sliding window).
  */
@@ -282,18 +264,17 @@ export async function updateRSHistory(): Promise<void> {
     const currentEntry: HistoryEntry = {
       timestamp: Date.now(),
       rankScore: rank500.rankScore,
-      season:    meta.season,
     };
 
+    const historyFile = getHistoryFile(meta.season);
     let history: HistoryEntry[] = [];
     try {
-      history = JSON.parse(await fs.readFile(HISTORY_FILE, "utf8"));
+      history = JSON.parse(await fs.readFile(historyFile, "utf8"));
     } catch {
       history = [];
     }
 
     // Only append when RS has actually changed — otherwise slide the timestamp.
-    // This prevents burst test-runs from flooding the history with identical values.
     const last = history[history.length - 1];
     if (last && last.rankScore === currentEntry.rankScore) {
       last.timestamp = currentEntry.timestamp;
@@ -305,8 +286,8 @@ export async function updateRSHistory(): Promise<void> {
     const cutoff = Date.now() - HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
     history = history.filter(e => e.timestamp >= cutoff);
 
-    await fs.writeFile(HISTORY_FILE, JSON.stringify(history, null, 2));
-    logger.info(`[RSPredictor] Updated RS history. Rank 500: ${currentEntry.rankScore} RS`);
+    await fs.writeFile(historyFile, JSON.stringify(history, null, 2));
+    logger.info(`[RSPredictor] Updated rs_history_s${meta.season}.json. Rank 500: ${currentEntry.rankScore} RS`);
   } catch (err) {
     logger.error("[RSPredictor] Error updating RS history:", err);
   }
@@ -322,7 +303,7 @@ export async function getRSPrediction(
     const oneDayMs      = 24 * 60 * 60 * 1000;
     const now           = Date.now();
 
-    // ── Model A: cross-season prediction ──────────────────────────────────
+    // ── Model A: cross-season prediction ─────────────────────────────────────
     const meta = await readMeta();
     const crossSeason = await getCrossSeasonPrediction(meta.season);
 
@@ -333,77 +314,64 @@ export async function getRSPrediction(
         }
       : null;
 
-    // ── Model B: current-season trend ──────────────────────────────────────
+    // ── Model B: current-season trend ─────────────────────────────────────────
     let history: HistoryEntry[] = [];
     try {
-      history = JSON.parse(await fs.readFile(HISTORY_FILE, "utf8"));
+      history = JSON.parse(await fs.readFile(getHistoryFile(meta.season), "utf8"));
     } catch {
       history = [];
     }
 
-    // Filter to current-season entries only — keeps old seasons in the file for
-    // historical reference but prevents S(n-1) RS values from corrupting S(n) slope.
-    // Untagged entries written after SEASON_START_DATE are reclaimed as current-season
-    // (they predate season-tagging support but are valid S(n) data). Untagged entries
-    // before SEASON_START_DATE — or when the env var is unset — are excluded.
-    const seasonStart = getSeasonStartDate();
-    const currentSeasonHistory = history.filter(e => {
-      if (e.season === meta.season) return true;
-      if (e.season !== undefined) return false; // tagged to a different season
-      return seasonStart !== null && e.timestamp >= seasonStart.getTime();
-    });
-
-    // No current-season live data — fall back to cross-season only
-    if (currentSeasonHistory.length === 0) {
+    // No current-season data — fall back to cross-season only
+    if (history.length === 0) {
       if (!crossSeason) return null;
 
       return {
-        currentRS:             crossSeason.predicted,
-        dailyChange:           0,
-        safeRS:                crossSeason.predicted + crossSeason.margin,
-        safeRS_min:            crossSeason.predicted - crossSeason.margin,
-        safeRS_max:            crossSeason.predicted + crossSeason.margin,
+        currentRS:            crossSeason.predicted,
+        dailyChange:          0,
+        safeRS:               crossSeason.predicted + crossSeason.margin,
+        safeRS_min:           crossSeason.predicted - crossSeason.margin,
+        safeRS_max:           crossSeason.predicted + crossSeason.margin,
         remainingDays,
-        dataPointsUsed:        0,
-        confidence:            "Low",
-        standardError:         crossSeason.margin,
-        isSeasonEndRush:       multiplier > 1,
-        rushMultiplier:        multiplier,
-        model:                 "historical",
-        historicalPrediction:  crossSeason.predicted,
+        dataPointsUsed:       0,
+        confidence:           "Low",
+        standardError:        crossSeason.margin,
+        isSeasonEndRush:      multiplier > 1,
+        rushMultiplier:       multiplier,
+        model:                "historical",
+        historicalPrediction: crossSeason.predicted,
         historicalRange,
-        historicalR2:          crossSeason.r2,
+        historicalR2:         crossSeason.r2,
       };
     }
 
-    const latest = currentSeasonHistory[currentSeasonHistory.length - 1];
+    const latest = history[history.length - 1];
 
     // Dedup to one value per calendar day, then apply window
-    const dedupedHistory = dedupByDay(currentSeasonHistory);
+    const dedupedHistory = dedupByDay(history);
     const windowStart    = now - PREDICTION_WINDOW_DAYS * oneDayMs;
     let relevant         = dedupedHistory.filter(e => e.timestamp >= windowStart);
 
-    // Fallback: if window has < 2 points, use all deduped current-season history
     if (relevant.length < 2) relevant = dedupedHistory;
 
-    // ── Run current-season regression ──────────────────────────────────────
-    const timeSpan   = relevant.length >= 2
+    // ── Run current-season regression ─────────────────────────────────────────
+    const timeSpan     = relevant.length >= 2
       ? relevant[relevant.length - 1].timestamp - relevant[0].timestamp
       : 0;
-    const hoursSpanned   = timeSpan / (1000 * 60 * 60);
-    const distinctDays   = relevant.length; // already deduped
+    const hoursSpanned = timeSpan / (1000 * 60 * 60);
+    const distinctDays = relevant.length;
 
     let confidence: "Low" | "Medium" | "High" = "Low";
-    if (hoursSpanned > 24)  confidence = "High";
+    if (hoursSpanned > 24)     confidence = "High";
     else if (hoursSpanned > 6) confidence = "Medium";
 
     const { slope: slopeMs, intercept, standardError, xBar, Sxx, sumW } =
       calculateWeightedRegression(relevant);
 
-    const dailyChange  = Math.round(slopeMs * oneDayMs * multiplier);
-    const x0           = relevant[0].timestamp;
-    const targetDate   = now + remainingDays * oneDayMs;
-    const x_target     = targetDate - x0;
+    const dailyChange   = Math.round(slopeMs * oneDayMs * multiplier);
+    const x0            = relevant[0].timestamp;
+    const targetDate    = now + remainingDays * oneDayMs;
+    const x_target      = targetDate - x0;
 
     const predictedMean = intercept + (slopeMs * multiplier) * x_target;
 
@@ -417,7 +385,7 @@ export async function getRSPrediction(
     const trendSafeMax  = Math.ceil(predictedMean + marginOfError);
     const trendSafeMin  = Math.floor(predictedMean - marginOfError);
 
-    // ── Blend: choose model based on current-season data quality ───────────
+    // ── Blend: choose model based on current-season data quality ──────────────
     const trendIsReliable = confidence !== "Low" && distinctDays >= 3;
 
     let safeRS: number;
@@ -426,19 +394,16 @@ export async function getRSPrediction(
     let model: "historical" | "trend" | "blended";
 
     if (!crossSeason) {
-      // No historical data — use trend only
       safeRS     = trendSafeMax;
       safeRS_min = trendSafeMin;
       safeRS_max = trendSafeMax;
       model      = "trend";
     } else if (!trendIsReliable) {
-      // Trend data too sparse/flat — defer to cross-season model
       safeRS     = crossSeason.predicted + crossSeason.margin;
       safeRS_min = crossSeason.predicted - crossSeason.margin;
       safeRS_max = crossSeason.predicted + crossSeason.margin;
       model      = "historical";
     } else {
-      // Both models have data — take the conservative (higher) safe value
       safeRS     = Math.max(crossSeason.predicted + crossSeason.margin, trendSafeMax);
       safeRS_min = Math.min(crossSeason.predicted - crossSeason.margin, trendSafeMin);
       safeRS_max = Math.max(crossSeason.predicted + crossSeason.margin, trendSafeMax);

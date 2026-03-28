@@ -55,11 +55,16 @@ export const execute = async (
     }
 
     const target = prediction.safeRS.toLocaleString();
-    const daily = `${prediction.dailyChange > 0 ? "+" : ""}${prediction.dailyChange.toLocaleString()}`;
     const rush = prediction.isSeasonEndRush ? ` | Rush: ${prediction.rushMultiplier}x` : "";
 
+    let trendPart = "";
+    if (prediction.model !== "historical" && prediction.dailyChange !== 0) {
+      const sign = prediction.dailyChange > 0 ? "+" : "";
+      trendPart = ` | ${sign}${prediction.dailyChange.toLocaleString()}/day`;
+    }
+
     await ctx.say(
-      `T500 Cutoff (${prediction.remainingDays}d): ~${target} RS | ${daily}/day${rush}`,
+      `T500 Cutoff (${prediction.remainingDays}d): ~${target} RS${trendPart}${rush}`,
       messageId
     );
   } catch (error) {

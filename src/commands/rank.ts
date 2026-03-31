@@ -29,10 +29,9 @@ function validatePlayerId(input: string): string | null {
 
   const [name, tag] = parts;
 
-  // Name: 1-30 alphanumeric characters, underscores, hyphens, spaces allowed
-  // More permissive to support international names
+  // Name: 1-30 chars — alphanumeric, underscores, hyphens, spaces, and periods (e.g. TITAN2.0)
   if (!name || name.length < 1 || name.length > 30) return null;
-  if (!/^[\w\s\-]+$/i.test(name)) return null;
+  if (!/^[\w\s\-.]+$/i.test(name)) return null;
 
   // Tag: 1-6 digits only
   if (!tag || !/^\d{1,6}$/.test(tag)) return null;

@@ -33,10 +33,10 @@ export const execute = async (
         const dropList = drops.drops
             .slice(0, 5)
             .map((d: any) => {
-                const isSubs = d.duration.toLowerCase().includes('subs');
-                return `${d.name} ${isSubs ? '' : ''} (${d.duration})`
+                const category = d.category ? `[${d.category.trim()}] ` : '';
+                return `${category}${d.name} (${d.duration})`;
             })
-            .join(' | ')
+            .join(' | ');
 
         // Get end date from first drop (assuming all drops end at the same time)
         const endDate = drops.drops[0]?.endDate ? ` | Ends: ${drops.drops[0].endDate}` : '';

@@ -100,6 +100,7 @@ function linearRegression(xs: number[], ys: number[]): {
 
 // ── Cross-season model ────────────────────────────────────────────────────────
 
+
 interface CrossSeasonResult {
   predicted: number;
   margin: number;
@@ -108,31 +109,66 @@ interface CrossSeasonResult {
   seasonData: { season: number; rs: number }[];
 }
 
+interface RubyPhaseEntry {
+  points: number;
+  timestamp: string;
+}
+
+/**
+ * Reads the Ruby-phase tracking file for a season (e.g. s9-ruby.json in root).
+ * Returns the opening RS, final RS, and growth; or null if file is missing.
+ */
+async function readRubyPhaseData(season: number): Promise<{
+  openRS: number; finalRS: number; growth: number; durationDays: number;
+} | null> {
+  try {
+    const raw     = await fs.readFile(path.join(CACHE_DIR, `s${season}-ruby.json`), "utf8");
+    const entries = JSON.parse(raw) as RubyPhaseEntry[];
+    if (entries.length < 2) return null;
+
+    const openRS    = entries[0].points;
+    const finalRS   = entries[entries.length - 1].points;
+    const openMs    = new Date(entries[0].timestamp).getTime();
+    const closeMs   = new Date(entries[entries.length - 1].timestamp).getTime();
+    const durationDays = (closeMs - openMs) / (1000 * 60 * 60 * 24);
+
+    return { openRS, finalRS, growth: finalRS - openRS, durationDays };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Reads the final rank-500 RS from each completed season's cache file.
- * Runs linear regression on (season#, finalRS) to predict targetSeason's final.
+ * Blends two regression models:
+ *   Model A — simple linear regression on (season, finalRS)
+ *   Model B — Ruby-anchored: regression on (season, growthFromRubyOpen) + avg Ruby open RS
+ * Both R² values are used as blend weights.
  * Returns null if fewer than 3 valid seasons are found.
  */
 async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeasonResult | null> {
-  const seasonData: { season: number; rs: number }[] = [];
+  const seasonData:  { season: number; rs: number }[] = [];
+  const rubyPhases:  { season: number; openRS: number; growth: number }[] = [];
 
   const crossFirst = Math.max(CROSS_SEASON_MIN_FIRST, targetSeason - 5);
   const crossLast  = targetSeason - 1;
 
   for (let s = crossFirst; s <= crossLast; s++) {
+    // Final RS from leaderboard cache
     try {
-      const filePath = path.join(CACHE_DIR, `regular_s${s}.json`);
-      const raw  = await fs.readFile(filePath, "utf8");
+      const raw  = await fs.readFile(path.join(CACHE_DIR, `regular_s${s}.json`), "utf8");
       const data = JSON.parse(raw) as any[];
-
       const rank500 = data.find((p: any) => p.rank === 500) ?? data[499];
       const rs = rank500?.rankScore;
-
       if (typeof rs === "number" && rs > 10_000) {
         seasonData.push({ season: s, rs });
       }
-    } catch {
-      // Season file missing or unreadable — skip
+    } catch { /* skip */ }
+
+    // Ruby-phase trajectory data
+    const ruby = await readRubyPhaseData(s);
+    if (ruby) {
+      rubyPhases.push({ season: s, openRS: ruby.openRS, growth: ruby.growth });
     }
   }
 
@@ -141,18 +177,50 @@ async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeas
     return null;
   }
 
-  const xs = seasonData.map(d => d.season);
-  const ys = seasonData.map(d => d.rs);
-  const { slope, intercept, r2, margin } = linearRegression(xs, ys);
+  // ── Model A: simple regression on (season, finalRS) ──────────────────────
+  const xsA = seasonData.map(d => d.season);
+  const ysA = seasonData.map(d => d.rs);
+  const regA = linearRegression(xsA, ysA);
+  const predA = Math.round(regA.intercept + regA.slope * targetSeason);
 
-  const predicted = Math.round(intercept + slope * targetSeason);
+  // ── Model B: Ruby-anchored regression on (season, growthFromRubyOpen) ────
+  let predB: number | null = null;
+  let r2B = 0;
+  if (rubyPhases.length >= 3) {
+    const xsB = rubyPhases.map(d => d.season);
+    const ysB = rubyPhases.map(d => d.growth);
+    const regB = linearRegression(xsB, ysB);
+    const predictedGrowth = regB.intercept + regB.slope * targetSeason;
+    const avgOpenRS = rubyPhases.reduce((sum, d) => sum + d.openRS, 0) / rubyPhases.length;
+    predB = Math.round(avgOpenRS + predictedGrowth);
+    r2B   = regB.r2;
+  }
 
-  logger.info(
-    `[RSPredictor] Cross-season model: S${targetSeason} predicted=${predicted} RS, ` +
-    `R²=${r2.toFixed(3)}, margin=±${margin}, seasons=[${xs.join(",")}]`
-  );
+  // ── Blend by R² weight ────────────────────────────────────────────────────
+  let predicted: number;
+  let blendedR2: number;
 
-  return { predicted, margin, r2, seasonsUsed: xs, seasonData };
+  if (predB !== null && r2B > 0) {
+    const wA = Math.max(0, regA.r2);
+    const wB = Math.max(0, r2B);
+    const total = wA + wB;
+    predicted  = total > 0 ? Math.round((predA * wA + predB * wB) / total) : predA;
+    blendedR2  = total > 0 ? (regA.r2 * wA + r2B * wB) / total : regA.r2;
+    logger.info(
+      `[RSPredictor] S${targetSeason} — ModelA=${predA} (R²=${regA.r2.toFixed(3)}), ` +
+      `ModelB=${predB} (R²=${r2B.toFixed(3)}), blended=${predicted}, ` +
+      `seasons=[${xsA.join(",")}], rubySeasons=[${rubyPhases.map(d=>d.season).join(",")}]`
+    );
+  } else {
+    predicted  = predA;
+    blendedR2  = regA.r2;
+    logger.info(
+      `[RSPredictor] S${targetSeason} — ModelA only: ${predicted} RS (R²=${regA.r2.toFixed(3)}), ` +
+      `seasons=[${xsA.join(",")}]`
+    );
+  }
+
+  return { predicted, margin: regA.margin, r2: blendedR2, seasonsUsed: xsA, seasonData };
 }
 
 // ── Weighted regression (current-season trend) ────────────────────────────────

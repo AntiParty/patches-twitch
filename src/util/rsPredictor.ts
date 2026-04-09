@@ -184,9 +184,16 @@ async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeas
   const predA = Math.round(regA.intercept + regA.slope * targetSeason);
 
   // ── Model B: Ruby-anchored regression on (season, growthFromRubyOpen) ────
+  // Only applies when the TARGET season already has a ruby phase file — meaning
+  // Ruby has actually unlocked this season. Using it before Ruby appears would
+  // anchor the prediction to stale prior-season Ruby RS values.
   let predB: number | null = null;
   let r2B = 0;
-  if (rubyPhases.length >= 3) {
+  const targetHasRubyFile = await (async () => {
+    try { await fs.access(path.join(CACHE_DIR, `s${targetSeason}-ruby.json`)); return true; }
+    catch { return false; }
+  })();
+  if (targetHasRubyFile && rubyPhases.length >= 3) {
     const xsB = rubyPhases.map(d => d.season);
     const ysB = rubyPhases.map(d => d.growth);
     const regB = linearRegression(xsB, ysB);
@@ -361,10 +368,30 @@ export async function updateRSHistory(): Promise<void> {
   }
 }
 
+/**
+ * Returns true once Ruby-tier players appear on the current-season leaderboard.
+ * Until then, cross-season models (calibrated on Ruby-era data) are unreliable.
+ */
+export async function isRubyUnlocked(): Promise<boolean> {
+  try {
+    const meta = await readMeta();
+    const raw  = await fs.readFile(path.join(CACHE_DIR, `regular_s${meta.season}.json`), "utf8");
+    const data = JSON.parse(raw) as any[];
+    return data.some((p: any) => p.league === "Ruby");
+  } catch {
+    return false;
+  }
+}
+
 export async function getRSPrediction(
   remainingDaysInput?: number
 ): Promise<PredictionResult | null> {
   try {
+    // Don't produce a prediction until Ruby is unlocked — the cross-season
+    // models are anchored to Ruby-era RS values and are meaningless before that.
+    const rubyReady = await isRubyUnlocked();
+    if (!rubyReady) return null;
+
     const daysLeft      = getRemainingDays();
     const remainingDays = remainingDaysInput ?? daysLeft;
     const multiplier    = getSeasonRushMultiplier(daysLeft);

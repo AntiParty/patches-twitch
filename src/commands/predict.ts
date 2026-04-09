@@ -4,6 +4,16 @@ import logger from "../util/logger";
 import fs from "fs/promises";
 import path from "path";
 
+async function isRubyUnlocked(season: number): Promise<boolean> {
+  try {
+    const file = path.resolve(__dirname, `../../cache/regular_s${season}.json`);
+    const data = JSON.parse(await fs.readFile(file, "utf8")) as any[];
+    return data.some((p: any) => p.league === "Ruby");
+  } catch {
+    return false;
+  }
+}
+
 async function isSeasonTransitioning(): Promise<{ transitioning: boolean; season: number }> {
   try {
     const raw  = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
@@ -44,6 +54,15 @@ export const execute = async (
     const { transitioning, season } = await isSeasonTransitioning();
     if (transitioning) {
       await ctx.say(`S${season} API not found — waiting on Embark.`, messageId);
+      return;
+    }
+
+    // Ruby must be unlocked before the prediction is meaningful — cross-season
+    // models are calibrated on Ruby-era data and will produce wildly inaccurate
+    // numbers early in a season before Ruby has appeared on the leaderboard.
+    const rubyUnlocked = await isRubyUnlocked(season);
+    if (!rubyUnlocked) {
+      await ctx.say(`Ruby hasn't unlocked yet this season — prediction unavailable.`, messageId);
       return;
     }
 

@@ -215,9 +215,9 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
 
     if (player && wtPlayer) {
       if (isLookup) {
-        response += `${displayName} is ${player.rankScore.toLocaleString()} RS in ${player.league} | WT rank: #${wtPlayer.rank}`;
+        response += `${displayName} is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS | WT rank: #${wtPlayer.rank}`;
       } else {
-        response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+        response += `current rank is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS`;
 
         // Add goal information if exists
         if (goal && !goal.achieved && player.rank > goal.target_rank) {
@@ -236,9 +236,9 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       }
     } else if (player) {
       if (isLookup) {
-        response += `${displayName} is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+        response += `${displayName} is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS`;
       } else {
-        response += `current rank is ${player.rankScore.toLocaleString()} RS in ${player.league}`;
+        response += `current rank is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS`;
 
         // Add goal information if exists
         if (goal && !goal.achieved && player.rank > goal.target_rank) {

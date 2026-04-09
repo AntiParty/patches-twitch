@@ -117,7 +117,10 @@ export function matchesBlockRegex(text?: string | null): boolean {
   if (allowedLinks(text)) {
     return false;
   }
-  return !!(blockRegexp && blockRegexp.test(text));
+  // Strip player name patterns (e.g., digcron.ttv#3309, player.twitch#1234)
+  // before running the URL/regex check so branded suffixes in player names don't trigger it
+  const sanitizedForRegex = text.replace(/\S+#\d{1,6}/g, 'PLAYER');
+  return !!(blockRegexp && blockRegexp.test(sanitizedForRegex));
 }
 
 export function sanitizeMessage(text?: string | null, replacement = '[redacted]'): string {

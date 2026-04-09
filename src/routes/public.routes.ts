@@ -986,4 +986,49 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
     }
 });
 
+// ── Leaderboard page ──────────────────────────────────────────
+router.get('/leaderboard', (_req: Request, res: Response) => {
+    res.sendFile(path.join(viewsPath, 'leaderboard.html'));
+});
+
+// ── Leaderboard data API ──────────────────────────────────────
+router.get('/api/leaderboard', async (req: Request, res: Response) => {
+    const cacheDir = path.join(process.cwd(), 'cache');
+    const mode = req.query.mode === 'wt' ? 'wt' : 'ranked';
+    const prefix = mode === 'wt' ? 'worldTour_s' : 'regular_s';
+
+    try {
+        const files = await fs.promises.readdir(cacheDir);
+        const matched = files
+            .filter(f => f.startsWith(prefix) && f.endsWith('.json'))
+            .map(f => {
+                const num = parseInt(f.match(/\d+/)?.[0] ?? '0', 10);
+                return { file: f, season: num };
+            })
+            .filter(x => x.season > 0)
+            .sort((a, b) => b.season - a.season);
+
+        if (!matched.length) {
+            res.status(404).json({ error: 'No leaderboard data found.' });
+            return;
+        }
+
+        const latest = matched[0];
+        const filePath = path.join(cacheDir, latest.file);
+        const stat = await fs.promises.stat(filePath);
+        const raw = await fs.promises.readFile(filePath, 'utf8');
+        const data = JSON.parse(raw);
+
+        res.json({
+            season: latest.season,
+            mode,
+            updated: stat.mtime.toISOString(),
+            data: Array.isArray(data) ? data : [],
+        });
+    } catch (err) {
+        logger.error('[leaderboard] Error reading cache:', err);
+        res.status(500).json({ error: 'Failed to load leaderboard data.' });
+    }
+});
+
 export default router;

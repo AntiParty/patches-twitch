@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leaderboard – FinalsRS</title>
+  <meta name="description" content="THE FINALS ranked leaderboard – top players by rank score and World Tour cashouts." />
+  <link rel="canonical" href="https://finalsrs.com/leaderboard" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    /* ── Page layout ─────────────────────────────────────────── */
+    .lb-page {
+      padding-top: 90px;
+      min-height: 100vh;
+    }
+
+    .lb-header {
+      padding: 2.5rem 0 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .lb-header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .lb-header p {
+      color: var(--text-secondary);
+      margin-top: 0.35rem;
+      font-size: 0.95rem;
+    }
+
+    .lb-header-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* ── Tabs (Ranked / World Tour) ──────────────────────────── */
+    .lb-tabs {
+      display: flex;
+      gap: 0.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.25rem;
+      width: fit-content;
+    }
+
+    .lb-tab {
+      padding: 0.45rem 1.1rem;
+      border-radius: calc(var(--radius-md) - 2px);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border: none;
+      background: none;
+      transition: all 0.2s;
+    }
+
+    .lb-tab.active {
+      background: var(--brand-primary);
+      color: #fff;
+    }
+
+    .lb-tab:not(.active):hover {
+      color: var(--text-primary);
+      background: var(--bg-card-hover);
+    }
+
+    /* ── Controls bar ─────────────────────────────────────────── */
+    .lb-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 0;
+      flex-wrap: wrap;
+    }
+
+    .lb-search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+      max-width: 320px;
+    }
+
+    .lb-search-wrap svg {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      pointer-events: none;
+    }
+
+    .lb-search {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .lb-search::placeholder { color: var(--text-tertiary); }
+    .lb-search:focus { border-color: var(--brand-primary); }
+
+    /* League filter pills */
+    .lb-filters {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .lb-filter {
+      padding: 0.4rem 0.85rem;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border-color: var(--border-color);
+    }
+
+    .lb-filter:hover { color: var(--text-primary); }
+
+    .lb-filter.active {
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .lb-filter[data-league="All"].active        { background: var(--brand-primary); }
+    .lb-filter[data-league="Ruby"].active       { background: #c0392b; }
+    .lb-filter[data-league="Diamond 1"].active  { background: #0077b6; }
+    .lb-filter[data-league="Diamond 2"].active  { background: #0096c7; }
+    .lb-filter[data-league="Diamond 3"].active  { background: #00b4d8; }
+    .lb-filter[data-league="Diamond 4"].active  { background: #48cae4; color: #09090b; }
+    .lb-filter[data-league="Platinum 1"].active { background: #7b8fa1; }
+    .lb-filter[data-league="Platinum 2"].active { background: #5c677d; }
+
+    /* ── Stats strip ─────────────────────────────────────────── */
+    .lb-stats-strip {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .lb-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1.25rem;
+      flex: 1;
+      min-width: 130px;
+    }
+
+    .lb-stat-card .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .lb-stat-card .stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-top: 0.15rem;
+    }
+
+    /* ── Table ───────────────────────────────────────────────── */
+    .lb-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+    }
+
+    table.lb-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .lb-table thead th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      background: var(--bg-card);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .lb-table thead th:hover { color: var(--text-primary); }
+    .lb-table thead th.sorted { color: var(--text-primary); }
+    .lb-table thead th .sort-icon { margin-left: 4px; opacity: 0.5; }
+    .lb-table thead th.sorted .sort-icon { opacity: 1; color: var(--brand-primary); }
+
+    .lb-table tbody tr {
+      border-bottom: 1px solid var(--border-color);
+      transition: background 0.1s;
+    }
+
+    .lb-table tbody tr:last-child { border-bottom: none; }
+    .lb-table tbody tr:hover { background: var(--bg-card-hover); }
+
+    .lb-table td {
+      padding: 0.7rem 1rem;
+      white-space: nowrap;
+    }
+
+    /* Rank cell */
+    .rank-num {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      min-width: 3rem;
+      display: inline-block;
+    }
+
+    .rank-1  { color: #ffd700; }
+    .rank-2  { color: #c0c0c0; }
+    .rank-3  { color: #cd7f32; }
+
+    /* Change indicator */
+    .change {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      min-width: 2.5rem;
+    }
+    .change.up   { color: #22c55e; }
+    .change.down { color: #ef4444; }
+    .change.same { color: var(--text-tertiary); }
+
+    /* Player name */
+    .player-name {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .player-tag {
+      color: var(--text-tertiary);
+      font-weight: 400;
+    }
+
+    /* League badge */
+    .league-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .league-Ruby       { background: #c0392b; }
+    .league-Diamond-1  { background: #0077b6; }
+    .league-Diamond-2  { background: #0096c7; }
+    .league-Diamond-3  { background: #00b4d8; }
+    .league-Diamond-4  { background: #48cae4; color: #09090b; }
+    .league-Platinum-1 { background: #7b8fa1; }
+    .league-Platinum-2 { background: #5c677d; }
+
+    /* Score */
+    .score-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    /* Platform icons */
+    .platforms {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .platform-icon {
+      width: 15px;
+      height: 15px;
+      opacity: 0.55;
+      flex-shrink: 0;
+      display: block;
+      transition: opacity 0.15s;
+    }
+
+    .platform-icon:hover { opacity: 1; }
+
+    /* Club tag */
+    .club-tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    /* ── Pagination ───────────────────────────────────────────── */
+    .lb-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .lb-page-info {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .lb-page-btns {
+      display: flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+
+    .lb-page-btn {
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .lb-page-btn:hover:not(:disabled) {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+
+    .lb-page-btn.current {
+      background: var(--brand-primary);
+      color: #fff;
+      border-color: var(--brand-primary);
+    }
+
+    .lb-page-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .lb-per-page {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .lb-per-page select {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-sm);
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* ── Loading / empty states ──────────────────────────────── */
+    .lb-loading, .lb-empty {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--text-tertiary);
+    }
+
+    .lb-loading .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--brand-primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Updated time ────────────────────────────────────────── */
+    .lb-updated {
+      font-size: 0.8rem;
+      color: var(--text-tertiary);
+      text-align: right;
+      padding-bottom: 2rem;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .lb-header h1 { font-size: 1.5rem; }
+      .lb-header-row { flex-direction: column; align-items: flex-start; }
+      .lb-controls { flex-direction: column; align-items: flex-start; }
+      .lb-search-wrap { max-width: 100%; }
+      .lb-stats-strip { display: grid; grid-template-columns: 1fr 1fr; }
+      .lb-table td:nth-child(5),
+      .lb-table th:nth-child(5) { display: none; } /* hide platforms on mobile */
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="nav-container">
+    <a href="/" class="logo">
+      <span class="logo-icon"><img src="/assets/logo.png" alt="FinalsRS" /></span>
+      FinalsRS
+    </a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/leaderboard" style="color:var(--text-primary)">Leaderboard</a>
+      <a href="/docs">Docs</a>
+      <a href="/dashboard" class="btn-login">Dashboard</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Main content -->
+<main class="lb-page">
+  <div class="container">
+
+    <!-- Header -->
+    <div class="lb-header">
+      <div class="lb-header-row">
+        <div>
+          <h1>THE FINALS Leaderboard</h1>
+          <p id="lb-subtitle">Season 9 · Ranked &amp; World Tour</p>
+        </div>
+        <div class="lb-tabs">
+          <button class="lb-tab active" data-mode="ranked" onclick="switchMode('ranked')">Ranked</button>
+          <button class="lb-tab"       data-mode="wt"     onclick="switchMode('wt')">World Tour</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="lb-stats-strip" style="margin-top:1.25rem">
+      <div class="lb-stat-card">
+        <div class="stat-label">Total Players</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="lb-stat-card">
+        <div class="stat-label" id="stat-score-label">Top RS</div>
+        <div class="stat-value" id="stat-top-score">—</div>
+      </div>
+      <div class="lb-stat-card">
+        <div class="stat-label">Top Player</div>
+        <div class="stat-value" id="stat-top-player" style="font-size:1rem">—</div>
+      </div>
+      <div class="lb-stat-card">
+        <div class="stat-label" id="stat-league-label">Ruby Players</div>
+        <div class="stat-value" id="stat-league-count">—</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="lb-controls">
+      <!-- Search -->
+      <div class="lb-search-wrap">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 6.5C10 8.43 8.43 10 6.5 10C4.57 10 3 8.43 3 6.5C3 4.57 4.57 3 6.5 3C8.43 3 10 4.57 10 6.5ZM9.4 10.1C8.65 10.67 7.62 11 6.5 11C4.015 11 2 8.985 2 6.5C2 4.015 4.015 2 6.5 2C8.985 2 11 4.015 11 6.5C11 7.62 10.67 8.65 10.1 9.4L12.85 12.15C13.05 12.35 13.05 12.65 12.85 12.85C12.65 13.05 12.35 13.05 12.15 12.85L9.4 10.1Z" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"></path>
+        </svg>
+        <input class="lb-search" id="lb-search" type="search" placeholder="Search player…" oninput="onSearch(this.value)" />
+      </div>
+
+      <!-- League filters (ranked only) -->
+      <div class="lb-filters" id="lb-filters">
+        <button class="lb-filter active" data-league="All"        onclick="setLeague('All')">All</button>
+        <button class="lb-filter"        data-league="Ruby"       onclick="setLeague('Ruby')">Ruby</button>
+        <button class="lb-filter"        data-league="Diamond 1"  onclick="setLeague('Diamond 1')">Diamond 1</button>
+        <button class="lb-filter"        data-league="Diamond 2"  onclick="setLeague('Diamond 2')">Diamond 2</button>
+        <button class="lb-filter"        data-league="Diamond 3"  onclick="setLeague('Diamond 3')">Diamond 3</button>
+        <button class="lb-filter"        data-league="Diamond 4"  onclick="setLeague('Diamond 4')">Diamond 4</button>
+        <button class="lb-filter"        data-league="Platinum 1" onclick="setLeague('Platinum 1')">Platinum 1</button>
+        <button class="lb-filter"        data-league="Platinum 2" onclick="setLeague('Platinum 2')">Platinum 2</button>
+      </div>
+
+      <!-- Per-page -->
+      <div class="lb-per-page" style="margin-left:auto">
+        <span>Show</span>
+        <select onchange="setPerPage(+this.value)">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="lb-table-wrap" id="lb-table-wrap">
+      <div class="lb-loading" id="lb-loading">
+        <div class="spinner"></div>
+        Loading leaderboard…
+      </div>
+      <table class="lb-table" id="lb-table" style="display:none">
+        <thead id="lb-thead"></thead>
+        <tbody id="lb-tbody"></tbody>
+      </table>
+      <div class="lb-empty" id="lb-empty" style="display:none">No players match your search.</div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="lb-pagination" id="lb-pagination" style="display:none">
+      <div class="lb-page-info" id="lb-page-info"></div>
+      <div class="lb-page-btns" id="lb-page-btns"></div>
+    </div>
+
+    <div class="lb-updated" id="lb-updated"></div>
+
+  </div>
+</main>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let allData = [];
+let filtered = [];
+let mode = 'ranked';       // 'ranked' | 'wt'
+let league = 'All';
+let searchQ = '';
+let page = 1;
+let perPage = 50;
+let sortKey = null;
+let sortDir = 1;           // 1 = asc, -1 = desc
+let season = null;
+
+// ── Boot ───────────────────────────────────────────────────────
+fetchData();
+
+async function fetchData() {
+  showLoading();
+  try {
+    const url = `/api/leaderboard?mode=${mode}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
+    const json = await res.json();
+    allData = json.data || [];
+    season = json.season;
+    sortKey = null;
+    sortDir = 1;
+    updateSubtitle();
+    updateStats();
+    applyFilters();
+    updateUpdatedTime(json.updated);
+  } catch (e) {
+    document.getElementById('lb-loading').innerHTML = '<p>Failed to load leaderboard data.</p>';
+  }
+}
+
+function showLoading() {
+  document.getElementById('lb-loading').style.display = '';
+  document.getElementById('lb-loading').innerHTML = '<div class="spinner"></div>Loading leaderboard…';
+  document.getElementById('lb-table').style.display = 'none';
+  document.getElementById('lb-empty').style.display = 'none';
+  document.getElementById('lb-pagination').style.display = 'none';
+}
+
+// ── Mode / filter setters ──────────────────────────────────────
+function switchMode(m) {
+  mode = m;
+  league = 'All';
+  searchQ = '';
+  page = 1;
+  document.getElementById('lb-search').value = '';
+  document.querySelectorAll('.lb-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === m));
+  document.getElementById('lb-filters').style.display = m === 'ranked' ? '' : 'none';
+  // Reset league filter
+  document.querySelectorAll('.lb-filter').forEach(f => f.classList.toggle('active', f.dataset.league === 'All'));
+  fetchData();
+}
+
+function setLeague(l) {
+  league = l;
+  page = 1;
+  document.querySelectorAll('.lb-filter').forEach(f => f.classList.toggle('active', f.dataset.league === l));
+  applyFilters();
+}
+
+function onSearch(v) {
+  searchQ = v.trim().toLowerCase();
+  page = 1;
+  applyFilters();
+}
+
+function setPerPage(n) {
+  perPage = n;
+  page = 1;
+  renderTable();
+  renderPagination();
+}
+
+// ── Filter + sort ──────────────────────────────────────────────
+function applyFilters() {
+  filtered = allData.filter(p => {
+    if (mode === 'ranked' && league !== 'All' && p.league !== league) return false;
+    if (searchQ && !p.name.toLowerCase().includes(searchQ)) return false;
+    return true;
+  });
+
+  if (sortKey) {
+    filtered.sort((a, b) => {
+      const av = a[sortKey] ?? 0, bv = b[sortKey] ?? 0;
+      return typeof av === 'string'
+        ? av.localeCompare(bv) * sortDir
+        : (av - bv) * sortDir;
+    });
+  }
+
+  page = 1;
+  updateStats();
+  renderTable();
+  renderPagination();
+}
+
+function setSort(key) {
+  if (sortKey === key) { sortDir *= -1; }
+  else { sortKey = key; sortDir = key === 'rank' ? 1 : -1; }
+  applyFilters();
+}
+
+// ── Render table ───────────────────────────────────────────────
+function renderTable() {
+  const loading = document.getElementById('lb-loading');
+  const table   = document.getElementById('lb-table');
+  const empty   = document.getElementById('lb-empty');
+  const thead   = document.getElementById('lb-thead');
+  const tbody   = document.getElementById('lb-tbody');
+
+  loading.style.display = 'none';
+
+  if (filtered.length === 0) {
+    table.style.display = 'none';
+    empty.style.display = '';
+    document.getElementById('lb-pagination').style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  table.style.display = '';
+
+  // Header
+  if (mode === 'ranked') {
+    thead.innerHTML = `<tr>
+      <th onclick="setSort('rank')">${thLabel('rank','#')}</th>
+      <th>±</th>
+      <th onclick="setSort('name')">${thLabel('name','Player')}</th>
+      <th onclick="setSort('league')">${thLabel('league','League')}</th>
+      <th onclick="setSort('rankScore')">${thLabel('rankScore','Rank Score')}</th>
+      <th>Club</th>
+      <th>Platforms</th>
+    </tr>`;
+  } else {
+    thead.innerHTML = `<tr>
+      <th onclick="setSort('rank')">${thLabel('rank','#')}</th>
+      <th onclick="setSort('name')">${thLabel('name','Player')}</th>
+      <th onclick="setSort('cashouts')">${thLabel('cashouts','Cashouts')}</th>
+      <th>Club</th>
+      <th>Platforms</th>
+    </tr>`;
+  }
+
+  // Rows
+  const start = (page - 1) * perPage;
+  const slice = filtered.slice(start, start + perPage);
+
+  tbody.innerHTML = slice.map(p => renderRow(p)).join('');
+}
+
+function thLabel(key, label) {
+  const active = sortKey === key;
+  const icon = active ? (sortDir === 1 ? '↑' : '↓') : '↕';
+  return `${label}<span class="sort-icon">${icon}</span>`;
+}
+
+function renderRow(p) {
+  const [namePart, tagPart] = p.name.includes('#') ? p.name.split('#') : [p.name, ''];
+  const rankClass = p.rank <= 3 ? `rank-${p.rank}` : '';
+
+  const platforms = [];
+  if (p.steamName) platforms.push(`<img class="platform-icon" src="https://cdn.simpleicons.org/steam/a1a1aa" alt="Steam" title="${escHtml(p.steamName)}" />`);
+  if (p.psnName)   platforms.push(`<img class="platform-icon" src="https://cdn.simpleicons.org/playstation/a1a1aa" alt="PlayStation" title="${escHtml(p.psnName)}" />`);
+  if (p.xboxName)  platforms.push(`<img class="platform-icon" src="https://cdn.simpleicons.org/xbox/a1a1aa" alt="Xbox" title="${escHtml(p.xboxName)}" />`);
+
+  const leagueKey = (p.league || '').replace(/\s+/g, '-');
+  const changeHtml = p.change !== undefined
+    ? p.change > 0
+      ? `<span class="change up">▲${p.change}</span>`
+      : p.change < 0
+      ? `<span class="change down">▼${Math.abs(p.change)}</span>`
+      : `<span class="change same">—</span>`
+    : '';
+
+  if (mode === 'ranked') {
+    return `<tr>
+      <td><span class="rank-num ${rankClass}">#${p.rank.toLocaleString()}</span></td>
+      <td>${changeHtml}</td>
+      <td class="player-name">${escHtml(namePart)}<span class="player-tag">#${escHtml(tagPart)}</span></td>
+      <td><span class="league-badge league-${leagueKey}">${escHtml(p.league)}</span></td>
+      <td class="score-cell">${(p.rankScore || 0).toLocaleString()} RS</td>
+      <td>${p.clubTag ? `<span class="club-tag">${escHtml(p.clubTag)}</span>` : ''}</td>
+      <td><div class="platforms">${platforms.join('')}</div></td>
+    </tr>`;
+  } else {
+    return `<tr>
+      <td><span class="rank-num ${rankClass}">#${p.rank.toLocaleString()}</span></td>
+      <td class="player-name">${escHtml(namePart)}<span class="player-tag">#${escHtml(tagPart)}</span></td>
+      <td class="score-cell">$${(p.cashouts || 0).toLocaleString()}</td>
+      <td>${p.clubTag ? `<span class="club-tag">${escHtml(p.clubTag)}</span>` : ''}</td>
+      <td><div class="platforms">${platforms.join('')}</div></td>
+    </tr>`;
+  }
+}
+
+// ── Pagination ─────────────────────────────────────────────────
+function renderPagination() {
+  const container = document.getElementById('lb-pagination');
+  const info      = document.getElementById('lb-page-info');
+  const btns      = document.getElementById('lb-page-btns');
+
+  if (filtered.length === 0) { container.style.display = 'none'; return; }
+  container.style.display = '';
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const start = (page - 1) * perPage + 1;
+  const end   = Math.min(page * perPage, filtered.length);
+
+  info.textContent = `Showing ${start.toLocaleString()}–${end.toLocaleString()} of ${filtered.length.toLocaleString()} players`;
+
+  const pages = buildPageList(page, totalPages);
+  btns.innerHTML = `
+    <button class="lb-page-btn" ${page === 1 ? 'disabled' : ''} onclick="goPage(${page-1})">‹</button>
+    ${pages.map(p => p === '…'
+      ? `<span style="padding:0 0.25rem;color:var(--text-tertiary)">…</span>`
+      : `<button class="lb-page-btn ${p === page ? 'current' : ''}" onclick="goPage(${p})">${p}</button>`
+    ).join('')}
+    <button class="lb-page-btn" ${page === totalPages ? 'disabled' : ''} onclick="goPage(${page+1})">›</button>
+  `;
+}
+
+function buildPageList(cur, total) {
+  if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+  if (cur <= 4)   return [1,2,3,4,5,'…',total];
+  if (cur >= total - 3) return [1,'…',total-4,total-3,total-2,total-1,total];
+  return [1,'…',cur-1,cur,cur+1,'…',total];
+}
+
+function goPage(n) {
+  page = n;
+  renderTable();
+  renderPagination();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Stats strip ────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-total').textContent = allData.length.toLocaleString();
+
+  if (mode === 'ranked') {
+    const top = allData[0];
+    document.getElementById('stat-score-label').textContent = 'Top RS';
+    document.getElementById('stat-top-score').textContent   = top ? (top.rankScore || 0).toLocaleString() : '—';
+    document.getElementById('stat-top-player').textContent  = top ? top.name.split('#')[0] : '—';
+    const rubyCount = allData.filter(p => p.league === 'Ruby').length;
+    document.getElementById('stat-league-label').textContent = 'Ruby Players';
+    document.getElementById('stat-league-count').textContent = rubyCount.toLocaleString();
+  } else {
+    const top = allData[0];
+    document.getElementById('stat-score-label').textContent = 'Top Cashouts';
+    document.getElementById('stat-top-score').textContent   = top ? `$${(top.cashouts||0).toLocaleString()}` : '—';
+    document.getElementById('stat-top-player').textContent  = top ? top.name.split('#')[0] : '—';
+    document.getElementById('stat-league-label').textContent = 'Players';
+    document.getElementById('stat-league-count').textContent = allData.length.toLocaleString();
+  }
+}
+
+function updateSubtitle() {
+  const s = season != null ? `Season ${season}` : '';
+  const m = mode === 'ranked' ? 'Ranked' : 'World Tour';
+  document.getElementById('lb-subtitle').textContent = `${s} · ${m}`;
+}
+
+function updateUpdatedTime(ts) {
+  if (!ts) return;
+  const d = new Date(ts);
+  document.getElementById('lb-updated').textContent =
+    `Last updated: ${d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`;
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+</body>
+</html>

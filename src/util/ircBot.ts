@@ -37,7 +37,35 @@ async function handleReconnect(username: string, commandHandler: Record<string, 
 
   if (client.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
     logger.error(`[DEBUG] Max reconnection attempts reached for ${username}. Manual intervention required.`);
+    // Fix for issue #1: don't die silently. Tell the streamer in chat and
+    // page us on Discord so support can act.
+    try {
+      const { notifyChannel } = await import("./botAlerts");
+      await notifyChannel(
+        username,
+        "reconnect-exhausted",
+        `The bot lost its connection to Twitch and couldn't reconnect after ${MAX_RECONNECT_ATTEMPTS} attempts. We've been paged. Try toggling the bot off/on from your dashboard, or rejoin from finalsrs.com/dashboard.`,
+        { cooldownMs: 30 * 60 * 1000, alsoDiscord: true }
+      );
+    } catch (e) {
+      logger.warn("[ircBot] Failed to send reconnect-exhausted alert:", e);
+    }
     return;
+  }
+
+  // Warn the streamer once when we're clearly struggling (attempt 3+).
+  if (client.reconnectAttempts === 3) {
+    try {
+      const { notifyChannel } = await import("./botAlerts");
+      await notifyChannel(
+        username,
+        "reconnect",
+        `I'm having trouble staying connected to Twitch chat — reconnecting now. If commands don't start working in a minute, visit finalsrs.com/dashboard.`,
+        { cooldownMs: 15 * 60 * 1000 }
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 
   const delay = getReconnectDelay(client.reconnectAttempts);
@@ -109,10 +137,27 @@ export async function sendChatMessage(
         logger.warn(`[filter] Suppressing message to broadcaster ${broadcasterId} due to blocked phrase/regex. Message: ${message}`);
         try {
           const { sendWarningToDiscord } = await import('../handlers/discordHandler');
-          // Note: broadcasterId is numeric user id; try to include channel name if available
           await sendWarningToDiscord(`${broadcasterId} has tried to use a blocked term`, `Suppressed outgoing message: ${message}`);
         } catch (e) {
           logger.warn('[filter] Failed to send Discord warning for suppressed message:', e);
+        }
+        // Fix for issue #7: tell the streamer, once per cooldown window, so a
+        // vanished custom-command response isn't mistaken for a broken bot.
+        try {
+          const { Channel } = await import('../db');
+          const row = await Channel.findOne({ where: { twitch_user_id: String(broadcasterId) } });
+          const channelName = row ? String(row.get('username') || '') : '';
+          if (channelName) {
+            const { notifyChannel } = await import('./botAlerts');
+            await notifyChannel(
+              channelName,
+              'filter-suppressed',
+              `One of my responses was blocked by the safety filter. If you think that's a false positive, flag it in our Discord and we'll review.`,
+              { cooldownMs: 30 * 60 * 1000 }
+            );
+          }
+        } catch (e) {
+          logger.warn('[filter] Failed to send in-chat suppression notice:', e);
         }
         return;
       }
@@ -292,6 +337,18 @@ export const startChatBot = async (
       // Don't reconnect on auth failure - manual intervention needed
       if (clients[sanitizedUsername]) {
         clients[sanitizedUsername].intentionalDisconnect = true;
+      }
+      // Surface auth failures so the streamer isn't left guessing.
+      try {
+        const { notifyChannel } = await import("./botAlerts");
+        await notifyChannel(
+          sanitizedUsername,
+          "auth-failed",
+          `I couldn't log in to Twitch (auth failed). The team has been paged. You can also try reconnecting from finalsrs.com/dashboard → Settings.`,
+          { cooldownMs: 60 * 60 * 1000, alsoDiscord: true }
+        );
+      } catch {
+        /* non-fatal */
       }
       socket.destroy();
       return;

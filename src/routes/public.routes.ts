@@ -39,7 +39,7 @@ router.get("/", async (req: Request, res: Response) => {
         }
     }
     res.sendFile(path.join(viewsPath, "index.html"));
-}); 
+});
 
 router.get("/banned", (req: any, res: Response) => {
     const reason = req.session?.banReason || "No reason provided.";

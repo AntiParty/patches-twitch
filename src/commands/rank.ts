@@ -275,7 +275,11 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
     await ctx.say(response, ctx.tags?.["id"]);
   } catch (err) {
     logger.error("[rank] Error executing command:", err);
-    await ctx.say(`@${username}, something went wrong fetching rank data.`, ctx.tags?.["id"]);
+    // Fix for issue #5: actionable error with a next step.
+    await ctx.say(
+      `@${username} couldn't load rank data right now — usually a leaderboard API blip. Try again shortly. Persistent? https://discord.gg/2UKzvzSEqA`,
+      ctx.tags?.["id"]
+    );
   }
 };
 

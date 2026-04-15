@@ -1,0 +1,207 @@
+<!--
+  FinalsRS shared theme partial.
+  Include with include('partials/_theme').
+  Single source of truth for design tokens + base component styles used
+  across the landing page, dashboard, docs, banned, and system-message pages.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+<style>
+  :root {
+    /* Surfaces */
+    --bg-app: #0b0b10;
+    --bg-sidebar: #0f0f15;
+    --bg-card: #15151c;
+    --bg-card-2: #1a1a22;
+    --bg-hover: #20202a;
+    --bg-input: #0f0f15;
+    --bg-overlay: rgba(8, 8, 12, 0.72);
+
+    /* Borders */
+    --border: #23232c;
+    --border-strong: #33333f;
+
+    /* Brand */
+    --primary: #a37bff;
+    --primary-hover: #8e62ff;
+    --primary-soft: rgba(163, 123, 255, 0.14);
+    --primary-ring: rgba(163, 123, 255, 0.28);
+    --brand-grad: linear-gradient(135deg, #b48bff 0%, #7c5cff 100%);
+
+    /* Text */
+    --text-main: #f2f2f5;
+    --text-muted: #a2a2ad;
+    --text-subtle: #70707a;
+
+    /* Status */
+    --success: #3dd598;
+    --success-soft: rgba(61, 213, 152, 0.12);
+    --danger: #ff5a57;
+    --danger-soft: rgba(255, 90, 87, 0.12);
+    --warning: #f5a524;
+    --warning-soft: rgba(245, 165, 36, 0.14);
+    --info: #5aa7ff;
+    --info-soft: rgba(90, 167, 255, 0.14);
+
+    /* Twitch-ish purple for chat bubbles */
+    --twitch: #9147ff;
+
+    /* Shape + motion */
+    --radius-sm: 8px;
+    --radius: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.45);
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    --font: "Inter", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg-app);
+    color: var(--text-main);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Atmospheric background glow used across all full-page views. */
+  .fx-bg::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(900px 500px at 5% -10%, rgba(163, 123, 255, 0.10), transparent 60%),
+      radial-gradient(800px 500px at 95% 110%, rgba(90, 167, 255, 0.06), transparent 60%);
+  }
+  .fx-bg > * { position: relative; z-index: 1; }
+
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { color: var(--primary-hover); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    font: 600 14px/1 var(--font);
+    letter-spacing: -0.005em;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 80ms var(--ease), background-color 140ms var(--ease),
+                border-color 140ms var(--ease), box-shadow 140ms var(--ease),
+                color 140ms var(--ease);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-ring); }
+  .btn-primary {
+    background: var(--primary); color: #fff;
+    box-shadow: 0 6px 20px rgba(163, 123, 255, 0.28);
+  }
+  .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 10px 28px rgba(163, 123, 255, 0.38); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border-strong); }
+  .btn-ghost:hover { color: var(--text-main); border-color: var(--text-muted); }
+  .btn-sm { padding: 8px 12px; font-size: 13px; }
+  .btn-lg { padding: 14px 22px; font-size: 15px; }
+
+  /* Card */
+  .card {
+    background: linear-gradient(180deg, var(--bg-card-2), var(--bg-card));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Badge */
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    background: var(--primary-soft); color: var(--primary);
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* Shared nav bar used on landing + docs */
+  .topnav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    backdrop-filter: blur(14px);
+    background: rgba(11, 11, 16, 0.72);
+    border-bottom: 1px solid var(--border);
+  }
+  .topnav-brand {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 16px; color: var(--text-main);
+  }
+  .topnav-brand img { width: 28px; height: 28px; border-radius: 8px; }
+  .topnav-brand .brand-name { background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .topnav-links { display: flex; gap: 6px; align-items: center; }
+  .topnav-links a.nav-link {
+    color: var(--text-muted); font-weight: 500; font-size: 14px;
+    padding: 8px 12px; border-radius: 8px;
+  }
+  .topnav-links a.nav-link:hover { color: var(--text-main); background: var(--bg-hover); }
+  @media (max-width: 720px) {
+    .topnav { padding: 14px 18px; }
+    .topnav-links .nav-link.hide-sm { display: none; }
+  }
+
+  /* Chat bubble component — used to illustrate commands on landing + docs */
+  .chat-stage {
+    background: #0b0b10;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 14px 14px 16px;
+    font-family: var(--font);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .chat-stage-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-subtle); margin-bottom: 10px;
+  }
+  .chat-stage-head .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff5f57; }
+  .chat-stage-head .dot.y { background: #f5a524; }
+  .chat-stage-head .dot.g { background: #3dd598; }
+
+  .chat-msg { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 14px; line-height: 1.45; }
+  .chat-msg + .chat-msg { border-top: 1px solid rgba(255,255,255,0.03); }
+  .chat-user { font-weight: 700; white-space: nowrap; }
+  .chat-user.viewer { color: #5aa7ff; }
+  .chat-user.mod { color: #3dd598; }
+  .chat-user.bot { color: #a37bff; display: inline-flex; align-items: center; gap: 6px; }
+  .chat-user.bot::before {
+    content: "BOT"; font-size: 9px; background: var(--primary); color: #fff;
+    padding: 2px 5px; border-radius: 4px; letter-spacing: 0.05em;
+  }
+  .chat-body { color: var(--text-main); word-break: break-word; }
+  .chat-body code { font-family: var(--font-mono); font-size: 13px; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; }
+
+  /* Section heading used on landing/docs */
+  .section-eyebrow {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--primary);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: clamp(28px, 4vw, 42px); font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.1; margin: 0 0 14px;
+  }
+  .section-lede {
+    font-size: 17px; color: var(--text-muted); line-height: 1.55;
+    max-width: 640px;
+  }
+</style>

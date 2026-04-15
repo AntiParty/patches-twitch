@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title || 'FinalsRS' %></title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/output.css" />
+    <%- include('partials/_theme') %>
+    <style>
+      :root {
+        --bg-app: #0b0b10;
+        --bg-card: #15151c;
+        --bg-input: #0f0f15;
+        --border: #26262f;
+        --border-strong: #3a3a46;
+        --text: #f2f2f5;
+        --text-muted: #a2a2ad;
+        --text-subtle: #70707a;
+        --accent: #a37bff;
+        --accent-hover: #8e62ff;
+        --danger: #ff5a57;
+        --danger-soft: rgba(255, 90, 87, 0.12);
+        --warn: #f5a524;
+        --warn-soft: rgba(245, 165, 36, 0.14);
+        --info: #5aa7ff;
+        --info-soft: rgba(90, 167, 255, 0.14);
+        --radius: 10px;
+        --radius-lg: 16px;
+        --font: "Inter", system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(1100px 550px at 8% -10%, rgba(163, 123, 255, 0.08), transparent 60%),
+          var(--bg-app);
+        color: var(--text);
+        font-family: var(--font);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+      }
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 36px 32px 28px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+      .badge.err { background: var(--danger-soft); color: var(--danger); }
+      .badge.err::before { background: var(--danger); }
+      .badge.warn { background: var(--warn-soft); color: var(--warn); }
+      .badge.warn::before { background: var(--warn); }
+      .badge.info { background: var(--info-soft); color: var(--info); }
+      .badge.info::before { background: var(--info); }
+
+      h1 { font-size: 24px; font-weight: 700; margin: 14px 0 8px; line-height: 1.25; }
+      p { color: var(--text-muted); font-size: 15px; line-height: 1.55; margin: 0 0 16px; }
+
+      .details {
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        margin: 0 0 18px;
+        font-size: 13px;
+        color: var(--text-subtle);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        word-break: break-word;
+      }
+
+      .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 10px 16px; border-radius: var(--radius);
+        font-size: 14px; font-weight: 600; border: 1px solid transparent;
+        cursor: pointer; text-decoration: none;
+        transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border-strong); }
+      .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
+
+      .support { margin-top: 18px; font-size: 13px; color: var(--text-muted); }
+      .support a { color: var(--text); border-bottom: 1px dashed var(--border-strong); text-decoration: none; }
+      .support a:hover { color: var(--accent); border-color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <span class="badge <%= tone || 'err' %>"><%= badge || 'Something went wrong' %></span>
+      <h1><%= heading %></h1>
+      <p><%= body %></p>
+
+      <% if (typeof details !== 'undefined' && details) { %>
+        <div class="details"><%= details %></div>
+      <% } %>
+
+      <div class="actions">
+        <% (actions || []).forEach(function(a) { %>
+          <a href="<%= a.href %>" class="btn <%= a.primary ? 'btn-primary' : 'btn-ghost' %>">
+            <%= a.label %>
+          </a>
+        <% }); %>
+      </div>
+
+      <p class="support">
+        Stuck? Ping us on
+        <a href="https://discord.gg/2UKzvzSEqA" target="_blank" rel="noopener">Discord</a>
+        or email <a href="mailto:support@finalsrs.com">support@finalsrs.com</a>.
+      </p>
+    </main>
+  </body>
+</html>

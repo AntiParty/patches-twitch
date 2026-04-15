@@ -112,13 +112,45 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
               }, delay);
             });
           });
-          await Promise.allSettled(reconnectPromises);
+          const settled = await Promise.allSettled(reconnectPromises);
+          // Fix for issue #12: surface partial reconnect failures so the
+          // affected streamers know their bot is temporarily down.
+          const failures: string[] = [];
+          settled.forEach((r, i) => {
+            if (r.status === "rejected") failures.push(usernames[i]);
+          });
+          if (failures.length > 0) {
+            logger.warn(
+              `[BotTokenRefresher] ${failures.length}/${usernames.length} channel(s) failed to reconnect after token refresh: ${failures.join(", ")}`
+            );
+            try {
+              const { notifyChannel } = await import("../util/botAlerts");
+              for (const uname of failures) {
+                await notifyChannel(
+                  uname,
+                  "reconnect",
+                  `Heads up — I just rotated my Twitch token and couldn't reconnect cleanly here. Retrying automatically. If I'm still quiet in a few minutes, check finalsrs.com/dashboard.`,
+                  { cooldownMs: 20 * 60 * 1000 }
+                );
+              }
+            } catch { /* non-fatal */ }
+          }
           if (typeof onRefresh === "function") {
             onRefresh(result);
           }
         } catch (e: any) {
           logger.error(`[BotTokenRefresher] Token refresh failed:`, e?.message || e);
           backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF_MS);
+          // Fix for issue #2: page us on Discord if refresh is failing so we
+          // can act before the current token expires. Per-channel in-chat
+          // alerts fire only after we exceed a couple retries to avoid spam.
+          try {
+            const { sendWarningToDiscord } = await import("../handlers/discordHandler");
+            await sendWarningToDiscord(
+              "Bot token refresh failed",
+              `Backoff now ${Math.round(backoffMs / 60000)}m. Error: ${e?.message || e}`
+            );
+          } catch { /* non-fatal */ }
         } finally {
           isRefreshing = false;
         }

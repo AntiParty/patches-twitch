@@ -23,7 +23,11 @@ export async function execute(ctx: any, channel: string, message: string, tags: 
     const channelInstance = await Channel.findOne({ where: { username: sanitizedChannel } });
     const playerId = channelInstance?.player_id?.trim();
     if (!playerId) {
-      await ctx.say(`No THE FINALS player name linked. Use !link FinalsName#1234`, messageId);
+      // Fix for issue #6: make the first-time user path obvious. Show an example.
+      await ctx.say(
+        `No THE FINALS account linked yet. Run: !link YourName#1234 (replace with your exact in-game name + tag). Need help? https://finalsrs.com/docs#link`,
+        messageId
+      );
       return;
     }
 
@@ -71,6 +75,10 @@ export async function execute(ctx: any, channel: string, message: string, tags: 
     }
   } catch (err) {
     logger.error('[peak] Error executing command:', err);
-    await ctx.say(`Something went wrong fetching peak data.`, messageId);
+    // Fix for issue #5: actionable error with a next step.
+    await ctx.say(
+      `Couldn't load peak data right now — probably a temporary hiccup with the leaderboard API. Try again in a minute. Still broken? https://discord.gg/2UKzvzSEqA`,
+      messageId
+    );
   }
 }

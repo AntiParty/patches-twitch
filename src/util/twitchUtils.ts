@@ -395,6 +395,14 @@ export const refreshAccessToken = async (channel: any) => {
         refreshRetries[key] = MAX_REFRESH_RETRIES;
         delete refreshCooldowns[key];
 
+        // Persist revocation flag to DB so the dashboard can detect it
+        try {
+          await freshChannel.update({ token_revoked: true });
+          logger.info(`[${username}] Marked token_revoked=true in database.`);
+        } catch (dbErr) {
+          logger.error(`[${username}] Failed to set token_revoked in DB:`, dbErr);
+        }
+
         // Notify user via Discord
         try {
           const { sendDiscordAlert } = require('../handlers/discordHandler');

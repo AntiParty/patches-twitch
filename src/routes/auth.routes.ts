@@ -46,80 +46,6 @@ router.get("/login", (req: any, res: any) => {
     if (req.session && req.session.isUser && req.session.twitchUsername) {
         return res.redirect('/dashboard');
     }
-
-    // If redirected here because of an expired/revoked token, show a message first
-    if (req.query.expired === '1') {
-        return res.send(`
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Session Expired - FinalsRS</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body {
-                        font-family: 'Poppins', sans-serif;
-                        background-color: #111;
-                        color: #fff;
-                        min-height: 100vh;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                    }
-                    .card {
-                        background: rgba(255, 255, 255, 0.05);
-                        border: 1px solid rgba(255, 255, 255, 0.1);
-                        border-radius: 12px;
-                        padding: 2.5rem;
-                        max-width: 480px;
-                        text-align: center;
-                        box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-                        animation: fadeIn 0.6s ease;
-                    }
-                    .card h1 {
-                        color: #ff6b6b;
-                        font-size: 1.5rem;
-                        margin-bottom: 1rem;
-                    }
-                    .card p {
-                        color: #ccc;
-                        line-height: 1.6;
-                        margin-bottom: 1.5rem;
-                    }
-                    .btn {
-                        display: inline-block;
-                        padding: 0.8rem 2rem;
-                        background: #9146FF;
-                        color: #fff;
-                        font-weight: bold;
-                        font-size: 1rem;
-                        border: none;
-                        border-radius: 8px;
-                        text-decoration: none;
-                        transition: background 0.2s, transform 0.2s;
-                        cursor: pointer;
-                    }
-                    .btn:hover {
-                        background: #772ce8;
-                        transform: translateY(-2px);
-                    }
-                    @keyframes fadeIn {
-                        from { opacity: 0; transform: translateY(15px); }
-                        to { opacity: 1; transform: translateY(0); }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <h1>Session Expired</h1>
-                    <p>Your Twitch authorization has expired or was revoked. Please reconnect your account to continue using your dashboard and bot features.</p>
-                    <a href="/login" class="btn">Reconnect with Twitch</a>
-                </div>
-            </body>
-            </html>
-        `);
-    }
-
     const authUrl = getAuthUrl();
     logger.info(`Generated auth URL: ${authUrl}`);
     res.redirect(authUrl);
@@ -286,14 +212,13 @@ router.get("/callback", async (req: any, res: any) => {
         }
 
         // --- Normal Login Flow ---
-        // Upsert user in DB with tokens and clear any revocation flag
+        // Upsert user in DB with tokens
         await Channel.upsert({
             username: twitchUsername,
             access_token: access_token,
             refresh_token: refresh_token,
             token_expires_at: expirationTime,
             twitch_user_id: twitchUserId,
-            token_revoked: false,
         });
 
         // Clear any permanent token failure state so refresh can resume

@@ -12,7 +12,7 @@ async function syncRole(req: any) {
 
         const user = await Channel.findOne({
             where: { username: req.session.twitchUsername },
-            attributes: ['id', 'role', 'banned', 'ban_reason', 'has_subscription', 'subscription_tier', 'token_revoked']
+            attributes: ['id', 'role', 'banned', 'ban_reason', 'has_subscription', 'subscription_tier']
         });
 
         if (!user) return;
@@ -38,9 +38,6 @@ async function syncRole(req: any) {
         req.session.channelId = user.id;
         req.session.hasSubscription = user.has_subscription;
         req.session.subscriptionTier = user.subscription_tier;
-
-        /* -------- Token revocation sync -------- */
-        req.session.tokenRevoked = (user as any).token_revoked || false;
 
         /* -------- Ban sync -------- */
 
@@ -120,17 +117,6 @@ export async function requireAdmin(req: any, res: any, next: any) {
 export async function requireUser(req: any, res: any, next: any) {
     await syncRole(req);
     if (req.session && req.session.banned) return res.redirect('/banned');
-
-    // If token was revoked (permanent auth failure), destroy session and force re-auth
-    if (req.session && req.session.tokenRevoked) {
-        return new Promise<void>((resolve) => {
-            req.session.destroy(() => {
-                res.redirect('/login?expired=1');
-                resolve();
-            });
-        });
-    }
-
     if (!isUser(req)) {
         return res.redirect('/login');
     }
@@ -157,9 +143,6 @@ export async function requireUserAPI(req: any, res: any, next: any) {
     await syncRole(req);
     if (req.session && req.session.banned) {
         return res.status(403).json({ error: 'Account banned', reason: req.session.banReason });
-    }
-    if (req.session && req.session.tokenRevoked) {
-        return res.status(401).json({ error: 'Token revoked', reauth: true });
     }
     if (!isUser(req)) {
         return res.status(401).json({ error: 'Not authenticated' });

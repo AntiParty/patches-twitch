@@ -9,8 +9,9 @@ import { updateRSHistory } from '@/util/rsPredictor';
 import { updatePeakRanks } from '@/jobs/peakUpdater';
 
 // ── New API ──────────────────────────────────────────────────────────────────
-const NEW_REGULAR_API_URL = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/leaderboard/';
-const NEW_EVENTS_URL      = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/events/leaderboard/';
+const NEW_REGULAR_API_URL  = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/leaderboard/';
+const NEW_EVENTS_URL       = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/events/leaderboard/';
+const BANNED_PLAYERS_URL   = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/banned-players/';
 
 // ── Old API (World Tour only — not available on new API yet) ─────────────────
 // Only the current season is fetched on each update; old seasons are already
@@ -190,14 +191,37 @@ function startEventSource() {
   };
 }
 
+// ── Banned players cache ──────────────────────────────────────────────────────
+const BANNED_CACHE_FILE = path.resolve(__dirname, '../../cache/banned_players.json');
+
+export async function fetchAndWriteBannedPlayers(): Promise<void> {
+  try {
+    const response = await axios.get(BANNED_PLAYERS_URL, { timeout: 15000 });
+    if (!Array.isArray(response.data)) {
+      logger.warn('[CacheUpdater] Banned players API returned non-array response.');
+      return;
+    }
+    // Sort newest first, keep active bans only (unbanTimestamp === null)
+    const active = (response.data as any[])
+      .filter(p => p.unbanTimestamp === null)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    await fs.writeFile(BANNED_CACHE_FILE, JSON.stringify(active, null, 2), 'utf8');
+    logger.info(`[CacheUpdater] Banned players cache updated — ${active.length} active bans.`);
+  } catch (err) {
+    logger.error('[CacheUpdater] Failed to fetch banned players:', err);
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 let lastUpdate = Date.now();
 
 export function startCacheUpdater() {
-  // 1. Immediate first fetch (regular + world tour)
+  // 1. Immediate first fetch (regular + world tour + banned players)
   Promise.all([
     fetchAndWriteRegular(true),
     updateAllWorldTourCaches(),
+    fetchAndWriteBannedPlayers(),
   ])
     .then(() => {
       lastUpdate = Date.now();
@@ -218,6 +242,10 @@ export function startCacheUpdater() {
       sendInfoToDiscord(`[Cache] Fallback poll updated regular leaderboard (S${currentRegularSeason}).`);
     }
   }, FALLBACK_INTERVAL);
+
+  // 4. Banned players poll — every 10 minutes
+  const BANNED_INTERVAL = 10 * 60 * 1000;
+  setInterval(fetchAndWriteBannedPlayers, BANNED_INTERVAL);
 }
 
 export function getNextCacheUpdateInfo(intervalMs = 2 * 60 * 60 * 1000) {

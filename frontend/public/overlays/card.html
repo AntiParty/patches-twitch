@@ -1,349 +1,283 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>The Finals - Clean Card Overlay</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinalsRS – Card Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --accent: #d9002f;
+      --pos:    #22c55e;
+      --neg:    #ef4444;
+    }
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap"
-      rel="stylesheet"
-    />
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <style>
-      :root {
-        --card-accent: #9147ff;
-      }
+    body {
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
 
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: transparent;
-        font-family: "Inter", sans-serif;
-        overflow: hidden;
-        color: #fff;
-        display: flex;
-        justify-content: flex-start;
-        align-items: flex-start;
-        height: 100vh;
-        width: 100vw;
-      }
+    #main-container {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: inline-flex;
+      align-items: stretch;
+      height: 52px;
+      background: rgba(15, 15, 18, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      overflow: hidden;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: #fff;
+      white-space: nowrap;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    }
 
-      .clean-bar {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        padding: 0;
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-        overflow: hidden;
-        color: #1a1a1a;
+    .accent-strip {
+      width: 4px;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
 
-        position: absolute;
-        top: 20px;
-        left: 20px;
-      }
+    .stat-group {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 14px;
+      gap: 2px;
+    }
 
-      .accent-strip {
-        width: 6px;
-        align-self: stretch;
-        background: var(--card-accent);
-      }
+    .stat-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.38);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      line-height: 1;
+    }
 
-      .stat-cluster {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 8px 0;
-        line-height: 1.1;
-      }
+    .stat-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
 
-      /* First item needs left padding */
-      .stat-cluster:first-of-type {
-        padding-left: 0;
-      }
+    .rank-icon {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      flex-shrink: 0;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+    }
 
-      /* Last item needs right padding */
-      .stat-cluster:last-child {
-        padding-right: 20px;
-      }
+    .divider {
+      width: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      align-self: stretch;
+      flex-shrink: 0;
+      margin: 10px 0;
+    }
 
-      .label {
-        font-size: 10px;
-        font-weight: 600;
-        color: #666;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
 
-      .value {
-        font-size: 18px;
-        font-weight: 800;
-        color: #1a1a1a;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
+    @keyframes pop {
+      0%   { transform: scale(0.85); opacity: 0.4; }
+      55%  { transform: scale(1.10); opacity: 1;   }
+      100% { transform: scale(1.00); opacity: 1;   }
+    }
+    .pop { animation: pop 0.35s ease-out forwards; }
+  </style>
+</head>
+<body>
+  <div id="main-container">
+    <div class="accent-strip"></div>
 
-      .rank-icon {
-        height: 20px;
-        width: auto;
-      }
-
-      .divider {
-        width: 1px;
-        height: 24px;
-        background: #eee;
-      }
-
-      .val-pos {
-        color: #00b35f;
-      }
-      .val-neg {
-        color: #e91916;
-      }
-
-      .hidden {
-        display: none !important;
-      }
-    </style>
-  </head>
-
-  <body>
-    <div class="clean-bar" id="main-container">
-      <div class="accent-strip"></div>
-
-      <div class="stat-cluster" id="group-name" style="padding-left: 10px">
-        <div class="label">Player</div>
-        <div class="value" id="player-name">---</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="stat-cluster" id="group-rank">
-        <div class="label">Rank</div>
-        <div class="value" id="rank-value">---</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="stat-cluster" id="group-score">
-        <div class="label">Score</div>
-        <div class="value" id="score-value">---</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="stat-cluster" id="group-wt">
-        <div class="label">WT Rank</div>
-        <div class="value" id="wt-value">---</div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="stat-cluster" id="group-session" style="padding-right: 20px">
-        <div class="label">Session</div>
-        <div class="value" id="session-change">---</div>
-      </div>
+    <div class="stat-group" id="group-name">
+      <span class="stat-label">Player</span>
+      <span class="stat-value" id="val-name">---</span>
     </div>
+    <div class="divider" data-divider="1"></div>
 
-    <script>
-      const urlParams = new URLSearchParams(window.location.search);
-      const token = urlParams.get("token");
-      const isPreview = urlParams.get("preview") === "true";
+    <div class="stat-group" id="group-rank">
+      <span class="stat-label">Rank</span>
+      <span class="stat-value" id="val-rank">
+        <img class="rank-icon" id="rank-icon" src="" alt="" />
+        <span id="rank-text">---</span>
+      </span>
+    </div>
+    <div class="divider" data-divider="1"></div>
 
-      let config = {
-        theme: "card",
-        primaryColor: "#9147ff",
-        layout: { mode: "compact", visibility: {} },
+    <div class="stat-group" id="group-score">
+      <span class="stat-label">RS</span>
+      <span class="stat-value" id="val-score">---</span>
+    </div>
+    <div class="divider" data-divider="1"></div>
+
+    <div class="stat-group" id="group-wt">
+      <span class="stat-label">WT</span>
+      <span class="stat-value" id="val-wt">---</span>
+    </div>
+    <div class="divider" data-divider="1"></div>
+
+    <div class="stat-group" id="group-session">
+      <span class="stat-label">Session</span>
+      <span class="stat-value" id="val-session">---</span>
+    </div>
+  </div>
+
+  <script>
+    const RANK_ICONS = {
+      'Bronze 4':   'https://www.thefinals.wiki/w/images/d/da/League_Bronze_4.png',
+      'Bronze 3':   'https://www.thefinals.wiki/w/images/4/43/League_Bronze_3.png',
+      'Bronze 2':   'https://www.thefinals.wiki/w/images/6/60/League_Bronze_2.png',
+      'Bronze 1':   'https://www.thefinals.wiki/w/images/8/84/League_Bronze_1.png',
+      'Silver 4':   'https://www.thefinals.wiki/w/images/d/d4/League_Silver_4.png',
+      'Silver 3':   'https://www.thefinals.wiki/w/images/1/1f/League_Silver_3.png',
+      'Silver 2':   'https://www.thefinals.wiki/w/images/0/0e/League_Silver_2.png',
+      'Silver 1':   'https://www.thefinals.wiki/w/images/b/b3/League_Silver_1.png',
+      'Gold 4':     'https://www.thefinals.wiki/w/images/2/27/League_Gold_4.png',
+      'Gold 3':     'https://www.thefinals.wiki/w/images/9/9f/League_Gold_3.png',
+      'Gold 2':     'https://www.thefinals.wiki/w/images/1/15/League_Gold_2.png',
+      'Gold 1':     'https://www.thefinals.wiki/w/images/8/8d/League_Gold_1.png',
+      'Platinum 4': 'https://www.thefinals.wiki/w/images/8/85/League_Platinum_4.png',
+      'Platinum 3': 'https://www.thefinals.wiki/w/images/2/2c/League_Platinum_3.png',
+      'Platinum 2': 'https://www.thefinals.wiki/w/images/c/cd/League_Platinum_2.png',
+      'Platinum 1': 'https://www.thefinals.wiki/w/images/7/7a/League_Platinum_1.png',
+      'Diamond 4':  'https://www.thefinals.wiki/w/images/c/c4/League_Diamond_4.png',
+      'Diamond 3':  'https://www.thefinals.wiki/w/images/b/b5/League_Diamond_3.png',
+      'Diamond 2':  'https://www.thefinals.wiki/w/images/b/b3/League_Diamond_2.png',
+      'Diamond 1':  'https://www.thefinals.wiki/w/images/2/2c/League_Diamond_1.png',
+      'Ruby':       'https://www.thefinals.wiki/w/images/8/81/League_Ruby.png',
+      'Unranked':   'https://www.thefinals.wiki/w/images/d/d4/League_Unranked.png',
+    };
+
+    const PREVIEW_DATA = {
+      playerName: 'carnifex#7330', rank: 1, league: 'Diamond 1',
+      rankScore: 59232, worldTourRank: '#4', sessionChange: 312,
+      session: { change: 312 },
+    };
+
+    const params     = new URLSearchParams(window.location.search);
+    const TOKEN      = params.get('token');
+    const IS_PREVIEW = params.get('preview') === 'true';
+
+    let prevScore = 0;
+    let cfg = { primaryColor: '#d9002f', visibility: {} };
+
+    function animateNumber(el, from, to, ms) {
+      const start = performance.now();
+      function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+      function frame(now) {
+        const p = Math.min((now - start) / ms, 1);
+        el.textContent = Math.round(from + (to - from) * easeOut(p)).toLocaleString();
+        if (p < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function applyVisibility() {
+      const v = cfg.visibility || {};
+      const map = {
+        'group-name': v.hideName, 'group-rank': v.hideRank,
+        'group-score': v.hideScore, 'group-wt': v.hideWT, 'group-session': v.hideSession,
       };
+      for (const [id, hide] of Object.entries(map)) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = hide ? 'none' : '';
+      }
+      // Update accent strip color
+      document.querySelector('.accent-strip').style.background = cfg.primaryColor;
 
-      const RANK_ICONS = {
-        "Bronze 4":
-          "https://www.thefinals.wiki/w/images/d/da/League_Bronze_4.png",
-        "Bronze 3":
-          "https://www.thefinals.wiki/w/images/4/43/League_Bronze_3.png",
-        "Bronze 2":
-          "https://www.thefinals.wiki/w/images/6/60/League_Bronze_2.png",
-        "Bronze 1":
-          "https://www.thefinals.wiki/w/images/8/84/League_Bronze_1.png",
-        "Silver 4":
-          "https://www.thefinals.wiki/w/images/d/d4/League_Silver_4.png",
-        "Silver 3":
-          "https://www.thefinals.wiki/w/images/1/1f/League_Silver_3.png",
-        "Silver 2":
-          "https://www.thefinals.wiki/w/images/0/0e/League_Silver_2.png",
-        "Silver 1":
-          "https://www.thefinals.wiki/w/images/b/b3/League_Silver_1.png",
-        "Gold 4": "https://www.thefinals.wiki/w/images/2/27/League_Gold_4.png",
-        "Gold 3": "https://www.thefinals.wiki/w/images/9/9f/League_Gold_3.png",
-        "Gold 2": "https://www.thefinals.wiki/w/images/1/15/League_Gold_2.png",
-        "Gold 1": "https://www.thefinals.wiki/w/images/8/8d/League_Gold_1.png",
-        "Platinum 4":
-          "https://www.thefinals.wiki/w/images/8/85/League_Platinum_4.png",
-        "Platinum 3":
-          "https://www.thefinals.wiki/w/images/2/2c/League_Platinum_3.png",
-        "Platinum 2":
-          "https://www.thefinals.wiki/w/images/c/cd/League_Platinum_2.png",
-        "Platinum 1":
-          "https://www.thefinals.wiki/w/images/7/7a/League_Platinum_1.png",
-        "Diamond 4":
-          "https://www.thefinals.wiki/w/images/c/c4/League_Diamond_4.png",
-        "Diamond 3":
-          "https://www.thefinals.wiki/w/images/b/b5/League_Diamond_3.png",
-        "Diamond 2":
-          "https://www.thefinals.wiki/w/images/b/b3/League_Diamond_2.png",
-        "Diamond 1":
-          "https://www.thefinals.wiki/w/images/2/2c/League_Diamond_1.png",
-        Ruby: "https://www.thefinals.wiki/w/images/8/81/League_Ruby.png",
-        Unranked:
-          "https://www.thefinals.wiki/w/images/d/d4/League_Unranked.png",
-      };
-
-      async function fetchConfig() {
-        if (!token) return;
-        try {
-          const res = await fetch(`/api/overlay/config/${token}`);
-          if (res.ok) {
-            const data = await res.json();
-            config.primaryColor = data.primaryColor || "#9147ff";
-            config.layout = data.layout || { mode: "compact", visibility: {} };
-
-            document.documentElement.style.setProperty(
-              "--card-accent",
-              config.primaryColor
-            );
-            applyVisibility();
-          }
-        } catch (e) {
-          console.error("Failed to fetch config", e);
+      const container = document.getElementById('main-container');
+      const kids = Array.from(container.children);
+      kids.forEach(k => { if (k.dataset.divider) k.style.display = 'none'; });
+      const visible = kids.filter(k => k.id && k.id.startsWith('group-') && k.style.display !== 'none');
+      for (let i = 0; i < visible.length - 1; i++) {
+        let node = visible[i].nextElementSibling;
+        while (node && node !== visible[i + 1]) {
+          if (node.dataset.divider) { node.style.display = ''; break; }
+          node = node.nextElementSibling;
         }
       }
+    }
 
-      function applyVisibility() {
-        const v = config.layout.visibility || {};
+    function render(data) {
+      document.getElementById('val-name').textContent = data.playerName || '---';
 
-        const toggleGroup = (id, hide) => {
-          const el = document.getElementById(id);
-          if (!el) return;
-          if (hide) {
-            el.classList.add("hidden");
-            if (
-              el.nextElementSibling &&
-              el.nextElementSibling.classList.contains("divider")
-            ) {
-              el.nextElementSibling.classList.add("hidden");
-            }
-          } else {
-            el.classList.remove("hidden");
-            if (
-              el.nextElementSibling &&
-              el.nextElementSibling.classList.contains("divider")
-            ) {
-              el.nextElementSibling.classList.remove("hidden");
-            }
-          }
-        };
+      const icon = document.getElementById('rank-icon');
+      icon.src = RANK_ICONS[data.league] || RANK_ICONS['Unranked'];
+      icon.alt = data.league || '';
+      document.getElementById('rank-text').textContent = data.league || '---';
 
-        toggleGroup("group-name", v.hideName);
-        toggleGroup("group-rank", v.hideRank);
-        toggleGroup("group-score", v.hideScore);
-        toggleGroup("group-wt", v.hideWT);
-        toggleGroup("group-session", v.hideSession);
-
-        // Fix separator logic
-        const container = document.getElementById("main-container");
-        const visibleChildren = Array.from(container.children).filter(
-          (c) => !c.classList.contains("hidden")
-        );
-        if (
-          visibleChildren.length > 0 &&
-          visibleChildren[visibleChildren.length - 1].classList.contains(
-            "divider"
-          )
-        ) {
-          visibleChildren[visibleChildren.length - 1].classList.add("hidden");
-        }
+      const scoreEl = document.getElementById('val-score');
+      const newScore = data.rankScore || 0;
+      if (newScore !== prevScore) {
+        animateNumber(scoreEl, prevScore, newScore, 900);
+        prevScore = newScore;
+      } else {
+        scoreEl.textContent = newScore.toLocaleString();
       }
 
-      async function updateOverlay() {
-        if (isPreview) {
-          document.getElementById("player-name").textContent = "MOCK_USER";
-          document.getElementById("rank-value").textContent = "D1";
-          document.getElementById("score-value").textContent = "45.2K";
-          document.getElementById("wt-value").textContent = "#1337";
-          document.getElementById("session-change").textContent = "+250";
-          document.getElementById("session-change").className = "value val-pos";
-          return;
-        }
+      document.getElementById('val-wt').textContent = data.worldTourRank || '---';
 
-        if (!token) return;
-
-        try {
-          const res = await fetch(`/api/overlay/data/${token}`);
-          if (!res.ok) return;
-
-          const data = await res.json();
-
-          document.getElementById("player-name").textContent =
-            data.playerName || "Unknown";
-          document.getElementById("player-name").textContent =
-            data.playerName || "Unknown";
-
-          const rankEl = document.getElementById("rank-value");
-          rankEl.innerHTML = "";
-          if (data.league && RANK_ICONS[data.league]) {
-            const img = document.createElement("img");
-            img.src = RANK_ICONS[data.league];
-            img.className = "rank-icon";
-            rankEl.appendChild(img);
-          }
-          const rankText = document.createElement("span");
-          rankText.textContent = data.league || "-";
-          rankEl.appendChild(rankText);
-
-          // Format score k
-          const score = data.rankScore;
-          if (score) {
-            const formatted =
-              score >= 1000
-                ? `${(score / 1000).toFixed(1)}K`
-                : score.toString();
-            document.getElementById("score-value").textContent = formatted;
-          } else {
-            document.getElementById("score-value").textContent = "-";
-          }
-
-          document.getElementById("wt-value").textContent =
-            data.worldTourRank || "-";
-
-          const sessionEl = document.getElementById("session-change");
-          if (data.sessionChange !== undefined && data.sessionChange !== 0) {
-            const change =
-              data.sessionChange > 0
-                ? `+${data.sessionChange}`
-                : data.sessionChange;
-            sessionEl.textContent = change;
-            sessionEl.className =
-              data.sessionChange > 0 ? "value val-pos" : "value val-neg";
-          } else {
-            sessionEl.textContent = "0";
-            sessionEl.className = "value";
-          }
-        } catch (e) {
-          console.error("Error updating overlay:", e);
-        }
+      const change  = data.sessionChange ?? data.session?.change ?? 0;
+      const sessEl  = document.getElementById('val-session');
+      const wasText = sessEl.textContent;
+      const newText = change === 0 ? '0' : (change > 0 ? `+${change}` : `${change}`);
+      sessEl.textContent = newText;
+      sessEl.className   = 'stat-value' + (change > 0 ? ' pos' : change < 0 ? ' neg' : '');
+      if (newText !== wasText) {
+        sessEl.classList.remove('pop');
+        void sessEl.offsetWidth;
+        sessEl.classList.add('pop');
       }
+    }
 
-      fetchConfig().then(() => {
-        updateOverlay();
-        if (!isPreview) {
-          setInterval(updateOverlay, 30000);
-        }
-      });
-    </script>
-  </body>
+    async function fetchConfig() {
+      if (!TOKEN) return;
+      try {
+        const res = await fetch(`/api/overlay/config/${TOKEN}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        cfg.primaryColor = data.primaryColor || '#d9002f';
+        cfg.visibility   = data.layout?.visibility || {};
+        document.documentElement.style.setProperty('--accent', cfg.primaryColor);
+        applyVisibility();
+      } catch (e) { console.error('[card] config fetch error', e); }
+    }
+
+    async function fetchAndRender() {
+      if (IS_PREVIEW) { render(PREVIEW_DATA); return; }
+      if (!TOKEN) return;
+      try {
+        const res = await fetch(`/api/overlay/data/${TOKEN}`);
+        if (!res.ok) return;
+        render(await res.json());
+      } catch (e) { console.error('[card] data fetch error', e); }
+    }
+
+    (async () => {
+      await fetchConfig();
+      await fetchAndRender();
+      if (!IS_PREVIEW) {
+        setInterval(fetchAndRender, 10000);
+        setInterval(fetchConfig,    20000);
+      }
+    })();
+  </script>
+</body>
 </html>

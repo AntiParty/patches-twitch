@@ -40,6 +40,37 @@ function validatePlayerId(input: string): string | null {
   return `${name}#${tag}`;
 }
 
+/**
+ * Searches a leaderboard array by name (with or without #tag).
+ * Priority: exact full match → exact name-part match → startsWith name-part match.
+ * When multiple candidates exist, the best-ranked (lowest rank number) is returned.
+ */
+function searchPlayer(data: any[] | null, query: string): any | null {
+  if (!data) return null;
+  const q = query.toLowerCase().trim();
+
+  // 1. Exact full match — "lamp#5944"
+  const exact = data.find(p => p.name.toLowerCase() === q);
+  if (exact) return exact;
+
+  if (q.includes('#')) {
+    // Has a tag but no exact match — match on name-part prefix as fallback
+    const base = q.split('#')[0];
+    return data.find(p => p.name.toLowerCase().startsWith(base + '#')) ?? null;
+  }
+
+  // No tag — search by name portion only
+  // 2. Exact name-part match — "lamp" matches "lamp#5944" and "lamp#1111"; pick best rank
+  const exactName = data.filter(p => p.name.toLowerCase().split('#')[0] === q);
+  if (exactName.length > 0) return exactName.sort((a, b) => a.rank - b.rank)[0];
+
+  // 3. StartsWith match — "lam" matches "lamp#5944"; pick best rank
+  const starts = data.filter(p => p.name.toLowerCase().split('#')[0].startsWith(q));
+  if (starts.length > 0) return starts.sort((a, b) => a.rank - b.rank)[0];
+
+  return null;
+}
+
 const processedMessages = new Set<string>();
 
 async function getTransitionSuffix(): Promise<string> {
@@ -133,22 +164,36 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
 
     if (args && args.length > 0) {
       // Join args in case player name has spaces (e.g., "Some Name#1234")
-      const inputPlayerId = args.join(' ');
-      const validatedId = validatePlayerId(inputPlayerId);
+      const inputRaw = args.join(' ').trim().slice(0, 50);
 
-      if (validatedId) {
-        finalsName = validatedId.toLowerCase();
-        isLookup = true;
-        lookupTarget = validatedId; // Keep original case for display
-      } else if (inputPlayerId.includes('#')) {
-        // User tried to look up a player but format is invalid
-        await ctx.say(
-          `@${username}, invalid player format. Use: !rank PlayerName#1234`,
-          ctx.tags?.["id"]
-        );
-        return;
+      if (inputRaw.includes('#')) {
+        // Full ID provided — validate strictly
+        const validatedId = validatePlayerId(inputRaw);
+        if (validatedId) {
+          finalsName    = validatedId.toLowerCase();
+          isLookup      = true;
+          lookupTarget  = validatedId;
+        } else {
+          await ctx.say(
+            `@${username}, invalid player format. Use: !rank PlayerName#1234`,
+            ctx.tags?.["id"]
+          );
+          return;
+        }
+      } else {
+        // Name-only search — sanitize then let searchPlayer handle matching
+        if (inputRaw.length < 2) {
+          await ctx.say(`@${username}, search query too short.`, ctx.tags?.["id"]);
+          return;
+        }
+        if (!/^[\w\s\-.]+$/i.test(inputRaw)) {
+          await ctx.say(`@${username}, invalid player name.`, ctx.tags?.["id"]);
+          return;
+        }
+        finalsName   = inputRaw.toLowerCase();
+        isLookup     = true;
+        lookupTarget = inputRaw; // overwritten below once player is found
       }
-      // If no # in the arg, ignore it and fall through to streamer lookup
     }
 
     // If no valid player ID provided, use the streamer's linked account
@@ -172,20 +217,13 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       return;
     }
 
-    const findPlayer = (data: any[] | null, name: string) => {
-      if (!data) return null;
-      // Case-insensitive exact match first
-      let player = data.find(p => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        // Fallback: match by base name (before #)
-        const baseName = name.split("#")[0].toLowerCase();
-        player = data.find(p => p.name.toLowerCase().startsWith(baseName + "#"));
-      }
-      return player;
-    };
+    const player   = searchPlayer(regularData,   finalsName!);
+    const wtPlayer = searchPlayer(worldTourData, finalsName!);
 
-    const player = findPlayer(regularData, finalsName);
-    const wtPlayer = findPlayer(worldTourData, finalsName);
+    // Use the actual found name for display (so "lamp" → "lamp#5944")
+    if (isLookup && (player || wtPlayer)) {
+      lookupTarget = player?.name ?? wtPlayer?.name ?? lookupTarget;
+    }
 
     const vars = {
       username,
@@ -261,7 +299,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       }
     } else {
       if (isLookup) {
-        response += `${displayName} not found on ranked or WT leaderboards.`;
+        response += `"${displayName}" not found on ranked or WT leaderboards.`;
       } else {
         response += `not found on ranked or WT leaderboards.`;
       }

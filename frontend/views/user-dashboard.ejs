@@ -3223,8 +3223,7 @@
         if (urlInput) {
           const origin = window.location.origin;
           const theme = themeSelect ? themeSelect.value : "minimal";
-          const overlayFile =
-            theme === "minimal" ? "overlay.html" : `${theme}.html`;
+          const overlayFile = `${theme}.html`;
 
           const url = `${origin}/overlays/${overlayFile}?token=${overlayToken}&preview=true&t=${Date.now()}`;
           urlInput.value = `${origin}/overlays/${overlayFile}?token=${overlayToken}`;

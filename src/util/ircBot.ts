@@ -332,8 +332,13 @@ export const startChatBot = async (
     
     // Check for common error messages from Twitch
     if (rawData.includes("Login authentication failed") || rawData.includes("Login unsuccessful")) {
-      logger.error(`[ERROR] ⚠️ Twitch IRC authentication FAILED for ${sanitizedUsername}. Check TWITCH_BOT_TOKEN and TWITCH_BOT_USERNAME.`);
-      logger.error(`[ERROR] Bot username: ${process.env.TWITCH_BOT_USERNAME}, Token present: ${!!process.env.TWITCH_BOT_TOKEN}`);
+      const isCustom = !!customCredentials;
+      logger.error(`[ERROR] ⚠️ Twitch IRC auth FAILED for channel #${sanitizedUsername} using bot "${botUsername}" (${isCustom ? "custom bot account" : "default bot"}).`);
+      if (isCustom) {
+        logger.error(`[ERROR] Custom bot "${botUsername}" token appears invalid. CustomBotAccount tokens are not auto-refreshed — user must re-link from the dashboard.`);
+      } else {
+        logger.error(`[ERROR] Default bot env — TWITCH_BOT_USERNAME=${process.env.TWITCH_BOT_USERNAME}, token present=${!!process.env.TWITCH_BOT_TOKEN}. The token is likely stale; the auto-refresher will rotate it and reconnect.`);
+      }
       // Don't reconnect on auth failure - manual intervention needed
       if (clients[sanitizedUsername]) {
         clients[sanitizedUsername].intentionalDisconnect = true;

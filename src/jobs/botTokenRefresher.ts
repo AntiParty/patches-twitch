@@ -135,6 +135,48 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
               }
             } catch { /* non-fatal */ }
           }
+          // Rescue channels that got booted from `clients` after a prior
+          // auth failure — they won't come back otherwise until restart.
+          // Scoped to default-bot channels; custom-bot channels have their
+          // own (currently absent) refresh path and shouldn't be reconnected
+          // with the default token.
+          try {
+            const { botManager } = await import("../botManager");
+            const { Channel, CustomBotAccount } = await import("../db");
+            const enabledChannels: any[] = await Channel.findAll({ where: { bot_enabled: true } });
+            const activeCustomBots: any[] = await CustomBotAccount.findAll({ where: { is_active: true } });
+            const customChannelIds = new Set(activeCustomBots.map((cb: any) => cb.channel_id));
+            const active = new Set(Object.keys(clients));
+            const toRescue = enabledChannels.filter(
+              (c: any) =>
+                !active.has(c.username) &&
+                !customChannelIds.has(c.id) &&
+                c.access_token &&
+                c.twitch_user_id
+            );
+            if (toRescue.length > 0) {
+              logger.info(
+                `[BotTokenRefresher] Rescuing ${toRescue.length} default-bot channel(s) dark after prior auth failure: ${toRescue.map((c: any) => c.username).join(", ")}`
+              );
+              toRescue.forEach((ch: any, i: number) => {
+                const delay = i * delayPer + Math.floor(Math.random() * 100);
+                setTimeout(async () => {
+                  try {
+                    await botManager.startBotForUser(
+                      ch.username,
+                      ch.access_token || "",
+                      ch.refresh_token || "",
+                      ch.twitch_user_id || ""
+                    );
+                  } catch (e) {
+                    logger.warn(`[BotTokenRefresher] Failed to rescue ${ch.username}:`, e);
+                  }
+                }, delay);
+              });
+            }
+          } catch (e) {
+            logger.warn("[BotTokenRefresher] Rescue scan failed:", e);
+          }
           if (typeof onRefresh === "function") {
             onRefresh(result);
           }

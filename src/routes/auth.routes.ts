@@ -219,7 +219,8 @@ router.get("/callback", async (req: any, res: any) => {
             refresh_token: refresh_token,
             token_expires_at: expirationTime,
             twitch_user_id: twitchUserId,
-        });
+            auth_revoked: false,
+        } as any);
 
         // Clear any permanent token failure state so refresh can resume
         clearRefreshPermanentFailed(twitchUsername);

@@ -6,13 +6,32 @@ import logger from '@/util/logger';
 import { decryptToken, encryptToken } from './crypto';
 
 /**
- * Safely decrypt a token, handling both encrypted and legacy plain tokens
+ * Safely decrypt a token, handling both encrypted and legacy plain tokens.
+ *
+ * Returns:
+ *   - decrypted plaintext on success
+ *   - the input as-is if it clearly is NOT our encrypted envelope (legacy plain token)
+ *   - null if the input looks like our encrypted envelope but decryption failed
+ *     (wrong key, corrupted data). Callers MUST treat null as a system error —
+ *     do NOT pass ciphertext to Twitch as if it were a plain refresh token, or
+ *     Twitch will return 400 and we'll mistakenly mark the user revoked.
  */
-function safeDecryptToken(encryptedOrPlainToken: string): string {
+function safeDecryptToken(encryptedOrPlainToken: string): string | null {
   if (!encryptedOrPlainToken) return '';
-  const decrypted = decryptToken(encryptedOrPlainToken);
+  const decrypted = decryptToken(encryptedOrPlainToken, true);
   if (decrypted) return decrypted;
-  // Legacy plain token
+
+  // Detect our encrypted envelope: base64 -> JSON with iv/tag/data fields.
+  // If it matches, decryption genuinely failed (key mismatch / corruption).
+  try {
+    const maybe = JSON.parse(Buffer.from(encryptedOrPlainToken, 'base64').toString());
+    if (maybe && typeof maybe === 'object' && maybe.iv && maybe.tag && maybe.data) {
+      logger.error('[twitchUtils] Token decryption failed on an encrypted envelope — likely TOKEN_ENCRYPTION_KEY mismatch. Refusing to pass ciphertext to Twitch.');
+      return null;
+    }
+  } catch { /* not our envelope */ }
+
+  // Legacy plain token (pre-encryption rollout)
   return encryptedOrPlainToken;
 }
 
@@ -225,6 +244,11 @@ export const getStreamStatusWithAutoRefresh = async (username: string) => {
     }
     // Decrypt the stored token for API use
     const accessToken = safeDecryptToken(chanAny.access_token);
+    if (!accessToken) {
+      // null = encrypted envelope we can't decrypt (key problem, not user's fault)
+      logger.error(`[${username}] Access token could not be decrypted — skipping stream status check.`);
+      return { isLive: false, streamStartTime: null, liveDuration: null, error: 'Token decryption failed.' };
+    }
     let result = await getStreamStatusForUser(username, accessToken);
     if (result?.error && result.error.includes('401')) {
       // Token expired, refresh it
@@ -298,10 +322,19 @@ export const refreshAccessToken = async (channel: any) => {
     throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
   }
 
-  // If token was permanently revoked (400 invalid grant), do not retry until user re-auths
+  // If token was permanently revoked (400 invalid grant), do not retry until user re-auths.
+  // Check both the in-memory set (fast) and the DB flag (survives restarts).
   if (refreshPermanentFailed.has(key)) {
     return null;
   }
+  // DB check — catches channels that were revoked before the last process restart
+  try {
+    const revokedCheck = await Channel.findOne({ where: { username }, attributes: ['auth_revoked'] });
+    if (revokedCheck && (revokedCheck as any).auth_revoked) {
+      refreshPermanentFailed.add(key); // populate in-memory cache
+      return null;
+    }
+  } catch { /* non-fatal — fall through to attempt */ }
 
   // Check if we're in cooldown period
   const cooldownExpiry = refreshCooldowns[key];
@@ -351,8 +384,19 @@ export const refreshAccessToken = async (channel: any) => {
     return null;
   }
 
-  // Decrypt the refresh token for use with Twitch API
+  // Decrypt the refresh token for use with Twitch API.
+  // If decryption returns null, the stored token is an encrypted envelope we
+  // cannot decrypt (likely TOKEN_ENCRYPTION_KEY was lost or rotated). We must
+  // NOT send ciphertext to Twitch — that would trigger a 400 and we'd wrongly
+  // mark the user as revoked. Bail out without touching Twitch or auth_revoked.
   const refreshToken = safeDecryptToken(encryptedRefreshToken);
+  if (refreshToken === null) {
+    logger.error(`[${username}] Refresh token could not be decrypted. NOT calling Twitch — this is a server-side key problem, not a revoked user. Investigate TOKEN_ENCRYPTION_KEY.`);
+    refreshLocks[key] = false;
+    // Back off so we don't spin; do NOT set auth_revoked.
+    refreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+    return null;
+  }
 
   const isValidRefreshToken = await validateRefreshToken(refreshToken);
   if (!isValidRefreshToken) {
@@ -390,56 +434,19 @@ export const refreshAccessToken = async (channel: any) => {
 
       // If error is unrecoverable (400), mark as permanently failed and don't retry
       if (response.status === 400) {
-        logger.error(`[${username}] Received 400 (invalid grant). Refresh token may be revoked. User needs to re-authenticate.`);
+        logger.error(`[${username}] Received 400 (invalid grant). Refresh token revoked — user needs to re-authenticate.`);
         refreshPermanentFailed.add(key);
         refreshRetries[key] = MAX_REFRESH_RETRIES;
         delete refreshCooldowns[key];
-
-        // Notify user via Discord
+        // Persist to DB so the flag survives process restarts
         try {
-          const { sendDiscordAlert } = require('../handlers/discordHandler');
-          await sendDiscordAlert({
-            type: 'error',
-            title: 'Twitch Re-Authentication Required',
-            description: `@${username}, your Twitch token has been revoked or is invalid. Please re-authenticate your account at finalsrs.com to continue using bot features.`,
-            fields: [
-              { name: 'Reason', value: errorDetails || response.statusText },
-            ],
-          });
-        } catch (notifyErr) {
-          logger.error(`[${username}] Failed to send Discord notification:`, notifyErr);
+          await Channel.update({ auth_revoked: true } as any, { where: { username } });
+        } catch (dbErr) {
+          logger.error(`[${username}] Failed to persist auth_revoked flag:`, dbErr);
         }
-
-        // Notify user in Twitch chat (one-time)
-        try {
-          const { clients } = require('./ircBot');
-          const client = clients[username];
-          if (client && typeof client.say === 'function') {
-            if (!client._notifiedReauth) {
-              client.say(`#${username}`, `Your Twitch token has been revoked. Please re-authenticate at finalsrs.com to continue using bot features.`);
-              client._notifiedReauth = true;
-            }
-          }
-        } catch (chatErr) {
-          logger.error(`[${username}] Failed to send Twitch chat notification:`, chatErr);
-        }
-
+        // ircBot will fire the auth-failed alert (in-chat + Discord) when it
+        // next attempts to connect and gets rejected, so we don't duplicate it here.
         return null;
-      }
-
-      // For other errors, notify and schedule retry
-      try {
-        const { sendDiscordAlert } = require('../handlers/discordHandler');
-        await sendDiscordAlert({
-          type: 'error',
-          title: 'Twitch Token Refresh Failed',
-          description: `@${username}, your Twitch token could not be refreshed. The system will retry automatically.`,
-          fields: [
-            { name: 'Reason', value: errorDetails || response.statusText },
-          ],
-        });
-      } catch (notifyErr) {
-        logger.error(`[${username}] Failed to send Discord notification:`, notifyErr);
       }
 
       // Schedule retry using exponential backoff if not maxed out
@@ -499,21 +506,6 @@ export const refreshAccessToken = async (channel: any) => {
 
     // Always clear lock on exception
     refreshLocks[key] = false;
-
-    // Notify user via Discord
-    try {
-      const { sendDiscordAlert } = require('../handlers/discordHandler');
-      await sendDiscordAlert({
-        type: 'error',
-        title: 'Twitch Token Refresh Error',
-        description: `@${username}, an error occurred while refreshing your Twitch token. The system will retry automatically.`,
-        fields: [
-          { name: 'Error', value: error?.message || JSON.stringify(error) },
-        ],
-      });
-    } catch (notifyErr) {
-      logger.error(`[${username}] Failed to send Discord notification:`, notifyErr);
-    }
 
     // Schedule retry with exponential backoff
     if (refreshRetries[key] < MAX_REFRESH_RETRIES) {

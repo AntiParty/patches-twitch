@@ -47,6 +47,7 @@ class Channel extends Model {
   declare has_subscription: boolean;
   declare subscription_tier: string | null;
   declare notify_chat_reminders: boolean;
+  declare auth_revoked: boolean;
 }
 
 
@@ -194,6 +195,11 @@ Channel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    auth_revoked: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
@@ -490,6 +496,17 @@ async function runMigrations() {
         defaultValue: true,
       });
       logger.info('[Migration] notify_chat_reminders column added successfully.');
+    }
+
+    // Add auth_revoked column if missing
+    if (!tableInfo.auth_revoked) {
+      logger.info('[Migration] Adding auth_revoked column to Channels table...');
+      await queryInterface.addColumn('Channels', 'auth_revoked', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+      logger.info('[Migration] auth_revoked column added successfully.');
     }
 
   } catch (err) {

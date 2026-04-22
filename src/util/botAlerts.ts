@@ -27,6 +27,53 @@ type AlertKey =
 const lastSent: Map<string, number> = new Map();
 const DEFAULT_COOLDOWN_MS = 10 * 60 * 1000;
 
+// ── Global Discord burst protection ─────────────────────────────────────────
+// When many channels fail at the same time (e.g. Twitch bulk token revocation),
+// collect Discord alerts for a short window and send ONE summary instead of
+// flooding the channel with N identical messages.
+const DISCORD_BATCH_WINDOW_MS = 20_000;
+
+interface PendingDiscordAlert { channel: string; key: AlertKey; text: string; }
+const discordBatch: PendingDiscordAlert[] = [];
+let discordBatchTimer: NodeJS.Timeout | null = null;
+
+async function flushDiscordBatch(): Promise<void> {
+  discordBatchTimer = null;
+  if (discordBatch.length === 0) return;
+  const batch = discordBatch.splice(0);
+
+  if (batch.length === 1) {
+    // Single alert — send as normal
+    const { channel, key, text } = batch[0];
+    try {
+      await sendWarningToDiscord(`Bot alert: #${channel}`, `${key}: ${text}`);
+    } catch { /* non-fatal */ }
+    return;
+  }
+
+  // Multiple channels — group by alert key and send one summary
+  const byKey = new Map<string, string[]>();
+  for (const { channel, key } of batch) {
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(`#${channel}`);
+  }
+  const lines = Array.from(byKey.entries())
+    .map(([k, chs]) => `**${k}** (${chs.length}): ${chs.join(", ")}`);
+  const body = lines.join("\n") +
+    "\n\nThis is likely a Twitch bulk token revocation. Affected users need to re-auth at finalsrs.com.";
+
+  try {
+    await sendWarningToDiscord(`⚠️ Mass bot alert — ${batch.length} channels`, body);
+  } catch { /* non-fatal */ }
+}
+
+function queueDiscordAlert(channel: string, key: AlertKey, text: string): void {
+  discordBatch.push({ channel, key, text });
+  if (!discordBatchTimer) {
+    discordBatchTimer = setTimeout(flushDiscordBatch, DISCORD_BATCH_WINDOW_MS);
+  }
+}
+
 function cooldownKey(channel: string, key: AlertKey) {
   return `${channel.toLowerCase()}::${key}`;
 }
@@ -71,11 +118,7 @@ export async function notifyChannel(
     lastSent.set(ck, now);
 
     if (opts.alsoDiscord) {
-      try {
-        await sendWarningToDiscord(`Bot alert: #${sanitized}`, `${key}: ${text}`);
-      } catch {
-        /* non-fatal */
-      }
+      queueDiscordAlert(sanitized, key, text);
     }
 
     return true;

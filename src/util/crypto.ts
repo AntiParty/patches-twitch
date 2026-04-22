@@ -8,7 +8,17 @@ import logger from './logger';
 
 // Use a dedicated secret for OAuth state signing (falls back to session secret)
 const STATE_SECRET = process.env.OAUTH_STATE_SECRET || process.env.SESSION_SECRET;
-// Use a dedicated secret for token encryption
+// Use a dedicated secret for token encryption.
+// IMPORTANT: do NOT silently fall back to SESSION_SECRET here. If we did, a
+// missing/rotated TOKEN_ENCRYPTION_KEY would cause every stored token to
+// decrypt against a different key, silently producing garbage — which
+// historically led to mass "revocation" of every user at once. Require the
+// explicit key in production and scream loudly if it's missing.
+if (process.env.NODE_ENV === 'production' && !process.env.TOKEN_ENCRYPTION_KEY) {
+  // eslint-disable-next-line no-console
+  console.error('[Crypto] FATAL: TOKEN_ENCRYPTION_KEY is not set in production. Refusing to fall back to SESSION_SECRET — that would corrupt every stored refresh token. Set TOKEN_ENCRYPTION_KEY and restart.');
+  process.exit(1);
+}
 const TOKEN_SECRET = process.env.TOKEN_ENCRYPTION_KEY || process.env.SESSION_SECRET;
 
 // Validate secrets exist and are strong enough

@@ -32,10 +32,27 @@ async function getRecentBans(count = 5): Promise<BannedPlayer[]> {
   }
 }
 
+function abbreviateLeague(league: string): string {
+  if (!league || league === 'Ruby') return league || '?';
+  const parts = league.split(' ');
+  // "Diamond 1" → "D1", "Platinum 3" → "P3", etc.
+  return parts.length === 2 ? `${parts[0][0]}${parts[1]}` : league;
+}
+
+function relativeTime(ts: string): string {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  if (mins < 60)        return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24)       return `${hours}h ago`;
+  const days  = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 function formatBan(p: BannedPlayer): string {
-  const name = p.id;
-  const rs   = p.points.toLocaleString();
-  return `${name} (${p.leagueName} · ${rs} RS)`;
+  const league = abbreviateLeague(p.leagueName);
+  const when   = relativeTime(p.timestamp);
+  return `${p.id} (${league} #${p.rank} · ${when})`;
 }
 
 export const execute = async (ctx: CommandContext) => {
@@ -43,7 +60,7 @@ export const execute = async (ctx: CommandContext) => {
   const messageId = ctx.tags?.["id"];
 
   try {
-    const bans = await getRecentBans(5);
+    const bans = await getRecentBans(3);
 
     if (bans.length === 0) {
       await ctx.say(`@${username}, no banned players found.`, messageId);
@@ -51,7 +68,7 @@ export const execute = async (ctx: CommandContext) => {
     }
 
     const list     = bans.map(formatBan).join(" | ");
-    const response = `@${username}, Recent bans (${bans.length}): ${list}`;
+    const response = `@${username}, Recent bans: ${list}`;
 
     await ctx.say(response, messageId);
   } catch (err) {

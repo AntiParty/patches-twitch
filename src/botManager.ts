@@ -192,6 +192,13 @@ export class BotManager {
         continue;
       }
 
+      // Skip channels whose token was permanently revoked — don't hammer Twitch.
+      // User must re-authenticate at finalsrs.com to clear this flag.
+      if ((chanAny as any).auth_revoked) {
+        logger.debug?.(`[${username}] auth_revoked=true, skipping token validation.`);
+        continue;
+      }
+
       if (!token_expires_at) {
         // Unknown expiry -> validate once to learn TTL and schedule refresh
         logger.info(`No expiry stored for ${username}, validating token to schedule refresh.`);

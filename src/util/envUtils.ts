@@ -96,6 +96,31 @@ export function updateEnvVariables(updates: Record<string, string>): { wroteFile
   const current = parseEnv(original);
   const next = { ...current, ...updates };
   const serialized = stringifyEnv(next, original);
-  fs.writeFileSync(envPath, serialized, "utf8");
+
+  // SAFETY: do NOT write .env if the serialized output is suspiciously small
+  // compared to the original. A partial/truncated write that drops keys like
+  // TOKEN_ENCRYPTION_KEY or SESSION_SECRET causes a cascading catastrophe:
+  // every stored encrypted token becomes undecryptable on the next boot, and
+  // our refresh path used to (incorrectly) forward ciphertext to Twitch — which
+  // returned 400 and marked every user as "revoked" simultaneously.
+  if (original && serialized.length < original.length / 2) {
+    throw new Error(
+      `[envUtils] Refusing to write .env: serialized output (${serialized.length}B) is <50% of original (${original.length}B). Aborting to prevent corruption.`
+    );
+  }
+
+  // Atomic write: write to a sibling tmp file, fsync, then rename.
+  // rename() is atomic on POSIX and on NTFS, so a crash mid-write can never
+  // leave a half-written .env on disk.
+  const tmpPath = `${envPath}.tmp`;
+  const fd = fs.openSync(tmpPath, "w");
+  try {
+    fs.writeSync(fd, serialized, 0, "utf8");
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  fs.renameSync(tmpPath, envPath);
+
   return { wroteFile: true, filePath: envPath };
 }

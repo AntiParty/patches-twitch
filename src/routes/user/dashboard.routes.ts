@@ -89,6 +89,8 @@ router.get("/dashboard", requireUser, csrfProtection, async (req: any, res: any)
         hasRoleBypass,
         subscriptionTier: channel?.subscription_tier || null,
         tierName: getTierName(channel?.subscription_tier || null),
+        // Token health — true means the user needs to re-authenticate
+        authRevoked: (channel as any)?.auth_revoked || false,
         // CSRF token for API calls
         csrfToken: req.csrfToken(),
     });

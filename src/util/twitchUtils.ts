@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
-import { Channel } from '../db';
+import { Channel, CustomBotAccount } from '../db';
 import logger from '@/util/logger';
 import { decryptToken, encryptToken } from './crypto';
 
@@ -533,3 +533,244 @@ export const refreshAccessToken = async (channel: any) => {
     return null;
   }
 };
+
+// ────────────────────────────────────────────────────────────────────────────
+// Custom-bot account token refresh
+//
+// CustomBotAccount rows store user tokens for the per-channel bot identity
+// (e.g. ChannelXBot). They expire ~4h after issuance and were not previously
+// refreshed anywhere — that's why channels using a custom bot would silently
+// auth-fail in IRC every few hours and we'd page the streamer to "re-link"
+// when in fact the only failure was on our side.
+// ────────────────────────────────────────────────────────────────────────────
+
+const customBotRefreshLocks: Record<string, boolean> = {};
+const customBotRefreshRetries: Record<string, number> = {};
+const customBotRefreshRetryTimers: Record<string, NodeJS.Timeout> = {};
+const customBotRefreshCooldowns: Record<string, number> = {};
+const customBotPermanentFailed = new Set<string>();
+
+function customBotKey(id: number | string): string {
+  return `cb:${id}`;
+}
+
+export function clearCustomBotPermanentFailed(customBotId: number | string) {
+  const key = customBotKey(customBotId);
+  customBotPermanentFailed.delete(key);
+  customBotRefreshRetries[key] = 0;
+  customBotRefreshLocks[key] = false;
+  delete customBotRefreshCooldowns[key];
+  if (customBotRefreshRetryTimers[key]) {
+    clearTimeout(customBotRefreshRetryTimers[key]);
+    delete customBotRefreshRetryTimers[key];
+  }
+}
+
+export interface CustomBotRefreshResult {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+}
+
+/**
+ * Refresh a CustomBotAccount's access token using its stored refresh token.
+ * Returns the new (decrypted) access token + plaintext, or null on failure.
+ *
+ * On 400 with an "invalid refresh token" / "invalid grant" body, marks the
+ * account inactive — the streamer must re-link from the dashboard. Other 400s
+ * (Invalid client, etc.) are treated as transient and retried.
+ */
+export const refreshCustomBotAccessToken = async (
+  customBot: any
+): Promise<CustomBotRefreshResult | null> => {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error('Twitch Client ID or Client Secret is missing in environment variables.');
+  }
+
+  const id = customBot?.id;
+  if (!id) {
+    logger.error('[customBot refresh] Missing customBot.id; cannot refresh.');
+    return null;
+  }
+  const key = customBotKey(id);
+  const botUsername = customBot?.bot_username || `id=${id}`;
+
+  if (customBotPermanentFailed.has(key)) return null;
+
+  const cooldownExpiry = customBotRefreshCooldowns[key];
+  if (cooldownExpiry && Date.now() < cooldownExpiry) {
+    const remaining = Math.ceil((cooldownExpiry - Date.now()) / 1000);
+    logger.warn(`[customBot ${botUsername}] Refresh in cooldown, ${remaining}s remaining.`);
+    return null;
+  }
+
+  if (customBotRefreshLocks[key]) {
+    logger.warn(`[customBot ${botUsername}] Refresh already in progress, skipping.`);
+    return null;
+  }
+
+  if ((customBotRefreshRetries[key] || 0) >= MAX_REFRESH_RETRIES) {
+    logger.error(`[customBot ${botUsername}] Max retries reached, entering cooldown.`);
+    customBotRefreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+    setTimeout(() => {
+      customBotRefreshRetries[key] = 0;
+      delete customBotRefreshCooldowns[key];
+    }, COOLDOWN_DURATION_MS);
+    return null;
+  }
+
+  // Always re-fetch the freshest row — concurrent refresh paths may have
+  // already rotated the token while we were waiting.
+  let freshBot;
+  try {
+    freshBot = await CustomBotAccount.findByPk(id);
+    if (!freshBot) {
+      logger.error(`[customBot ${botUsername}] Row missing from DB; aborting refresh.`);
+      return null;
+    }
+  } catch (dbErr) {
+    logger.error(`[customBot ${botUsername}] Failed to fetch row:`, dbErr);
+    return null;
+  }
+
+  const encryptedRefresh = (freshBot as any).bot_refresh_token;
+  if (!encryptedRefresh) {
+    logger.error(`[customBot ${botUsername}] No refresh token stored.`);
+    return null;
+  }
+  const refreshToken = safeDecryptToken(encryptedRefresh);
+  if (refreshToken === null) {
+    logger.error(`[customBot ${botUsername}] Refresh token decryption failed (likely TOKEN_ENCRYPTION_KEY problem). NOT calling Twitch.`);
+    customBotRefreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+    return null;
+  }
+  if (!(await validateRefreshToken(refreshToken))) {
+    logger.error(`[customBot ${botUsername}] Refresh token failed sanity check.`);
+    return null;
+  }
+
+  customBotRefreshLocks[key] = true;
+  customBotRefreshRetries[key] = (customBotRefreshRetries[key] || 0) + 1;
+
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+    client_id: clientId,
+    client_secret: clientSecret,
+  });
+
+  try {
+    const response = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      body: params,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      logger.error(`[customBot ${botUsername}] Refresh failed: ${response.status} ${response.statusText} — ${errorBody}`);
+      customBotRefreshLocks[key] = false;
+
+      // Per Twitch docs: 400 covers many things, only some are revocations.
+      // Only mark permanently failed when the body specifically says so.
+      const bodyLower = errorBody.toLowerCase();
+      const looksRevoked =
+        bodyLower.includes('invalid refresh token') ||
+        bodyLower.includes('invalid grant') ||
+        bodyLower.includes('refresh token is not valid');
+
+      if ((response.status === 400 || response.status === 401) && looksRevoked) {
+        logger.error(`[customBot ${botUsername}] Refresh token revoked. Marking inactive — streamer must re-link.`);
+        customBotPermanentFailed.add(key);
+        customBotRefreshRetries[key] = MAX_REFRESH_RETRIES;
+        try {
+          await CustomBotAccount.update({ is_active: false } as any, { where: { id } });
+        } catch (dbErr) {
+          logger.error(`[customBot ${botUsername}] Failed to flip is_active:`, dbErr);
+        }
+        return null;
+      }
+
+      // Otherwise: transient. Schedule retry with backoff.
+      if (customBotRefreshRetries[key] < MAX_REFRESH_RETRIES) {
+        const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, customBotRefreshRetries[key] - 1) * 60000);
+        logger.info(`[customBot ${botUsername}] Retrying in ${Math.round(retryDelay / 1000)}s...`);
+        customBotRefreshRetryTimers[key] = setTimeout(async () => {
+          delete customBotRefreshRetryTimers[key];
+          const updated = await CustomBotAccount.findByPk(id);
+          if (updated) refreshCustomBotAccessToken(updated);
+        }, retryDelay);
+      } else {
+        customBotRefreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+        setTimeout(() => {
+          customBotRefreshRetries[key] = 0;
+          delete customBotRefreshCooldowns[key];
+        }, COOLDOWN_DURATION_MS);
+      }
+      return null;
+    }
+
+    const data = await response.json();
+    const newAccess = data.access_token;
+    const newRefresh = data.refresh_token;
+    const expiresAt = new Date(Date.now() + (data.expires_in || 0) * 1000);
+
+    if (!newAccess || !newRefresh) {
+      logger.error(`[customBot ${botUsername}] Twitch response missing tokens.`);
+      customBotRefreshLocks[key] = false;
+      return null;
+    }
+
+    (freshBot as any).bot_access_token = encryptToken(newAccess);
+    (freshBot as any).bot_refresh_token = encryptToken(newRefresh);
+    (freshBot as any).bot_token_expires_at = expiresAt;
+    (freshBot as any).updated_at = new Date();
+    await freshBot.save();
+
+    customBotRefreshLocks[key] = false;
+    customBotRefreshRetries[key] = 0;
+    delete customBotRefreshCooldowns[key];
+    if (customBotRefreshRetryTimers[key]) {
+      clearTimeout(customBotRefreshRetryTimers[key]);
+      delete customBotRefreshRetryTimers[key];
+    }
+
+    logger.info(`[customBot ${botUsername}] Token refreshed; expires ${expiresAt.toISOString()}`);
+    return { accessToken: newAccess, refreshToken: newRefresh, expiresAt };
+  } catch (err: any) {
+    logger.error(`[customBot ${botUsername}] Exception during refresh:`, err?.message || err);
+    customBotRefreshLocks[key] = false;
+    if (customBotRefreshRetries[key] < MAX_REFRESH_RETRIES) {
+      const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, customBotRefreshRetries[key] - 1) * 60000);
+      customBotRefreshRetryTimers[key] = setTimeout(async () => {
+        delete customBotRefreshRetryTimers[key];
+        const updated = await CustomBotAccount.findByPk(id);
+        if (updated) refreshCustomBotAccessToken(updated);
+      }, retryDelay);
+    } else {
+      customBotRefreshCooldowns[key] = Date.now() + COOLDOWN_DURATION_MS;
+      setTimeout(() => {
+        customBotRefreshRetries[key] = 0;
+        delete customBotRefreshCooldowns[key];
+      }, COOLDOWN_DURATION_MS);
+    }
+    return null;
+  }
+};
+
+/**
+ * Helper for callers (e.g. botManager) that need a usable plaintext token from
+ * the row. Decrypts in-memory; does not refresh.
+ */
+export function decryptCustomBotAccessToken(customBot: any): string | null {
+  const enc = customBot?.bot_access_token;
+  if (!enc) return null;
+  return safeDecryptToken(enc);
+}
+
+export function decryptCustomBotRefreshToken(customBot: any): string | null {
+  const enc = customBot?.bot_refresh_token;
+  if (!enc) return null;
+  return safeDecryptToken(enc);
+}

@@ -8,6 +8,7 @@ import logger from "./util/logger";
 import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
+import { startCustomBotTokenRefresher } from "./jobs/customBotTokenRefresher";
 
 dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
@@ -16,6 +17,8 @@ dbReady.then(async () => {
     await botManager.loadTokensOnStartup();
     // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
     startBotTokenAutoRefresher();
+    // Refresh per-channel custom-bot account tokens before they expire.
+    startCustomBotTokenRefresher();
     startCacheUpdater();
 
     logger.info("Bot is up and running!");

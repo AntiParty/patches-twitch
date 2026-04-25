@@ -31,6 +31,82 @@ function getReconnectDelay(attempts: number): number {
   return Math.min(INITIAL_RECONNECT_DELAY * Math.pow(2, attempts), MAX_RECONNECT_DELAY);
 }
 
+// Per-channel guard so we don't ping-pong a refresh+reconnect if Twitch keeps
+// rejecting auth. Bounded attempts within a sliding window.
+const recoveryAttempts: Record<string, { count: number; firstAt: number }> = {};
+const RECOVERY_MAX_ATTEMPTS = 2;
+const RECOVERY_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * On IRC "Login authentication failed", try to refresh the relevant token
+ * and reconnect once before alerting the streamer. Returns true if the bot
+ * is back online (or at least: a fresh connection has been initiated with a
+ * rotated token), false if recovery is impossible.
+ */
+async function attemptAuthRecovery(
+  channelUsername: string,
+  isCustom: boolean,
+  commandHandler: Record<string, any>
+): Promise<boolean> {
+  const now = Date.now();
+  const rec = recoveryAttempts[channelUsername];
+  if (rec && now - rec.firstAt < RECOVERY_WINDOW_MS) {
+    if (rec.count >= RECOVERY_MAX_ATTEMPTS) {
+      logger.warn(`[ircBot] Recovery limit reached for #${channelUsername} within window — giving up.`);
+      return false;
+    }
+    rec.count += 1;
+  } else {
+    recoveryAttempts[channelUsername] = { count: 1, firstAt: now };
+  }
+
+  try {
+    if (isCustom) {
+      const { refreshCustomBotForChannel, getCustomBotTokenForChannel } = await import("../jobs/customBotTokenRefresher");
+      const newAccess = await refreshCustomBotForChannel(channelUsername);
+      if (!newAccess) return false;
+      const creds = await getCustomBotTokenForChannel(channelUsername);
+      if (!creds) return false;
+
+      // Drop the dead client entry so reconnectChatBot starts fresh.
+      const existing = clients[channelUsername];
+      if (existing) {
+        existing.intentionalDisconnect = true;
+        try { existing.socket.destroy(); } catch { /* already dead */ }
+        if (existing.heartbeatInterval) clearInterval(existing.heartbeatInterval);
+        if (existing.reconnectTimeout) clearTimeout(existing.reconnectTimeout);
+        delete clients[channelUsername];
+      }
+      await new Promise((r) => setTimeout(r, 100));
+      await startChatBot(channelUsername, commandHandler, {
+        botUsername: creds.botUsername,
+        botToken: creds.accessToken,
+        botUserId: creds.botUserId,
+        refreshToken: creds.refreshToken,
+      });
+      return true;
+    }
+
+    // Default bot: rotate the global TWITCH_BOT_TOKEN, then reconnect this channel.
+    const { refreshBotToken } = await import("./botAuth");
+    await refreshBotToken();
+    const existing = clients[channelUsername];
+    if (existing) {
+      existing.intentionalDisconnect = true;
+      try { existing.socket.destroy(); } catch { /* already dead */ }
+      if (existing.heartbeatInterval) clearInterval(existing.heartbeatInterval);
+      if (existing.reconnectTimeout) clearTimeout(existing.reconnectTimeout);
+      delete clients[channelUsername];
+    }
+    await new Promise((r) => setTimeout(r, 100));
+    await startChatBot(channelUsername, commandHandler);
+    return true;
+  } catch (err) {
+    logger.error(`[ircBot] attemptAuthRecovery failed for #${channelUsername}:`, err);
+    return false;
+  }
+}
+
 async function handleReconnect(username: string, commandHandler: Record<string, any>) {
   const client = clients[username];
   if (!client) return;
@@ -334,28 +410,46 @@ export const startChatBot = async (
     if (rawData.includes("Login authentication failed") || rawData.includes("Login unsuccessful")) {
       const isCustom = !!customCredentials;
       logger.error(`[ERROR] ⚠️ Twitch IRC auth FAILED for channel #${sanitizedUsername} using bot "${botUsername}" (${isCustom ? "custom bot account" : "default bot"}).`);
-      if (isCustom) {
-        logger.error(`[ERROR] Custom bot "${botUsername}" token appears invalid. CustomBotAccount tokens are not auto-refreshed — user must re-link from the dashboard.`);
-      } else {
-        logger.error(`[ERROR] Default bot env — TWITCH_BOT_USERNAME=${process.env.TWITCH_BOT_USERNAME}, token present=${!!process.env.TWITCH_BOT_TOKEN}. The token is likely stale; the auto-refresher will rotate it and reconnect.`);
-      }
-      // Don't reconnect on auth failure - manual intervention needed
-      if (clients[sanitizedUsername]) {
-        clients[sanitizedUsername].intentionalDisconnect = true;
-      }
-      // Surface auth failures so the streamer isn't left guessing.
-      try {
-        const { notifyChannel } = await import("./botAlerts");
-        await notifyChannel(
-          sanitizedUsername,
-          "auth-failed",
-          `I couldn't log in to Twitch (auth failed). The team has been paged. You can also try reconnecting from finalsrs.com/dashboard → Settings.`,
-          { cooldownMs: 60 * 60 * 1000, alsoDiscord: true }
-        );
-      } catch {
-        /* non-fatal */
-      }
-      socket.destroy();
+
+      // Stop the dead socket immediately, but DON'T mark intentional yet — we
+      // want to attempt a token refresh + automatic reconnect before we give
+      // up and bother the streamer.
+      try { socket.destroy(); } catch { /* already dead */ }
+
+      // Recovery is async; don't block the data handler on it.
+      (async () => {
+        try {
+          const recovered = await attemptAuthRecovery(sanitizedUsername, !!customCredentials, commandHandler);
+          if (recovered) {
+            logger.info(`[ircBot] Auth recovered for #${sanitizedUsername} via token refresh; no streamer alert needed.`);
+            return;
+          }
+
+          // Recovery genuinely failed — only NOW mark intentional and alert.
+          if (clients[sanitizedUsername]) {
+            clients[sanitizedUsername].intentionalDisconnect = true;
+          }
+          if (isCustom) {
+            logger.error(`[ERROR] Custom bot "${botUsername}" refresh failed — streamer must re-link from the dashboard.`);
+          } else {
+            logger.error(`[ERROR] Default bot refresh failed — TWITCH_BOT_USERNAME=${process.env.TWITCH_BOT_USERNAME}, token present=${!!process.env.TWITCH_BOT_TOKEN}.`);
+          }
+          try {
+            const { notifyChannel } = await import("./botAlerts");
+            await notifyChannel(
+              sanitizedUsername,
+              "auth-failed",
+              isCustom
+                ? `My custom-bot login expired and I couldn't refresh it. Please re-link the bot at finalsrs.com/dashboard → Settings.`
+                : `I couldn't log in to Twitch (auth failed). The team has been paged.`,
+              { cooldownMs: 60 * 60 * 1000, alsoDiscord: true }
+            );
+          } catch { /* non-fatal */ }
+        } catch (err) {
+          logger.error(`[ircBot] Recovery flow crashed for #${sanitizedUsername}:`, err);
+        }
+      })();
+
       return;
     }
     // Only log NOTICE messages that indicate actual errors

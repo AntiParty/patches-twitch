@@ -4,6 +4,11 @@ import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
 import { sendChatMessage } from "./util/ircBot"
 import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
+import {
+  decryptCustomBotAccessToken,
+  decryptCustomBotRefreshToken,
+  refreshCustomBotAccessToken,
+} from "./util/twitchUtils";
 import logger from "./util/logger";
 import axios from "axios";
 const clientId = process.env.TWITCH_CLIENT_ID!;
@@ -50,12 +55,36 @@ export class BotManager {
 
         if (customBot && hasAccess) {
           logger.info(`Starting custom bot ${customBot.bot_username} for channel ${username}`);
-          await startChatBot(username, this.commandHandler, {
-            botUsername: customBot.bot_username,
-            botToken: customBot.bot_access_token,
-            botUserId: customBot.bot_twitch_user_id,
-            refreshToken: customBot.bot_refresh_token
-          });
+
+          // Tokens in CustomBotAccount may be encrypted (post-rotation) or
+          // plaintext (legacy rows from before encryption was wired up).
+          // Decrypt before handing to IRC, and proactively refresh if expired.
+          let accessPlain = decryptCustomBotAccessToken(customBot);
+          let refreshPlain = decryptCustomBotRefreshToken(customBot);
+          const expiresAt = (customBot as any).bot_token_expires_at
+            ? new Date((customBot as any).bot_token_expires_at).getTime()
+            : 0;
+          const expired = expiresAt && expiresAt - Date.now() <= 60 * 1000;
+
+          if (expired || !accessPlain) {
+            const refreshed = await refreshCustomBotAccessToken(customBot);
+            if (refreshed) {
+              accessPlain = refreshed.accessToken;
+              refreshPlain = refreshed.refreshToken;
+            }
+          }
+
+          if (!accessPlain) {
+            logger.warn(`[${username}] Custom bot token unavailable after refresh attempt — falling back to default bot.`);
+            await startChatBot(username, this.commandHandler);
+          } else {
+            await startChatBot(username, this.commandHandler, {
+              botUsername: customBot.bot_username,
+              botToken: accessPlain,
+              botUserId: customBot.bot_twitch_user_id,
+              refreshToken: refreshPlain || ''
+            });
+          }
         } else {
           await startChatBot(username, this.commandHandler);
         }

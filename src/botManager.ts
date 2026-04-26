@@ -16,6 +16,13 @@ const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 const tokenRefreshFailures: { [key: string]: number } = {};
+// Per-username guard so two paths (token-refresher rescue scan + reconnect
+// loop, control-API + auto-reconnect, etc.) can't both be inside
+// startBotForUser for the same channel at once. Without this, the second
+// caller can reach `startChatBot` while the first is still mid-handshake,
+// producing a duplicate connection attempt that Twitch rejects with
+// "Login authentication failed".
+const startingBots = new Set<string>();
 
 export class BotManager {
   private commandHandler: any;
@@ -38,6 +45,11 @@ export class BotManager {
   }
 
   public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {
+    if (startingBots.has(username)) {
+      logger.info(`[${username}] startBotForUser already in progress; skipping concurrent call.`);
+      return;
+    }
+    startingBots.add(username);
     try {
       // Use the cached command handler instead of reloading every time
       const channel = await Channel.findOne({ where: { username } });
@@ -95,6 +107,8 @@ export class BotManager {
       logger.info(`Bot started successfully for ${username}`);
     } catch (error) {
       logger.error(`Failed to start bot for ${username}:`, error);
+    } finally {
+      startingBots.delete(username);
     }
   }
 

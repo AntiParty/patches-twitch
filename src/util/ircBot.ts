@@ -21,6 +21,12 @@ interface IRCClient {
 }
 
 const clients: { [username: string]: IRCClient } = {};
+// Per-channel guard: a username is in this set from the moment we begin a
+// startChatBot/reconnect for it until the IRC handshake either completes or
+// fails. Prevents two concurrent paths (token-refresher reconnect loop +
+// rescue scan, manual reconnect + auto-reconnect, etc.) from racing on the
+// same channel and producing spurious "Login authentication failed" events.
+const connectingChannels = new Set<string>();
 export const devModeChannels = new Set<string>();
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 5000; // 5 seconds
@@ -324,6 +330,14 @@ export const startChatBot = async (
     logger.info(`[DEBUG] Bot already connected for ${sanitizedUsername}`);
     return;
   }
+  // Race guard: another path is already mid-connect for this channel. Bail
+  // before we reauthenticate with a possibly-stale token and trigger a
+  // bogus "Login authentication failed" alert.
+  if (connectingChannels.has(sanitizedUsername)) {
+    logger.info(`[DEBUG] Connect already in progress for ${sanitizedUsername}; skipping concurrent start.`);
+    return;
+  }
+  connectingChannels.add(sanitizedUsername);
 
   const botUsername = customCredentials?.botUsername || process.env.TWITCH_BOT_USERNAME;
   const botToken = customCredentials?.botToken || process.env.TWITCH_BOT_TOKEN;
@@ -338,6 +352,7 @@ export const startChatBot = async (
         botUserId: !!botUserId,
       }
     );
+    connectingChannels.delete(sanitizedUsername);
     return;
   }
 
@@ -356,17 +371,14 @@ export const startChatBot = async (
   };
 
   socket.connect(6667, "irc.chat.twitch.tv", () => {
-    logger.info(`[DEBUG] Connecting to IRC as ${botUsername}`);
+    // TCP socket is open. We push PASS/NICK/JOIN here, but Twitch hasn't
+    // validated the token yet — do NOT log "connected" at this point. The
+    // 001 numeric (welcome) below is the real auth-success signal.
+    logger.info(`[DEBUG] TCP connected to IRC for #${sanitizedUsername} as ${botUsername}; awaiting auth...`);
     socket.write(`CAP REQ :twitch.tv/tags\r\n`);
     socket.write(`PASS oauth:${botToken}\r\n`);
     socket.write(`NICK ${botUsername}\r\n`);
     socket.write(`JOIN #${sanitizedUsername}\r\n`);
-    
-    // Update the client object's connected state
-    if (clients[sanitizedUsername]) {
-      clients[sanitizedUsername].connected = true;
-    }
-    logger.info(`[DEBUG] Bot connected to #${sanitizedUsername}`);
   });
 
   // Initialize heartbeat using any incoming activity as health indicator
@@ -400,14 +412,31 @@ export const startChatBot = async (
 
   socket.on("data", async (data) => {
     const rawData = data.toString();
-    
+
     // Only log PRIVMSG (actual chat) and potential errors, not PING/PONG spam
     if (rawData.includes("PRIVMSG") || rawData.includes("NOTICE") || rawData.includes("Login")) {
       //logger.info(`[DEBUG] IRC from ${sanitizedUsername}: ${rawData.replace(/\r\n/g, ' | ')}`);
     }
-    
+
+    // Auth success: Twitch sends numeric 001 ("Welcome, GLHF!") only after
+    // PASS/NICK have been accepted. This is the real "we're connected" signal
+    // — not the TCP connect callback. Release the per-channel start guard
+    // and flip `connected` on the client record here.
+    if (rawData.includes(" 001 ") || rawData.includes("Welcome, GLHF")) {
+      if (clients[sanitizedUsername]) {
+        clients[sanitizedUsername].connected = true;
+      }
+      if (connectingChannels.has(sanitizedUsername)) {
+        connectingChannels.delete(sanitizedUsername);
+      }
+      logger.info(`[DEBUG] Bot authenticated and joined #${sanitizedUsername}`);
+    }
+
     // Check for common error messages from Twitch
     if (rawData.includes("Login authentication failed") || rawData.includes("Login unsuccessful")) {
+      // Release the start guard immediately so a follow-up reconnect (with a
+      // freshly-rotated token) isn't blocked by the stale "in progress" flag.
+      connectingChannels.delete(sanitizedUsername);
       const isCustom = !!customCredentials;
       logger.error(`[ERROR] ⚠️ Twitch IRC auth FAILED for channel #${sanitizedUsername} using bot "${botUsername}" (${isCustom ? "custom bot account" : "default bot"}).`);
 
@@ -618,13 +647,18 @@ export const startChatBot = async (
     }
   });
 
-  socket.on("error", (err) =>
-    logger.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err)
-  );
+  socket.on("error", (err) => {
+    logger.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err);
+    // If the socket errored out before we ever saw a 001 welcome, the start
+    // guard would otherwise stay set forever and block all future reconnects.
+    connectingChannels.delete(sanitizedUsername);
+  });
   socket.on("close", () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
     // Always clear the heartbeat interval
     clearInterval(heartbeat);
+    // Belt-and-suspenders: also clear any lingering start-guard entry.
+    connectingChannels.delete(sanitizedUsername);
     const client = clients[sanitizedUsername];
     if (client) {
       if (client.heartbeatInterval) {

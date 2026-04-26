@@ -140,7 +140,20 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
           // Scoped to default-bot channels; custom-bot channels have their
           // own (currently absent) refresh path and shouldn't be reconnected
           // with the default token.
+          //
+          // IMPORTANT: this only runs after the reconnect loop above has
+          // fully settled (`await Promise.allSettled(reconnectPromises)`),
+          // and we await the rescue starts ourselves below — otherwise the
+          // rescue scan races the reconnect loop and Twitch sees two
+          // simultaneous connection attempts for the same channel, which
+          // shows up in the log as a spurious "Login authentication failed".
           try {
+            // Settle for a tick so any reconnects whose sockets are mid-tear-
+            // down can finish removing themselves from `clients`. Without
+            // this, `active.has(c.username)` reports true for a channel
+            // whose old socket is closing right now.
+            await new Promise((r) => setTimeout(r, 250));
+
             const { botManager } = await import("../botManager");
             const { Channel, CustomBotAccount } = await import("../db");
             const enabledChannels: any[] = await Channel.findAll({ where: { bot_enabled: true } });
@@ -158,21 +171,30 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
               logger.info(
                 `[BotTokenRefresher] Rescuing ${toRescue.length} default-bot channel(s) dark after prior auth failure: ${toRescue.map((c: any) => c.username).join(", ")}`
               );
-              toRescue.forEach((ch: any, i: number) => {
-                const delay = i * delayPer + Math.floor(Math.random() * 100);
-                setTimeout(async () => {
-                  try {
-                    await botManager.startBotForUser(
-                      ch.username,
-                      ch.access_token || "",
-                      ch.refresh_token || "",
-                      ch.twitch_user_id || ""
-                    );
-                  } catch (e) {
-                    logger.warn(`[BotTokenRefresher] Failed to rescue ${ch.username}:`, e);
-                  }
-                }, delay);
+              const rescuePromises = toRescue.map((ch: any, i: number) => {
+                return new Promise<void>((resolve) => {
+                  const delay = i * delayPer + Math.floor(Math.random() * 100);
+                  setTimeout(async () => {
+                    try {
+                      await botManager.startBotForUser(
+                        ch.username,
+                        ch.access_token || "",
+                        ch.refresh_token || "",
+                        ch.twitch_user_id || ""
+                      );
+                    } catch (e) {
+                      logger.warn(`[BotTokenRefresher] Failed to rescue ${ch.username}:`, e);
+                    } finally {
+                      resolve();
+                    }
+                  }, delay);
+                });
               });
+              // Wait for all rescues to finish before returning from the
+              // refresh path so isRefreshing stays true and the next 5-min
+              // tick can't kick off another refresh on top of in-flight
+              // reconnects.
+              await Promise.allSettled(rescuePromises);
             }
           } catch (e) {
             logger.warn("[BotTokenRefresher] Rescue scan failed:", e);

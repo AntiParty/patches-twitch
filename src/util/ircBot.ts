@@ -45,21 +45,24 @@ const RECOVERY_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * On IRC "Login authentication failed", try to refresh the relevant token
- * and reconnect once before alerting the streamer. Returns true if the bot
- * is back online (or at least: a fresh connection has been initiated with a
- * rotated token), false if recovery is impossible.
+ * and reconnect once before alerting the streamer. Returns `{ recovered, reason }`
+ * — recovered=true means a fresh connection has been initiated with a rotated
+ * token; reason is a short tag describing the outcome so the auth-failed
+ * Discord alert can name the actual cause instead of guessing.
  */
+type AuthRecoveryResult = { recovered: boolean; reason: string };
+
 async function attemptAuthRecovery(
   channelUsername: string,
   isCustom: boolean,
   commandHandler: Record<string, any>
-): Promise<boolean> {
+): Promise<AuthRecoveryResult> {
   const now = Date.now();
   const rec = recoveryAttempts[channelUsername];
   if (rec && now - rec.firstAt < RECOVERY_WINDOW_MS) {
     if (rec.count >= RECOVERY_MAX_ATTEMPTS) {
       logger.warn(`[ircBot] Recovery limit reached for #${channelUsername} within window — giving up.`);
-      return false;
+      return { recovered: false, reason: "recovery_limit_reached" };
     }
     rec.count += 1;
   } else {
@@ -70,9 +73,30 @@ async function attemptAuthRecovery(
     if (isCustom) {
       const { refreshCustomBotForChannel, getCustomBotTokenForChannel } = await import("../jobs/customBotTokenRefresher");
       const newAccess = await refreshCustomBotForChannel(channelUsername);
-      if (!newAccess) return false;
+      if (!newAccess) {
+        // Drill into twitchUtils' in-memory state to name the failure mode.
+        let reason = "refresh_returned_null:other";
+        try {
+          const { Channel, CustomBotAccount } = await import("../db");
+          const ch = await Channel.findOne({ where: { username: channelUsername } });
+          if (ch) {
+            const cb = await CustomBotAccount.findOne({ where: { channel_id: (ch as any).id } });
+            if (cb) {
+              const { getCustomBotRefreshFailureReason } = await import("./twitchUtils");
+              reason = getCustomBotRefreshFailureReason((cb as any).id);
+              // If the row was flipped inactive, that's the canonical revoked signal.
+              if ((cb as any).is_active === false) reason = "refresh_returned_null:permfail";
+            } else {
+              reason = "refresh_returned_null:no_active_custom_bot";
+            }
+          } else {
+            reason = "refresh_returned_null:no_channel_row";
+          }
+        } catch { /* fall through with the default reason */ }
+        return { recovered: false, reason };
+      }
       const creds = await getCustomBotTokenForChannel(channelUsername);
-      if (!creds) return false;
+      if (!creds) return { recovered: false, reason: "post_refresh_creds_missing" };
 
       // Drop the dead client entry so reconnectChatBot starts fresh.
       const existing = clients[channelUsername];
@@ -90,12 +114,21 @@ async function attemptAuthRecovery(
         botUserId: creds.botUserId,
         refreshToken: creds.refreshToken,
       });
-      return true;
+      return { recovered: true, reason: "recovered_ok" };
     }
 
     // Default bot: rotate the global TWITCH_BOT_TOKEN, then reconnect this channel.
     const { refreshBotToken } = await import("./botAuth");
-    await refreshBotToken();
+    try {
+      await refreshBotToken();
+    } catch (refreshErr: any) {
+      const msg = String(refreshErr?.message || refreshErr || "");
+      const looksRevoked = /invalid refresh token|invalid grant|refresh token is not valid/i.test(msg);
+      return {
+        recovered: false,
+        reason: looksRevoked ? "default_bot_refresh_failed:revoked" : "default_bot_refresh_failed:other",
+      };
+    }
     const existing = clients[channelUsername];
     if (existing) {
       existing.intentionalDisconnect = true;
@@ -106,10 +139,10 @@ async function attemptAuthRecovery(
     }
     await new Promise((r) => setTimeout(r, 100));
     await startChatBot(channelUsername, commandHandler);
-    return true;
+    return { recovered: true, reason: "recovered_ok" };
   } catch (err) {
-    logger.error(`[ircBot] attemptAuthRecovery failed for #${channelUsername}:`, err);
-    return false;
+    logger.error(`[ircBot] attemptAuthRecovery threw for #${channelUsername}:`, err);
+    return { recovered: false, reason: "recovery_threw" };
   }
 }
 
@@ -448,9 +481,9 @@ export const startChatBot = async (
       // Recovery is async; don't block the data handler on it.
       (async () => {
         try {
-          const recovered = await attemptAuthRecovery(sanitizedUsername, !!customCredentials, commandHandler);
+          const { recovered, reason } = await attemptAuthRecovery(sanitizedUsername, !!customCredentials, commandHandler);
           if (recovered) {
-            logger.info(`[ircBot] Auth recovered for #${sanitizedUsername} via token refresh; no streamer alert needed.`);
+            logger.info(`[ircBot] Auth recovered for #${sanitizedUsername} via token refresh (reason=${reason}); no streamer alert needed.`);
             return;
           }
 
@@ -458,11 +491,10 @@ export const startChatBot = async (
           if (clients[sanitizedUsername]) {
             clients[sanitizedUsername].intentionalDisconnect = true;
           }
-          if (isCustom) {
-            logger.error(`[ERROR] Custom bot "${botUsername}" refresh failed — streamer must re-link from the dashboard.`);
-          } else {
-            logger.error(`[ERROR] Default bot refresh failed — TWITCH_BOT_USERNAME=${process.env.TWITCH_BOT_USERNAME}, token present=${!!process.env.TWITCH_BOT_TOKEN}.`);
-          }
+          logger.error(
+            `[ircBot] auth-failed`,
+            { channel: sanitizedUsername, isCustom, botUsername, reason }
+          );
           try {
             const { notifyChannel } = await import("./botAlerts");
             await notifyChannel(
@@ -471,7 +503,7 @@ export const startChatBot = async (
               isCustom
                 ? `My custom-bot login expired and I couldn't refresh it. Please re-link the bot at finalsrs.com/dashboard → Settings.`
                 : `I couldn't log in to Twitch (auth failed). The team has been paged.`,
-              { cooldownMs: 60 * 60 * 1000, alsoDiscord: true }
+              { cooldownMs: 60 * 60 * 1000, alsoDiscord: true, discordReason: reason }
             );
           } catch { /* non-fatal */ }
         } catch (err) {
@@ -717,13 +749,38 @@ export const reconnectChatBot = async (
 
   // Clean up existing connection if it exists
   if (client) {
-    if (client.customBotId && client.customBotToken) {
-      customCredentials = {
-        botUserId: client.customBotId,
-        botToken: client.customBotToken,
-        botUsername: client.username, // Reuse the username the bot was connected with
-        refreshToken: client.customRefreshToken || ''
-      };
+    if (client.customBotId) {
+      // Custom-bot channel: re-read the latest decrypted creds from the DB
+      // first. Without this, a reconnect triggered by the default-bot rotation
+      // storm in botTokenRefresher would re-PASS Twitch with whatever was in
+      // memory, which can be a now-expired custom-bot token — that's exactly
+      // how we end up with a "Mass bot alert — auth-failed" cluster.
+      try {
+        const { getCustomBotTokenForChannel } = await import("../jobs/customBotTokenRefresher");
+        const fresh = await getCustomBotTokenForChannel(sanitizedUsername);
+        if (fresh) {
+          customCredentials = {
+            botUserId: fresh.botUserId,
+            botToken: fresh.accessToken,
+            botUsername: fresh.botUsername,
+            refreshToken: fresh.refreshToken,
+          };
+          // Sync the in-memory cache so subsequent paths read the same value.
+          client.customBotToken = fresh.accessToken;
+          client.customRefreshToken = fresh.refreshToken;
+        }
+      } catch (e) {
+        logger.warn(`[ircBot] reconnectChatBot DB lookup failed for #${sanitizedUsername}, falling back to in-memory creds:`, e);
+      }
+      // Fallback: in-memory token if DB lookup didn't return a usable row.
+      if (!customCredentials && client.customBotToken) {
+        customCredentials = {
+          botUserId: client.customBotId,
+          botToken: client.customBotToken,
+          botUsername: client.username,
+          refreshToken: client.customRefreshToken || '',
+        };
+      }
     }
 
     // Clear heartbeat and reconnect timers

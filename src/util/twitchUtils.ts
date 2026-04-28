@@ -774,3 +774,21 @@ export function decryptCustomBotRefreshToken(customBot: any): string | null {
   if (!enc) return null;
   return safeDecryptToken(enc);
 }
+
+/**
+ * Diagnostic helper: explain why the most-recent refresh attempt for a custom
+ * bot would (or did) return null. Used by IRC auth-failed alerts so we can
+ * tell the on-call channel "this is a transient cooldown" vs. "the user
+ * actually needs to re-link". Reads only — does not mutate refresh state.
+ */
+export function getCustomBotRefreshFailureReason(customBotId: number | string): string {
+  const key = customBotKey(customBotId);
+  if (customBotPermanentFailed.has(key)) return "refresh_returned_null:permfail";
+  const cd = customBotRefreshCooldowns[key];
+  if (cd && Date.now() < cd) return "refresh_returned_null:cooldown";
+  if (customBotRefreshLocks[key]) return "refresh_returned_null:lock";
+  if ((customBotRefreshRetries[key] || 0) >= MAX_REFRESH_RETRIES) {
+    return "refresh_returned_null:max_retries";
+  }
+  return "refresh_returned_null:other";
+}

@@ -93,9 +93,27 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
           lastRefreshAt = Date.now();
           backoffMs = DEFAULT_INTERVAL_MS; // reset backoff on success
           logger.info(`[BotTokenRefresher] Bot token refreshed. New expiry: ${formatDuration(result.expiresIn)}`);
-          // Reconnect IRC clients to apply new token
+          // Reconnect IRC clients to apply new token.
+          //
+          // CRITICAL: only default-bot clients need to reconnect. Custom-bot
+          // clients run on independent OAuth tokens (rotated by
+          // customBotTokenRefresher) — disrupting their healthy IRC sessions
+          // here is what produced the "Mass bot alert — auth-failed" clusters
+          // we kept seeing on Discord, because reconnect would re-PASS Twitch
+          // with a possibly-stale in-memory custom token.
           const commandHandler = loadCommands();
-          const usernames = Object.keys(clients);
+          const allUsernames = Object.keys(clients);
+          const usernames: string[] = [];
+          const skippedCustom: string[] = [];
+          for (const uname of allUsernames) {
+            if (clients[uname]?.customBotId) skippedCustom.push(uname);
+            else usernames.push(uname);
+          }
+          if (skippedCustom.length > 0) {
+            logger.info(
+              `[BotTokenRefresher] Skipping ${skippedCustom.length} custom-bot channel(s) in reconnect storm: ${skippedCustom.join(", ")}`
+            );
+          }
           // Stagger reconnects with small delay + jitter to avoid reconnect storms
           const delayPer = 200; // ms between starts
           const reconnectPromises = usernames.map((uname, i) => {

@@ -33,9 +33,24 @@ const DEFAULT_COOLDOWN_MS = 10 * 60 * 1000;
 // flooding the channel with N identical messages.
 const DISCORD_BATCH_WINDOW_MS = 20_000;
 
-interface PendingDiscordAlert { channel: string; key: AlertKey; text: string; }
+interface PendingDiscordAlert {
+  channel: string;
+  key: AlertKey;
+  text: string;
+  reason?: string;
+}
 const discordBatch: PendingDiscordAlert[] = [];
 let discordBatchTimer: NodeJS.Timeout | null = null;
+
+// Reasons that genuinely indicate the user must re-auth (refresh token revoked
+// by Twitch). Any other reason — cooldown, lock, decrypt failure, transient
+// network — means the bot will auto-recover and we should not push streamers
+// to re-auth needlessly.
+const REVOKED_REASONS = new Set<string>([
+  "refresh_returned_null:permfail",
+  "twitch_400_revoked",
+  "default_bot_refresh_failed:revoked",
+]);
 
 async function flushDiscordBatch(): Promise<void> {
   discordBatchTimer = null;
@@ -43,32 +58,51 @@ async function flushDiscordBatch(): Promise<void> {
   const batch = discordBatch.splice(0);
 
   if (batch.length === 1) {
-    // Single alert — send as normal
-    const { channel, key, text } = batch[0];
+    const { channel, key, text, reason } = batch[0];
+    const suffix = reason ? ` (reason=${reason})` : "";
     try {
-      await sendWarningToDiscord(`Bot alert: #${channel}`, `${key}: ${text}`);
+      await sendWarningToDiscord(`Bot alert: #${channel}`, `${key}${suffix}: ${text}`);
     } catch { /* non-fatal */ }
     return;
   }
 
-  // Multiple channels — group by alert key and send one summary
-  const byKey = new Map<string, string[]>();
-  for (const { channel, key } of batch) {
-    if (!byKey.has(key)) byKey.set(key, []);
-    byKey.get(key)!.push(`#${channel}`);
+  // Multiple channels — group by alert key, then sub-group by reason so the
+  // body shows what actually happened per channel instead of one generic blob.
+  const byKey = new Map<string, Map<string, string[]>>();
+  for (const { channel, key, reason } of batch) {
+    const r = reason || "unknown";
+    if (!byKey.has(key)) byKey.set(key, new Map());
+    const sub = byKey.get(key)!;
+    if (!sub.has(r)) sub.set(r, []);
+    sub.get(r)!.push(`#${channel}`);
   }
-  const lines = Array.from(byKey.entries())
-    .map(([k, chs]) => `**${k}** (${chs.length}): ${chs.join(", ")}`);
-  const body = lines.join("\n") +
-    "\n\nThis is likely a Twitch bulk token revocation. Affected users need to re-auth at finalsrs.com.";
+
+  const lines: string[] = [];
+  for (const [k, sub] of byKey.entries()) {
+    const total = Array.from(sub.values()).reduce((n, chs) => n + chs.length, 0);
+    lines.push(`**${k}** (${total})`);
+    for (const [reason, chs] of sub.entries()) {
+      lines.push(`  • _${reason}_ (${chs.length}): ${chs.join(", ")}`);
+    }
+  }
+
+  // Trailing tagline: only push users to re-auth if every entry in the batch
+  // is a genuine revocation. Otherwise the bot is auto-recovering and the old
+  // copy was actively misleading.
+  const allRevoked = batch.every((a) => a.reason && REVOKED_REASONS.has(a.reason));
+  const tagline = allRevoked
+    ? "All affected users must re-auth at finalsrs.com — refresh tokens revoked by Twitch."
+    : "Bot is attempting auto-recovery. If channels stay quiet for >5 min, check finalsrs.com/dashboard.";
+
+  const body = lines.join("\n") + "\n\n" + tagline;
 
   try {
     await sendWarningToDiscord(`⚠️ Mass bot alert — ${batch.length} channels`, body);
   } catch { /* non-fatal */ }
 }
 
-function queueDiscordAlert(channel: string, key: AlertKey, text: string): void {
-  discordBatch.push({ channel, key, text });
+function queueDiscordAlert(channel: string, key: AlertKey, text: string, reason?: string): void {
+  discordBatch.push({ channel, key, text, reason });
   if (!discordBatchTimer) {
     discordBatchTimer = setTimeout(flushDiscordBatch, DISCORD_BATCH_WINDOW_MS);
   }
@@ -88,7 +122,7 @@ export async function notifyChannel(
   channel: string,
   key: AlertKey,
   text: string,
-  opts: { cooldownMs?: number; alsoDiscord?: boolean } = {}
+  opts: { cooldownMs?: number; alsoDiscord?: boolean; discordReason?: string } = {}
 ): Promise<boolean> {
   try {
     const sanitized = channel.replace(/^#/, "").toLowerCase();
@@ -118,7 +152,7 @@ export async function notifyChannel(
     lastSent.set(ck, now);
 
     if (opts.alsoDiscord) {
-      queueDiscordAlert(sanitized, key, text);
+      queueDiscordAlert(sanitized, key, text, opts.discordReason);
     }
 
     return true;

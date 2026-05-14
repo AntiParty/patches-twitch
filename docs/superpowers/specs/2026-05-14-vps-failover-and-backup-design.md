@@ -26,11 +26,11 @@ Two boxes, asymmetric roles for the month:
 
 ### Snapshot endpoint (VPS)
 
-New router file: `src/routes/admin/internal-backup.ts`, mounted at `/internal` in `src/index.ts`.
+New router file: `src/routes/internal-backup.routes.ts` (top-level, following the naming pattern of `auth.routes.ts` / `overlay.routes.ts`). Mounted at `/internal` in `src/routes/index.ts` via `router.use('/internal', internalBackupRoutes)`. Not under `/admin` because it's not session-auth'd — it's a service-to-service endpoint guarded by a shared secret.
 
 - **Route:** `GET /internal/db-snapshot`
 - **Auth:** Constant-time compare of `X-Backup-Secret` header against `process.env.BACKUP_SECRET`. 401 on mismatch or missing secret. Treat missing/empty `BACKUP_SECRET` env as "feature disabled" → 404, so the endpoint can't be brute-forced when not configured.
-- **Rate limit:** New `express-rate-limit` instance scoped to this route only: **10 requests per hour per IP**. (Cron only needs 1/day; this leaves headroom for retries.)
+- **Rate limit:** New hand-rolled rate limiter co-located in the route file (matches `src/middleware/security.ts` patterns — the codebase doesn't currently use `express-rate-limit` despite it being in `package.json`). **10 requests per hour per IP** on this route only. Cron only needs 1/day; this leaves headroom for retries.
 - **Snapshot mechanism:** For each DB in `data/{accounts,metrics,sessions}.sqlite`:
   - Open a fresh `sqlite3.Database` connection (read-write — `VACUUM INTO` requires the source connection be writable, but the operation itself only reads the source and writes the destination).
   - Run `VACUUM INTO '<tmpdir>/<name>.sqlite'`. Online-safe (briefly takes a shared lock on the source; does not block other readers and only briefly blocks writers), produces a single clean file (no `-wal` / `-shm` sidecars), and works against a DB the bot/server is actively using. Requires SQLite ≥ 3.27 (2019); the `sqlite3` npm package bundles a recent enough version.
@@ -197,8 +197,8 @@ Coming back:
 
 | Path | Change |
 |---|---|
-| `src/routes/admin/internal-backup.ts` | NEW — router with `/db-snapshot` route |
-| `src/index.ts` | mount the new router at `/internal` |
+| `src/routes/internal-backup.routes.ts` | NEW — router with `/db-snapshot` route + co-located rate limiter |
+| `src/routes/index.ts` | mount the new router at `/internal` |
 | `src/tests/integration/internal-backup.test.ts` | NEW — endpoint tests |
 | `scripts/seed-vps.sh` | NEW |
 | `scripts/swap-to-vps.sh` | NEW |

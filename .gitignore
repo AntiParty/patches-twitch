@@ -37,3 +37,7 @@ frontend/public/drops.json
 /cache
 frontend/public/drops.json
 *.json
+
+# VPS failover scripts: secrets and seed artifacts
+scripts/backup-config.sh
+scripts/seed-output/

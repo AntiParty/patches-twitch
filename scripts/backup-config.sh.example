@@ -1,0 +1,18 @@
+# Copy to scripts/backup-config.sh and fill in real values.
+# This file is gitignored; do NOT commit secrets.
+
+# Public URL of the VPS where the canonical app runs during failover.
+VPS_URL="https://finalsrs.com"
+
+# Shared secret. Must match BACKUP_SECRET in the VPS .env.
+# Generate with: openssl rand -hex 32
+BACKUP_SECRET="REPLACE_ME"
+
+# Where to store nightly backups on the homelab.
+BACKUP_ROOT="$HOME/backups/finalsrr"
+
+# Production install path on the homelab (matches deploy.sh).
+PROD_PATH="/home/antiparty/Desktop/FinalsRR"
+
+# How many nightly snapshots to keep before pruning oldest.
+RETENTION=14

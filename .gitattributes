@@ -1,0 +1,5 @@
+* text=auto
+
+# Shell scripts must always have LF endings (Linux bash chokes on CRLF).
+*.sh text eol=lf
+scripts/_snapshot.mjs text eol=lf

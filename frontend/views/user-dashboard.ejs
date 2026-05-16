@@ -2206,9 +2206,9 @@
                   <option value="">-- Select Target Rank --</option>
                   <option value="1">Bronze (0 - 9,999 RS)</option>
                   <option value="2">Silver (10,000 - 19,999 RS)</option>
-                  <option value="3">Gold (20,000 - 29,000 RS)</option>
-                  <option value="4">Platinum (30,000 - 39,000 RS)</option>
-                  <option value="5">Diamond (40,000+ RS)</option>
+                  <option value="3">Gold (20,000 - 29,999 RS)</option>
+                  <option value="4">Platinum (30,000 - 39,999 RS)</option>
+                  <option value="5">Diamond (40,000 - 49,999 RS)</option>
                   <option value="6">Ruby (Top 500)</option>
                 </select>
                 <div
@@ -2283,8 +2283,8 @@
                 <div class="rank-circle">
                   <i class="fas fa-trophy rank-icon"></i>
                 </div>
-                <div class="rank-label" id="goal-label">Diamond 1</div>
-                <div class="rank-sub" id="rs-needed">12,500 RS needed</div>
+                <div class="rank-label" id="goal-label">Ruby</div>
+                <div class="rank-sub" id="rs-needed">Load your RS to see progress</div>
 
                 <div
                   style="
@@ -3677,11 +3677,17 @@
       const rankThresholds = {
         1: 0, // Bronze
         2: 10000, // Silver
-        3: 25000, // Gold
-        4: 40000, // Platinum
-        5: 55000, // Diamond
-        6: 75000, // Ruby
+        3: 20000, // Gold
+        4: 30000, // Platinum
+        5: 40000, // Diamond
+        6: null, // Ruby uses the live Top 500 cutoff
       };
+      const rankMilestones = [
+        { rank: 2, label: "Silver", threshold: rankThresholds[2] },
+        { rank: 3, label: "Gold", threshold: rankThresholds[3] },
+        { rank: 4, label: "Platinum", threshold: rankThresholds[4] },
+        { rank: 5, label: "Diamond", threshold: rankThresholds[5] },
+      ];
       // --- Navigation ---
 
 
@@ -3874,6 +3880,21 @@
         return Number(n).toLocaleString();
       }
 
+      function getSelectedTargetRank() {
+        const targetRankSelect = document.getElementById("target-rank-select");
+        return Number(targetRankSelect?.value);
+      }
+
+      function getNextRankMilestone(currentRSRaw) {
+        const currentRS = parseNumber(currentRSRaw);
+        if (isNaN(currentRS)) return null;
+        return rankMilestones.find((milestone) => currentRS < milestone.threshold) || {
+          rank: 6,
+          label: "Ruby",
+          threshold: null,
+        };
+      }
+
       async function fetchCurrentRank() {
         const status = document.getElementById("current-rank-status");
         try {
@@ -3908,20 +3929,29 @@
 
       async function refreshCurrentRank() {
         const currentInput = document.getElementById("current-rs-input");
-        const targetRankSelect = document.getElementById("target-rank-select");
         const currentRank = await fetchCurrentRank();
 
         if (!currentRank) return null;
 
         currentInput.value = currentRank.rankScore ?? "";
 
-        const targetRank = Number(targetRankSelect.value);
+        const targetRank = getSelectedTargetRank();
         if (targetRank) {
           await updateRankDisplay(
             targetRank,
             rankThresholds[targetRank],
             currentRank.rankScore ?? 0
           );
+        } else {
+          const milestone = getNextRankMilestone(currentRank.rankScore);
+          if (milestone) {
+            await updateRankDisplay(
+              milestone.rank,
+              milestone.threshold,
+              currentRank.rankScore ?? 0,
+              milestone.label
+            );
+          }
         }
 
         return currentRank;
@@ -3963,7 +3993,8 @@
       async function updateRankDisplay(
         targetRankRaw,
         targetRSRaw,
-        currentRSRaw
+        currentRSRaw,
+        displayLabel
       ) {
         const goalLabel = document.getElementById("goal-label");
         const rsNeeded = document.getElementById("rs-needed");
@@ -3975,7 +4006,7 @@
         let currentRS = parseNumber(currentRSRaw);
 
         const rankName = rankNames[targetRank] || "Unknown";
-        goalLabel.innerText = `${rankName} 1`;
+        goalLabel.innerText = displayLabel || rankName;
 
         if (isNaN(currentRS)) currentRS = 0;
 
@@ -3986,10 +4017,8 @@
           if (ruby && typeof ruby.threshold === "number") {
             effectiveTargetRS = parseNumber(ruby.threshold);
           } else {
-            console.warn(
-              "DEBUG: live Ruby threshold unavailable, falling back to static value."
-            );
-            effectiveTargetRS = parseNumber(rankThresholds[6]);
+            console.warn("DEBUG: live Ruby threshold unavailable.");
+            effectiveTargetRS = NaN;
           }
         }
 
@@ -4003,7 +4032,7 @@
 
         const diff = Math.max(0, Math.round(effectiveTargetRS - currentRS));
         if (diff <= 0) {
-          rsNeeded.innerText = "Goal Reached!";
+          rsNeeded.innerText = "Goal reached";
           progressBar.style.width = "100%";
           progressBar.style.background = "var(--success)";
         } else {
@@ -4048,6 +4077,26 @@
 
           if (typeof liveRS === "number") {
             document.getElementById("current-rs-input").value = liveRS;
+            const selectedRank = getSelectedTargetRank();
+            if (selectedRank) {
+              await updateRankDisplay(
+                selectedRank,
+                rankThresholds[selectedRank],
+                liveRS
+              );
+              return;
+            }
+
+            const milestone = getNextRankMilestone(liveRS);
+            if (milestone) {
+              await updateRankDisplay(
+                milestone.rank,
+                milestone.threshold,
+                liveRS,
+                milestone.label
+              );
+              return;
+            }
           }
 
           // no goal -> reset
@@ -4328,11 +4377,15 @@
         }
 
         // For Ruby, capture live cutoff as saved targetRankScore (if available)
-        let targetRankScore = rankThresholds[targetRank] ?? 0;
+        let targetRankScore = rankThresholds[targetRank];
         if (targetRank === 6) {
           const ruby = await fetchRubyObject();
-          if (ruby && typeof ruby.threshold === "number")
+          if (ruby && typeof ruby.threshold === "number") {
             targetRankScore = parseNumber(ruby.threshold);
+          } else {
+            showToast("Ruby cutoff is unavailable right now.", "warning");
+            return;
+          }
         }
 
         try {

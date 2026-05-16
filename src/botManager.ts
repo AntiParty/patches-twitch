@@ -1,5 +1,5 @@
 import { Channel, CustomBotAccount } from "./db";
-import { startChatBot, stopChatBot, reconnectChatBot } from "./util/ircBot";
+import { startChatBot, stopChatBot } from "./util/ircBot";
 import { addUserSubscription } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
 import { sendChatMessage } from "./util/ircBot"
@@ -57,6 +57,9 @@ export class BotManager {
         logger.info(`Bot not enabled for ${username}`);
         return;
       } else {
+        const currentAccessToken = (channel as any).access_token || accessToken;
+        const currentTwitchUserId = (channel as any).twitch_user_id || twitchUserId;
+
         // Check for custom bot account
         const customBot = await CustomBotAccount.findOne({ 
           where: { channel_id: channel.id, is_active: true } 
@@ -64,6 +67,8 @@ export class BotManager {
 
         const isPrivileged = ['tester', 'Staff', 'admin'].includes(channel.role);
         const hasAccess = channel.has_subscription || isPrivileged;
+
+        let authenticated = false;
 
         if (customBot && hasAccess) {
           logger.info(`Starting custom bot ${customBot.bot_username} for channel ${username}`);
@@ -88,9 +93,9 @@ export class BotManager {
 
           if (!accessPlain) {
             logger.warn(`[${username}] Custom bot token unavailable after refresh attempt — falling back to default bot.`);
-            await startChatBot(username, this.commandHandler);
+            authenticated = await startChatBot(username, this.commandHandler);
           } else {
-            await startChatBot(username, this.commandHandler, {
+            authenticated = await startChatBot(username, this.commandHandler, {
               botUsername: customBot.bot_username,
               botToken: accessPlain,
               botUserId: customBot.bot_twitch_user_id,
@@ -98,10 +103,15 @@ export class BotManager {
             });
           }
         } else {
-          await startChatBot(username, this.commandHandler);
+          authenticated = await startChatBot(username, this.commandHandler);
         }
         
-        addUserSubscription(twitchUserId, accessToken, twitchUserId);
+        addUserSubscription(currentTwitchUserId, currentAccessToken, currentTwitchUserId);
+
+        if (!authenticated) {
+          logger.warn(`Bot start did not authenticate for ${username}`);
+          return;
+        }
       }
       
       logger.info(`Bot started successfully for ${username}`);
@@ -170,9 +180,9 @@ export class BotManager {
         );
       }
 
-      // Reconnect bot with cached command handler
-      await reconnectChatBot(username, this.commandHandler);
-      logger.info(`[${username}] Bot reconnected after token refresh.`);
+      // Channel OAuth tokens are for EventSub/Helix user operations, not IRC
+      // PASS. Reconnecting chat here races startup sockets and can make Twitch
+      // reject duplicate default-bot handshakes.
       tokenRefreshFailures[username] = 0;
     } catch (error) {
       tokenRefreshFailures[username] = (tokenRefreshFailures[username] || 0) + 1;
@@ -215,7 +225,7 @@ export class BotManager {
       );
     } catch (error) {
       logger.error(`[${username}] Token validation failed. Refreshing now...`);
-      this.refreshTokenFunction(username, refreshToken);
+      await this.refreshTokenFunction(username, refreshToken);
     }
   }
 
@@ -273,7 +283,6 @@ export class BotManager {
   public async loadTokensOnStartup() {
     logger.info("Loading stored tokens and starting bots...");
     const channels = await this.getChannels();
-    await this.validateAllTokens(channels);
     this.startTokenValidationInterval();
     await this.loadChannels(channels);
   }

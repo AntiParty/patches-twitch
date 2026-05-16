@@ -8,7 +8,38 @@ export interface BotTokenRefreshResult {
   expiresIn: number;
 }
 
-export async function refreshBotToken(): Promise<BotTokenRefreshResult> {
+type TwitchValidateResponse = {
+  login?: string;
+  user_id?: string;
+  scopes?: string[];
+};
+
+let refreshInFlight: Promise<BotTokenRefreshResult> | null = null;
+
+export function getBotTokenMetadataWarnings(metadata: TwitchValidateResponse): string[] {
+  const warnings: string[] = [];
+  const expectedLogin = process.env.TWITCH_BOT_USERNAME?.trim().toLowerCase();
+  const expectedUserId = process.env.TWITCH_BOT_USER_ID?.trim();
+  const actualLogin = metadata.login?.trim().toLowerCase();
+  const actualUserId = metadata.user_id?.trim();
+  const scopes = Array.isArray(metadata.scopes) ? metadata.scopes : [];
+
+  if (expectedLogin && actualLogin && actualLogin !== expectedLogin) {
+    warnings.push(`login_mismatch expected=${expectedLogin} actual=${actualLogin}`);
+  }
+
+  if (expectedUserId && actualUserId && actualUserId !== expectedUserId) {
+    warnings.push(`user_id_mismatch expected=${expectedUserId} actual=${actualUserId}`);
+  }
+
+  if (!scopes.includes("chat:read")) {
+    warnings.push(`missing_scope chat:read scopes=${scopes.join(",") || "none"}`);
+  }
+
+  return warnings;
+}
+
+async function refreshBotTokenInner(): Promise<BotTokenRefreshResult> {
   const clientId = process.env.TWITCH_CLIENT_ID;
   const clientSecret = process.env.TWITCH_CLIENT_SECRET;
   const botRefreshToken = process.env.TWITCH_BOT_REFRESH_TOKEN;
@@ -46,10 +77,19 @@ export async function refreshBotToken(): Promise<BotTokenRefreshResult> {
       throw new Error("Missing access_token or refresh_token in Twitch response");
     }
 
-    // Optionally verify token is valid
-    await axios.get("https://id.twitch.tv/oauth2/validate", {
+    // Verify the token is valid and belongs to the configured IRC bot.
+    const validateResp = await axios.get("https://id.twitch.tv/oauth2/validate", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    const metadataWarnings = getBotTokenMetadataWarnings(validateResp.data || {});
+    if (metadataWarnings.length > 0) {
+      logger.warn("[BotAuth] Refreshed bot token metadata warning", {
+        warnings: metadataWarnings,
+        login: validateResp.data?.login,
+        user_id: validateResp.data?.user_id,
+        scopes: validateResp.data?.scopes,
+      });
+    }
 
     // Save updated tokens to environment (and optionally your DB)
     updateEnvVariables({
@@ -75,4 +115,13 @@ export async function refreshBotToken(): Promise<BotTokenRefreshResult> {
     logger.error("[BotAuth] Refresh failed", { via: "Twitch API", status, body, msg });
     throw new Error(`Refresh failed (Twitch API): ${status || ""} ${body || msg}`.trim());
   }
+}
+
+export async function refreshBotToken(): Promise<BotTokenRefreshResult> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshBotTokenInner().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
 }

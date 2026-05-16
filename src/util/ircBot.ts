@@ -42,6 +42,7 @@ function getReconnectDelay(attempts: number): number {
 const recoveryAttempts: Record<string, { count: number; firstAt: number }> = {};
 const RECOVERY_MAX_ATTEMPTS = 2;
 const RECOVERY_WINDOW_MS = 5 * 60 * 1000;
+const recoveringChannels = new Set<string>();
 
 /**
  * On IRC "Login authentication failed", try to refresh the relevant token
@@ -108,12 +109,15 @@ async function attemptAuthRecovery(
         delete clients[channelUsername];
       }
       await new Promise((r) => setTimeout(r, 100));
-      await startChatBot(channelUsername, commandHandler, {
+      recoveringChannels.add(channelUsername);
+      const authenticated = await startChatBot(channelUsername, commandHandler, {
         botUsername: creds.botUsername,
         botToken: creds.accessToken,
         botUserId: creds.botUserId,
         refreshToken: creds.refreshToken,
       });
+      recoveringChannels.delete(channelUsername);
+      if (!authenticated) return { recovered: false, reason: "post_refresh_irc_auth_failed" };
       return { recovered: true, reason: "recovered_ok" };
     }
 
@@ -124,9 +128,17 @@ async function attemptAuthRecovery(
     } catch (refreshErr: any) {
       const msg = String(refreshErr?.message || refreshErr || "");
       const looksRevoked = /invalid refresh token|invalid grant|refresh token is not valid/i.test(msg);
+      const normalized = msg
+        .replace(/^Refresh failed \(Twitch API\):\s*/i, "")
+        .replace(/[^a-z0-9:_-]+/gi, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 80)
+        .toLowerCase();
       return {
         recovered: false,
-        reason: looksRevoked ? "default_bot_refresh_failed:revoked" : "default_bot_refresh_failed:other",
+        reason: looksRevoked
+          ? "default_bot_refresh_failed:revoked"
+          : `default_bot_refresh_failed:${normalized || "other"}`,
       };
     }
     const existing = clients[channelUsername];
@@ -138,9 +150,13 @@ async function attemptAuthRecovery(
       delete clients[channelUsername];
     }
     await new Promise((r) => setTimeout(r, 100));
-    await startChatBot(channelUsername, commandHandler);
+    recoveringChannels.add(channelUsername);
+    const authenticated = await startChatBot(channelUsername, commandHandler);
+    recoveringChannels.delete(channelUsername);
+    if (!authenticated) return { recovered: false, reason: "post_refresh_irc_auth_failed" };
     return { recovered: true, reason: "recovered_ok" };
   } catch (err) {
+    recoveringChannels.delete(channelUsername);
     logger.error(`[ircBot] attemptAuthRecovery threw for #${channelUsername}:`, err);
     return { recovered: false, reason: "recovery_threw" };
   }
@@ -352,23 +368,31 @@ export const startChatBot = async (
     botUserId: string;
     refreshToken: string;
   }
-) => {
+): Promise<boolean> => {
   if (!username || typeof username !== "string") {
     logger.error("[DEBUG] Invalid username:", username);
-    return;
+    return false;
   }
 
   const sanitizedUsername = username.replace(/^#/, "");
-  if (clients[sanitizedUsername]) {
+  if (clients[sanitizedUsername]?.connected) {
     logger.info(`[DEBUG] Bot already connected for ${sanitizedUsername}`);
-    return;
+    return true;
   }
   // Race guard: another path is already mid-connect for this channel. Bail
   // before we reauthenticate with a possibly-stale token and trigger a
   // bogus "Login authentication failed" alert.
   if (connectingChannels.has(sanitizedUsername)) {
     logger.info(`[DEBUG] Connect already in progress for ${sanitizedUsername}; skipping concurrent start.`);
-    return;
+    return true;
+  }
+  if (clients[sanitizedUsername]) {
+    const stale = clients[sanitizedUsername];
+    logger.warn(`[ircBot] Clearing stale disconnected client for #${sanitizedUsername} before starting.`);
+    if (stale.heartbeatInterval) clearInterval(stale.heartbeatInterval);
+    if (stale.reconnectTimeout) clearTimeout(stale.reconnectTimeout);
+    try { stale.socket.destroy(); } catch { /* already closed */ }
+    delete clients[sanitizedUsername];
   }
   connectingChannels.add(sanitizedUsername);
 
@@ -386,10 +410,27 @@ export const startChatBot = async (
       }
     );
     connectingChannels.delete(sanitizedUsername);
-    return;
+    return false;
   }
 
   const socket = new net.Socket();
+  let authTimeout: NodeJS.Timeout | undefined;
+  let authResultSettled = false;
+  let settleAuthResult: (authenticated: boolean) => void = () => {};
+  const authResult = new Promise<boolean>((resolve) => {
+    settleAuthResult = (authenticated: boolean) => {
+      if (authResultSettled) return;
+      authResultSettled = true;
+      if (authTimeout) clearTimeout(authTimeout);
+      resolve(authenticated);
+    };
+  });
+  authTimeout = setTimeout(() => {
+    logger.warn(`[ircBot] IRC auth timed out for #${sanitizedUsername}; closing socket.`);
+    connectingChannels.delete(sanitizedUsername);
+    try { socket.destroy(); } catch { /* already closed */ }
+    settleAuthResult(false);
+  }, 15_000);
   
   // Initialize client object BEFORE connecting so we can update it
   clients[sanitizedUsername] = {
@@ -463,6 +504,7 @@ export const startChatBot = async (
         connectingChannels.delete(sanitizedUsername);
       }
       logger.info(`[DEBUG] Bot authenticated and joined #${sanitizedUsername}`);
+      settleAuthResult(true);
     }
 
     // Check for common error messages from Twitch
@@ -471,6 +513,7 @@ export const startChatBot = async (
       // freshly-rotated token) isn't blocked by the stale "in progress" flag.
       connectingChannels.delete(sanitizedUsername);
       const isCustom = !!customCredentials;
+      settleAuthResult(false);
       logger.error(`[ERROR] ⚠️ Twitch IRC auth FAILED for channel #${sanitizedUsername} using bot "${botUsername}" (${isCustom ? "custom bot account" : "default bot"}).`);
 
       // Stop the dead socket immediately, but DON'T mark intentional yet — we
@@ -479,6 +522,17 @@ export const startChatBot = async (
       try { socket.destroy(); } catch { /* already dead */ }
 
       // Recovery is async; don't block the data handler on it.
+      if (recoveringChannels.has(sanitizedUsername)) {
+        if (clients[sanitizedUsername]) {
+          clients[sanitizedUsername].intentionalDisconnect = true;
+        }
+        logger.error(
+          `[ircBot] auth-failed`,
+          { channel: sanitizedUsername, isCustom, botUsername, reason: "post_refresh_irc_auth_failed" }
+        );
+        return;
+      }
+
       (async () => {
         try {
           const { recovered, reason } = await attemptAuthRecovery(sanitizedUsername, !!customCredentials, commandHandler);
@@ -684,6 +738,9 @@ export const startChatBot = async (
     // If the socket errored out before we ever saw a 001 welcome, the start
     // guard would otherwise stay set forever and block all future reconnects.
     connectingChannels.delete(sanitizedUsername);
+    if (!clients[sanitizedUsername]?.connected) {
+      settleAuthResult(false);
+    }
   });
   socket.on("close", () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
@@ -691,6 +748,9 @@ export const startChatBot = async (
     clearInterval(heartbeat);
     // Belt-and-suspenders: also clear any lingering start-guard entry.
     connectingChannels.delete(sanitizedUsername);
+    if (!clients[sanitizedUsername]?.connected) {
+      settleAuthResult(false);
+    }
     const client = clients[sanitizedUsername];
     if (client) {
       if (client.heartbeatInterval) {
@@ -711,6 +771,7 @@ export const startChatBot = async (
       handleReconnect(sanitizedUsername, commandHandler);
     }
   });
+  return authResult;
 };
 
 export const stopChatBot = async (username: string, intentional = false) => {
@@ -742,7 +803,7 @@ export const stopChatBot = async (username: string, intentional = false) => {
 export const reconnectChatBot = async (
   username: string,
   commandHandler: Record<string, any>
-) => {
+): Promise<boolean> => {
   const sanitizedUsername = username.replace(/^#/, "");
   const client = clients[sanitizedUsername];
   let customCredentials;
@@ -807,7 +868,7 @@ export const reconnectChatBot = async (
   await new Promise(resolve => setTimeout(resolve, 100));
 
   // Start fresh connection
-  await startChatBot(username, commandHandler, customCredentials);
+  return startChatBot(username, commandHandler, customCredentials);
 };
 
 export { clients };

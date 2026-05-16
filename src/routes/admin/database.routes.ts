@@ -7,6 +7,61 @@ import logger from '@/util/logger';
 import { requireAdminAPI } from '@/middleware/auth.middleware';
 
 const router = Router();
+const REDACTED_VALUE = '[redacted]';
+const SENSITIVE_FIELD_PATTERN = /(token|secret|password|authorization|credential|oauth|api[_-]?key|cookie)/i;
+
+function isSensitiveField(fieldName: string): boolean {
+    return SENSITIVE_FIELD_PATTERN.test(fieldName);
+}
+
+export function findSensitiveAdminDbFields(data: unknown, path = ''): string[] {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        return [];
+    }
+
+    return Object.entries(data).flatMap(([key, value]) => {
+        const fieldPath = path ? `${path}.${key}` : key;
+        if (isSensitiveField(key)) {
+            return [fieldPath];
+        }
+        return findSensitiveAdminDbFields(value, fieldPath);
+    });
+}
+
+export function redactAdminDbValue(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.map(redactAdminDbValue);
+    }
+
+    if (!value || typeof value !== 'object') {
+        return value;
+    }
+
+    const redacted: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+        redacted[key] = isSensitiveField(key) ? REDACTED_VALUE : redactAdminDbValue(nestedValue);
+    }
+
+    return redacted;
+}
+
+export function redactAdminDbRow(row: any): unknown {
+    const plainRow = row && typeof row.toJSON === 'function' ? row.toJSON() : row;
+    return redactAdminDbValue(plainRow);
+}
+
+function rejectSensitiveAdminWrite(data: unknown, res: any): boolean {
+    const sensitiveFields = findSensitiveAdminDbFields(data);
+    if (sensitiveFields.length === 0) {
+        return false;
+    }
+
+    res.status(400).json({
+        error: 'Sensitive fields cannot be viewed or edited through the admin database editor.',
+        fields: sensitiveFields
+    });
+    return true;
+}
 
 /**
  * GET /admin/db/:table
@@ -38,7 +93,7 @@ router.get('/db/:table', requireAdminAPI, async (req: any, res: any) => {
             return res.status(400).json({ error: 'Unknown table' });
         }
 
-        res.json({ rows });
+        res.json({ rows: rows.map(redactAdminDbRow) });
     } catch (err) {
         logger.error('Error listing table rows:', err);
         res.status(500).json({ error: 'Failed to list rows.' });
@@ -54,6 +109,10 @@ router.post('/db/:table', requireAdminAPI, async (req: any, res: any) => {
     const data = req.body;
 
     try {
+        if (rejectSensitiveAdminWrite(data, res)) {
+            return;
+        }
+
         let row;
 
         if (table === 'StreamSessions') {
@@ -75,7 +134,7 @@ router.post('/db/:table', requireAdminAPI, async (req: any, res: any) => {
             return res.status(400).json({ error: 'Unknown table' });
         }
 
-        res.json({ row });
+        res.json({ row: redactAdminDbRow(row) });
     } catch (err) {
         logger.error('Error creating table row:', err);
         res.status(500).json({ error: 'Failed to create row.' });
@@ -105,7 +164,7 @@ router.get('/db/StreamSessions', requireAdminAPI, async (req: any, res: any) => 
             order: [['startTime', 'DESC']]
         });
 
-        res.json({ sessions });
+        res.json({ sessions: sessions.map(redactAdminDbRow) });
     } catch (err) {
         logger.error('Error listing stream sessions:', err);
         res.status(500).json({ error: 'Failed to list stream sessions.' });
@@ -121,6 +180,10 @@ router.put('/db/:table/:id', requireAdminAPI, async (req: any, res: any) => {
     const data = req.body;
 
     try {
+        if (rejectSensitiveAdminWrite(data, res)) {
+            return;
+        }
+
         let model;
 
         if (table === 'StreamSessions') {
@@ -148,7 +211,7 @@ router.put('/db/:table/:id', requireAdminAPI, async (req: any, res: any) => {
         }
 
         await row.update(data);
-        res.json({ row });
+        res.json({ row: redactAdminDbRow(row) });
     } catch (err) {
         logger.error('Error updating table row:', err);
         res.status(500).json({ error: 'Failed to update row.' });

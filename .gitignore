@@ -1,5 +1,8 @@
 /node_modules
 .env
+.env.*
+!.env.example
+.env.bot-tokens.generated
 test-database.sqlite
 PATCHES_TWITCH.md
 /logs
@@ -8,7 +11,6 @@ accounts.sqlite
 src/jobs/leaderboardCache.json
 src/jobs/wtLeaderboardCache.json
 src/jobs/WTrankCache.json
-.env.example
 .env.development
 .env.production
 src/util/eventSubManager.ts.bak
@@ -23,6 +25,8 @@ data/metrics.sqlite
 /data
 stats.json
 config/blocked.json
+config/.env
+config/.env.*
 /dist
 /.vscode
 stats.json
@@ -37,6 +41,10 @@ frontend/public/drops.json
 /cache
 frontend/public/drops.json
 *.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!frontend/public/drops.json
 
 # VPS failover scripts: secrets and seed artifacts
 scripts/backup-config.sh

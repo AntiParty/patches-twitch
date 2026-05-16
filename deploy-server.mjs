@@ -4,7 +4,11 @@ import { exec } from "child_process";
 const app = express();
 app.use(express.json());
 
-const DEPLOY_SECRET = process.env.DEPLOY_SECRET || "supersecret";
+const DEPLOY_SECRET = process.env.DEPLOY_SECRET;
+
+if (!DEPLOY_SECRET) {
+    throw new Error("DEPLOY_SECRET is required to start the deploy server.");
+}
 
 app.post("/deploy", (req, res) => {
     const token = req.headers["x-deploy-token"];

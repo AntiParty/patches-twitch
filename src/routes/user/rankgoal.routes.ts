@@ -3,7 +3,10 @@
  * Handles rank goal tracking for THE FINALS streamers
  */
 import { Router } from 'express';
+import fs from 'fs/promises';
+import path from 'path';
 import logger from '@/util/logger';
+import { Channel } from '@/db';
 import { requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidRank, isValidRankScore } from '@/middleware/validation.middleware';
 
@@ -19,6 +22,45 @@ const RANK_THRESHOLDS: { [key: number]: number } = {
     5: 40000,  // Diamond: 40,000+
     6: 999999  // Ruby: Top 500 (dynamic threshold, unlocks mid-season)
 };
+
+async function readLatestLeaderboard(prefix: string): Promise<any[]> {
+    const cacheDir = path.join(process.cwd(), 'cache');
+    let files: string[];
+    try {
+        files = await fs.readdir(cacheDir);
+    } catch (err: any) {
+        if (err?.code === 'ENOENT') return [];
+        throw err;
+    }
+    const latest = files
+        .filter(file => file.startsWith(prefix) && file.endsWith('.json'))
+        .map(file => ({
+            file,
+            season: parseInt(file.match(/\d+/)?.[0] ?? '0', 10),
+        }))
+        .filter(entry => entry.season > 0)
+        .sort((a, b) => b.season - a.season)[0];
+
+    if (!latest) return [];
+
+    const raw = await fs.readFile(path.join(cacheDir, latest.file), 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+}
+
+function findPlayer(leaderboard: any[], playerId: string) {
+    const normalized = playerId.trim().toLowerCase();
+    return leaderboard.find((player: any) => {
+        const fields = [
+            player.name,
+            player.id,
+            player.steamName,
+            player.psnName,
+            player.xboxName,
+        ];
+        return fields.some(field => String(field || '').trim().toLowerCase() === normalized);
+    });
+}
 
 /**
  * GET /api/my-rank-goal
@@ -55,13 +97,56 @@ router.get('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
 });
 
 /**
+ * GET /api/my-current-rank
+ * Resolves the authenticated user's linked THE FINALS account from cached leaderboard data.
+ */
+router.get('/api/my-current-rank', requireUserAPI, async (req: any, res: any) => {
+    try {
+        const username = req.session.twitchUsername;
+        const channel = await Channel.findOne({ where: { username } }) as any;
+        const playerId = channel?.player_id?.trim();
+
+        if (!playerId) {
+            return res.status(404).json({ error: 'No linked player ID found.' });
+        }
+
+        const [regular, worldTour] = await Promise.all([
+            readLatestLeaderboard('regular_s'),
+            readLatestLeaderboard('worldTour_s'),
+        ]);
+
+        const player = findPlayer(regular, playerId);
+        const wtPlayer = findPlayer(worldTour, playerId);
+
+        if (!player) {
+            return res.status(404).json({
+                error: 'Linked player was not found in the latest ranked leaderboard cache.',
+                playerId,
+            });
+        }
+
+        res.json({
+            playerId,
+            rank: player.rank ?? null,
+            league: player.league ?? null,
+            rankScore: Number(player.rankScore ?? 0),
+            worldTourRank: wtPlayer?.rank ?? null,
+        });
+    } catch (err) {
+        logger.error('Error fetching current rank:', err);
+        res.status(500).json({ error: 'Failed to fetch current rank.' });
+    }
+});
+
+/**
  * POST /api/my-rank-goal
  * Create or update a rank goal for the authenticated user
  */
 router.post('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
     try {
         const username = req.session.twitchUsername;
-        const { targetRank, currentRS } = req.body;
+        const { targetRank } = req.body;
+        const currentRS = req.body.currentRS ?? req.body.startingRankScore;
 
         // Validate input
         if (!isValidRank(targetRank)) {
@@ -72,7 +157,10 @@ router.post('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
             return res.status(400).json({ error: 'Invalid current RS.' });
         }
 
-        const targetRS = RANK_THRESHOLDS[targetRank] || 50000;
+        const requestedTargetRS = req.body.targetRankScore;
+        const targetRS = isValidRankScore(requestedTargetRS)
+            ? requestedTargetRS
+            : RANK_THRESHOLDS[targetRank] || 50000;
 
         const { RankGoal } = await import('@/db');
 

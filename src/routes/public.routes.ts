@@ -725,26 +725,26 @@ router.post('/api/feedback', rateLimitFeedback, async (req: Request, res: Respon
 
         logger.info(`Feedback received from ${username || 'Anonymous'}: ${sanitizedMessage}`);
 
-        // Send to Discord Webhook
-        const discordWebhookUrl = 'https://discord.com/api/webhooks/1463388601831129285/ThIc8o8BkKdbvYGW_at6o5ETRGcAHDr4c4YYSmFBfdH1CwBhwhgMdnZ5U8c1qqNkwkyM';
-        try {
-            await axios.post(discordWebhookUrl, {
-                embeds: [{
-                    title: `📝 New Feedback (${type})`,
-                    description: sanitizedMessage,
-                    color: type === 'bug' ? 0xe74c3c : (type === 'feature' ? 0x3498db : 0x9146FF),
-                    fields: [
-                        { name: 'User', value: username || 'Anonymous', inline: true },
-                        { name: 'Type', value: type || 'general', inline: true }
-                    ],
-                    timestamp: new Date().toISOString(),
-                    footer: { text: 'FinalsRS Feedback System' }
-                }]
-            });
-        } catch (discordErr) {
-            logger.error('Failed to send feedback to Discord:', discordErr);
+        const discordWebhookUrl = process.env.FEEDBACK_DISCORD_WEBHOOK_URL;
+        if (discordWebhookUrl) {
+            try {
+                await axios.post(discordWebhookUrl, {
+                    embeds: [{
+                        title: `New Feedback (${type})`,
+                        description: sanitizedMessage,
+                        color: type === 'bug' ? 0xe74c3c : (type === 'feature' ? 0x3498db : 0x9146FF),
+                        fields: [
+                            { name: 'User', value: username || 'Anonymous', inline: true },
+                            { name: 'Type', value: type || 'general', inline: true }
+                        ],
+                        timestamp: new Date().toISOString(),
+                        footer: { text: 'FinalsRS Feedback System' }
+                    }]
+                });
+            } catch (discordErr) {
+                logger.error('Failed to send feedback to Discord:', discordErr);
+            }
         }
-
         res.status(200).json({ success: true, message: 'Feedback submitted successfully.' });
 
     } catch (err) {

@@ -9,7 +9,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <meta name="csrf-token" content="<%= csrfToken %>" />
@@ -21,21 +21,10 @@
           .querySelectorAll(".nav-item")
           .forEach((el) => el.classList.remove("active"));
 
-        const map = {
-          overview: 0,
-          commands: 1,
-          "rank-tracker": 2,
-          overlays: 3,
-          analytics: 4,
-          overlays: 3,
-          analytics: 4,
-          subscription: 5,
-          settings: 6,
-        };
-
-        const navItems = document.querySelectorAll(".nav-item");
-        if (navItems[map[viewId]])
-          navItems[map[viewId]].classList.add("active");
+        const activeNavItem = document.querySelector(
+          `.nav-item[data-view="${viewId}"]`
+        );
+        if (activeNavItem) activeNavItem.classList.add("active");
 
         document
           .querySelectorAll(".view-section")
@@ -62,21 +51,22 @@
 
     <style>
       :root {
-        --bg-app: #0f0f13;
-        --bg-sidebar: #18181b;
-        --bg-card: #1f1f23;
-        --bg-hover: #2d2d35;
-        --primary: #9147ff;
-        --primary-hover: #772ce8;
-        --text-main: #efeff1;
-        --text-muted: #adadb8;
-        --border: #2d2d35;
-        --success: #00b35f;
-        --danger: #e91916;
-        --warning: #f5a524;
-        --info: #3b82f6;
+        --bg-app: #0b0c0e;
+        --bg-sidebar: #101216;
+        --bg-card: #15181d;
+        --bg-hover: #20242a;
+        --primary: #e62038;
+        --primary-hover: #ff334e;
+        --text-main: #f7f4ec;
+        --text-muted: #aaa59c;
+        --border: rgba(255, 255, 255, 0.1);
+        --success: #42d483;
+        --danger: #ef4444;
+        --warning: #f3c247;
+        --info: #7ab8ff;
         --radius: 8px;
-        --font-main: "Inter", sans-serif;
+        --font-main: "IBM Plex Sans", sans-serif;
+        --font-display: "Archivo", "IBM Plex Sans", sans-serif;
       }
 
       * {
@@ -86,27 +76,33 @@
       }
 
       body {
-        background-color: var(--bg-app);
+        background:
+          linear-gradient(180deg, rgba(230, 32, 56, 0.045), transparent 360px),
+          var(--bg-app);
         color: var(--text-main);
         font-family: var(--font-main);
         height: 100vh;
         overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
       }
 
       /* Layout */
       .app-container {
         display: grid;
-        grid-template-columns: 260px 1fr;
+        grid-template-columns: 280px 1fr;
         height: 100vh;
       }
 
       /* Sidebar */
       .sidebar {
-        background-color: var(--bg-sidebar);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 220px),
+          var(--bg-sidebar);
         border-right: 1px solid var(--border);
         display: flex;
         flex-direction: column;
-        padding: 24px;
+        padding: 22px;
         gap: 24px;
       }
 
@@ -125,8 +121,9 @@
 
       .logo h1 {
         font-size: 20px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
+        font-family: var(--font-display);
+        font-weight: 800;
+        letter-spacing: 0;
       }
 
       .nav-menu {
@@ -137,15 +134,18 @@
       }
 
       .nav-item {
-        padding: 12px 16px;
+        min-height: 44px;
+        padding: 0 14px;
         border-radius: var(--radius);
         cursor: pointer;
         color: var(--text-muted);
-        transition: all 0.2s;
+        transition-property: background-color, color, transform, box-shadow;
+        transition-duration: 180ms;
+        transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
         display: flex;
         align-items: center;
         gap: 12px;
-        font-weight: 500;
+        font-weight: 700;
         font-size: 14px;
       }
 
@@ -155,9 +155,10 @@
       }
 
       .nav-item.active {
-        background-color: rgba(145, 71, 255, 0.1);
-        color: var(--primary);
-        font-weight: 600;
+        background-color: rgba(230, 32, 56, 0.13);
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(230, 32, 56, 0.28);
+        font-weight: 800;
       }
 
       .nav-item i {
@@ -178,8 +179,9 @@
         gap: 12px;
         padding: 12px;
         border-radius: var(--radius);
-        background-color: var(--bg-hover);
-        transition: background-color 0.2s;
+        background-color: rgba(255, 255, 255, 0.045);
+        box-shadow: inset 0 0 0 1px var(--border);
+        transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1);
       }
 
       .user-profile:hover {
@@ -208,7 +210,7 @@
       /* Main Content */
       .main-content {
         overflow-y: auto;
-        padding: 40px;
+        padding: 28px 32px;
         position: relative;
       }
 
@@ -216,13 +218,16 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 32px;
+        margin-bottom: 20px;
       }
 
       .page-title {
-        font-size: 28px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
+        font-family: var(--font-display);
+        font-size: clamp(24px, 2.6vw, 34px);
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-wrap: balance;
       }
 
       /* Views */
@@ -250,7 +255,7 @@
 
       .gs-modal {
         background: var(--bg-card);
-        border-radius: 12px;
+        border-radius: var(--radius);
         width: 100%;
         max-width: 600px;
         border: 1px solid var(--border);
@@ -306,7 +311,8 @@
         align-items: center;
         justify-content: center;
         border-radius: 6px;
-        transition: all 0.2s;
+        transition-property: background-color, color, transform;
+        transition-duration: 180ms;
       }
 
       .gs-close:hover {
@@ -378,7 +384,7 @@
         margin: 0 auto 20px;
         font-size: 28px;
         color: white;
-        box-shadow: 0 8px 20px rgba(145, 71, 255, 0.3);
+        box-shadow: 0 8px 20px rgba(230, 32, 56, 0.24);
       }
 
       .gs-step-icon.completed {
@@ -439,7 +445,7 @@
       .gs-step-action-status {
         font-size: 12px;
         padding: 4px 10px;
-        border-radius: 12px;
+        border-radius: var(--radius);
         background: var(--bg-app);
         color: var(--text-muted);
       }
@@ -482,7 +488,8 @@
         font-size: 14px;
         padding: 8px 12px;
         border-radius: 6px;
-        transition: all 0.2s;
+        transition-property: background-color, color;
+        transition-duration: 180ms;
       }
 
       .gs-skip:hover {
@@ -494,10 +501,10 @@
       .onboarding-checklist {
         background: linear-gradient(
           135deg,
-          rgba(145, 71, 255, 0.1),
-          rgba(119, 44, 232, 0.05)
+          rgba(230, 32, 56, 0.1),
+          rgba(243, 194, 71, 0.05)
         );
-        border: 1px solid rgba(145, 71, 255, 0.2);
+        border: 1px solid rgba(230, 32, 56, 0.2);
         border-radius: var(--radius);
         padding: 20px;
         margin-bottom: 24px;
@@ -535,7 +542,8 @@
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        transition: all 0.2s;
+        transition-property: background-color, color;
+        transition-duration: 180ms;
       }
 
       .onboarding-checklist-close:hover {
@@ -557,7 +565,8 @@
         background: var(--bg-card);
         border-radius: 6px;
         border: 1px solid var(--border);
-        transition: all 0.2s;
+        transition-property: border-color, background-color, color;
+        transition-duration: 180ms;
       }
 
       .onboarding-checklist-item:hover {
@@ -583,7 +592,8 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        transition: all 0.2s;
+        transition-property: color;
+        transition-duration: 180ms;
       }
 
       .onboarding-checklist-item.completed .onboarding-checklist-item-icon {
@@ -630,26 +640,31 @@
       .grid-2 {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 24px;
+        gap: 18px;
       }
 
       .grid-3 {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
+        gap: 18px;
       }
 
       .grid-1-2 {
         display: grid;
         grid-template-columns: 1fr 2fr;
-        gap: 24px;
+        gap: 18px;
       }
 
       .card {
-        background-color: var(--bg-card);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+          var(--bg-card);
         border-radius: var(--radius);
         padding: 24px;
         border: 1px solid var(--border);
+        box-shadow:
+          0 18px 44px rgba(0, 0, 0, 0.22),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
         display: flex;
         flex-direction: column;
       }
@@ -663,8 +678,10 @@
 
       .card-title {
         font-size: 15px;
-        font-weight: 600;
+        font-family: var(--font-display);
+        font-weight: 800;
         color: var(--text-main);
+        letter-spacing: 0;
       }
 
       .card-subtitle {
@@ -675,13 +692,16 @@
 
       /* Buttons & Inputs */
       .btn {
-        padding: 10px 18px;
+        min-height: 40px;
+        padding: 0 16px;
         border-radius: 6px;
         border: none;
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 800;
         font-size: 14px;
-        transition: all 0.2s;
+        transition-property: background-color, color, transform, box-shadow, border-color;
+        transition-duration: 180ms;
+        transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -692,6 +712,7 @@
       .btn-primary {
         background-color: var(--primary);
         color: white;
+        box-shadow: 0 12px 28px rgba(230, 32, 56, 0.22);
       }
 
       .btn-primary:hover {
@@ -720,7 +741,7 @@
 
       .btn-success-solid {
         background-color: var(--success);
-        color: white;
+        color: #07110b;
       }
 
       .btn-success-solid:hover {
@@ -762,24 +783,28 @@
       }
 
       .btn-sm {
-        padding: 6px 12px;
+        min-height: 34px;
+        padding: 0 12px;
         font-size: 12px;
       }
 
       .input {
-        background-color: var(--bg-app);
+        background-color: rgba(0, 0, 0, 0.2);
         border: 1px solid var(--border);
         color: var(--text-main);
-        padding: 10px 14px;
+        min-height: 42px;
+        padding: 0 14px;
         border-radius: 6px;
         width: 100%;
         font-size: 14px;
-        transition: border-color 0.2s;
+        transition-property: border-color, box-shadow, background-color;
+        transition-duration: 180ms;
       }
 
       .input:focus {
         outline: none;
         border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(230, 32, 56, 0.16);
       }
 
       select.input {
@@ -825,10 +850,10 @@
       /* Features List */
       .feature-item {
         padding: 16px;
-        background: var(--bg-hover);
+        background: rgba(255, 255, 255, 0.035);
         border-radius: var(--radius);
         margin-bottom: 12px;
-        border: 1px solid transparent;
+        border: 1px solid var(--border);
         transition: border-color 0.2s;
       }
 
@@ -918,7 +943,7 @@
         flex: 1;
         padding: 14px;
         overflow-y: auto;
-        font-family: "Inter", sans-serif;
+        font-family: var(--font-main);
         font-size: 13px;
         display: flex;
         flex-direction: column;
@@ -957,7 +982,7 @@
 
       /* Default twitch blueish */
       .user-name.bot {
-        color: #9147ff;
+        color: var(--primary);
       }
 
       .msg-content {
@@ -1145,9 +1170,216 @@
         gap: 12px;
       }
 
+      /* Clean Creator Tool refresh */
+      .overview-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin: 0 0 18px;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.025);
+      }
+
+      .overview-strip-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .overview-strip-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        color: var(--success);
+        background: rgba(66, 212, 131, 0.1);
+        border: 1px solid rgba(66, 212, 131, 0.18);
+      }
+
+      .overview-strip-icon.is-offline {
+        color: var(--warning);
+        background: rgba(243, 194, 71, 0.1);
+        border-color: rgba(243, 194, 71, 0.18);
+      }
+
+      .overview-strip-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+
+      .overview-strip-copy {
+        margin-top: 2px;
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .overview-strip-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .overview-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 0 10px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .overview-pill strong {
+        color: var(--text-main);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .overview-pill.is-good strong {
+        color: var(--success);
+      }
+
+      .overview-pill.is-warning strong {
+        color: var(--warning);
+      }
+
+      .header {
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .overview-metrics .metric-card {
+        min-height: 132px;
+        justify-content: space-between;
+      }
+
+      .overview-metrics .metric-card:first-child {
+        background: var(--bg-card);
+        border-color: var(--border);
+      }
+
+      .card:hover,
+      .feature-item:hover,
+      .onboarding-checklist-item:hover {
+        border-color: rgba(255, 255, 255, 0.18);
+      }
+
+      .onboarding-checklist {
+        background: rgba(255, 255, 255, 0.025);
+        border-color: var(--border);
+        box-shadow: none;
+        padding: 16px;
+      }
+
+      .onboarding-checklist-title {
+        color: var(--text-main);
+      }
+
+      .onboarding-checklist-item-action,
+      .gs-header h2 i,
+      .gs-step-action-title i,
+      .feature-item h3 {
+        color: var(--primary);
+      }
+
+      .gs-modal,
+      .confirm-modal,
+      .toast {
+        box-shadow:
+          0 24px 70px rgba(0, 0, 0, 0.38),
+          inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .gs-step-icon,
+      .gs-progress-fill {
+        background: linear-gradient(135deg, var(--primary), var(--warning));
+        box-shadow: 0 12px 26px rgba(230, 32, 56, 0.24);
+      }
+
+      .gs-progress,
+      .gs-footer,
+      .gs-step-action,
+      .onboarding-checklist-item,
+      .color-picker-wrapper {
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      .indicator-success {
+        background: var(--success) !important;
+        box-shadow: 0 0 0 4px rgba(66, 212, 131, 0.1) !important;
+      }
+
+      .indicator-danger {
+        background: var(--danger) !important;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12) !important;
+      }
+
+      .chat-preview,
+      .overlay-preview-container {
+        background: #090a0c;
+        border: 1px solid var(--border);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+      }
+
+      .chat-header {
+        background: #f7f4ec;
+        color: #090a0c;
+      }
+
+      .rank-circle {
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+          0 18px 34px rgba(0, 0, 0, 0.22);
+      }
+
+      th {
+        letter-spacing: 0;
+      }
+
+      .btn:hover,
+      .nav-item:hover {
+        transform: translateY(-1px);
+      }
+
+      .btn:active,
+      .nav-item:active {
+        transform: scale(0.96);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 1ms !important;
+        }
+      }
+
       @media (max-width: 1200px) {
         .grid-3 {
           grid-template-columns: repeat(2, 1fr);
+        }
+
+        .overview-strip {
+          align-items: flex-start;
+          flex-direction: column;
         }
 
         .main-content {
@@ -1212,6 +1444,11 @@
         .grid-1-2 {
           grid-template-columns: 1fr;
           gap: 12px;
+        }
+
+        .overview-strip-actions {
+          width: 100%;
+          justify-content: flex-start;
         }
 
         .main-content {
@@ -1390,19 +1627,19 @@
         </div>
 
         <ul class="nav-menu">
-          <li class="nav-item active" onclick="switchView('overview')">
+          <li class="nav-item active" data-view="overview" onclick="switchView('overview')">
             <i class="fas fa-home"></i> <span>Overview</span>
           </li>
-          <li class="nav-item" onclick="switchView('commands')">
+          <li class="nav-item" data-view="commands" onclick="switchView('commands')">
             <i class="fas fa-terminal"></i> <span>My Commands</span>
           </li>
-          <li class="nav-item" onclick="switchView('rank-tracker')">
+          <li class="nav-item" data-view="rank-tracker" onclick="switchView('rank-tracker')">
             <i class="fas fa-chart-line"></i> <span>Rank Tracker</span>
           </li>
-          <li class="nav-item" onclick="switchView('overlays')">
+          <li class="nav-item" data-view="overlays" onclick="switchView('overlays')">
             <i class="fas fa-tv"></i> <span>Stream Overlays</span>
           </li>
-          <li class="nav-item" onclick="switchView('settings')">
+          <li class="nav-item" data-view="settings" onclick="switchView('settings')">
             <i class="fas fa-cog"></i> <span>Settings</span>
           </li>
           <li class="nav-item" onclick="window.open('/docs', '_blank')">
@@ -1422,7 +1659,7 @@
             <i class="fas fa-user-shield"></i> <span>Admin Dashboard</span>
           </li>
           <% } %>
-          <li class="nav-item" onclick="switchView('subscription')">
+          <li class="nav-item" data-view="subscription" onclick="switchView('subscription')">
             <i class="fas fa-robot"></i> <span>Custom Bot</span>
           </li>
         </ul>
@@ -1495,15 +1732,59 @@
         <div id="view-overview" class="view-section active">
           <div class="header">
             <div>
-              <h2 class="page-title">Dashboard</h2>
-              <div style="color: var(--text-muted); margin-top: 4px">
-                Welcome back, <%= username %>
+              <h2 class="page-title">Control room</h2>
+              <div style="color: var(--text-muted); margin-top: 8px">
+                Manage the bot, ranked commands, overlays, and channel setup for <%= username %>.
               </div>
             </div>
             <a href="/" class="btn btn-ghost"
               ><i class="fas fa-external-link-alt"></i> Home Page</a
             >
           </div>
+
+          <section class="overview-strip" aria-label="Dashboard status overview">
+            <div class="overview-strip-main">
+              <div
+                id="overview-status-icon"
+                class="overview-strip-icon <%= userStats.botEnabled ? '' : 'is-offline' %>"
+              >
+                <i class="fas <%= userStats.botEnabled ? 'fa-signal' : 'fa-pause' %>"></i>
+              </div>
+              <div>
+                <h3 class="overview-strip-title" id="dashboard-hero-title">
+                  <%= userStats.botEnabled ? 'Bot is live' : 'Bot is offline' %>
+                </h3>
+                <p class="overview-strip-copy" id="dashboard-hero-copy">
+                  <%= userStats.botEnabled ? 'Rank commands are available in chat for ' + username + '.' : 'Turn the bot on when you are ready for chat commands.' %>
+                </p>
+              </div>
+            </div>
+            <div class="overview-strip-actions">
+              <div
+                class="overview-pill <%= userStats.botEnabled ? 'is-good' : 'is-warning' %>"
+                id="dashboard-quick-bot"
+              >
+                <span id="dashboard-feed-status"><%= userStats.botEnabled ? 'Connected' : 'Offline' %></span>
+                <strong id="dashboard-quick-bot-value"><%= userStats.botEnabled ? 'Live' : 'Off' %></strong>
+              </div>
+              <div class="overview-pill <%= userStats.playerId ? 'is-good' : 'is-warning' %>">
+                IGN <strong><%= userStats.playerId ? 'Linked' : 'Needed' %></strong>
+              </div>
+              <button
+                id="hero-toggle-bot-btn"
+                class="btn btn-sm <%= userStats.botEnabled ? 'btn-danger-solid' : 'btn-success-solid' %>"
+                onclick="toggleBot()"
+              >
+                <i
+                  id="hero-toggle-bot-icon"
+                  class="fas <%= userStats.botEnabled ? 'fa-power-off' : 'fa-play' %>"
+                ></i>
+                <span id="hero-toggle-bot-label">
+                  <%= userStats.botEnabled ? 'Turn off' : 'Turn on' %>
+                </span>
+              </button>
+            </div>
+          </section>
 
           <!-- Onboarding Checklist -->
           <div
@@ -1578,8 +1859,8 @@
             </div>
           </div>
 
-          <div class="grid-3" style="margin-bottom: 30px">
-            <div class="card">
+          <div class="grid-3 overview-metrics" style="margin-bottom: 30px">
+            <div class="card metric-card">
               <div class="card-header">
                 <div class="card-title">Bot Status</div>
                 <i
@@ -1635,7 +1916,7 @@
               </button>
             </div>
 
-            <div class="card">
+            <div class="card metric-card">
               <div class="card-header">
                 <div class="card-title">Linked Account</div>
                 <i class="fas fa-link" style="color: var(--text-muted)"></i>
@@ -1671,7 +1952,7 @@
               <% } %>
             </div>
 
-            <div class="card">
+            <div class="card metric-card">
               <div class="card-header">
                 <div class="card-title">Commands</div>
                 <i class="fas fa-terminal" style="color: var(--text-muted)"></i>
@@ -1956,14 +2237,34 @@
                     font-size: 14px;
                     font-weight: 500;
                   "
-                  >Current RS (Estimated)</label
+                  >Current RS</label
                 >
-                <input
-                  type="number"
-                  class="input"
-                  placeholder="e.g. 45000"
-                  id="current-rs-input"
-                />
+                <div style="display: flex; gap: 8px">
+                  <input
+                    type="number"
+                    class="input"
+                    placeholder="<%= userStats.playerId ? 'Loading linked RS...' : 'Link an IGN first' %>"
+                    id="current-rs-input"
+                  />
+                  <button class="btn btn-ghost" type="button" onclick="refreshCurrentRank()">
+                    <i class="fas fa-rotate"></i>
+                  </button>
+                </div>
+                <div
+                  id="current-rank-status"
+                  style="
+                    margin-top: 8px;
+                    color: var(--text-muted);
+                    font-size: 12px;
+                    line-height: 1.5;
+                  "
+                >
+                  <% if (userStats.playerId) { %>
+                    Pulling current RS for <%= userStats.playerId %> from the latest leaderboard cache.
+                  <% } else { %>
+                    Link your THE FINALS account in Settings to auto-fill RS.
+                  <% } %>
+                </div>
               </div>
               <button class="btn btn-primary" onclick="updateRankGoal()">
                 Update Goal
@@ -2154,7 +2455,7 @@
                     type="color"
                     id="overlay-color-input"
                     class="color-input"
-                    value="#9147ff"
+                    value="#e62038"
                     onchange="saveOverlayConfig()"
                   />
                   <span
@@ -2299,7 +2600,7 @@
               class="feature-item"
               style="
                 margin-top: 12px;
-                background: rgba(145, 71, 255, 0.05);
+                background: rgba(230, 32, 56, 0.06);
                 padding: 12px;
               "
             >
@@ -2831,30 +3132,25 @@
           .querySelectorAll(".nav-item")
           .forEach((el) => el.classList.remove("active"));
 
-        const map = {
-          overview: 0,
-          commands: 1,
-          "rank-tracker": 2,
-          overlays: 3,
-          analytics: 4,
-          settings: 5,
-        };
-
-        const navItems = document.querySelectorAll(".nav-item");
-        if (navItems[map[viewId]])
-          navItems[map[viewId]].classList.add("active");
+        const activeNavItem = document.querySelector(
+          `.nav-item[data-view="${viewId}"]`
+        );
+        if (activeNavItem) activeNavItem.classList.add("active");
 
         document
           .querySelectorAll(".view-section")
           .forEach((el) => el.classList.remove("active"));
 
-        document.getElementById(`view-${viewId}`).classList.add("active");
+        const viewElement = document.getElementById(`view-${viewId}`);
+        if (viewElement) viewElement.classList.add("active");
 
-        if (viewId === "commands") fetchCommands();
-        if (viewId === "rank-tracker") loadRankGoal();
-        if (viewId === "analytics") loadAnalytics();
+        if (viewId === "commands" && typeof fetchCommands === "function") fetchCommands();
+        if (viewId === "rank-tracker" && typeof loadRankGoal === "function") loadRankGoal();
+        if (viewId === "analytics" && typeof loadAnalytics === "function") loadAnalytics();
 
-        setTimeout(checkOnboardingProgress, 500);
+        if (typeof checkOnboardingProgress === "function") {
+          setTimeout(checkOnboardingProgress, 500);
+        }
       }
 
       function showToast(message, type = "info") {
@@ -3578,6 +3874,59 @@
         return Number(n).toLocaleString();
       }
 
+      async function fetchCurrentRank() {
+        const status = document.getElementById("current-rank-status");
+        try {
+          if (status) status.innerText = "Checking latest leaderboard cache...";
+          const res = await fetch("/api/my-current-rank", { cache: "no-store" });
+          const data = await res.json();
+
+          if (!res.ok) {
+            if (status) {
+              status.innerText = data.error || "Current RS is unavailable.";
+            }
+            return null;
+          }
+
+          if (status) {
+            const bits = [
+              `${formatNumber(data.rankScore)} RS`,
+              data.league,
+              data.rank ? `rank #${formatNumber(data.rank)}` : null,
+              data.worldTourRank ? `WT #${formatNumber(data.worldTourRank)}` : null,
+            ].filter(Boolean);
+            status.innerText = `Loaded ${bits.join(" | ")} for ${data.playerId}.`;
+          }
+
+          return data;
+        } catch (err) {
+          console.error("fetchCurrentRank failed", err);
+          if (status) status.innerText = "Could not load current RS right now.";
+          return null;
+        }
+      }
+
+      async function refreshCurrentRank() {
+        const currentInput = document.getElementById("current-rs-input");
+        const targetRankSelect = document.getElementById("target-rank-select");
+        const currentRank = await fetchCurrentRank();
+
+        if (!currentRank) return null;
+
+        currentInput.value = currentRank.rankScore ?? "";
+
+        const targetRank = Number(targetRankSelect.value);
+        if (targetRank) {
+          await updateRankDisplay(
+            targetRank,
+            rankThresholds[targetRank],
+            currentRank.rankScore ?? 0
+          );
+        }
+
+        return currentRank;
+      }
+
       async function fetchRubyObject() {
         try {
           const res = await fetch("/api/ruby-status", {
@@ -3670,8 +4019,12 @@
 
       async function loadRankGoal() {
         try {
-          const res = await fetch("/api/my-rank-goal");
-          const data = await res.json();
+          const [goalResult, currentRank] = await Promise.all([
+            fetch("/api/my-rank-goal").then((res) => res.json()),
+            fetchCurrentRank(),
+          ]);
+          const data = goalResult;
+          const liveRS = currentRank?.rankScore;
 
           if (data.goal) {
             const {
@@ -3683,15 +4036,18 @@
 
             document.getElementById("target-rank-select").value = targetRank;
             document.getElementById("current-rs-input").value =
-              startingRankScore ?? "";
+              liveRS ?? startingRankScore ?? "";
 
-            // pass saved score (may be null) and current RS, updateRankDisplay will replace for Ruby
             await updateRankDisplay(
               targetRank,
               targetRankScore ?? rankThresholds[targetRank],
-              startingRankScore ?? 0
+              liveRS ?? startingRankScore ?? 0
             );
             return;
+          }
+
+          if (typeof liveRS === "number") {
+            document.getElementById("current-rs-input").value = liveRS;
           }
 
           // no goal -> reset
@@ -3952,14 +4308,22 @@
         const currentInput = document.getElementById("current-rs-input");
 
         const targetRank = Number(rankSelect.value);
-        const currentRS = parseNumber(currentInput.value) || 0;
+        let currentRS = parseNumber(currentInput.value);
 
         if (!targetRank) {
           showToast("Please select a target rank.", "warning");
           return;
         }
+        if (isNaN(currentRS)) {
+          const currentRank = await refreshCurrentRank();
+          currentRS = currentRank?.rankScore ?? NaN;
+        }
         if (currentRS < 0) {
           showToast("Please enter a valid current RS.", "warning");
+          return;
+        }
+        if (isNaN(currentRS)) {
+          showToast("Current RS is unavailable. Link your account or enter RS manually.", "warning");
           return;
         }
 
@@ -3978,7 +4342,7 @@
             body: JSON.stringify({
               targetRank: targetRank,
               targetRankScore: targetRankScore,
-              startingRankScore: currentRS,
+              currentRS: currentRS,
             }),
           });
 
@@ -4147,6 +4511,15 @@
         const btn = document.getElementById("toggle-bot-btn");
         const text = document.getElementById("toggle-bot-text");
         const icon = document.getElementById("toggle-bot-icon");
+        const heroBtn = document.getElementById("hero-toggle-bot-btn");
+        const heroText = document.getElementById("hero-toggle-bot-label");
+        const heroIcon = document.getElementById("hero-toggle-bot-icon");
+        const heroTitle = document.getElementById("dashboard-hero-title");
+        const heroCopy = document.getElementById("dashboard-hero-copy");
+        const overviewStatusIcon = document.getElementById("overview-status-icon");
+        const feedStatus = document.getElementById("dashboard-feed-status");
+        const quickBot = document.getElementById("dashboard-quick-bot");
+        const quickBotValue = document.getElementById("dashboard-quick-bot-value");
         const statusText = document.getElementById("bot-status-text");
         const statusSubtitle = document.getElementById("bot-status-subtitle");
         const indicator = document.getElementById("bot-status-indicator");
@@ -4154,6 +4527,8 @@
         const originalText = text.innerText;
         text.innerText = "Wait...";
         btn.disabled = true;
+        if (heroBtn) heroBtn.disabled = true;
+        if (heroText) heroText.innerText = "Wait...";
 
         try {
           const res = await fetch("/api/toggle-bot", {
@@ -4172,6 +4547,15 @@
             text.innerText = isEnabled ? "Turn Off" : "Turn On";
             icon.className = `fas ${isEnabled ? "fa-power-off" : "fa-play"}`;
 
+            if (heroBtn) {
+              heroBtn.className = `btn btn-sm ${
+                isEnabled ? "btn-danger-solid" : "btn-success-solid"
+              }`;
+              heroBtn.disabled = false;
+            }
+            if (heroText) heroText.innerText = isEnabled ? "Turn off" : "Turn on";
+            if (heroIcon) heroIcon.className = `fas ${isEnabled ? "fa-power-off" : "fa-play"}`;
+
             // Update Status Display
             statusText.innerText = isEnabled ? "Active" : "Inactive";
             statusSubtitle.innerText = isEnabled ?
@@ -4182,6 +4566,27 @@
               "indicator-success" :
               "indicator-danger";
 
+            if (heroTitle) {
+              heroTitle.innerText = isEnabled ?
+                "Bot is live" :
+                "Bot is offline";
+            }
+            if (heroCopy) {
+              heroCopy.innerText = isEnabled ?
+                "Rank commands are available in chat." :
+                "Turn the bot on when you are ready for chat commands.";
+            }
+            if (overviewStatusIcon) {
+              overviewStatusIcon.className = `overview-strip-icon ${isEnabled ? "" : "is-offline"}`;
+              const iconNode = overviewStatusIcon.querySelector("i");
+              if (iconNode) iconNode.className = `fas ${isEnabled ? "fa-signal" : "fa-pause"}`;
+            }
+            if (feedStatus) feedStatus.innerText = isEnabled ? "Connected" : "Offline";
+            if (quickBot) {
+              quickBot.className = `overview-pill ${isEnabled ? "is-good" : "is-warning"}`;
+            }
+            if (quickBotValue) quickBotValue.innerText = isEnabled ? "Live" : "Off";
+
             showToast(`Bot turned ${isEnabled ? "on" : "off"}`, "success");
             btn.disabled = false;
 
@@ -4191,12 +4596,16 @@
             showToast("Failed to toggle bot status.", "danger");
             text.innerText = originalText;
             btn.disabled = false;
+            if (heroBtn) heroBtn.disabled = false;
+            if (heroText) heroText.innerText = originalText === "Turn Off" ? "Turn off" : "Turn on";
           }
         } catch (err) {
           console.error("Error toggling bot:", err);
           showToast("An error occurred. Please try again.", "danger");
           text.innerText = originalText;
           btn.disabled = false;
+          if (heroBtn) heroBtn.disabled = false;
+          if (heroText) heroText.innerText = originalText === "Turn Off" ? "Turn off" : "Turn on";
         }
       }
     </script>

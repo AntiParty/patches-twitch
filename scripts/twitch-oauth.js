@@ -3,10 +3,10 @@ import http from "http";
 import logger from "../src/util/logger";
 import { writeFileSync } from "fs";
 
-const CLIENT_ID = "if823b0x5qoczett7hv4f9q5pk7p6n";
-const CLIENT_SECRET = "3ofebl4fdah47fq7sg6h86qg63zk66";
-const REDIRECT_URI = "http://localhost:3000/callback";
-const PORT = 3000;
+const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
+const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
+const REDIRECT_URI = process.env.TWITCH_REDIRECT_URI || "http://localhost:3000/callback";
+const PORT = Number(process.env.TWITCH_OAUTH_HELPER_PORT || 3000);
 const SCOPES = [
   "chat:read", // allows the bot to read messages in chat
   "chat:edit", // legacy chat send scope, safe to keep
@@ -15,6 +15,10 @@ const SCOPES = [
   "user:bot", // required for bot-badged Helix chat send
   "channel:bot", // harmless on the bot token; broadcaster tokens still need this too
 ];
+
+if (!CLIENT_ID || !CLIENT_SECRET) {
+  throw new Error("Set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET before running scripts/twitch-oauth.js");
+}
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -75,8 +79,6 @@ const server = http.createServer(async (req, res) => {
     writeFileSync(".env.bot-tokens.generated", envOutput, "utf8");
 
     logger.info("Bot OAuth succeeded.");
-    logger.info(`Access Token: ${data.access_token}`);
-    logger.info(`Refresh Token: ${data.refresh_token}`);
     logger.info(`Scopes: ${scopes.join(" ")}`);
     logger.info("Wrote .env.bot-tokens.generated");
 

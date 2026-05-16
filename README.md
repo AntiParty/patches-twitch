@@ -24,8 +24,8 @@ This project is not affiliated with Embark Studios.
 ## Setup
 
 ```bash
-git clone https://github.com/your-org/finalsrs.git
-cd finalsrs
+git clone https://github.com/your-org/patches-twitch.git
+cd patches-twitch
 bun install
 cp .env.example .env
 ```

@@ -73,11 +73,12 @@ export const execute = async (
       return;
     }
 
-    const target = prediction.safeRS.toLocaleString();
+    const targetValue = prediction.historicalPrediction ?? prediction.safeRS;
+    const target = targetValue.toLocaleString();
     const rush = prediction.isSeasonEndRush ? ` | Rush: ${prediction.rushMultiplier}x` : "";
 
     let trendPart = "";
-    if (prediction.model !== "historical" && prediction.dailyChange !== 0) {
+    if (prediction.historicalPrediction === null && prediction.model !== "historical" && prediction.dailyChange !== 0) {
       const sign = prediction.dailyChange > 0 ? "+" : "";
       trendPart = ` | ${sign}${prediction.dailyChange.toLocaleString()}/day`;
     }

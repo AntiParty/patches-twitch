@@ -632,7 +632,6 @@ router.get('/api/rs-prediction', async (req: Request, res: Response) => {
             model:                prediction.model,
             historicalPrediction: prediction.historicalPrediction,
             historicalRange:      prediction.historicalRange,
-            historicalR2:         prediction.historicalR2,
         });
 
     } catch (err) {

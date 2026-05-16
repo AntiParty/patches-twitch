@@ -60,10 +60,25 @@ export function getBaseUrl(): string {
  * Get the Twitch OAuth redirect URI based on environment
  */
 export function getTwitchRedirectUri(): string {
-  return process.env.TWITCH_REDIRECT_URI ||
-    (process.env.NODE_ENV === 'production'
-      ? 'https://finalsrs.com/callback'
-      : 'http://localhost:3000/callback');
+  const fallback = process.env.NODE_ENV === 'production'
+    ? 'https://finalsrs.com/callback'
+    : 'http://localhost:3000/callback';
+
+  const raw = (process.env.TWITCH_REDIRECT_URI || fallback).trim();
+  const normalized = raw.replace(/^htts:\/\//i, 'https://');
+
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Unsupported protocol ${parsed.protocol}`);
+    }
+    if (parsed.hostname.toLowerCase() === 'www.finalsrs.com') {
+      parsed.hostname = 'finalsrs.com';
+    }
+    return parsed.toString();
+  } catch {
+    return fallback;
+  }
 }
 
 /**

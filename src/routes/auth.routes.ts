@@ -34,7 +34,8 @@ const getAuthUrl = () => {
     const scope = encodeURIComponent(
         "channel:moderate user:read:chat user:bot channel:bot user:read:subscriptions"
     );
-    return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${getRedirectUri()}&response_type=code&scope=${scope}&force_verify=true`;
+    const redirectUri = encodeURIComponent(getRedirectUri());
+    return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };
 
 /**

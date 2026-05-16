@@ -315,11 +315,10 @@ export async function sendChatMessage(
     body.reply_parent_message_id = replyParentId; // 👈 important
   }
 
-  try {
-    trackMessageOut();
+  const postChatMessage = async (payload: any, label: string) => {
     const resp = await axios.post(
       "https://api.twitch.tv/helix/chat/messages",
-      body,
+      payload,
       {
         headers: {
           Authorization: `Bearer ${appAccessToken}`,
@@ -328,7 +327,31 @@ export async function sendChatMessage(
         },
       }
     );
-    logger.info("[DEBUG] Helix API response:", resp.data);
+    const result = resp.data?.data?.[0];
+    logger.info(`[DEBUG] Helix chat send ${label}: ${JSON.stringify(resp.data)}`);
+    return result;
+  };
+
+  try {
+    trackMessageOut();
+    let result = await postChatMessage(body, replyParentId ? "response" : "message");
+    if (result?.is_sent === false) {
+      logger.warn(
+        `[ircBot] Twitch dropped chat message for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
+      );
+      const dropCode = String(result.drop_reason?.code || "");
+      if (replyParentId && dropCode !== "msg_rejected") {
+        const fallbackBody = { ...body };
+        delete fallbackBody.reply_parent_message_id;
+        logger.warn(`[ircBot] Retrying chat message for broadcaster ${broadcasterId} without reply_parent_message_id.`);
+        result = await postChatMessage(fallbackBody, "message_retry_without_reply");
+        if (result?.is_sent === false) {
+          logger.warn(
+            `[ircBot] Twitch dropped non-reply chat retry for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
+          );
+        }
+      }
+    }
   } catch (err: any) {
     // If 401 Unauthorized, try refreshing the token once
     if (err.response && err.response.status === 401) {
@@ -336,18 +359,13 @@ export async function sendChatMessage(
       try {
         const newAccessToken = await getAppAccessToken();
         if (newAccessToken) {
-          const resp = await axios.post(
-            "https://api.twitch.tv/helix/chat/messages",
-            body,
-            {
-              headers: {
-                Authorization: `Bearer ${newAccessToken}`,
-                "Client-Id": clientId,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          logger.info("[DEBUG] Helix API response (after refresh):", resp.data);
+          appAccessToken = newAccessToken;
+          const result = await postChatMessage(body, "after_token_refresh");
+          if (result?.is_sent === false) {
+            logger.warn(
+              `[ircBot] Twitch dropped chat message after token refresh for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
+            );
+          }
           return;
         }
       } catch (retryErr: any) {
@@ -355,7 +373,8 @@ export async function sendChatMessage(
         return;
       }
     }
-    throw err; // Re-throw to be caught by outer catch
+    logger.error("[ERROR] Failed to send chat message:", err?.response?.data || err?.message || err);
+    return;
   }
 }
 
@@ -691,7 +710,7 @@ export const startChatBot = async (
                     accessToken: client.customBotToken,
                   };
                 }
-                logger.info(`[DEBUG] Sending message from bot to ${channelName}:`, msg);
+                logger.info(`[DEBUG] Sending message from bot to ${channelName}: ${msg}`);
                 await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter, customCreds);
               },
               raw: (line: string) =>

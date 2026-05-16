@@ -15,7 +15,7 @@ describe('botAuth token metadata validation', () => {
     const warnings = getBotTokenMetadataWarnings({
       login: 'FinalsRR',
       user_id: '123',
-      scopes: ['chat:read', 'user:write:chat'],
+      scopes: ['chat:read', 'user:write:chat', 'user:bot'],
     });
 
     assert.deepEqual(warnings, []);
@@ -28,7 +28,7 @@ describe('botAuth token metadata validation', () => {
     const warnings = getBotTokenMetadataWarnings({
       login: 'someone_else',
       user_id: '999',
-      scopes: ['chat:read'],
+      scopes: ['chat:read', 'user:write:chat', 'user:bot'],
     });
 
     assert.deepEqual(warnings, [
@@ -47,6 +47,9 @@ describe('botAuth token metadata validation', () => {
       scopes: ['user:write:chat'],
     });
 
-    assert.deepEqual(warnings, ['missing_scope chat:read scopes=user:write:chat']);
+    assert.deepEqual(warnings, [
+      'missing_scope chat:read scopes=user:write:chat',
+      'missing_scope user:bot scopes=user:write:chat',
+    ]);
   });
 });

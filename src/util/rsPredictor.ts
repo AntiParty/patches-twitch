@@ -213,18 +213,11 @@ async function getCrossSeasonPrediction(targetSeason: number): Promise<CrossSeas
     const total = wA + wB;
     predicted  = total > 0 ? Math.round((predA * wA + predB * wB) / total) : predA;
     blendedR2  = total > 0 ? (regA.r2 * wA + r2B * wB) / total : regA.r2;
-    logger.info(
-      `[RSPredictor] S${targetSeason} — ModelA=${predA} (R²=${regA.r2.toFixed(3)}), ` +
-      `ModelB=${predB} (R²=${r2B.toFixed(3)}), blended=${predicted}, ` +
-      `seasons=[${xsA.join(",")}], rubySeasons=[${rubyPhases.map(d=>d.season).join(",")}]`
-    );
+    logger.info(`[RSPredictor] ${predicted}`);
   } else {
     predicted  = predA;
     blendedR2  = regA.r2;
-    logger.info(
-      `[RSPredictor] S${targetSeason} — ModelA only: ${predicted} RS (R²=${regA.r2.toFixed(3)}), ` +
-      `seasons=[${xsA.join(",")}]`
-    );
+    logger.info(`[RSPredictor] ${predicted}`);
   }
 
   return { predicted, margin: regA.margin, r2: blendedR2, seasonsUsed: xsA, seasonData };

@@ -32,8 +32,11 @@ export function getBotTokenMetadataWarnings(metadata: TwitchValidateResponse): s
     warnings.push(`user_id_mismatch expected=${expectedUserId} actual=${actualUserId}`);
   }
 
-  if (!scopes.includes("chat:read")) {
-    warnings.push(`missing_scope chat:read scopes=${scopes.join(",") || "none"}`);
+  const requiredScopes = ["chat:read", "user:write:chat", "user:bot"];
+  for (const scope of requiredScopes) {
+    if (!scopes.includes(scope)) {
+      warnings.push(`missing_scope ${scope} scopes=${scopes.join(",") || "none"}`);
+    }
   }
 
   return warnings;

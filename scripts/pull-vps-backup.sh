@@ -42,6 +42,7 @@ LOG_LINE() {
 
 echo "[pull] $(date -u +%Y-%m-%dT%H:%M:%SZ) fetching from $VPS_URL ..."
 if ! curl -sSf -H "X-Backup-Secret: $BACKUP_SECRET" \
+        -D "$DEST/headers.txt" \
         -o "$DEST/snapshot.tar.gz" \
         "$VPS_URL/internal/db-snapshot"; then
   LOG_LINE "FAIL $TS curl failed"
@@ -49,12 +50,26 @@ if ! curl -sSf -H "X-Backup-Secret: $BACKUP_SECRET" \
   exit 1
 fi
 
-if ! tar xzf "$DEST/snapshot.tar.gz" -C "$DEST"; then
+MAGIC="$(head -c 2 "$DEST/snapshot.tar.gz" | od -An -tx1 | tr -d ' \n')"
+if [ "$MAGIC" = "1f8b" ]; then
+  TAR_ARGS="xzf"
+else
+  TAR_ARGS="xf"
+  echo "[pull] WARN: snapshot was not gzip encoded; trying plain tar extract." >&2
+  echo "[pull] Response headers were saved to $DEST/headers.txt" >&2
+fi
+
+if ! tar "$TAR_ARGS" "$DEST/snapshot.tar.gz" -C "$DEST"; then
   LOG_LINE "FAIL $TS tar extract failed"
+  echo "[pull] First response bytes:" >&2
+  head -c 200 "$DEST/snapshot.tar.gz" >&2 || true
+  echo >&2
+  echo "[pull] Response headers:" >&2
+  cat "$DEST/headers.txt" >&2 || true
   echo "[pull] tar extract failed. Leaving $DEST for inspection." >&2
   exit 1
 fi
-rm -f "$DEST/snapshot.tar.gz"
+rm -f "$DEST/snapshot.tar.gz" "$DEST/headers.txt"
 
 MISSING=0
 for db in accounts metrics sessions; do

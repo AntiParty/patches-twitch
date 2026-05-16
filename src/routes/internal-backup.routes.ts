@@ -75,8 +75,7 @@ router.get('/db-snapshot', rateLimit, async (req: Request, res: Response) => {
 
     const iso = new Date().toISOString().replace(/[:.]/g, '-');
     res.status(200);
-    res.setHeader('Content-Type', 'application/x-tar');
-    res.setHeader('Content-Encoding', 'gzip');
+    res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Content-Disposition', `attachment; filename="snapshot-${iso}.tar.gz"`);
 
     const stream = tar.c(

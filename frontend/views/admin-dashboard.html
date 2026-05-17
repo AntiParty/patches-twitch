@@ -5,49 +5,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinalsRS Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
       :root {
-        --bg-app: #0f0f13;
-        --bg-sidebar: #18181b;
-        --bg-card: #1f1f23;
-        --bg-hover: #2d2d35;
-        --primary: #9147ff;
-        --primary-hover: #772ce8;
-        --text-main: #efeff1;
-        --text-muted: #adadb8;
-        --border: #2d2d35;
-        --success: #00b35f;
-        --danger: #e91916;
-        --warning: #f5a524;
-        --info: #3b82f6;
-        --shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+        --bg-app: #0b0c0e;
+        --bg-sidebar: #101216;
+        --bg-card: #15181d;
+        --bg-hover: #20242a;
+        --primary: #e62038;
+        --primary-hover: #ff334e;
+        --text-main: #f7f4ec;
+        --text-muted: #aaa59c;
+        --border: rgba(255,255,255,.1);
+        --success: #42d483;
+        --danger: #ef4444;
+        --warning: #f3c247;
+        --info: #7ab8ff;
+        --shadow: 0 18px 44px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.04);
         --radius: 8px;
+        --font-main: "IBM Plex Sans", sans-serif;
+        --font-display: "Archivo", "IBM Plex Sans", sans-serif;
       }
 
       * { margin: 0; padding: 0; box-sizing: border-box; }
 
       body {
-        background: var(--bg-app);
+        background:
+          linear-gradient(180deg, rgba(230,32,56,.04), transparent 320px),
+          var(--bg-app);
         color: var(--text-main);
-        font-family: "Inter", sans-serif;
+        font-family: var(--font-main);
         height: 100vh;
         overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
       }
 
       .app-container {
         display: grid;
-        grid-template-columns: 220px 1fr;
+        grid-template-columns: 260px 1fr;
         height: 100vh;
       }
 
       /* ── Sidebar ── */
       .sidebar {
-        background: var(--bg-sidebar);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.035), transparent 240px),
+          var(--bg-sidebar);
         border-right: 1px solid var(--border);
         display: flex;
         flex-direction: column;
-        padding: 20px 14px;
+        padding: 22px;
         overflow-y: auto;
       }
 
@@ -59,25 +67,28 @@
         padding: 0 6px;
       }
       .logo i { font-size: 24px; color: var(--primary); }
-      .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: -.4px; }
+      .logo h1 { font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: 0; }
 
       .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 
       .nav-item {
-        padding: 10px 12px;
+        min-height: 42px;
+        padding: 0 12px;
         border-radius: var(--radius);
         cursor: pointer;
         color: var(--text-muted);
-        transition: all .15s;
+        transition-property: background-color, color, transform, box-shadow;
+        transition-duration: 180ms;
+        transition-timing-function: cubic-bezier(.2,0,0,1);
         display: flex;
         align-items: center;
         gap: 10px;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 700;
         user-select: none;
       }
-      .nav-item:hover { background: var(--bg-hover); color: var(--text-main); }
-      .nav-item.active { background: rgba(145,71,255,.15); color: var(--primary); }
+      .nav-item:hover { background: var(--bg-hover); color: var(--text-main); transform: translateY(-1px); }
+      .nav-item.active { background: rgba(230,32,56,.13); color: #fff; box-shadow: inset 0 0 0 1px rgba(230,32,56,.28); }
       .nav-item i { width: 18px; text-align: center; font-size: 14px; }
 
       .sidebar-footer {
@@ -92,7 +103,8 @@
         gap: 8px;
         padding: 8px;
         border-radius: var(--radius);
-        background: var(--bg-hover);
+        background: rgba(255,255,255,.045);
+        box-shadow: inset 0 0 0 1px var(--border);
       }
       .user-avatar {
         width: 30px; height: 30px;
@@ -106,7 +118,7 @@
       .user-role { font-size: 11px; color: var(--text-muted); }
 
       /* ── Main ── */
-      .main-content { overflow-y: auto; padding: 28px; position: relative; }
+      .main-content { overflow-y: auto; padding: 30px 34px; position: relative; }
 
       /* ── Sub-tab bar ── */
       .subtab-bar {
@@ -123,7 +135,8 @@
         cursor: pointer;
         border-bottom: 2px solid transparent;
         margin-bottom: -1px;
-        transition: all .15s;
+        transition-property: color, border-color;
+        transition-duration: 180ms;
       }
       .subtab:hover { color: var(--text-main); }
       .subtab.active { color: var(--primary); border-bottom-color: var(--primary); }
@@ -141,8 +154,12 @@
 
       /* ── Role-based visibility ── */
       .admin-only { display: none !important; }
-      body.is-admin .admin-only { display: flex !important; }
+      body.is-admin .nav-item.admin-only { display: flex !important; }
+      body.is-admin .subtab.admin-only { display: block !important; }
       body.is-admin .admin-only.card { display: block !important; }
+      body.is-admin .sub-panel.admin-only.active { display: block !important; }
+      .staff-only { display: none !important; }
+      body.is-staff .staff-only { display: block !important; }
 
       /* ── Page header ── */
       .page-header {
@@ -151,7 +168,13 @@
         align-items: center;
         margin-bottom: 24px;
       }
-      .page-title { font-size: 22px; font-weight: 700; }
+      .page-title {
+        font-family: var(--font-display);
+        font-size: clamp(24px, 2.4vw, 34px);
+        line-height: 1.05;
+        font-weight: 800;
+        text-wrap: balance;
+      }
 
       /* ── Cards & Grids ── */
       .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
@@ -159,10 +182,13 @@
       .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
 
       .card {
-        background: var(--bg-card);
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)),
+          var(--bg-card);
         border-radius: var(--radius);
         padding: 18px;
         border: 1px solid var(--border);
+        box-shadow: var(--shadow);
       }
       .card-header {
         display: flex;
@@ -170,7 +196,7 @@
         align-items: center;
         margin-bottom: 14px;
       }
-      .card-title { font-size: 15px; font-weight: 600; }
+      .card-title { font-family: var(--font-display); font-size: 15px; font-weight: 800; }
       .card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
       /* ── Stats grid (Subscriptions) ── */
@@ -187,7 +213,7 @@
         padding: 16px;
         text-align: center;
       }
-      .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+      .stat-value { font-size: 28px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
       .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
       /* ── Metric cards ── */
@@ -208,19 +234,24 @@
 
       /* ── Buttons ── */
       .btn {
-        padding: 7px 14px;
+        min-height: 40px;
+        padding: 0 14px;
         border-radius: 6px;
         border: none;
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 800;
         font-size: 13px;
-        transition: all .15s;
+        transition-property: background-color, color, transform, box-shadow, border-color;
+        transition-duration: 180ms;
+        transition-timing-function: cubic-bezier(.2,0,0,1);
         display: inline-flex;
         align-items: center;
         gap: 6px;
         font-family: inherit;
       }
       .btn:disabled { opacity: .45; cursor: not-allowed; }
+      .btn:hover:not(:disabled) { transform: translateY(-1px); }
+      .btn:active:not(:disabled) { transform: translateY(0); }
       .btn-primary { background: var(--primary); color: #fff; }
       .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
       .btn-danger { background: rgba(233,25,22,.1); color: var(--danger); border: 1px solid rgba(233,25,22,.2); }
@@ -235,23 +266,26 @@
 
       /* ── Inputs ── */
       .input {
-        background: var(--bg-app);
+        background: rgba(255,255,255,.025);
         border: 1px solid var(--border);
         color: var(--text-main);
-        padding: 8px 12px;
+        padding: 10px 12px;
         border-radius: 6px;
         width: 100%;
+        min-height: 42px;
         font-size: 13px;
         font-family: inherit;
+        transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
       }
-      .input:focus { outline: none; border-color: var(--primary); }
+      .input:focus { outline: none; border-color: rgba(230,32,56,.65); background: rgba(255,255,255,.04); box-shadow: 0 0 0 3px rgba(230,32,56,.12); }
       label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--text-muted); }
 
       /* ── Tables ── */
-      .table-container { overflow-x: auto; }
+      .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255,255,255,.015); }
       table { width: 100%; border-collapse: collapse; }
-      th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--border); }
-      td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+      th { text-align: left; padding: 11px 12px; color: var(--text-muted); font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); }
+      td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 13px; }
+      tbody tr:hover td { background: rgba(255,255,255,.025); }
       tr:last-child td { border-bottom: none; }
 
       /* ── Channels grid ── */
@@ -367,7 +401,7 @@
         </div>
 
         <ul class="nav-menu">
-          <li class="nav-item active" onclick="switchSection('overview')">
+          <li class="nav-item active admin-only" onclick="switchSection('overview')">
             <i class="fas fa-th-large"></i> Overview
           </li>
           <li class="nav-item admin-only" onclick="switchSection('users')">
@@ -376,7 +410,7 @@
           <li class="nav-item" onclick="switchSection('content')">
             <i class="fas fa-file-alt"></i> Content
           </li>
-          <li class="nav-item" onclick="switchSection('bots')">
+          <li class="nav-item admin-only" onclick="switchSection('bots')">
             <i class="fas fa-robot"></i> Bots
           </li>
           <li class="nav-item admin-only" onclick="switchSection('system')">
@@ -645,7 +679,12 @@
         ══════════════════════════════════════ -->
         <div id="section-content" class="view-section">
           <div class="page-header">
-            <h2 class="page-title">Content</h2>
+            <div>
+              <h2 class="page-title">Content</h2>
+              <div class="staff-only" style="color:var(--text-muted);font-size:14px;margin-top:8px;">
+                Staff access is scoped to the Twitch Drops page and image uploads.
+              </div>
+            </div>
             <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
               <i class="fas fa-sync"></i> Refresh
             </button>
@@ -653,8 +692,8 @@
 
           <div class="subtab-bar">
             <div class="subtab active" onclick="switchSubTab('content','drops')">Drops</div>
-            <div class="subtab" onclick="switchSubTab('content','commands')">Commands</div>
-            <div class="subtab" onclick="switchSubTab('content','feedback')">Feedback</div>
+            <div class="subtab admin-only" onclick="switchSubTab('content','commands')">Commands</div>
+            <div class="subtab admin-only" onclick="switchSubTab('content','feedback')">Feedback</div>
           </div>
 
           <!-- Drops sub-panel -->
@@ -697,7 +736,7 @@
           </div>
 
           <!-- Commands sub-panel -->
-          <div id="content-commands" class="sub-panel">
+          <div id="content-commands" class="sub-panel admin-only">
             <div class="card">
               <div class="card-header">
                 <div class="card-title">Custom Commands</div>
@@ -719,7 +758,7 @@
           </div>
 
           <!-- Feedback sub-panel -->
-          <div id="content-feedback" class="sub-panel">
+          <div id="content-feedback" class="sub-panel admin-only">
             <div class="card">
               <div class="table-container">
                 <table>
@@ -748,7 +787,7 @@
 
           <div class="subtab-bar">
             <div class="subtab active" onclick="switchSubTab('bots','analytics')">Analytics</div>
-            <div class="subtab" onclick="switchSubTab('bots','broadcast')">Broadcast</div>
+            <div class="subtab admin-only" onclick="switchSubTab('bots','broadcast')">Broadcast</div>
             <div class="subtab admin-only" onclick="switchSubTab('bots','logs')">System Logs</div>
           </div>
 
@@ -822,7 +861,7 @@
           </div>
 
           <!-- Broadcast sub-panel -->
-          <div id="bots-broadcast" class="sub-panel">
+          <div id="bots-broadcast" class="sub-panel admin-only">
             <div class="card" style="max-width:800px;">
               <div class="modal-field">
                 <label>Target Channels</label>
@@ -843,7 +882,7 @@
           </div>
 
           <!-- Logs sub-panel -->
-          <div id="bots-logs" class="sub-panel">
+          <div id="bots-logs" class="sub-panel admin-only">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-circle" style="color:var(--success);font-size:8px;"></i> Auto-refreshing every 20s</span>
               <button class="btn btn-ghost btn-sm" onclick="fetchLogs()"><i class="fas fa-sync"></i> Refresh Now</button>
@@ -894,7 +933,7 @@
                 <div class="modal-field">
                   <label>Admin API Key</label>
                   <input id="settings-api-key" type="password" class="input" placeholder="Enter API Key" />
-                  <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Required for Restart Bot and Broadcast.</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Required for restart and deploy actions.</div>
                 </div>
                 <button class="btn btn-primary" onclick="saveSettings()">Save Key</button>
               </div>
@@ -1034,7 +1073,7 @@
       // ══════════════════════════════════════════════════════════════
       function switchSection(sectionId) {
         // Role guard
-        const adminSections = ['users', 'system'];
+        const adminSections = ['overview', 'users', 'bots', 'system'];
         if (adminSections.includes(sectionId) && window.USER_ROLE !== 'admin') {
           console.warn('Unauthorized access attempt to ' + sectionId);
           return;
@@ -1070,6 +1109,12 @@
       }
 
       function switchSubTab(sectionId, tabId) {
+        const adminTabs = ['content-commands', 'content-feedback', 'bots-broadcast', 'bots-logs'];
+        if (adminTabs.includes(`${sectionId}-${tabId}`) && window.USER_ROLE !== 'admin') {
+          console.warn('Unauthorized access attempt to ' + sectionId + '/' + tabId);
+          return;
+        }
+
         currentSubTabs[sectionId] = tabId;
 
         // Update tab bar within the section
@@ -1130,6 +1175,10 @@
           document.getElementById('sidebar-avatar').textContent = data.username.charAt(0).toUpperCase();
           if (data.role === 'admin') {
             document.body.classList.add('is-admin');
+          } else {
+            document.body.classList.add('is-staff');
+            currentSubTabs.content = 'drops';
+            switchSection('content');
           }
         } catch (err) {
           console.error('Failed to check user role:', err);
@@ -1273,17 +1322,19 @@
       }
 
       async function sendToChannel(ch) {
+        if (window.USER_ROLE !== 'admin') {
+          toast('Only admins can message channels.', 'error');
+          return;
+        }
         const input = document.getElementById(`msg-${ch}`);
         const msg = input?.value;
         if (!msg) return;
-        const key = getApiKey();
-        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
         try {
           await ensureCsrfToken();
           await fetch('/admin/api/message', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ channel: ch, message: msg, key }),
+            body: JSON.stringify({ channel: ch, message: msg }),
           });
           input.value = '';
           toast(`Sent to ${ch}`, 'success');
@@ -1666,6 +1717,10 @@
       }
 
       function deleteCommand(name) {
+        if (window.USER_ROLE !== 'admin') {
+          toast('Only admins can delete commands.', 'error');
+          return;
+        }
         showConfirm(`Delete !${name}?`, 'This command will be permanently removed.', async () => {
           try {
             await ensureCsrfToken();
@@ -1713,6 +1768,10 @@
       }
 
       function deleteFeedback(id) {
+        if (window.USER_ROLE !== 'admin') {
+          toast('Only admins can delete feedback.', 'error');
+          return;
+        }
         showConfirm('Remove feedback entry?', 'This action cannot be undone.', async () => {
           try {
             await ensureCsrfToken();
@@ -1821,10 +1880,12 @@
       // BROADCAST
       // ══════════════════════════════════════════════════════════════
       async function sendBroadcast() {
+        if (window.USER_ROLE !== 'admin') {
+          toast('Only admins can broadcast messages.', 'error');
+          return;
+        }
         const msg = document.getElementById('broadcast-msg').value;
-        const key = getApiKey();
         if (!msg) { toast('Message is required', 'error'); return; }
-        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
         const targets = selectedChannels.size > 0 ? Array.from(selectedChannels) : null;
         try {
           await ensureCsrfToken();
@@ -1833,14 +1894,14 @@
               await fetch('/admin/api/message', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-                body: JSON.stringify({ channel: ch, message: msg, key }),
+                body: JSON.stringify({ channel: ch, message: msg }),
               });
             }
           } else {
             await fetch('/admin/api/message', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ message: msg, key }),
+              body: JSON.stringify({ message: msg }),
             });
           }
           document.getElementById('broadcast-msg').value = '';

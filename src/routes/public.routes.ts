@@ -427,13 +427,57 @@ router.get('/api/analytics', async (req: any, res: any) => {
 router.get('/api/ruby-status', async (req: any, res: any) => {
     try {
         const { getRubyRankThreshold } = await import('@/jobs/cacheUpdater');
-        const threshold = await getRubyRankThreshold();
-        // 
-        if (threshold?.league === 'Ruby') {
-            return res.json({ rubyAvailable: true, message: 'Ruby league is available!' });
-        } else {
-            return res.json({ rubyAvailable: false, message: 'Ruby league is not yet available.' });
+        let threshold = await getRubyRankThreshold();
+
+        if (!threshold?.threshold) {
+            const cacheDir = path.join(process.cwd(), 'cache');
+            const files = await fs.promises.readdir(cacheDir);
+            const latest = files
+                .filter(file => file.startsWith('regular_s') && file.endsWith('.json'))
+                .map(file => ({
+                    file,
+                    season: parseInt(file.match(/\d+/)?.[0] ?? '0', 10),
+                }))
+                .filter(entry => entry.season > 0)
+                .sort((a, b) => b.season - a.season)[0];
+
+            if (latest) {
+                const raw = await fs.promises.readFile(path.join(cacheDir, latest.file), 'utf8');
+                const data = JSON.parse(raw);
+                if (Array.isArray(data) && data.length >= 500) {
+                    const entry = data[499];
+                    threshold = {
+                        season: latest.season,
+                        league: entry.league,
+                        threshold: Number(entry.rankScore ?? 0),
+                        player: entry.name,
+                    };
+                }
+            }
         }
+
+        if (!threshold?.threshold) {
+            return res.json({
+                rubyAvailable: false,
+                rubyRankThreshold: null,
+                message: 'Top 500 cutoff is not available yet.'
+            });
+        }
+
+        const rubyAvailable = threshold.league === 'Ruby';
+        return res.json({
+            rubyAvailable,
+            rubyRankThreshold: {
+                season: threshold.season,
+                league: threshold.league,
+                threshold: threshold.threshold,
+                player: threshold.player,
+                unlocked: rubyAvailable,
+            },
+            message: rubyAvailable
+                ? 'Ruby league is available!'
+                : 'Ruby league is not yet available, but the Top 500 target is available.'
+        });
     } catch (err) {
         logger.error('Error testing Ruby availability:', err);
         return res.status(500).json({ error: 'Failed to test Ruby availability.' });

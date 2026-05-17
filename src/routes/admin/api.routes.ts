@@ -653,7 +653,7 @@ router.get('/api/performance', requireStaffAPI, (req: any, res: any) => {
  * POST /admin/api/message
  * Send custom message to bot
  */
-router.post("/api/message", requireApiKey, async (req: any, res: any) => {
+router.post("/api/message", requireAdminAPI, async (req: any, res: any) => {
     try {
         const { channel, message } = req.body;
 

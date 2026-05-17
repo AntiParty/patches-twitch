@@ -27,6 +27,10 @@ bun run test:integration
 
 Each command lives in `src/commands/` and exports an `execute` function. See `docs/COMMANDS.md` and existing command files before adding a new one.
 
+## Helping With FinalsRS
+
+If you want to help maintain FinalsRS or ask about staff/help access, join the [FinalsRS Discord](https://discord.com/invite/2UKzvzSEqA) and ask there. Staff access requires trust in the community, so expect to need vouches or to already be known around THE FINALS scene.
+
 ## Security
 
 Report vulnerabilities privately. See `SECURITY.md`.

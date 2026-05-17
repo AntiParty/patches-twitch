@@ -71,7 +71,9 @@ Information about Twitch account services and integration.
 1. Check the [Commands Reference](./COMMANDS.md)
 2. Read the [Custom Commands Guide](./custom-command-editing.md)
 3. Visit the main [README](../README.md)
-4. Contact the developer
+4. Join the [FinalsRS Discord](https://discord.com/invite/2UKzvzSEqA)
+
+Interested in helping with FinalsRS or staff work? Ask in Discord. Staff access is trust-based and usually requires vouches or being known in THE FINALS community.
 
 ---
 

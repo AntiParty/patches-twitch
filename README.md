@@ -85,6 +85,10 @@ If you find a vulnerability, please do not open a public issue with exploit deta
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for development expectations.
 
+## Community Help & Staff
+
+If you want to help with FinalsRS, contribute code, or ask about helping as staff, join the [FinalsRS Discord](https://discord.com/invite/2UKzvzSEqA) and ask there. Staff access is trust-based and usually requires vouches or being known in THE FINALS community.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

@@ -17,10 +17,10 @@ const router = Router();
 const RANK_THRESHOLDS: { [key: number]: number } = {
     1: 0,      // Bronze: 0 - 9,999
     2: 10000,  // Silver: 10,000 - 19,999
-    3: 20000,  // Gold: 20,000 - 29,000
-    4: 30000,  // Platinum: 30,000 - 39,000
-    5: 40000,  // Diamond: 40,000+
-    6: 999999  // Ruby: Top 500 (dynamic threshold, unlocks mid-season)
+    3: 20000,  // Gold: 20,000 - 29,999
+    4: 30000,  // Platinum: 30,000 - 39,999
+    5: 40000,  // Diamond: 40,000 - 49,999
+    6: 0       // Ruby: Top 500 (dynamic threshold)
 };
 
 async function readLatestLeaderboard(prefix: string): Promise<any[]> {
@@ -48,6 +48,12 @@ async function readLatestLeaderboard(prefix: string): Promise<any[]> {
     return Array.isArray(parsed) ? parsed : [];
 }
 
+async function getTop500Target(): Promise<number | null> {
+    const leaderboard = await readLatestLeaderboard('regular_s');
+    if (leaderboard.length < 500) return null;
+    return Number(leaderboard[499]?.rankScore ?? 0) || null;
+}
+
 function findPlayer(leaderboard: any[], playerId: string) {
     const normalized = playerId.trim().toLowerCase();
     return leaderboard.find((player: any) => {
@@ -60,6 +66,12 @@ function findPlayer(leaderboard: any[], playerId: string) {
         ];
         return fields.some(field => String(field || '').trim().toLowerCase() === normalized);
     });
+}
+
+function isRubyAchieved(player: any): boolean {
+    const rank = Number(player?.rank ?? 0);
+    return String(player?.league || '').toLowerCase() === 'ruby' ||
+        (rank > 0 && rank <= 500);
 }
 
 /**
@@ -158,9 +170,28 @@ router.post('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
         }
 
         const requestedTargetRS = req.body.targetRankScore;
-        const targetRS = isValidRankScore(requestedTargetRS)
+        let targetRS = isValidRankScore(requestedTargetRS)
             ? requestedTargetRS
             : RANK_THRESHOLDS[targetRank] || 50000;
+
+        if (Number(targetRank) === 6) {
+            const top500Target = await getTop500Target();
+            if (!top500Target) {
+                return res.status(503).json({ error: 'Top 500 cutoff is unavailable right now.' });
+            }
+            targetRS = top500Target;
+        }
+
+        let achieved = currentRS >= targetRS;
+        if (Number(targetRank) === 6) {
+            const channel = await Channel.findOne({ where: { username } }) as any;
+            const playerId = channel?.player_id?.trim();
+            if (playerId) {
+                const leaderboard = await readLatestLeaderboard('regular_s');
+                const player = findPlayer(leaderboard, playerId);
+                achieved = isRubyAchieved(player);
+            }
+        }
 
         const { RankGoal } = await import('@/db');
 
@@ -172,8 +203,8 @@ router.post('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
             starting_rank: null, // Can be derived from current game stats if available
             starting_rank_score: currentRS,
             created_at: new Date(),
-            achieved: currentRS >= targetRS,
-            achieved_at: currentRS >= targetRS ? new Date() : null
+            achieved,
+            achieved_at: achieved ? new Date() : null
         });
 
         logger.info(`[dashboard] ${username} set rank goal: target=${targetRank}, currentRS=${currentRS}`);

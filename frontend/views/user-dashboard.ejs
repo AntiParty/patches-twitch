@@ -3880,9 +3880,18 @@
         return Number(n).toLocaleString();
       }
 
+      let latestCurrentRank = null;
+
       function getSelectedTargetRank() {
         const targetRankSelect = document.getElementById("target-rank-select");
         return Number(targetRankSelect?.value);
+      }
+
+      function hasRubyAchievement(rankData) {
+        if (!rankData) return false;
+        const leaderboardRank = parseNumber(rankData.rank);
+        return String(rankData.league || "").toLowerCase() === "ruby" ||
+          (!isNaN(leaderboardRank) && leaderboardRank > 0 && leaderboardRank <= 500);
       }
 
       function getNextRankMilestone(currentRSRaw) {
@@ -3919,6 +3928,7 @@
             status.innerText = `Loaded ${bits.join(" | ")} for ${data.playerId}.`;
           }
 
+          latestCurrentRank = data;
           return data;
         } catch (err) {
           console.error("fetchCurrentRank failed", err);
@@ -3967,10 +3977,6 @@
             return null;
           }
           const data = await res.json();
-          // support both shapes:
-          // { rubyRankThreshold: { threshold, season, player } }
-          // or { unlocked: true, threshold: 47893, season: 8 }
-          // fix this error
           if (data?.rubyRankThreshold) return data.rubyRankThreshold;
           if (
             typeof data?.threshold === "number" ||
@@ -4012,12 +4018,17 @@
 
         // If target is Ruby, prefer live cutoff from API
         if (targetRank === 6) {
+          if (hasRubyAchievement(latestCurrentRank)) {
+            rsNeeded.innerText = "Top 500 already achieved";
+            progressBar.style.width = "100%";
+            progressBar.style.background = "var(--success)";
+            return;
+          }
+
           const ruby = await fetchRubyObject();
-          console.log("DEBUG: fetched ruby object:", ruby);
           if (ruby && typeof ruby.threshold === "number") {
             effectiveTargetRS = parseNumber(ruby.threshold);
           } else {
-            console.warn("DEBUG: live Ruby threshold unavailable.");
             effectiveTargetRS = NaN;
           }
         }
@@ -4032,7 +4043,7 @@
 
         const diff = Math.max(0, Math.round(effectiveTargetRS - currentRS));
         if (diff <= 0) {
-          rsNeeded.innerText = "Goal reached";
+          rsNeeded.innerText = targetRank === 6 ? "Top 500 already achieved" : "Already achieved";
           progressBar.style.width = "100%";
           progressBar.style.background = "var(--success)";
         } else {
@@ -4132,7 +4143,7 @@
           if (!ruby) {
             rubyInfo.innerHTML = `
             <i class="fas fa-question-circle" style="color: #6c757d;"></i>
-            Ruby status is currently unavailable.
+            Top 500 cutoff is currently unavailable.
           `;
             return;
           }
@@ -4141,9 +4152,9 @@
           if (typeof ruby.threshold === "number") {
             rubyInfo.innerHTML = `
             <i class="fas fa-info-circle" style="color: #ffc107;"></i>
-            <strong>Ruby rank is live!</strong> Current Top 500 cutoff:
+            <strong>${ruby.unlocked ? "Ruby rank is live." : "Top 500 target"}</strong> Current cutoff:
             <strong>${ruby.threshold.toLocaleString()} RS</strong>.
-            <br><small>Updates every 45 minutes as players compete.</small>
+            <br><small>${ruby.unlocked ? "Reach or beat this score to enter Ruby." : "Ruby is not active yet, so this tracks the score needed to be Top 500."}</small>
           `;
             return;
           }
@@ -4153,7 +4164,7 @@
           <i class="fas fa-lock" style="color: #ffc107;"></i>
           Ruby rank will unlock later in Season ${
             ruby.season ?? "N/A"
-          }. Check back soon!
+          }. Until then, aim for Top 500.
         `;
         } catch (err) {
           console.error("Failed to check Ruby status:", err);
@@ -4383,7 +4394,7 @@
           if (ruby && typeof ruby.threshold === "number") {
             targetRankScore = parseNumber(ruby.threshold);
           } else {
-            showToast("Ruby cutoff is unavailable right now.", "warning");
+            showToast("Top 500 cutoff is unavailable right now.", "warning");
             return;
           }
         }

@@ -97,6 +97,15 @@
         border-top: 1px solid var(--border);
       }
 
+      .sidebar-section-label {
+        margin: 22px 6px 8px;
+        color: var(--text-muted);
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
       .user-profile {
         display: flex;
         align-items: center;
@@ -119,6 +128,37 @@
 
       /* ── Main ── */
       .main-content { overflow-y: auto; padding: 30px 34px; position: relative; }
+
+      .admin-section-heading {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .page-kicker {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+      .page-subtitle {
+        color: var(--text-muted);
+        font-size: 14px;
+        max-width: 680px;
+        text-wrap: pretty;
+      }
+      .page-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .last-refresh {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
 
       /* ── Sub-tab bar ── */
       .subtab-bar {
@@ -220,6 +260,55 @@
       .metric-value { font-size: 26px; font-weight: 700; margin: 8px 0 4px; }
       .metric-label { font-size: 13px; color: var(--text-muted); }
 
+      .metric-card {
+        min-height: 128px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .metric-card .metric-value,
+      .stat-value,
+      #analytics-total,
+      #analytics-unique,
+      #analytics-success {
+        font-variant-numeric: tabular-nums;
+      }
+      .ops-health-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .ops-health-item {
+        min-height: 82px;
+        padding: 14px;
+        border-radius: var(--radius);
+        background: rgba(255,255,255,.035);
+        box-shadow: inset 0 0 0 1px var(--border);
+      }
+      .ops-health-label {
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+      }
+      .ops-health-value {
+        margin-top: 8px;
+        font-size: 18px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+      .staff-access-note {
+        margin-bottom: 20px;
+        padding: 12px 14px;
+        border-radius: var(--radius);
+        color: var(--info);
+        background: rgba(122,184,255,.09);
+        box-shadow: inset 0 0 0 1px rgba(122,184,255,.18);
+        font-size: 13px;
+      }
+
       /* ── Progress bars ── */
       .progress-bg { background: rgba(255,255,255,.1); height: 6px; border-radius: 3px; overflow: hidden; }
       .progress-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
@@ -230,6 +319,25 @@
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 4px;
+      }
+
+      .control-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .danger-zone {
+        border-color: rgba(239,68,68,.24);
+        box-shadow:
+          0 18px 44px rgba(0,0,0,.22),
+          inset 3px 0 0 rgba(239,68,68,.72),
+          inset 0 1px 0 rgba(255,255,255,.04);
+      }
+      .danger-zone .card-subtitle {
+        color: #fca5a5;
       }
 
       /* ── Buttons ── */
@@ -387,12 +495,14 @@
       @media (max-width: 768px) {
         .app-container { grid-template-columns: 1fr; }
         .sidebar { display: none; }
-        .grid-2, .grid-3, .grid-4, .stats-grid { grid-template-columns: 1fr; }
+        .grid-2, .grid-3, .grid-4, .stats-grid, .ops-health-strip { grid-template-columns: 1fr; }
+        .page-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+        .page-actions { justify-content: flex-start; }
       }
     </style>
   </head>
   <body>
-    <div class="app-container">
+    <div class="app-container" data-dashboard-shell="admin-ops">
       <!-- ────── Sidebar ────── -->
       <aside class="sidebar">
         <div class="logo">
@@ -401,19 +511,21 @@
         </div>
 
         <ul class="nav-menu">
-          <li class="nav-item active admin-only" onclick="switchSection('overview')">
+          <div class="sidebar-section-label">Operations</div>
+          <li class="nav-item active" data-role-scope="staff" onclick="switchSection('overview')">
             <i class="fas fa-th-large"></i> Overview
           </li>
-          <li class="nav-item admin-only" onclick="switchSection('users')">
-            <i class="fas fa-users"></i> Users
+          <li class="nav-item" data-role-scope="staff" onclick="switchSection('bots')">
+            <i class="fas fa-chart-line"></i> Bot Analytics
           </li>
-          <li class="nav-item" onclick="switchSection('content')">
+          <li class="nav-item" data-role-scope="staff" onclick="switchSection('content')">
             <i class="fas fa-file-alt"></i> Content
           </li>
-          <li class="nav-item admin-only" onclick="switchSection('bots')">
-            <i class="fas fa-robot"></i> Bots
+          <div class="sidebar-section-label admin-only">Admin</div>
+          <li class="nav-item admin-only" data-role-scope="admin" onclick="switchSection('users')">
+            <i class="fas fa-users"></i> Users
           </li>
-          <li class="nav-item admin-only" onclick="switchSection('system')">
+          <li class="nav-item admin-only" data-role-scope="admin" onclick="switchSection('system')">
             <i class="fas fa-cog"></i> System
           </li>
         </ul>
@@ -437,35 +549,65 @@
         ══════════════════════════════════════ -->
         <div id="section-overview" class="view-section active">
           <div class="page-header">
-            <h2 class="page-title">Overview</h2>
-            <button class="btn btn-ghost" onclick="refreshOverview()">
-              <i class="fas fa-sync-alt"></i> Refresh
-            </button>
+            <div class="admin-section-heading">
+              <div class="page-kicker">Operations</div>
+              <h2 class="page-title">Overview</h2>
+              <div class="page-subtitle">Live health, bot activity, and the actions needed to keep FinalsRS running cleanly.</div>
+            </div>
+            <div class="page-actions">
+              <span class="last-refresh" id="ops-last-refresh">Not refreshed yet</span>
+              <button class="btn btn-ghost" onclick="refreshOverview()">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
+          </div>
+
+          <div id="staff-access-note" class="staff-access-note staff-only">
+            Staff mode: you can monitor overview health, review bot analytics, and manage content. User, broadcast, database, and deploy controls require Admin.
           </div>
 
           <!-- Metric cards -->
           <div class="grid-4" style="margin-bottom:20px;">
-            <div class="card">
+            <div class="card metric-card">
               <div class="metric-label">Connected Channels</div>
               <div class="metric-value" id="dash-channels">–</div>
               <div class="metric-label">Active connections</div>
             </div>
-            <div class="card">
+            <div class="card metric-card">
               <div class="metric-label">Commands Processed</div>
               <div class="metric-value" id="dash-commands">–</div>
               <div class="metric-label">Total interactions</div>
             </div>
-            <div class="card">
+            <div class="card metric-card">
               <div class="metric-label">Uptime</div>
               <div class="metric-value" id="dash-uptime" style="font-size:20px;">–</div>
               <div class="metric-label">Since last restart</div>
             </div>
-            <div class="card">
+            <div class="card metric-card">
               <div class="metric-label">System Status</div>
               <div class="metric-value" id="dash-status" style="font-size:18px; color:var(--text-muted);">
                 <i class="fas fa-circle-notch fa-spin"></i>
               </div>
               <div class="metric-label" id="dash-status-label">Checking...</div>
+            </div>
+          </div>
+
+          <div id="ops-health-strip" class="ops-health-strip">
+            <div class="ops-health-item">
+              <div class="ops-health-label">CPU</div>
+              <div class="ops-health-value" id="ops-cpu">–</div>
+            </div>
+            <div class="ops-health-item">
+              <div class="ops-health-label">Memory</div>
+              <div class="ops-health-value" id="ops-memory">–</div>
+            </div>
+            <div class="ops-health-item">
+              <div class="ops-health-label">Latency</div>
+              <div class="ops-health-value" id="ops-latency">–</div>
+            </div>
+            <div class="ops-health-item">
+              <div class="ops-health-label">Access Level</div>
+              <div class="ops-health-value" id="ops-access">Checking</div>
             </div>
           </div>
 
@@ -506,9 +648,12 @@
               </div>
             </div>
 
-            <div class="card admin-only">
+            <div class="card admin-only danger-zone">
               <div class="card-header">
-                <div class="card-title">Quick Actions</div>
+                <div>
+                  <div class="card-title">Admin Control Room</div>
+                  <div class="card-subtitle">High-impact bot and deployment actions.</div>
+                </div>
               </div>
               <div class="quick-actions-grid">
                 <button class="btn btn-primary" onclick="restartBot()">
@@ -540,10 +685,16 @@
         ══════════════════════════════════════ -->
         <div id="section-users" class="view-section">
           <div class="page-header">
-            <h2 class="page-title">Users</h2>
-            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
+            <div class="admin-section-heading">
+              <div class="page-kicker">Admin</div>
+              <h2 class="page-title">Users</h2>
+              <div class="page-subtitle">Audit roles, subscription access, bans, and connected channel state.</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
           </div>
 
           <div class="subtab-bar">
@@ -679,15 +830,21 @@
         ══════════════════════════════════════ -->
         <div id="section-content" class="view-section">
           <div class="page-header">
-            <div>
+            <div class="admin-section-heading">
+              <div class="page-kicker">Staff Workspace</div>
               <h2 class="page-title">Content</h2>
+              <div class="page-subtitle">
+                Manage Twitch Drops content, public command responses, and user feedback workflows.
+              </div>
               <div class="staff-only" style="color:var(--text-muted);font-size:14px;margin-top:8px;">
                 Staff access is scoped to the Twitch Drops page and image uploads.
               </div>
             </div>
-            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
+            <div class="page-actions">
+              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
           </div>
 
           <div class="subtab-bar">
@@ -779,10 +936,16 @@
         ══════════════════════════════════════ -->
         <div id="section-bots" class="view-section">
           <div class="page-header">
-            <h2 class="page-title">Bots</h2>
-            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
+            <div class="admin-section-heading">
+              <div class="page-kicker">Telemetry</div>
+              <h2 class="page-title">Bot Analytics</h2>
+              <div class="page-subtitle">Command health, usage patterns, broadcast tooling, and live logs.</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
           </div>
 
           <div class="subtab-bar">
@@ -896,10 +1059,16 @@
         ══════════════════════════════════════ -->
         <div id="section-system" class="view-section">
           <div class="page-header">
-            <h2 class="page-title">System</h2>
-            <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-              <i class="fas fa-sync"></i> Refresh
-            </button>
+            <div class="admin-section-heading">
+              <div class="page-kicker">Admin</div>
+              <h2 class="page-title">System</h2>
+              <div class="page-subtitle">Database inspection, feature flags, and internal analyst access.</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
+                <i class="fas fa-sync"></i> Refresh
+              </button>
+            </div>
           </div>
 
           <div class="subtab-bar">
@@ -910,7 +1079,12 @@
 
           <!-- Database sub-panel -->
           <div id="system-database" class="sub-panel active">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="control-toolbar">
+              <div>
+                <div class="card-title">Database Editor</div>
+                <div class="card-subtitle">Sensitive fields are redacted and blocked from edits.</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;">
               <label style="margin:0;white-space:nowrap;">Table:</label>
               <select id="db-table-select" class="input" style="width:200px;" onchange="loadDbTable()">
                 <option value="StreamSessions">StreamSessions</option>
@@ -919,6 +1093,7 @@
                 <option value="RankGoals">RankGoals</option>
                 <option value="CommandUsage">CommandUsage</option>
               </select>
+              </div>
             </div>
             <div id="db-editor-container">
               <div style="color:var(--text-muted);padding:20px;text-align:center;">Select a table above.</div>
@@ -1073,9 +1248,10 @@
       // ══════════════════════════════════════════════════════════════
       function switchSection(sectionId) {
         // Role guard
-        const adminSections = ['overview', 'users', 'bots', 'system'];
+        const adminSections = ['users', 'system'];
         if (adminSections.includes(sectionId) && window.USER_ROLE !== 'admin') {
           console.warn('Unauthorized access attempt to ' + sectionId);
+          toast('Admin access is required for that section.', 'warning');
           return;
         }
 
@@ -1173,12 +1349,15 @@
           document.getElementById('sidebar-name').textContent = data.username;
           document.getElementById('sidebar-role').textContent = data.role;
           document.getElementById('sidebar-avatar').textContent = data.username.charAt(0).toUpperCase();
-          if (data.role === 'admin') {
+          const isAdminRole = data.role === 'admin';
+          document.getElementById('ops-access').textContent = isAdminRole ? 'Admin' : 'Staff';
+          if (isAdminRole) {
             document.body.classList.add('is-admin');
           } else {
             document.body.classList.add('is-staff');
             currentSubTabs.content = 'drops';
-            switchSection('content');
+            currentSubTabs.bots = 'analytics';
+            switchSection('overview');
           }
         } catch (err) {
           console.error('Failed to check user role:', err);
@@ -1198,6 +1377,7 @@
       function refreshOverview() {
         fetchBotStatus();
         fetchPerformance();
+        updateLastRefresh();
       }
 
       async function fetchBotStatus() {
@@ -1218,6 +1398,7 @@
           if (metrics?.cpu) {
             const cpuPct = metrics.cpu.usage;
             document.getElementById('cpu-val').textContent = cpuPct.toFixed(1) + '%';
+            document.getElementById('ops-cpu').textContent = cpuPct.toFixed(1) + '%';
             document.getElementById('cpu-bar').style.width = cpuPct + '%';
             document.getElementById('cpu-bar').style.background =
               cpuPct >= 80 ? 'var(--danger)' : cpuPct >= 60 ? 'var(--warning)' : 'var(--primary)';
@@ -1226,11 +1407,15 @@
             const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
             const memPct = (metrics.memory.used / metrics.memory.total) * 100;
             document.getElementById('mem-val').textContent = `${memUsed}MB / ${memTotal}MB`;
+            document.getElementById('ops-memory').textContent = `${memUsed}MB`;
             document.getElementById('mem-bar').style.width = memPct + '%';
 
             if (metrics.botLatency) {
               document.getElementById('lat-val').textContent = metrics.botLatency.toFixed(0) + 'ms';
+              document.getElementById('ops-latency').textContent = metrics.botLatency.toFixed(0) + 'ms';
               document.getElementById('lat-bar').style.width = Math.min(metrics.botLatency, 100) + '%';
+            } else {
+              document.getElementById('ops-latency').textContent = '–';
             }
 
             // Dynamic system status
@@ -1251,6 +1436,12 @@
             }
           }
         } catch (e) { console.error(e); }
+      }
+
+      function updateLastRefresh() {
+        const el = document.getElementById('ops-last-refresh');
+        if (!el) return;
+        el.textContent = `Updated ${new Date().toLocaleTimeString()}`;
       }
 
       function formatUptime(seconds) {

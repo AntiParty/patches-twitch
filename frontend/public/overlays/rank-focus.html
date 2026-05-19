@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinalsRS - Rank Focus Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --accent: #d9002f;
+      --accent-rgb: 217, 0, 47;
+      --pos: #38d87a;
+      --neg: #ef4444;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #main-container {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: inline-flex;
+      align-items: center;
+      color: #fff;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rank-emblem {
+      width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .rank-emblem::after {
+      content: "";
+      display: none;
+    }
+
+    .rank-emblem .rank-icon {
+      width: 62px;
+      height: 62px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.62));
+    }
+
+    .stats-rail {
+      min-height: 50px;
+      display: inline-flex;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      margin-left: -16px;
+      padding: 0 15px 0 30px;
+      border-radius: 7px;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.88) 36px),
+        rgba(0, 0, 0, 0.86);
+      box-shadow:
+        0 12px 32px rgba(0, 0, 0, 0.44),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .stats-rail::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -24px;
+      width: 30px;
+      border-radius: 7px 0 0 7px;
+      pointer-events: none;
+      z-index: -1;
+      background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.62) 56%, rgba(0, 0, 0, 0.86));
+    }
+
+    .stat-group {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+      padding: 0 10px;
+    }
+
+    .stat-label {
+      color: rgba(255, 255, 255, 0.42);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .divider {
+      width: 1px;
+      height: 21px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.11);
+    }
+
+    .pos { color: var(--pos); }
+    .neg { color: var(--neg); }
+
+    @keyframes sessionGain {
+      0% {
+        transform: translateY(5px);
+        opacity: 0.35;
+        text-shadow: 0 0 0 rgba(56, 216, 122, 0);
+      }
+      45% {
+        opacity: 1;
+        text-shadow: 0 0 12px rgba(56, 216, 122, 0.62);
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+        text-shadow: 0 0 0 rgba(56, 216, 122, 0);
+      }
+    }
+
+    @keyframes sessionLoss {
+      0% { transform: translateY(-3px); opacity: 0.45; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+
+    .session-gain { animation: sessionGain 0.42s cubic-bezier(0.2, 0, 0, 1); }
+    .session-loss { animation: sessionLoss 0.28s cubic-bezier(0.2, 0, 0, 1); }
+  </style>
+</head>
+<body>
+  <div id="main-container">
+    <div class="rank-emblem" id="group-rank">
+      <img class="rank-icon" id="rank-icon" src="" alt="" />
+    </div>
+
+    <div class="stats-rail" id="stats-rail">
+      <div class="stat-group" id="group-name">
+        <span class="stat-label">Player</span>
+        <span class="stat-value" id="val-name">---</span>
+      </div>
+      <div class="divider" data-divider="1"></div>
+
+      <div class="stat-group" id="group-rank-text">
+        <span class="stat-label">Rank</span>
+        <span class="stat-value" id="rank-text">---</span>
+      </div>
+      <div class="divider" data-divider="1"></div>
+
+      <div class="stat-group" id="group-score">
+        <span class="stat-label">RS</span>
+        <span class="stat-value" id="val-score">---</span>
+      </div>
+      <div class="divider" data-divider="1"></div>
+
+      <div class="stat-group" id="group-wt">
+        <span class="stat-label">WT</span>
+        <span class="stat-value" id="val-wt">---</span>
+      </div>
+      <div class="divider" data-divider="1"></div>
+
+      <div class="stat-group" id="group-session">
+        <span class="stat-label">Session</span>
+        <span class="stat-value" id="val-session">---</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const RANK_ICONS = {
+      'Bronze 4': 'https://www.thefinals.wiki/w/images/d/da/League_Bronze_4.png',
+      'Bronze 3': 'https://www.thefinals.wiki/w/images/4/43/League_Bronze_3.png',
+      'Bronze 2': 'https://www.thefinals.wiki/w/images/6/60/League_Bronze_2.png',
+      'Bronze 1': 'https://www.thefinals.wiki/w/images/8/84/League_Bronze_1.png',
+      'Silver 4': 'https://www.thefinals.wiki/w/images/d/d4/League_Silver_4.png',
+      'Silver 3': 'https://www.thefinals.wiki/w/images/1/1f/League_Silver_3.png',
+      'Silver 2': 'https://www.thefinals.wiki/w/images/0/0e/League_Silver_2.png',
+      'Silver 1': 'https://www.thefinals.wiki/w/images/b/b3/League_Silver_1.png',
+      'Gold 4': 'https://www.thefinals.wiki/w/images/2/27/League_Gold_4.png',
+      'Gold 3': 'https://www.thefinals.wiki/w/images/9/9f/League_Gold_3.png',
+      'Gold 2': 'https://www.thefinals.wiki/w/images/1/15/League_Gold_2.png',
+      'Gold 1': 'https://www.thefinals.wiki/w/images/8/8d/League_Gold_1.png',
+      'Platinum 4': 'https://www.thefinals.wiki/w/images/8/85/League_Platinum_4.png',
+      'Platinum 3': 'https://www.thefinals.wiki/w/images/2/2c/League_Platinum_3.png',
+      'Platinum 2': 'https://www.thefinals.wiki/w/images/c/cd/League_Platinum_2.png',
+      'Platinum 1': 'https://www.thefinals.wiki/w/images/7/7a/League_Platinum_1.png',
+      'Diamond 4': 'https://www.thefinals.wiki/w/images/c/c4/League_Diamond_4.png',
+      'Diamond 3': 'https://www.thefinals.wiki/w/images/b/b5/League_Diamond_3.png',
+      'Diamond 2': 'https://www.thefinals.wiki/w/images/b/b3/League_Diamond_2.png',
+      'Diamond 1': 'https://www.thefinals.wiki/w/images/2/2c/League_Diamond_1.png',
+      'Ruby': 'https://www.thefinals.wiki/w/images/8/81/League_Ruby.png',
+      'Unranked': 'https://www.thefinals.wiki/w/images/d/d4/League_Unranked.png',
+    };
+
+    const PREVIEW_DATA = {
+      playerName: 'carnifex#7330',
+      rank: 1,
+      league: 'Diamond 1',
+      rankScore: 59232,
+      worldTourRank: '#4',
+      sessionChange: 312,
+      session: { change: 312 },
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const TOKEN = params.get('token');
+    const IS_PREVIEW = params.get('preview') === 'true';
+
+    let prevScore = 0;
+    let prevSessionChange = null;
+    let cfg = { primaryColor: '#d9002f', visibility: {} };
+
+    function hexToRgb(hex) {
+      const h = hex.replace('#', '');
+      const normalized = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+      const n = parseInt(normalized, 16);
+      if (Number.isNaN(n)) return '217, 0, 47';
+      return `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
+    }
+
+    function animateNumber(el, from, to, ms) {
+      const start = performance.now();
+      function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+      function frame(now) {
+        const p = Math.min((now - start) / ms, 1);
+        el.textContent = Math.round(from + (to - from) * easeOut(p)).toLocaleString();
+        if (p < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function applyVisibility() {
+      const v = cfg.visibility || {};
+      const map = {
+        'group-name': v.hideName,
+        'group-rank': v.hideRank,
+        'group-rank-text': v.hideRank,
+        'group-score': v.hideScore,
+        'group-wt': v.hideWT,
+        'group-session': v.hideSession,
+      };
+
+      for (const [id, hide] of Object.entries(map)) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = hide ? 'none' : '';
+      }
+
+      const rail = document.getElementById('stats-rail');
+      const kids = Array.from(rail.children);
+      kids.forEach(k => { if (k.dataset.divider) k.style.display = 'none'; });
+
+      const visible = kids.filter(k => k.id && k.id.startsWith('group-') && k.style.display !== 'none');
+      for (let i = 0; i < visible.length - 1; i++) {
+        let node = visible[i].nextElementSibling;
+        while (node && node !== visible[i + 1]) {
+          if (node.dataset.divider) { node.style.display = ''; break; }
+          node = node.nextElementSibling;
+        }
+      }
+    }
+
+    function render(data) {
+      document.getElementById('val-name').textContent = data.playerName || data.username || '---';
+
+      const icon = document.getElementById('rank-icon');
+      icon.src = RANK_ICONS[data.league] || RANK_ICONS.Unranked;
+      icon.alt = data.league || '';
+      document.getElementById('rank-text').textContent = data.league || '---';
+
+      const scoreEl = document.getElementById('val-score');
+      const newScore = data.rankScore || 0;
+      if (newScore !== prevScore) {
+        animateNumber(scoreEl, prevScore, newScore, 700);
+        prevScore = newScore;
+      } else {
+        scoreEl.textContent = newScore.toLocaleString();
+      }
+
+      document.getElementById('val-wt').textContent = data.worldTourRank || data.wtRank || '---';
+
+      const change = data.sessionChange ?? data.session?.change ?? 0;
+      const sessEl = document.getElementById('val-session');
+      const wasText = sessEl.textContent;
+      const newText = change === 0 ? '0' : (change > 0 ? `+${change}` : `${change}`);
+      sessEl.textContent = newText;
+      sessEl.className = 'stat-value' + (change > 0 ? ' pos' : change < 0 ? ' neg' : '');
+      if (prevSessionChange !== null && newText !== wasText) {
+        sessEl.classList.remove('session-gain', 'session-loss');
+        void sessEl.offsetWidth;
+        if (change > prevSessionChange) {
+          sessEl.classList.add('session-gain');
+        } else if (change < prevSessionChange) {
+          sessEl.classList.add('session-loss');
+        }
+      }
+      prevSessionChange = change;
+    }
+
+    async function fetchConfig() {
+      if (!TOKEN) return;
+      try {
+        const res = await fetch(`/api/overlay/config/${TOKEN}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        cfg.primaryColor = data.primaryColor || '#d9002f';
+        cfg.visibility = data.layout?.visibility || {};
+        document.documentElement.style.setProperty('--accent', cfg.primaryColor);
+        document.documentElement.style.setProperty('--accent-rgb', hexToRgb(cfg.primaryColor));
+        applyVisibility();
+      } catch (e) { console.error('[rank-focus] config fetch error', e); }
+    }
+
+    async function fetchAndRender() {
+      if (IS_PREVIEW) { render(PREVIEW_DATA); return; }
+      if (!TOKEN) return;
+      try {
+        const res = await fetch(`/api/overlay/data/${TOKEN}`);
+        if (!res.ok) return;
+        render(await res.json());
+      } catch (e) { console.error('[rank-focus] data fetch error', e); }
+    }
+
+    (async () => {
+      await fetchConfig();
+      await fetchAndRender();
+      if (!IS_PREVIEW) {
+        setInterval(fetchAndRender, 10000);
+        setInterval(fetchConfig, 20000);
+      }
+    })();
+  </script>
+</body>
+</html>

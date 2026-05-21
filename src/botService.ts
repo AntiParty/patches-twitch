@@ -28,16 +28,14 @@ dbReady.then(async () => {
     activeSessions.forEach(session => {
       const channel = session.get('channel');
       const start_score = session.get('start_score');
-      const start_wt_rank = session.get('start_wt_rank');
       const started_at = session.get('started_at');
       activeStreamSessions.set(String(channel), {
         start_score,
-        start_wt_rank,
         started_at
       });
       // If you need to resume timers, stats, etc., do it here
       logger.info(
-        `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}, start_wt_rank: ${start_wt_rank}`
+        `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}`
       );
     });
 

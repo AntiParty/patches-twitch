@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leaderboard – FinalsRS</title>
-  <meta name="description" content="THE FINALS ranked leaderboard – top players by rank score and World Tour cashouts." />
+  <meta name="description" content="THE FINALS ranked leaderboard - top players by rank score." />
   <link rel="canonical" href="https://finalsrs.com/leaderboard" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,7 +42,7 @@
       flex-wrap: wrap;
     }
 
-    /* ── Tabs (Ranked / World Tour) ──────────────────────────── */
+    /* ── Ranked leaderboard controls ──────────────────────────── */
     .lb-tabs {
       display: flex;
       gap: 0.25rem;
@@ -454,11 +454,7 @@
       <div class="lb-header-row">
         <div>
           <h1>THE FINALS Leaderboard</h1>
-          <p id="lb-subtitle">Season 9 · Ranked &amp; World Tour</p>
-        </div>
-        <div class="lb-tabs">
-          <button class="lb-tab active" data-mode="ranked" onclick="switchMode('ranked')">Ranked</button>
-          <button class="lb-tab"       data-mode="wt"     onclick="switchMode('wt')">World Tour</button>
+          <p id="lb-subtitle">Season 9 · Ranked</p>
         </div>
       </div>
     </div>
@@ -804,7 +800,7 @@ function updateStats() {
 
 function updateSubtitle() {
   const s = season != null ? `Season ${season}` : '';
-  const m = mode === 'ranked' ? 'Ranked' : 'World Tour';
+  const m = 'Ranked';
   document.getElementById('lb-subtitle').textContent = `${s} · ${m}`;
 }
 

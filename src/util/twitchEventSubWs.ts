@@ -2,7 +2,7 @@ import WebSocket from 'ws';
 import axios from 'axios';
 import logger from './logger';
 import { Channel, StreamSession } from '../db';
-import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
+import { getLatestLeaderboardData } from '@/commands/record';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 
 interface UserSubscription {
@@ -74,7 +74,6 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
 
     const playerId = channel.player_id.toLowerCase();
     const cachedData = await getLatestLeaderboardData();
-    const worldTourData = await getLatestWorldTourData();
 
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
@@ -87,25 +86,23 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
     };
 
     const player = findPlayer(cachedData, playerId);
-    const wtPlayer = findPlayer(worldTourData, playerId);
 
-    if (!player && !wtPlayer) {
+    if (!player) {
       logger.warn(`[EventSub] ${broadcasterName} not found in leaderboard caches — scheduling retry in 5 min`);
       setTimeout(() => handleStreamOnline(broadcasterName, broadcasterId), 5 * 60 * 1000);
       return;
     }
-    const startScore = player?.rankScore ?? 0;
-    const startWTRank = wtPlayer?.rank ?? null;
+    const startScore = player.rankScore ?? 0;
 
     await StreamSession.upsert({
       channel: broadcasterName.toLowerCase(),
       start_score: startScore,
-      start_wt_rank: startWTRank,
+      start_wt_rank: null,
       started_at: new Date()
     });
-    sendInfoToDiscord(`StreamSession created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`);
+    sendInfoToDiscord(`StreamSession created for ${broadcasterName} | start_score: ${startScore}`);
     logger.info(
-      `StreamSession created for ${broadcasterName} | start_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`
+      `StreamSession created for ${broadcasterName} | start_score: ${startScore}`
     );
   } catch (err) {
     logger.error(`Failed to handle stream.online for ${broadcasterName}:`, err);

@@ -1,7 +1,7 @@
 import { getLiveStreamsForUsers, refreshToken } from '../util/twitchUtils';
 import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
-import { getLatestLeaderboardData, getLatestWorldTourData } from '@/commands/record';
+import { getLatestLeaderboardData } from '@/commands/record';
 import logger from '../util/logger';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
@@ -158,7 +158,6 @@ export const startStreamSessionPolling = async () => {
           // --- 2. Has player_id — always attempt session creation (not gated by alert state) ---
           const playerId = channel.player_id.toLowerCase();
           const cachedData = await getLatestLeaderboardData();
-          const worldTourData = await getLatestWorldTourData();
 
           const findPlayer = (data: any[] | null, name: string) => {
             if (!data) return null;
@@ -171,9 +170,8 @@ export const startStreamSessionPolling = async () => {
           };
 
           const player = findPlayer(cachedData, playerId);
-          const wtPlayer = findPlayer(worldTourData, playerId);
 
-          if (!player && !wtPlayer) {
+          if (!player) {
             const detectedAt = liveDetectedTime.get(userLower) ?? now;
             const withinGrace = (now - detectedAt) < LEADERBOARD_GRACE_PERIOD_MS;
             if (withinGrace) continue;
@@ -183,7 +181,7 @@ export const startStreamSessionPolling = async () => {
               await sendDiscordAlert({
                 type: 'warning',
                 title: 'Missing Stream Session',
-                description: `User ${user.username} is live on Twitch, but no session has started in the bot and not found in leaderboard caches.`,
+                description: `User ${user.username} is live on Twitch, but no session has started in the bot and not found in the ranked leaderboard cache.`,
               });
               alertedMissingSession.set(userLower, now);
             }
@@ -191,18 +189,17 @@ export const startStreamSessionPolling = async () => {
           }
 
           // --- 3. Player found — create session ---
-          const startScore = player?.rankScore ?? 0;
-          const startWTRank = wtPlayer?.rank ?? null;
+          const startScore = player.rankScore ?? 0;
           await StreamSession.upsert({
             channel: userLower,
             start_score: startScore,
-            start_wt_rank: startWTRank,
+            start_wt_rank: null,
             started_at: new Date()
           });
           await sendDiscordAlert({
             type: 'info',
             title: 'StreamSession Started Automatically',
-            description: `User ${user.username} is live and session started.\nstart_score: ${startScore}, start_wt_rank: ${startWTRank ?? 'N/A'}`,
+            description: `User ${user.username} is live and session started.\nstart_score: ${startScore}`,
           });
           alertedMissingSession.delete(userLower);
         } else {

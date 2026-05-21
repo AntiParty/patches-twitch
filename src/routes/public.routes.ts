@@ -1037,8 +1037,8 @@ router.get('/leaderboard', (_req: Request, res: Response) => {
 // ── Leaderboard data API ──────────────────────────────────────
 router.get('/api/leaderboard', async (req: Request, res: Response) => {
     const cacheDir = path.join(process.cwd(), 'cache');
-    const mode = req.query.mode === 'wt' ? 'wt' : 'ranked';
-    const prefix = mode === 'wt' ? 'worldTour_s' : 'regular_s';
+    const mode = 'ranked';
+    const prefix = 'regular_s';
 
     try {
         const files = await fs.promises.readdir(cacheDir);

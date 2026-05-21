@@ -22,14 +22,14 @@ Type this in chat to see the current custom message for a command:
 Type this in chat:
 
 ```
-!editcmd rank @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank}
+!editcmd rank @{username}, #{rank} {league} - {rankScore} RS
 ```
 
 *Now, when someone uses `!rank`, your bot will reply with that message, filling in the details for each user!*
 
 
 ```
-!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season} | WT peak: #{wtRank} in {wtSeason}
+!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season}
 ```
 
 Available variables for `!peak`:
@@ -37,8 +37,6 @@ Available variables for `!peak`:
 - `{league}` — Peak regular season league
 - `{rankScore}` — Peak regular season RS
 - `{season}` — Peak regular season (e.g. "Season 4")
-- `{wtRank}` — Peak World Tour rank
-- `{wtSeason}` — Peak World Tour season (e.g. "World Tour Season 6")
 
 If only one is found, the bot will fill in just that part.
 
@@ -63,7 +61,7 @@ You can do this for any command that supports custom messages, like `!record` or
 
 ```
 !editcmd record @{username}, your session RS is {sessionRS} ({currentRS} RS)
-!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season} | WT peak: #{wtRank} in {wtSeason}
+!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season}
 ```
 
 ---
@@ -71,8 +69,8 @@ You can do this for any command that supports custom messages, like `!record` or
 ## 5. Example: Full Workflow
 
 
-1. Type `!editcmd rank @{username}, #{rank} {league} - {rankScore} RS | WT rank: #{wtRank} TEST EDIT` in chat.
-2. Type `!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season} | WT peak: #{wtRank} in {wtSeason}` in chat.
+1. Type `!editcmd rank @{username}, #{rank} {league} - {rankScore} RS TEST EDIT` in chat.
+2. Type `!editcmd peak Peak rank: #{rank} {league} ({rankScore} RS) in {season}` in chat.
 3. Use `!rank` or `!peak` and see your custom message in action.
 4. Change it anytime with another `!editcmd rank ...` or `!editcmd peak ...` command.
 5. Remove it with `!editcmd rank` or `!editcmd peak` to go back to default.

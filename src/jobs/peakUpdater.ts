@@ -37,7 +37,7 @@ function findPlayer(data: any[], target: string): any | null {
 
 async function loadAllCacheFiles(): Promise<{ file: string; data: any[] }[]> {
   const files = await fs.readdir(CACHE_DIR);
-  const leaderboardFiles = files.filter(f => /^(regular_s\d+|worldTour_s\d+)\.json$/.test(f));
+  const leaderboardFiles = files.filter(f => /^regular_s\d+\.json$/.test(f));
 
   const results: { file: string; data: any[] }[] = [];
   for (const file of leaderboardFiles) {
@@ -73,8 +73,6 @@ export async function updatePeakRanks(): Promise<void> {
     if (!playerId) continue;
 
     let bestRegular: { rank: number; rs: number; league: string; season: string } | null = null;
-    let bestWT: { rank: number; season: string } | null = null;
-
     for (const { file, data } of leaderboards) {
       const player = findPlayer(data, playerId);
       if (!player) continue;
@@ -88,14 +86,10 @@ export async function updatePeakRanks(): Promise<void> {
             season: file,
           };
         }
-      } else if (file.startsWith('worldTour')) {
-        if (!bestWT || player.rank < bestWT.rank) {
-          bestWT = { rank: player.rank, season: file };
-        }
       }
     }
 
-    if (!bestRegular && !bestWT) continue;
+    if (!bestRegular) continue;
 
     // Only update if we found a better peak than what's stored
     const existing = await PeakRank.findOne({ where: { channel: (channel as any).username } });
@@ -112,13 +106,6 @@ export async function updatePeakRanks(): Promise<void> {
         updateData.regular_rs = bestRegular.rs;
         updateData.regular_league = bestRegular.league;
         updateData.regular_season = bestRegular.season;
-      }
-    }
-
-    if (bestWT) {
-      if (!existing || !(existing as any).wt_rank || bestWT.rank < (existing as any).wt_rank) {
-        updateData.wt_rank = bestWT.rank;
-        updateData.wt_season = bestWT.season;
       }
     }
 

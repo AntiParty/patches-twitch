@@ -136,12 +136,7 @@
         <span class="value" id="score-value">---</span>
       </div>
 
-      <div class="separator">|</div>
-
-      <div class="stat-cluster" id="group-wt">
-        <span class="key">wt:</span>
-        <span class="value" id="wt-value">---</span>
-      </div>
+      <div class="separator">|</div>
 
       <div class="separator">|</div>
 
@@ -253,8 +248,7 @@
 
         toggleGroup("group-name", v.hideName);
         toggleGroup("group-rank", v.hideRank);
-        toggleGroup("group-score", v.hideScore);
-        toggleGroup("group-wt", v.hideWT);
+        toggleGroup("group-score", v.hideScore);
         toggleGroup("group-session", v.hideSession);
 
         // Fix separator logic (hide last separator)
@@ -309,8 +303,7 @@
           rankEl.appendChild(rankText);
           document.getElementById("score-value").textContent =
             data.rankScore || "0";
-          document.getElementById("wt-value").textContent =
-            data.worldTourRank || "-";
+          document.getElementById("wt-value").textContent =
 
           const sessionEl = document.getElementById("session-change");
           if (data.sessionChange !== undefined && data.sessionChange !== 0) {

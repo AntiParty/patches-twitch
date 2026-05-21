@@ -118,19 +118,6 @@ export async function getLatestLeaderboardData() {
   }
 }
 
-async function getLatestWorldTourData() {
-  const file = await getLatestCacheFile("worldTour_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("Failed to read World Tour leaderboard cache file:", err);
-    return null;
-  }
-}
-
 async function maybeSendCustomResponse(
   command: string,
   ctx: CommandContext,
@@ -210,30 +197,26 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
     }
 
     const regularData = await getLatestLeaderboardData();
-    const worldTourData = await getLatestWorldTourData();
 
-    if (!regularData && !worldTourData) {
+    if (!regularData) {
       await ctx.say(`@${username}, leaderboard data is temporarily unavailable.`, ctx.tags?.["id"]);
       return;
     }
 
-    const player   = searchPlayer(regularData,   finalsName!);
-    const wtPlayer = searchPlayer(worldTourData, finalsName!);
+    const player = searchPlayer(regularData, finalsName!);
 
     // Use the actual found name for display (so "lamp" → "lamp#5944")
-    if (isLookup && (player || wtPlayer)) {
-      lookupTarget = player?.name ?? wtPlayer?.name ?? lookupTarget;
+    if (isLookup && player) {
+      lookupTarget = player.name ?? lookupTarget;
     }
 
     const vars = {
       username,
-      rank: player?.rank ?? wtPlayer?.rank ?? "N/A",
+      rank: player?.rank ?? "N/A",
       league: player?.league ?? "",
       rankScore: player?.rankScore ? player.rankScore.toLocaleString() : "",
       score: player?.rankScore ? player.rankScore.toLocaleString() : "", // Alias
-      wtRank: wtPlayer?.rank ?? "",
-      wt_rank: wtPlayer?.rank ?? "", // Alias
-      found: player || wtPlayer ? "true" : "false",
+      found: player ? "true" : "false",
     };
 
     // Only use custom response for streamer's own rank, not lookups
@@ -251,28 +234,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
     let response = `@${username}, `;
     const displayName = isLookup ? lookupTarget : null;
 
-    if (player && wtPlayer) {
-      if (isLookup) {
-        response += `${displayName} is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS | WT rank: #${wtPlayer.rank}`;
-      } else {
-        response += `current rank is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS`;
-
-        // Add goal information if exists
-        if (goal && !goal.achieved && player.rank > goal.target_rank) {
-          const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
-          const rsAway = (goal.target_rank_score || 0) - player.rankScore;
-
-          if (rsAway > 0) {
-            response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
-            if (targetPlayer?.league) {
-              response += ` (${targetPlayer.league})`;
-            }
-          }
-        }
-
-        response += ` | WT rank: #${wtPlayer.rank}`;
-      }
-    } else if (player) {
+    if (player) {
       if (isLookup) {
         response += `${displayName} is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS`;
       } else {
@@ -291,22 +253,16 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
           }
         }
       }
-    } else if (wtPlayer) {
-      if (isLookup) {
-        response += `${displayName} WT rank: #${wtPlayer.rank}`;
-      } else {
-        response += `WT rank: #${wtPlayer.rank}`;
-      }
     } else {
       if (isLookup) {
-        response += `"${displayName}" not found on ranked or WT leaderboards.`;
+        response += `"${displayName}" not found on ranked leaderboard.`;
       } else {
-        response += `not found on ranked or WT leaderboards.`;
+        response += `not found on ranked leaderboard.`;
       }
     }
 
     // Append transition notice when S10 just started but leaderboard isn't live yet
-    if (player || wtPlayer) {
+    if (player) {
       response += await getTransitionSuffix();
     }
 

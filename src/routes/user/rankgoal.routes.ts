@@ -122,13 +122,9 @@ router.get('/api/my-current-rank', requireUserAPI, async (req: any, res: any) =>
             return res.status(404).json({ error: 'No linked player ID found.' });
         }
 
-        const [regular, worldTour] = await Promise.all([
-            readLatestLeaderboard('regular_s'),
-            readLatestLeaderboard('worldTour_s'),
-        ]);
+        const regular = await readLatestLeaderboard('regular_s');
 
         const player = findPlayer(regular, playerId);
-        const wtPlayer = findPlayer(worldTour, playerId);
 
         if (!player) {
             return res.status(404).json({
@@ -142,7 +138,6 @@ router.get('/api/my-current-rank', requireUserAPI, async (req: any, res: any) =>
             rank: player.rank ?? null,
             league: player.league ?? null,
             rankScore: Number(player.rankScore ?? 0),
-            worldTourRank: wtPlayer?.rank ?? null,
         });
     } catch (err) {
         logger.error('Error fetching current rank:', err);

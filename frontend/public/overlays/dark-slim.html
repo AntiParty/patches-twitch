@@ -128,12 +128,6 @@
     </div>
     <div class="divider" data-divider="1"></div>
 
-    <div class="stat-group" id="group-wt">
-      <span class="stat-label">WT</span>
-      <span class="stat-value" id="val-wt">---</span>
-    </div>
-    <div class="divider" data-divider="1"></div>
-
     <div class="stat-group" id="group-session">
       <span class="stat-label">S</span>
       <span class="stat-value" id="val-session">---</span>
@@ -171,7 +165,6 @@
       rank: 1,
       league: 'Diamond 1',
       rankScore: 59232,
-      worldTourRank: '#4',
       sessionChange: 312,
       session: { change: 312 },
     };
@@ -207,7 +200,6 @@
         'group-name': v.hideName,
         'group-rank': v.hideRank,
         'group-score': v.hideScore,
-        'group-wt': v.hideWT,
         'group-session': v.hideSession,
       };
 
@@ -246,8 +238,6 @@
       } else {
         scoreEl.textContent = newScore.toLocaleString();
       }
-
-      document.getElementById('val-wt').textContent = data.worldTourRank || data.wtRank || '---';
 
       const change = data.sessionChange ?? data.session?.change ?? 0;
       const sessEl = document.getElementById('val-session');

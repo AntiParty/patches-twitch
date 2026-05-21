@@ -171,24 +171,6 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
             logger.error(`[Overlay] Error reading regular leaderboard for ${finalsName}:`, err);
         }
 
-        // 2. Fetch World Tour Data
-        let wtRank = "N/A";
-        try {
-            const wtFile = await getLatestCacheFile("worldTour_s");
-            if (wtFile) {
-                const raw = fs.readFileSync(wtFile, "utf8");
-                const data = JSON.parse(raw);
-                if (Array.isArray(data)) {
-                    const found = data.find((p: any) => p.name.toLowerCase() === searchName);
-                    if (found) {
-                        wtRank = `#${found.rank}`;
-                    }
-                }
-            }
-        } catch (err) {
-            logger.error(`[Overlay] Error reading World Tour leaderboard for ${finalsName}:`, err);
-        }
-
         // Get rank goal if exists
         const { RankGoal } = await import('../db');
         const goal: any = await RankGoal.findOne({ where: { channel: user.get('username') } });
@@ -231,9 +213,6 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
             league: stats.league || 'Unranked',
             rankScore: stats.rankScore || 0,
             
-            worldTourRank: wtRank,
-            wtRank: wtRank, // legacy support
-
             sessionChange: sessionChange, // flattened for overlays
             
             goal: null,

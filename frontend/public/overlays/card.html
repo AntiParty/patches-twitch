@@ -127,12 +127,6 @@
     </div>
     <div class="divider" data-divider="1"></div>
 
-    <div class="stat-group" id="group-wt">
-      <span class="stat-label">WT</span>
-      <span class="stat-value" id="val-wt">---</span>
-    </div>
-    <div class="divider" data-divider="1"></div>
-
     <div class="stat-group" id="group-session">
       <span class="stat-label">Session</span>
       <span class="stat-value" id="val-session">---</span>
@@ -167,7 +161,7 @@
 
     const PREVIEW_DATA = {
       playerName: 'carnifex#7330', rank: 1, league: 'Diamond 1',
-      rankScore: 59232, worldTourRank: '#4', sessionChange: 312,
+      rankScore: 59232, sessionChange: 312,
       session: { change: 312 },
     };
 
@@ -193,7 +187,7 @@
       const v = cfg.visibility || {};
       const map = {
         'group-name': v.hideName, 'group-rank': v.hideRank,
-        'group-score': v.hideScore, 'group-wt': v.hideWT, 'group-session': v.hideSession,
+        'group-score': v.hideScore, 'group-session': v.hideSession,
       };
       for (const [id, hide] of Object.entries(map)) {
         const el = document.getElementById(id);
@@ -231,8 +225,6 @@
       } else {
         scoreEl.textContent = newScore.toLocaleString();
       }
-
-      document.getElementById('val-wt').textContent = data.worldTourRank || '---';
 
       const change  = data.sessionChange ?? data.session?.change ?? 0;
       const sessEl  = document.getElementById('val-session');

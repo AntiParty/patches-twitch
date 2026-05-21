@@ -3706,7 +3706,6 @@
           { v: "rank",     desc: "Global leaderboard rank" },
           { v: "league",   desc: "League (e.g. Diamond 1)" },
           { v: "score",    desc: "Rank Score (RS)" },
-          { v: "wtRank",   desc: "World Tour rank" },
           { v: "found",    desc: "true/false — on leaderboard?" },
         ],
         record: [
@@ -3715,16 +3714,12 @@
           { v: "gain",      desc: "Alias for {sessionRS}" },
           { v: "currentRS", desc: "Current RS total" },
           { v: "startRS",   desc: "RS at stream start" },
-          { v: "wtRank",    desc: "Current World Tour rank" },
-          { v: "wtDiff",    desc: "WT rank change this stream" },
         ],
         peak: [
           { v: "rank",     desc: "Best rank ever achieved" },
           { v: "league",   desc: "League at peak rank" },
           { v: "score",    desc: "RS at peak rank" },
           { v: "season",   desc: "Season of peak rank" },
-          { v: "wtRank",   desc: "Best World Tour rank" },
-          { v: "wtSeason", desc: "Season of WT peak" },
         ],
       };
 
@@ -3736,8 +3731,6 @@
           league: "Diamond 1",
           score: "45,210",
           rankScore: "45,210",
-          wtRank: "89",
-          wt_rank: "89",
           found: "true",
         },
         record: {
@@ -3747,8 +3740,6 @@
           currentRS: "45,210",
           score: "45,210",
           startRS: "44,898",
-          wtDiff: "-3",
-          wtRank: "89",
         },
         peak: {
           rank: "23",
@@ -3756,18 +3747,14 @@
           score: "52,100",
           rankScore: "52,100",
           season: "Season 8",
-          wtRank: "15",
-          wt_rank: "15",
-          wtSeason: "World Tour Season 8",
-          wt_season: "World Tour Season 8",
         },
       };
 
       // What the bot says when there is no custom response set
       const cmdDefaults = {
-        rank:   "@{username}, current rank is {score} RS in {league} | WT rank: #{wtRank}",
-        record: "@{username}, session RS: {sessionRS} ({currentRS} RS) | WT rank: #{wtRank}",
-        peak:   "Peak rank: #{rank} {league} ({score} RS) in {season} | WT peak: #{wtRank} ({wtSeason})",
+        rank:   "@{username}, current rank is {score} RS in {league}",
+        record: "@{username}, session RS: {sessionRS} ({currentRS} RS)",
+        peak:   "Peak rank: #{rank} {league} ({score} RS) in {season}",
       };
 
       // Render the variable chips for a given command
@@ -3926,7 +3913,6 @@
               `${formatNumber(data.rankScore)} RS`,
               data.league,
               data.rank ? `rank #${formatNumber(data.rank)}` : null,
-              data.worldTourRank ? `WT #${formatNumber(data.worldTourRank)}` : null,
             ].filter(Boolean);
             status.innerText = `Loaded ${bits.join(" | ")} for ${data.playerId}.`;
           }

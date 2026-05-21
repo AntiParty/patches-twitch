@@ -13,19 +13,10 @@ const NEW_REGULAR_API_URL  = 'https://www.davg25.com/app/the-finals-leaderboard-
 const NEW_EVENTS_URL       = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/events/leaderboard/';
 const BANNED_PLAYERS_URL   = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/banned-players/';
 
-// ── Old API (World Tour only — not available on new API yet) ─────────────────
-// Only the current season is fetched on each update; old seasons are already
-// on disk from the initial migration and don't change.
-// Season number is read from currentRegularSeason (updated on every successful regular fetch).
 
-function getWorldTourApiUrl(season: number) {
-  return `https://api.the-finals-leaderboard.com/v1/leaderboard/s${season}worldtour/crossplay`;
-}
 
-function getCachePath(type: 'regular' | 'worldTour', season: number) {
-  const filename = type === 'regular'
-    ? `regular_s${season}.json`
-    : `worldTour_s${season}.json`;
+function getCachePath(type: 'regular', season: number) {
+  const filename = `regular_s${season}.json`;
   return path.resolve(__dirname, `../../cache/${filename}`);
 }
 
@@ -126,34 +117,6 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
   }
 }
 
-// ── World Tour (old API, unchanged) ──────────────────────────────────────────
-async function updateWorldTourCache(season: number) {
-  const url       = getWorldTourApiUrl(season);
-  const cachePath = getCachePath('worldTour', season);
-
-  try {
-    const response = await axios.get(url, { timeout: 15000 });
-    if (response.status !== 200) throw new Error(`WT API (S${season}) status ${response.status}`);
-
-    const data = response.data.data;
-    if (!Array.isArray(data)) throw new Error(`Invalid WT data for S${season}`);
-
-    await fs.writeFile(cachePath, JSON.stringify(data, null, 2), 'utf8');
-    logger.info(`[CacheUpdater] World Tour S${season} cache updated — ${data.length} entries.`);
-  } catch (error) {
-    logger.error(`[CacheUpdater] Failed to update World Tour S${season}:`, error);
-    try {
-      const cached = await fs.readFile(cachePath, 'utf8');
-      logger.info(`[CacheUpdater] Using fallback WT S${season} cache (${JSON.parse(cached).length} entries).`);
-    } catch {
-      logger.error(`[CacheUpdater] No fallback WT S${season} cache available.`);
-    }
-  }
-}
-
-async function updateAllWorldTourCaches() {
-  await updateWorldTourCache(currentRegularSeason);
-}
 
 // ── EventSource — real-time leaderboard updates ──────────────────────────────
 let es: InstanceType<typeof EventSource> | null = null;
@@ -217,10 +180,9 @@ export async function fetchAndWriteBannedPlayers(): Promise<void> {
 let lastUpdate = Date.now();
 
 export function startCacheUpdater() {
-  // 1. Immediate first fetch (regular + world tour + banned players)
+  // 1. Immediate first fetch (regular leaderboard + banned players)
   Promise.all([
     fetchAndWriteRegular(true),
-    updateAllWorldTourCaches(),
     fetchAndWriteBannedPlayers(),
   ])
     .then(() => {
@@ -236,7 +198,6 @@ export function startCacheUpdater() {
   const FALLBACK_INTERVAL = 2 * 60 * 60 * 1000;
   setInterval(async () => {
     const updated = await fetchAndWriteRegular();
-    await updateAllWorldTourCaches();
     if (updated) {
       lastUpdate = Date.now();
       sendInfoToDiscord(`[Cache] Fallback poll updated regular leaderboard (S${currentRegularSeason}).`);
@@ -292,7 +253,6 @@ export async function getRubyRankThreshold() {
 export async function updateAllCaches() {
   await Promise.all([
     fetchAndWriteRegular(true),
-    updateAllWorldTourCaches(),
   ]);
   lastUpdate = Date.now();
 }

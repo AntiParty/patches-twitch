@@ -210,13 +210,7 @@
         <span class="shard-label">Rank Score</span>
         <span class="shard-value" id="rank-score-display">0</span>
       </div>
-      <div class="shard-divider"></div>
-
-      <!-- WT RANK SECTION -->
-      <div class="shard-group" id="group-wt">
-        <span class="shard-label">WT Rank</span>
-        <span class="shard-value" id="wt-rank-display">---</span>
-      </div>
+      <div class="shard-divider"></div>
       <div class="shard-divider"></div>
 
       <!-- SESSION SECTION -->
@@ -352,7 +346,6 @@
             league: "Diamond 1",
             rank: "420",
             rankScore: 45250,
-            wtRank: "#1337",
             session: { change: 150 },
           });
           return;
@@ -424,13 +417,7 @@
           previousRankScore = data.rankScore;
         }
 
-        // 2.5 Update WT Rank
-        const wtRankDisplay = document.getElementById("wt-rank-display");
-        if (wtRankDisplay) {
-          let wtText = data.wtRank;
-          if (!wtText || wtText === "N/A") wtText = "Unranked";
-          wtRankDisplay.innerText = wtText;
-        }
+        // 2.5 Update WT Rank
 
         // 3. Update Session
         const changeDisplay = document.getElementById("session-change-display");
@@ -471,8 +458,7 @@
         const config = {
           "group-name": getVisibility("hideName", "hideName"),
           "group-rank": getVisibility("hideRank", "hideRank"),
-          "group-score": getVisibility("hideScore", "hideScore"),
-          "group-wt": getVisibility("hideWT", "hideWT"),
+          "group-score": getVisibility("hideScore", "hideScore"),
           "group-session": getVisibility("hideSession", "hideSession"),
         };
 

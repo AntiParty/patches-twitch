@@ -18,10 +18,12 @@ function getCacheDir() {
 
 async function getTransitionSuffix(): Promise<string> {
   try {
-    const raw  = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
+    const raw = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
     const meta = JSON.parse(raw);
-    if (meta?.transitioning) return ` [S${meta.season} API not found — waiting on Embark]`;
-  } catch { /* meta.json missing — no suffix */ }
+    if (meta?.transitioning) return ` [S${meta.season} API not found - waiting on Embark]`;
+  } catch {
+    // meta.json missing - no suffix
+  }
   return "";
 }
 
@@ -35,7 +37,7 @@ export async function getLatestCacheFile(prefix: string): Promise<string | null>
         return { file: f, season: num };
       })
       .filter(x => x.season > 0)
-      .sort((a, b) => b.season - a.season); // newest first
+      .sort((a, b) => b.season - a.season);
 
     return matched.length > 0 ? path.join(getCacheDir(), matched[0].file) : null;
   } catch (err) {
@@ -53,19 +55,6 @@ export async function getLatestLeaderboardData() {
     return Array.isArray(parsed) ? parsed : null;
   } catch (err) {
     logger.error("[record] Failed to read leaderboard cache:", err);
-    return null;
-  }
-}
-
-export async function getLatestWorldTourData() {
-  const file = await getLatestCacheFile("worldTour_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("[record] Failed to read World Tour leaderboard cache:", err);
     return null;
   }
 }
@@ -88,15 +77,14 @@ async function maybeSendCustomResponse(
 export const execute = async (
   ctx: CommandContext,
   _channel: string,
-  message: string,
+  _message: string,
   tags: Record<string, any>,
-  args: string[]
+  _args: string[]
 ) => {
   const username = tags?.["display-name"] || ctx.user || "user";
   const sanitizedChannel = ctx.channel.replace(/^#/, "");
 
   try {
-    // 1. Check for linked account
     const channelInstance = (await Channel.findOne({
       where: { username: sanitizedChannel },
     })) as any;
@@ -109,13 +97,11 @@ export const execute = async (
       return;
     }
 
-    // 2. Check for active session (managed by EventSub + poller)
     let session = (await StreamSession.findOne({
       where: { channel: sanitizedChannel },
     })) as any;
 
     if (!session) {
-      // Also try lowercase match (sessions are stored lowercase)
       session = (await StreamSession.findOne({
         where: { channel: sanitizedChannel.toLowerCase() },
       })) as any;
@@ -129,10 +115,8 @@ export const execute = async (
       return;
     }
 
-    // 3. Get leaderboard data
     const cachedData = await getLatestLeaderboardData();
-    const worldTourData = await getLatestWorldTourData();
-    if (!cachedData && !worldTourData) {
+    if (!cachedData) {
       await ctx.say(
         `@${username}, leaderboard data is temporarily unavailable.`,
         ctx.tags?.["id"]
@@ -140,7 +124,6 @@ export const execute = async (
       return;
     }
 
-    // 4. Find player
     const finalsName = playerId.toLowerCase();
     const findPlayer = (data: any[] | null, name: string) => {
       if (!data) return null;
@@ -152,49 +135,29 @@ export const execute = async (
       return player;
     };
     const player = findPlayer(cachedData, finalsName);
-    const wtPlayer = findPlayer(worldTourData, finalsName);
 
-    if (!player && !wtPlayer) {
+    if (!player) {
       await ctx.say(
-        `@${username}, not currently found on the leaderboards.`,
+        `@${username}, not currently found on the ranked leaderboard.`,
         ctx.tags?.["id"]
       );
       return;
     }
 
-    // 5. Calculate current stats
-    const currentScore = player?.rankScore ?? 0;
-    const currentWTRank = wtPlayer?.rank ?? null;
-
-    // 6. Calculate session diff
+    const currentScore = player.rankScore ?? 0;
     const diff = currentScore - session.start_score;
-    const sign = diff > 0 ? "+" : diff < 0 ? "-" : "±";
+    const sign = diff > 0 ? "+" : diff < 0 ? "-" : "+/-";
     const absDiff = Math.abs(diff);
 
     let response = `@${username}, session RS: ${sign}${absDiff.toLocaleString()} (${currentScore.toLocaleString()} RS)`;
-    if (
-      wtPlayer &&
-      typeof session.start_wt_rank === "number" &&
-      typeof currentWTRank === "number"
-    ) {
-      const wtDiff = session.start_wt_rank - currentWTRank;
-      const wtSign = wtDiff > 0 ? "+" : wtDiff < 0 ? "-" : "±";
-    const absWtDiff = Math.abs(wtDiff);
-      response += ` | WT rank: #${currentWTRank} (${wtSign}${absWtDiff} from start)`;
-    } else if (wtPlayer) {
-      response += ` | WT rank: #${currentWTRank}`;
-    }
 
-    // 7. Try custom response
     const vars = {
       username,
       sessionRS: (diff >= 0 ? "+" : "") + diff.toLocaleString(),
-      gain: (diff >= 0 ? "+" : "") + diff.toLocaleString(), // Alias
+      gain: (diff >= 0 ? "+" : "") + diff.toLocaleString(),
       currentRS: currentScore.toLocaleString(),
-      score: currentScore.toLocaleString(), // Alias
-      wtDiff: typeof session.start_wt_rank === "number" && typeof currentWTRank === "number" ? currentWTRank - session.start_wt_rank : "",
+      score: currentScore.toLocaleString(),
       startRS: session.start_score.toLocaleString(),
-      wtRank: currentWTRank ?? "",
     };
     const usedCustom = await maybeSendCustomResponse("record", ctx, vars);
     if (usedCustom) return;

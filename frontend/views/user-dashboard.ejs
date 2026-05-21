@@ -2563,21 +2563,6 @@
                 >
                   <input
                     type="checkbox"
-                    id="check-hide-wt"
-                    onchange="saveOverlayConfig()"
-                  />
-                  <span style="font-size: 13px">Hide WT Rank</span>
-                </label>
-                <label
-                  style="
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    cursor: pointer;
-                  "
-                >
-                  <input
-                    type="checkbox"
                     id="check-hide-session"
                     onchange="saveOverlayConfig()"
                   />
@@ -3528,8 +3513,6 @@
               document.getElementById("check-hide-rank").checked = true;
             if (v.hideScore)
               document.getElementById("check-hide-score").checked = true;
-            if (v.hideWT)
-              document.getElementById("check-hide-wt").checked = true;
             if (v.hideSession)
               document.getElementById("check-hide-session").checked = true;
           }
@@ -3599,7 +3582,6 @@
             hideName: document.getElementById("check-hide-name").checked,
             hideRank: document.getElementById("check-hide-rank").checked,
             hideScore: document.getElementById("check-hide-score").checked,
-            hideWT: document.getElementById("check-hide-wt").checked,
             hideSession: document.getElementById("check-hide-session").checked,
           },
         };

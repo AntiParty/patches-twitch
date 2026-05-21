@@ -68,4 +68,21 @@ describe('overlay themes', () => {
         assert.ok(html.includes("sessEl.classList.add('session-gain');"), 'rank-focus should apply gain animation only for increases');
         assert.ok(html.includes('change > prevSessionChange'), 'rank-focus should detect upward session movement');
     });
+
+    it('does not expose World Tour controls or sample stats in frontend views', () => {
+        const indexHtml = fs.readFileSync(path.join(process.cwd(), 'frontend', 'views', 'index.html'), 'utf8');
+        const legacyOverlayHtml = fs.readFileSync(path.join(overlaysDir, 'overlay.html'), 'utf8');
+
+        [
+            ['dashboard', dashboardHtml],
+            ['landing page', indexHtml],
+            ['legacy overlay', legacyOverlayHtml],
+        ].forEach(([label, html]) => {
+            assert.ok(!html.includes('Hide WT Rank'), `${label} should not expose a WT visibility toggle`);
+            assert.ok(!html.includes('check-hide-wt'), `${label} should not reference the WT checkbox`);
+            assert.ok(!html.includes('hideWT'), `${label} should not persist WT visibility settings`);
+            assert.ok(!html.includes('WT #'), `${label} should not show WT sample stats`);
+            assert.ok(!html.includes('Update WT Rank'), `${label} should not include stale WT update code comments`);
+        });
+    });
 });

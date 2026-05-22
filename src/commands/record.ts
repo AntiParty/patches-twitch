@@ -59,6 +59,10 @@ export async function getLatestLeaderboardData() {
   }
 }
 
+export async function getLatestWorldTourData() {
+  return null;
+}
+
 async function maybeSendCustomResponse(
   command: string,
   ctx: CommandContext,

@@ -5,6 +5,8 @@ import { commandCounter, incrementCommandsProcessed } from "../server";
 import logger from "./logger";
 import { trackMessageIn, trackMessageOut } from "./messageRateTracker";
 import { refreshToken as getAppAccessToken } from "./twitchUtils";
+import { sendWarningToDiscord } from "../handlers/discordHandler";
+import { getChatDropResolution } from "./chatDropResolution";
 
 interface IRCClient {
   socket: net.Socket;
@@ -31,6 +33,32 @@ export const devModeChannels = new Set<string>();
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 5000; // 5 seconds
 const MAX_RECONNECT_DELAY = 300000; // 5 minutes
+const chatDropAlertLastSent = new Map<string, number>();
+const CHAT_DROP_ALERT_COOLDOWN_MS = 30 * 60 * 1000;
+
+async function alertActionableChatDrop(broadcasterId: string, dropReason: any): Promise<void> {
+  const resolution = getChatDropResolution(dropReason);
+  if (!resolution) return;
+
+  const now = Date.now();
+  const key = `${broadcasterId}:${resolution.code}`;
+  const lastSent = chatDropAlertLastSent.get(key) || 0;
+  if (now - lastSent < CHAT_DROP_ALERT_COOLDOWN_MS) return;
+  chatDropAlertLastSent.set(key, now);
+
+  let channelLabel = `broadcaster_id=${broadcasterId}`;
+  try {
+    const channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } }) as any;
+    if (channel?.username) channelLabel = `#${channel.username}`;
+  } catch {
+    // Best-effort context only.
+  }
+
+  await sendWarningToDiscord(
+    resolution.title,
+    `${channelLabel}: ${dropReason?.message || resolution.code}\n\nFix: ${resolution.action}`
+  );
+}
 
 function getReconnectDelay(attempts: number): number {
   // Exponential backoff with max delay
@@ -339,6 +367,7 @@ export async function sendChatMessage(
       logger.warn(
         `[ircBot] Twitch dropped chat message for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
       );
+      await alertActionableChatDrop(broadcasterId, result.drop_reason);
       const dropCode = String(result.drop_reason?.code || "");
       if (replyParentId && dropCode !== "msg_rejected") {
         const fallbackBody = { ...body };
@@ -349,6 +378,7 @@ export async function sendChatMessage(
           logger.warn(
             `[ircBot] Twitch dropped non-reply chat retry for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
           );
+          await alertActionableChatDrop(broadcasterId, result.drop_reason);
         }
       }
     }
@@ -365,6 +395,7 @@ export async function sendChatMessage(
             logger.warn(
               `[ircBot] Twitch dropped chat message after token refresh for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
             );
+            await alertActionableChatDrop(broadcasterId, result.drop_reason);
           }
           return;
         }

@@ -2,7 +2,7 @@ import { strict as assert } from 'assert';
 import fs from 'fs/promises';
 import path from 'path';
 import { execute as rankExecute } from '../../commands/rank';
-import { execute as recordExecute } from '../../commands/record';
+import { execute as recordExecute, getLatestWorldTourData } from '../../commands/record';
 import { execute as peakExecute } from '../../commands/peak';
 import { Channel, CustomResponse, RankGoal, StreamSession, PeakRank, dbReady } from '../../db';
 
@@ -131,5 +131,9 @@ describe('regular-ranked-only command output', () => {
     assert.equal(messages.length, 1);
     assert.match(messages[0], /Peak rank: #42 Diamond 1 \(50,123 RS\) in Season 9999/);
     assert.doesNotMatch(messages[0], /WT peak|World Tour|#7/);
+  });
+
+  it('keeps the removed World Tour helper as a null compatibility export', async () => {
+    assert.equal(await getLatestWorldTourData(), null);
   });
 });

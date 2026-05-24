@@ -1,6 +1,6 @@
 import { getNextCacheUpdateInfo } from "@/jobs/cacheUpdater";
 
-export const execute = async (ctx) => {
+export const execute = async (ctx: { tags?: Record<string, any>; say: (message: string, replyParentId?: string) => Promise<void> }) => {
     const messageId = ctx.tags?.['id'];
     const info = getNextCacheUpdateInfo();
     const min = Math.floor(info.msLeft / 60000);

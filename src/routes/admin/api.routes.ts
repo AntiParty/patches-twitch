@@ -746,7 +746,8 @@ router.post("/api/deploy", requireApiKey, async (req, res) => {
     const deploySecret = process.env.DEPLOY_SECRET;
     if (!deploySecret) {
       logger.error('[Deploy] DEPLOY_SECRET not configured');
-      return res.status(500).json({ error: 'Deploy secret not configured' });
+      res.status(500).json({ error: 'Deploy secret not configured' });
+      return;
     }
 
     const response = await axios.post("http://127.0.0.1:2500/deploy", {}, {

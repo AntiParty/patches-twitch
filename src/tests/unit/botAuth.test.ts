@@ -1,5 +1,8 @@
 import { strict as assert } from 'assert';
-import { getBotTokenMetadataWarnings } from '../../util/botAuth';
+import {
+  assertValidBotTokenMetadata,
+  getBotTokenMetadataWarnings,
+} from '../../util/botAuth';
 
 describe('botAuth token metadata validation', () => {
   const originalEnv = { ...process.env };
@@ -51,5 +54,19 @@ describe('botAuth token metadata validation', () => {
       'missing_scope chat:read scopes=user:write:chat',
       'missing_scope user:bot scopes=user:write:chat',
     ]);
+  });
+
+  it('rejects refreshed tokens that cannot authenticate as the configured bot', () => {
+    process.env.TWITCH_BOT_USERNAME = 'finalsrs';
+    process.env.TWITCH_BOT_USER_ID = '123';
+
+    assert.throws(
+      () => assertValidBotTokenMetadata({
+        login: 'someone_else',
+        user_id: '999',
+        scopes: ['chat:read', 'user:write:chat', 'user:bot'],
+      }),
+      /Refreshed bot token metadata mismatch/
+    );
   });
 });

@@ -1,14 +1,16 @@
 import axios from "axios";
 import logger from "../util/logger";
 import { refreshBotToken } from "../util/botAuth";
-import { reconnectChatBot, clients } from "../util/ircBot";
+import { clients } from "../util/ircBot";
 import { loadCommands } from "../handlers/commands";
+import { shouldReconnectActiveIrcClientsAfterBotTokenRefresh } from "../util/botTokenRefreshPolicy";
 
 const VALIDATE_URL = "https://id.twitch.tv/oauth2/validate";
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const REFRESH_WINDOW_SEC = 10 * 60; // 10 minutes
 const MIN_REFRESH_GAP_MS = 60 * 1000; // 1 minute
 const MAX_BACKOFF_MS = 30 * 60 * 1000; // 30 minutes
+const RESCUE_DELAY_MS = 1500;
 
 let isRefreshing = false;
 let lastRefreshAt = 0;
@@ -93,65 +95,15 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
           lastRefreshAt = Date.now();
           backoffMs = DEFAULT_INTERVAL_MS; // reset backoff on success
           logger.info(`[BotTokenRefresher] Bot token refreshed. New expiry: ${formatDuration(result.expiresIn)}`);
-          // Reconnect IRC clients to apply new token.
-          //
-          // CRITICAL: only default-bot clients need to reconnect. Custom-bot
-          // clients run on independent OAuth tokens (rotated by
-          // customBotTokenRefresher) — disrupting their healthy IRC sessions
-          // here is what produced the "Mass bot alert — auth-failed" clusters
-          // we kept seeing on Discord, because reconnect would re-PASS Twitch
-          // with a possibly-stale in-memory custom token.
+          // Existing IRC sockets can keep running after the OAuth token is
+          // refreshed. Tearing them all down here creates a login burst as the
+          // same bot account reauthenticates dozens of times, and Twitch can
+          // reject the tail of that burst. Future reconnects will read the new
+          // token from process.env; only channels that are already dark need a
+          // rescue start below.
           const commandHandler = loadCommands();
-          const allUsernames = Object.keys(clients);
-          const usernames: string[] = [];
-          const skippedCustom: string[] = [];
-          for (const uname of allUsernames) {
-            if (clients[uname]?.customBotId) skippedCustom.push(uname);
-            else usernames.push(uname);
-          }
-          if (skippedCustom.length > 0) {
-            logger.info(
-              `[BotTokenRefresher] Skipping ${skippedCustom.length} custom-bot channel(s) in reconnect storm: ${skippedCustom.join(", ")}`
-            );
-          }
-          // Stagger reconnects with small delay + jitter to avoid reconnect storms
-          const delayPer = 200; // ms between starts
-          const reconnectPromises = usernames.map((uname, i) => {
-            return new Promise<void>((resolve) => {
-              const delay = i * delayPer + Math.floor(Math.random() * 100);
-              setTimeout(async () => {
-                try {
-                  await reconnectChatBot(uname, commandHandler);
-                } catch (e) {
-                  logger.warn(`[BotTokenRefresher] Failed to reconnect ${uname}:`, e);
-                } finally {
-                  resolve();
-                }
-              }, delay);
-            });
-          });
-          const settled = await Promise.allSettled(reconnectPromises);
-          // Fix for issue #12: surface partial reconnect failures so the
-          // affected streamers know their bot is temporarily down.
-          const failures: string[] = [];
-          settled.forEach((r, i) => {
-            if (r.status === "rejected") failures.push(usernames[i]);
-          });
-          if (failures.length > 0) {
-            logger.warn(
-              `[BotTokenRefresher] ${failures.length}/${usernames.length} channel(s) failed to reconnect after token refresh: ${failures.join(", ")}`
-            );
-            try {
-              const { notifyChannel } = await import("../util/botAlerts");
-              for (const uname of failures) {
-                await notifyChannel(
-                  uname,
-                  "reconnect",
-                  `Heads up — I just rotated my Twitch token and couldn't reconnect cleanly here. Retrying automatically. If I'm still quiet in a few minutes, check finalsrs.com/dashboard.`,
-                  { cooldownMs: 20 * 60 * 1000 }
-                );
-              }
-            } catch { /* non-fatal */ }
+          if (!shouldReconnectActiveIrcClientsAfterBotTokenRefresh()) {
+            logger.info("[BotTokenRefresher] Keeping active IRC clients connected after token refresh; new token will be used on future reconnects.");
           }
           // Rescue channels that got booted from `clients` after a prior
           // auth failure — they won't come back otherwise until restart.
@@ -191,7 +143,7 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
               );
               const rescuePromises = toRescue.map((ch: any, i: number) => {
                 return new Promise<void>((resolve) => {
-                  const delay = i * delayPer + Math.floor(Math.random() * 100);
+                  const delay = i * RESCUE_DELAY_MS + Math.floor(Math.random() * 250);
                   setTimeout(async () => {
                     try {
                       await botManager.startBotForUser(

@@ -9,6 +9,7 @@ import logger from '@/util/logger';
 import { signOAuthState } from '@/util/crypto';
 import { checkAndUpdatePremiumStatus, getTierName } from '@/services/twitchSubscription.service';
 import { getTwitchRedirectUri } from '@/util/envUtils';
+import { getCustomBotOAuthScopes } from '@/util/twitchScopes';
 
 const router = Router();
 
@@ -87,11 +88,7 @@ router.get('/link-custom-bot', requireUser, requireSubscription, (req: Request, 
   });
 
   const redirectUri = getTwitchRedirectUri();
-  const scopes = [
-    'chat:read',
-    'chat:edit',
-    'user:read:email',
-  ].join(' ');
+  const scopes = getCustomBotOAuthScopes().join(' ');
 
   const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${process.env.TWITCH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${state}`;
 
@@ -113,13 +110,7 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
   });
 
   const redirectUri = getTwitchRedirectUri();
-  const scopes = [
-    'chat:read',
-    'chat:edit',
-    'user:read:email',
-    'user:write:chat',
-    'user:bot'
-  ].join(' ');
+  const scopes = getCustomBotOAuthScopes().join(' ');
 
   const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${process.env.TWITCH_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&state=${state}`;
 

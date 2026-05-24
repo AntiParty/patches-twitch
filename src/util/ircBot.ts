@@ -152,7 +152,7 @@ async function attemptAuthRecovery(
     // Default bot: rotate the global TWITCH_BOT_TOKEN, then reconnect this channel.
     const { refreshBotToken } = await import("./botAuth");
     try {
-      await refreshBotToken();
+      var refreshedBot = await refreshBotToken();
     } catch (refreshErr: any) {
       const msg = String(refreshErr?.message || refreshErr || "");
       const looksRevoked = /invalid refresh token|invalid grant|refresh token is not valid/i.test(msg);
@@ -179,7 +179,19 @@ async function attemptAuthRecovery(
     }
     await new Promise((r) => setTimeout(r, 100));
     recoveringChannels.add(channelUsername);
-    const authenticated = await startChatBot(channelUsername, commandHandler);
+    const botUsername = process.env.TWITCH_BOT_USERNAME;
+    const botUserId = process.env.TWITCH_BOT_USER_ID;
+    if (!botUsername || !botUserId) {
+      recoveringChannels.delete(channelUsername);
+      return { recovered: false, reason: "post_refresh_default_bot_env_missing" };
+    }
+    const authenticated = await startChatBot(channelUsername, commandHandler, {
+      botUsername,
+      botToken: refreshedBot.accessToken,
+      botUserId,
+      refreshToken: refreshedBot.refreshToken,
+      isCustomBot: false,
+    });
     recoveringChannels.delete(channelUsername);
     if (!authenticated) return { recovered: false, reason: "post_refresh_irc_auth_failed" };
     return { recovered: true, reason: "recovered_ok" };
@@ -417,6 +429,7 @@ export const startChatBot = async (
     botToken: string;
     botUserId: string;
     refreshToken: string;
+    isCustomBot?: boolean;
   }
 ): Promise<boolean> => {
   if (!username || typeof username !== "string") {
@@ -489,9 +502,9 @@ export const startChatBot = async (
     channel: sanitizedUsername,
     connected: false,
     reconnectAttempts: 0,
-    customBotId: customCredentials?.botUserId,
-    customBotToken: customCredentials?.botToken,
-    customRefreshToken: customCredentials?.refreshToken,
+    customBotId: customCredentials?.isCustomBot === false ? undefined : customCredentials?.botUserId,
+    customBotToken: customCredentials?.isCustomBot === false ? undefined : customCredentials?.botToken,
+    customRefreshToken: customCredentials?.isCustomBot === false ? undefined : customCredentials?.refreshToken,
   };
 
   socket.connect(6667, "irc.chat.twitch.tv", () => {
@@ -562,9 +575,9 @@ export const startChatBot = async (
       // Release the start guard immediately so a follow-up reconnect (with a
       // freshly-rotated token) isn't blocked by the stale "in progress" flag.
       connectingChannels.delete(sanitizedUsername);
-      const isCustom = !!customCredentials;
+      const isCustom = customCredentials ? customCredentials.isCustomBot !== false : false;
       settleAuthResult(false);
-      logger.error(`[ERROR] ⚠️ Twitch IRC auth FAILED for channel #${sanitizedUsername} using bot "${botUsername}" (${isCustom ? "custom bot account" : "default bot"}).`);
+      logger.warn(`[ircBot] Twitch IRC auth rejected for #${sanitizedUsername} using bot "${botUsername}" (${isCustom ? "custom bot account" : "default bot"}); attempting token recovery.`);
 
       // Stop the dead socket immediately, but DON'T mark intentional yet — we
       // want to attempt a token refresh + automatic reconnect before we give
@@ -576,10 +589,6 @@ export const startChatBot = async (
         if (clients[sanitizedUsername]) {
           clients[sanitizedUsername].intentionalDisconnect = true;
         }
-        logger.error(
-          `[ircBot] auth-failed`,
-          { channel: sanitizedUsername, isCustom, botUsername, reason: "post_refresh_irc_auth_failed" }
-        );
         return;
       }
 
@@ -596,8 +605,7 @@ export const startChatBot = async (
             clients[sanitizedUsername].intentionalDisconnect = true;
           }
           logger.error(
-            `[ircBot] auth-failed`,
-            { channel: sanitizedUsername, isCustom, botUsername, reason }
+            `[ircBot] auth-failed channel=${sanitizedUsername} bot=${botUsername} custom=${isCustom} reason=${reason}`
           );
           try {
             const { notifyChannel } = await import("./botAlerts");

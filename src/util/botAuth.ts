@@ -42,6 +42,13 @@ export function getBotTokenMetadataWarnings(metadata: TwitchValidateResponse): s
   return warnings;
 }
 
+export function assertValidBotTokenMetadata(metadata: TwitchValidateResponse): void {
+  const warnings = getBotTokenMetadataWarnings(metadata);
+  if (warnings.length > 0) {
+    throw new Error(`Refreshed bot token metadata mismatch: ${warnings.join("; ")}`);
+  }
+}
+
 async function refreshBotTokenInner(): Promise<BotTokenRefreshResult> {
   const clientId = process.env.TWITCH_CLIENT_ID;
   const clientSecret = process.env.TWITCH_CLIENT_SECRET;
@@ -86,12 +93,13 @@ async function refreshBotTokenInner(): Promise<BotTokenRefreshResult> {
     });
     const metadataWarnings = getBotTokenMetadataWarnings(validateResp.data || {});
     if (metadataWarnings.length > 0) {
-      logger.warn("[BotAuth] Refreshed bot token metadata warning", {
+      logger.error("[BotAuth] Refusing refreshed bot token that cannot authenticate configured IRC bot", {
         warnings: metadataWarnings,
         login: validateResp.data?.login,
         user_id: validateResp.data?.user_id,
         scopes: validateResp.data?.scopes,
       });
+      assertValidBotTokenMetadata(validateResp.data || {});
     }
 
     // Save updated tokens to environment (and optionally your DB)
@@ -100,8 +108,8 @@ async function refreshBotTokenInner(): Promise<BotTokenRefreshResult> {
       TWITCH_BOT_REFRESH_TOKEN: refreshToken,
     });
 
-    console.info(
-      `[BotAuth] Successfully refreshed bot token. Expires in ${Math.floor(
+    logger.info(
+      `[BotAuth] Successfully refreshed bot token for ${validateResp.data?.login || "unknown"} (${validateResp.data?.user_id || "unknown"}). Expires in ${Math.floor(
         expiresIn / 3600
       )}h`
     );

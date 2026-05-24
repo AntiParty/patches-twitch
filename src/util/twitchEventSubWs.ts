@@ -5,7 +5,7 @@ import { Channel, StreamSession } from '../db';
 import { getLatestLeaderboardData } from '@/commands/record';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 
-interface UserSubscription {
+export interface UserSubscription {
   userId: string;
   accessToken: string;
   broadcasterId: string;
@@ -19,6 +19,19 @@ const userWebSockets: Record<
 // Track ongoing token refresh operations to prevent concurrent refreshes for the same user
 const tokenRefreshLocks: Map<string, Promise<string | null>> = new Map();
 
+export function isDuplicateEventSubSubscription(
+  subscriptions: UserSubscription[],
+  broadcasterId: string
+): boolean {
+  return subscriptions.some(sub => sub.broadcasterId === broadcasterId);
+}
+
+export function isEventSubAlreadyExistsError(err: any): boolean {
+  const status = err?.response?.status;
+  const message = String(err?.response?.data?.message || err?.message || '');
+  return status === 409 || /subscription already exists/i.test(message);
+}
+
 export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
   if (!userWebSockets[userId]) {
     userWebSockets[userId] = {
@@ -31,6 +44,14 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
     (async () => {
       userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
     })();
+  }
+
+  if (isDuplicateEventSubSubscription(userWebSockets[userId].subscriptions, broadcasterId)) {
+    userWebSockets[userId].subscriptions = userWebSockets[userId].subscriptions.map(sub =>
+      sub.broadcasterId === broadcasterId ? { ...sub, accessToken } : sub
+    );
+    logger.debug?.(`[EventSubWs] Subscription for ${userId}/${broadcasterId} already tracked; updated token only.`);
+    return;
   }
 
   userWebSockets[userId].subscriptions.push({ userId, accessToken, broadcasterId });
@@ -360,7 +381,11 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     } catch (err: any) {
-      logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${type}:`, err.response?.data || err.message);
+      if (isEventSubAlreadyExistsError(err)) {
+        logger.info(`[EventSubWs] ${userId} already subscribed to ${type}; keeping existing Twitch subscription.`);
+      } else {
+        logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${type}:`, err.response?.data || err.message);
+      }
     }
   }
 }

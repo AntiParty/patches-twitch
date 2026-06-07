@@ -25,6 +25,10 @@ const HIDDEN_COMMANDS = new Set([
     "cmds",
     "cmd",
     "status",        // alias of ping
+    "preset",
+    "start",
+    "end",
+    "cancel",
 ]);
 
 let cachedCommandList: string[] | null = null;

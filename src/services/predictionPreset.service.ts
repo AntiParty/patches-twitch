@@ -239,12 +239,15 @@ export function createPredictionPresetService(
       return deleted > 0;
     },
 
-    async validateForTwitch(input: ValidatedPresetInput): Promise<void> {
+    async validateForTwitch(
+      input: ValidatedPresetInput,
+      context: { channel: string; actor?: string } = { channel: '' },
+    ): Promise<void> {
       await validatePresetContent(input, {
         isBlocked,
         warn,
-        channel: '',
-        actor: 'stored-preset',
+        channel: context.channel,
+        actor: context.actor || 'stored-preset',
         command: '!start p',
       });
     },

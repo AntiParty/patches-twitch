@@ -792,3 +792,9 @@ export function getCustomBotRefreshFailureReason(customBotId: number | string): 
   }
   return "refresh_returned_null:other";
 }
+
+export function decryptChannelAccessToken(channel: any): string | null {
+  const encryptedOrPlainToken = channel?.access_token;
+  if (!encryptedOrPlainToken) return null;
+  return safeDecryptToken(encryptedOrPlainToken);
+}

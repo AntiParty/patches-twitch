@@ -9,6 +9,7 @@ import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 import { startCustomBotTokenRefresher } from "./jobs/customBotTokenRefresher";
+import { clients } from "./util/ircBot";
 
 dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
@@ -287,6 +288,15 @@ dbReady.then(async () => {
       const bucket = (req.query.bucket as string) || String(60_000);
       const { getMessageRates } = require('./util/messageRateTracker');
       res.json(getMessageRates(Number(window), Number(bucket)));
+    });
+
+    controlApp.get("/metrics/operations", (_req: any, res: any) => {
+      const entries = Object.values(clients);
+      res.json({
+        observedAt: new Date().toISOString(),
+        connectedChannels: entries.filter((client) => client.connected).length,
+        reconnectingChannels: entries.filter((client) => !client.connected && !client.intentionalDisconnect).length,
+      });
     });
 
     controlApp.listen(4000, () => {

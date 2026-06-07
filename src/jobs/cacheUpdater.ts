@@ -7,6 +7,7 @@ import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import logger from '@/util/logger';
 import { updateRSHistory } from '@/util/rsPredictor';
 import { updatePeakRanks } from '@/jobs/peakUpdater';
+import { recordOperationalEvent } from '@/services/operationalEvents.service';
 
 // ── New API ──────────────────────────────────────────────────────────────────
 const NEW_REGULAR_API_URL  = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/leaderboard/';
@@ -57,6 +58,7 @@ let currentRegularSeason = 9; // updated from x-seasonid header on each fetch
 
 // ── Fetch regular leaderboard + write cache ──────────────────────────────────
 export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean> {
+  const startedAt = Date.now();
   try {
     // ETag check — skip full GET if leaderboard hasn't changed
     if (!forceWrite && storedETag) {
@@ -110,9 +112,22 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
     try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }
     try { await updatePeakRanks();  } catch (e) { logger.error('[CacheUpdater] updatePeakRanks error:', e); }
 
+    void recordOperationalEvent({
+      type: 'cache_refresh_succeeded',
+      severity: 'info',
+      durationMs: Date.now() - startedAt,
+      outcome: 'success',
+    });
     return true;
   } catch (error) {
     logger.error('[CacheUpdater] Failed to fetch regular leaderboard:', error);
+    void recordOperationalEvent({
+      type: 'cache_refresh_failed',
+      severity: 'warning',
+      durationMs: Date.now() - startedAt,
+      reasonCode: 'leaderboard_fetch_failed',
+      outcome: 'failure',
+    });
     return false;
   }
 }

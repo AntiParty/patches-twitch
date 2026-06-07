@@ -1,22 +1,19 @@
-/**
- * Admin Routes Index
- * Aggregates all admin-related routes
- */
 import { Router } from 'express';
 import authRoutes from './auth.routes';
 import apiRoutes from './api.routes';
-import databaseRoutes from './database.routes';
-import { csrfErrorHandler } from '@/middleware/csrf.middleware';
+import dropsRoutes from './drops.routes';
+import messagingRoutes from './messaging.routes';
+import operationsRoutes from './operations.routes';
+import { csrfErrorHandler, csrfProtection } from '@/middleware/csrf.middleware';
 
 const router = Router();
 
-// Mount admin auth routes (login/logout)
 router.use(authRoutes);
-
-// Mount admin API routes
+router.use('/api', csrfProtection);
 router.use(apiRoutes);
-
-// Mount database editor routes
-router.use(databaseRoutes);
+router.use(dropsRoutes);
+router.use(messagingRoutes);
+router.use(operationsRoutes);
+router.use(csrfErrorHandler);
 
 export default router;

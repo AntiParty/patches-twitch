@@ -4,6 +4,7 @@ import logger from './logger';
 import { Channel, StreamSession } from '../db';
 import { getLatestLeaderboardData } from '@/commands/record';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
+import { recordOperationalEvent } from '@/services/operationalEvents.service';
 
 export interface UserSubscription {
   userId: string;
@@ -136,6 +137,12 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
 
   ws.on('open', () => {
     logger.info(`[EventSubWs] Connected to Twitch EventSub WebSocket for user ${userId}${reconnectUrl ? ' (reconnect)' : ''}`);
+    void recordOperationalEvent({
+      type: 'eventsub_connected',
+      severity: 'info',
+      reasonCode: reconnectUrl ? 'reconnect' : 'initial',
+      outcome: 'success',
+    });
   });
 
   ws.on('message', async data => {
@@ -220,6 +227,11 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
   });
 
   ws.on('close', async () => {
+    void recordOperationalEvent({
+      type: 'eventsub_disconnected',
+      severity: userWebSockets[userId]?.shouldReconnect === false ? 'info' : 'warning',
+      reasonCode: reconnectUrl ? 'handoff' : 'socket_closed',
+    });
     // Don't reconnect if this is a reconnect-URL socket (the main handler manages that)
     if (reconnectUrl) return;
 

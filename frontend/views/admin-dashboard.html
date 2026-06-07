@@ -1,2365 +1,519 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FinalsRS Admin</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <style>
-      :root {
-        --bg-app: #0b0c0e;
-        --bg-sidebar: #101216;
-        --bg-card: #15181d;
-        --bg-hover: #20242a;
-        --primary: #e62038;
-        --primary-hover: #ff334e;
-        --text-main: #f7f4ec;
-        --text-muted: #aaa59c;
-        --border: rgba(255,255,255,.1);
-        --success: #42d483;
-        --danger: #ef4444;
-        --warning: #f3c247;
-        --info: #7ab8ff;
-        --shadow: 0 18px 44px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.04);
-        --radius: 8px;
-        --font-main: "IBM Plex Sans", sans-serif;
-        --font-display: "Archivo", "IBM Plex Sans", sans-serif;
-      }
-
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-
-      body {
-        background:
-          linear-gradient(180deg, rgba(230,32,56,.04), transparent 320px),
-          var(--bg-app);
-        color: var(--text-main);
-        font-family: var(--font-main);
-        height: 100vh;
-        overflow: hidden;
-        -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
-      }
-
-      .app-container {
-        display: grid;
-        grid-template-columns: 260px 1fr;
-        height: 100vh;
-      }
-
-      /* ── Sidebar ── */
-      .sidebar {
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.035), transparent 240px),
-          var(--bg-sidebar);
-        border-right: 1px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        padding: 22px;
-        overflow-y: auto;
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 32px;
-        padding: 0 6px;
-      }
-      .logo i { font-size: 24px; color: var(--primary); }
-      .logo h1 { font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: 0; }
-
-      .nav-menu { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-
-      .nav-item {
-        min-height: 42px;
-        padding: 0 12px;
-        border-radius: var(--radius);
-        cursor: pointer;
-        color: var(--text-muted);
-        transition-property: background-color, color, transform, box-shadow;
-        transition-duration: 180ms;
-        transition-timing-function: cubic-bezier(.2,0,0,1);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 14px;
-        font-weight: 700;
-        user-select: none;
-      }
-      .nav-item:hover { background: var(--bg-hover); color: var(--text-main); transform: translateY(-1px); }
-      .nav-item.active { background: rgba(230,32,56,.13); color: #fff; box-shadow: inset 0 0 0 1px rgba(230,32,56,.28); }
-      .nav-item i { width: 18px; text-align: center; font-size: 14px; }
-
-      .sidebar-footer {
-        margin-top: auto;
-        padding-top: 16px;
-        border-top: 1px solid var(--border);
-      }
-
-      .sidebar-section-label {
-        margin: 22px 6px 8px;
-        color: var(--text-muted);
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-      }
-
-      .user-profile {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px;
-        border-radius: var(--radius);
-        background: rgba(255,255,255,.045);
-        box-shadow: inset 0 0 0 1px var(--border);
-      }
-      .user-avatar {
-        width: 30px; height: 30px;
-        border-radius: 50%;
-        background: var(--primary);
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 13px;
-        flex-shrink: 0;
-      }
-      .user-name { font-weight: 600; font-size: 13px; }
-      .user-role { font-size: 11px; color: var(--text-muted); }
-
-      /* ── Main ── */
-      .main-content { overflow-y: auto; padding: 30px 34px; position: relative; }
-
-      .admin-section-heading {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      .page-kicker {
-        color: var(--text-muted);
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: .08em;
-        text-transform: uppercase;
-      }
-      .page-subtitle {
-        color: var(--text-muted);
-        font-size: 14px;
-        max-width: 680px;
-        text-wrap: pretty;
-      }
-      .page-actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
-      .last-refresh {
-        color: var(--text-muted);
-        font-size: 12px;
-        font-variant-numeric: tabular-nums;
-      }
-
-      /* ── Sub-tab bar ── */
-      .subtab-bar {
-        display: flex;
-        gap: 2px;
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 24px;
-      }
-      .subtab {
-        padding: 8px 16px;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--text-muted);
-        cursor: pointer;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -1px;
-        transition-property: color, border-color;
-        transition-duration: 180ms;
-      }
-      .subtab:hover { color: var(--text-main); }
-      .subtab.active { color: var(--primary); border-bottom-color: var(--primary); }
-
-      /* ── View sections ── */
-      .view-section { display: none; animation: fadeIn .25s ease; }
-      .view-section.active { display: block; }
-      .sub-panel { display: none; }
-      .sub-panel.active { display: block; animation: fadeIn .2s ease; }
-
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      /* ── Role-based visibility ── */
-      .admin-only { display: none !important; }
-      body.is-admin .nav-item.admin-only { display: flex !important; }
-      body.is-admin .subtab.admin-only { display: block !important; }
-      body.is-admin .admin-only.card { display: block !important; }
-      body.is-admin .sub-panel.admin-only.active { display: block !important; }
-      .staff-only { display: none !important; }
-      body.is-staff .staff-only { display: block !important; }
-
-      /* ── Page header ── */
-      .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 24px;
-      }
-      .page-title {
-        font-family: var(--font-display);
-        font-size: clamp(24px, 2.4vw, 34px);
-        line-height: 1.05;
-        font-weight: 800;
-        text-wrap: balance;
-      }
-
-      /* ── Cards & Grids ── */
-      .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
-      .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
-      .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
-
-      .card {
-        background:
-          linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)),
-          var(--bg-card);
-        border-radius: var(--radius);
-        padding: 18px;
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow);
-      }
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 14px;
-      }
-      .card-title { font-family: var(--font-display); font-size: 15px; font-weight: 800; }
-      .card-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-
-      /* ── Stats grid (Subscriptions) ── */
-      .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 14px;
-        margin-bottom: 20px;
-      }
-      .stat-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 16px;
-        text-align: center;
-      }
-      .stat-value { font-size: 28px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
-      .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-
-      /* ── Metric cards ── */
-      .metric-value { font-size: 26px; font-weight: 700; margin: 8px 0 4px; }
-      .metric-label { font-size: 13px; color: var(--text-muted); }
-
-      .metric-card {
-        min-height: 128px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-      }
-      .metric-card .metric-value,
-      .stat-value,
-      #analytics-total,
-      #analytics-unique,
-      #analytics-success {
-        font-variant-numeric: tabular-nums;
-      }
-      .ops-health-strip {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 20px;
-      }
-      .ops-health-item {
-        min-height: 82px;
-        padding: 14px;
-        border-radius: var(--radius);
-        background: rgba(255,255,255,.035);
-        box-shadow: inset 0 0 0 1px var(--border);
-      }
-      .ops-health-label {
-        color: var(--text-muted);
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: .06em;
-        text-transform: uppercase;
-      }
-      .ops-health-value {
-        margin-top: 8px;
-        font-size: 18px;
-        font-weight: 800;
-        font-variant-numeric: tabular-nums;
-      }
-      .staff-access-note {
-        margin-bottom: 20px;
-        padding: 12px 14px;
-        border-radius: var(--radius);
-        color: var(--info);
-        background: rgba(122,184,255,.09);
-        box-shadow: inset 0 0 0 1px rgba(122,184,255,.18);
-        font-size: 13px;
-      }
-
-      /* ── Progress bars ── */
-      .progress-bg { background: rgba(255,255,255,.1); height: 6px; border-radius: 3px; overflow: hidden; }
-      .progress-fill { height: 100%; border-radius: 3px; transition: width .5s ease; }
-
-      /* ── Quick Actions ── */
-      .quick-actions-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 4px;
-      }
-
-      .control-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 16px;
-      }
-      .danger-zone {
-        border-color: rgba(239,68,68,.24);
-        box-shadow:
-          0 18px 44px rgba(0,0,0,.22),
-          inset 3px 0 0 rgba(239,68,68,.72),
-          inset 0 1px 0 rgba(255,255,255,.04);
-      }
-      .danger-zone .card-subtitle {
-        color: #fca5a5;
-      }
-
-      /* ── Buttons ── */
-      .btn {
-        min-height: 40px;
-        padding: 0 14px;
-        border-radius: 6px;
-        border: none;
-        cursor: pointer;
-        font-weight: 800;
-        font-size: 13px;
-        transition-property: background-color, color, transform, box-shadow, border-color;
-        transition-duration: 180ms;
-        transition-timing-function: cubic-bezier(.2,0,0,1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-family: inherit;
-      }
-      .btn:disabled { opacity: .45; cursor: not-allowed; }
-      .btn:hover:not(:disabled) { transform: translateY(-1px); }
-      .btn:active:not(:disabled) { transform: translateY(0); }
-      .btn-primary { background: var(--primary); color: #fff; }
-      .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
-      .btn-danger { background: rgba(233,25,22,.1); color: var(--danger); border: 1px solid rgba(233,25,22,.2); }
-      .btn-danger:hover:not(:disabled) { background: rgba(233,25,22,.2); }
-      .btn-success { background: rgba(0,179,95,.1); color: var(--success); border: 1px solid rgba(0,179,95,.2); }
-      .btn-success:hover:not(:disabled) { background: rgba(0,179,95,.2); }
-      .btn-info { background: rgba(59,130,246,.15); color: var(--info); border: 1px solid rgba(59,130,246,.2); }
-      .btn-info:hover:not(:disabled) { background: rgba(59,130,246,.25); }
-      .btn-ghost { background: transparent; color: var(--text-muted); }
-      .btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-main); }
-      .btn-sm { padding: 4px 9px; font-size: 12px; }
-
-      /* ── Inputs ── */
-      .input {
-        background: rgba(255,255,255,.025);
-        border: 1px solid var(--border);
-        color: var(--text-main);
-        padding: 10px 12px;
-        border-radius: 6px;
-        width: 100%;
-        min-height: 42px;
-        font-size: 13px;
-        font-family: inherit;
-        transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-      }
-      .input:focus { outline: none; border-color: rgba(230,32,56,.65); background: rgba(255,255,255,.04); box-shadow: 0 0 0 3px rgba(230,32,56,.12); }
-      label { display: block; margin-bottom: 5px; font-size: 12px; color: var(--text-muted); }
-
-      /* ── Tables ── */
-      .table-container { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255,255,255,.015); }
-      table { width: 100%; border-collapse: collapse; }
-      th { text-align: left; padding: 11px 12px; color: var(--text-muted); font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); }
-      td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 13px; }
-      tbody tr:hover td { background: rgba(255,255,255,.025); }
-      tr:last-child td { border-bottom: none; }
-
-      /* ── Channels grid ── */
-      .channels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
-      .channel-card {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        padding: 14px;
-        display: flex; flex-direction: column; gap: 10px;
-      }
-      .channel-header { display: flex; justify-content: space-between; align-items: center; }
-      .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 6px; }
-
-      /* ── Logs ── */
-      .log-container {
-        background: #000;
-        font-family: "JetBrains Mono", monospace;
-        padding: 14px;
-        border-radius: var(--radius);
-        height: 500px;
-        overflow-y: auto;
-        font-size: 12px;
-      }
-      .log-entry { margin-bottom: 3px; padding-bottom: 2px; border-bottom: 1px solid #111; }
-      .log-time { color: #555; margin-right: 6px; }
-      .log-info { color: var(--info); }
-      .log-warn { color: var(--warning); }
-      .log-error { color: var(--danger); }
-
-      /* ── Toast notifications ── */
-      #toast-container {
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FinalsRS Operations</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #000000;
+      --sidebar: #050505;
+      --panel: #0a0a0a;
+      --raised: #111111;
+      --border: #1d1d1d;
+      --text: #f7f7f7;
+      --muted: #888888;
+      --primary: #ed1b2f;
+      --success: #58d68d;
+      --warning: #f4bd4f;
+      --danger: #ff5964;
+      --radius: 12px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { min-height: 40px; }
+    button:active { transform: scale(0.96); }
+    .shell { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px 16px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+    }
+    .brand { padding: 0 10px 26px; font-size: 17px; font-weight: 850; letter-spacing: -.03em; }
+    .brand b { color: var(--primary); }
+    .nav-label { margin: 20px 10px 7px; color: #555; font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    .nav-button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 0 12px;
+      margin: 3px 0;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+      font-weight: 750;
+      transition-property: background-color, color, transform;
+      transition-duration: 160ms;
+    }
+    .nav-button:hover { background: #0e0e0e; color: var(--text); }
+    .nav-button.active { color: #fff; background: #141414; box-shadow: inset 3px 0 var(--primary); }
+    .nav-dot { width: 8px; height: 8px; border-radius: 3px; background: currentColor; opacity: .75; }
+    body:not(.role-admin) .admin-only { display: none !important; }
+    body:not(.role-admin):not(.role-staff) .staff-only { display: none !important; }
+    body.role-staff .mobile-navigation { grid-template-columns: 1fr; }
+    .admin-only[hidden], .staff-only[hidden] { display: none !important; }
+    .sidebar-footer { position: absolute; left: 16px; right: 16px; bottom: 20px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: #090909; }
+    .sidebar-footer strong { display: block; font-size: 13px; }
+    .sidebar-footer span { color: var(--muted); font-size: 11px; }
+    .main { min-width: 0; padding: 30px clamp(18px, 3vw, 42px) 52px; }
+    .view { display: none; }
+    .view.active { display: block; animation: enter 180ms cubic-bezier(.2,0,0,1); }
+    @keyframes enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .page-header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 22px; }
+    .kicker { color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    h1 { margin: 6px 0 0; font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -.045em; text-wrap: balance; }
+    .subtitle { margin: 8px 0 0; max-width: 700px; color: var(--muted); line-height: 1.55; text-wrap: pretty; }
+    .status-pill { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 13px; border: 1px solid #163a24; border-radius: 999px; background: #07120b; color: var(--success); font-size: 12px; font-weight: 850; white-space: nowrap; }
+    .status-pill.degraded { border-color: #493711; background: #171104; color: var(--warning); }
+    .status-pill.outage { border-color: #49141a; background: #170609; color: var(--danger); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .card { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: 18px; }
+    .metric-label { color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+    .metric-value { margin: 10px 0 4px; font-size: clamp(24px, 3vw, 34px); font-weight: 850; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .metric-detail { color: var(--muted); font-size: 12px; }
+    .metric-detail.good { color: var(--success); }
+    .metric-detail.warn { color: var(--warning); }
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, .8fr); gap: 12px; margin-top: 12px; }
+    .lower-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 12px; margin-top: 12px; }
+    .card-header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+    .card-title { margin: 0; font-size: 15px; font-weight: 850; }
+    .card-copy { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .chart-wrap { height: 240px; }
+    .throughput-rates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .rate { padding: 12px; border: 1px solid #181818; border-radius: 9px; background: #070707; }
+    .rate span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; font-weight: 800; }
+    .rate strong { display: block; margin-top: 5px; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .list { display: grid; gap: 2px; }
+    .list-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 48px; border-top: 1px solid #181818; font-size: 13px; }
+    .list-row:first-child { border-top: 0; }
+    .event-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+    .event-dot.warning { background: var(--warning); }
+    .event-dot.critical { background: var(--danger); }
+    .time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+    .input, .select, .textarea {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #080808;
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+      transition-property: border-color, box-shadow;
+      transition-duration: 160ms;
+    }
+    .textarea { min-height: 120px; resize: vertical; }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(237,27,47,.12); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--raised); color: var(--text); cursor: pointer; font-weight: 800; transition-property: background-color, border-color, transform; transition-duration: 160ms; }
+    .btn:hover { background: #181818; }
+    .btn-primary { border-color: var(--primary); background: var(--primary); }
+    .btn-danger { border-color: #4b171c; color: var(--danger); background: #170609; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid #181818; text-align: left; font-size: 13px; }
+    th { color: var(--muted); background: #070707; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .actions { display: flex; gap: 7px; flex-wrap: wrap; }
+    .actions .btn { min-height: 34px; padding: 0 10px; font-size: 11px; }
+    .channel-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin: 14px 0; }
+    .channel-option { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: #080808; }
+    .empty, .panel-error, .loading { padding: 28px; color: var(--muted); text-align: center; }
+    .panel-error { color: var(--danger); }
+    .stale { color: var(--warning); font-size: 11px; }
+    .mobile-navigation { display: none; }
+    .toast { position: fixed; right: 18px; bottom: 18px; z-index: 20; max-width: 360px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 9px; background: #111; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+    @media (max-width: 980px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid, .lower-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .shell { display: block; }
+      .sidebar { display: none; }
+      .main { padding: 18px 14px 92px; }
+      .page-header { align-items: center; }
+      h1 { font-size: 29px; }
+      .metrics { gap: 8px; }
+      .card { padding: 14px; }
+      .dashboard-grid .attention-card { order: -1; }
+      .chart-wrap { height: 190px; }
+      .throughput-rates { grid-template-columns: 1fr 1fr 1fr; }
+      .mobile-navigation {
         position: fixed;
-        bottom: 24px; right: 24px;
-        z-index: 9000;
-        display: flex; flex-direction: column; gap: 8px;
-      }
-      .toast {
-        padding: 12px 18px;
-        border-radius: var(--radius);
-        font-size: 13px;
-        font-weight: 500;
-        min-width: 240px;
-        max-width: 380px;
-        animation: slideUp .25s ease;
-        display: flex; align-items: center; gap: 10px;
-        border: 1px solid transparent;
-      }
-      .toast-success { background: rgba(0,179,95,.15); border-color: rgba(0,179,95,.3); color: var(--success); }
-      .toast-error   { background: rgba(233,25,22,.15); border-color: rgba(233,25,22,.3); color: var(--danger); }
-      .toast-info    { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.3); color: var(--info); }
-      .toast-warning { background: rgba(245,165,36,.15); border-color: rgba(245,165,36,.3); color: var(--warning); }
-
-      @keyframes slideUp {
-        from { opacity: 0; transform: translateY(12px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
-
-      /* ── Modal overlay ── */
-      .modal-overlay {
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,.75);
-        z-index: 5000;
-        display: flex; align-items: center; justify-content: center;
-      }
-      .modal-overlay.hidden { display: none; }
-      .modal {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        width: 420px;
-        max-width: 95vw;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 20px 60px rgba(0,0,0,.5);
-      }
-      .modal-header {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 18px 20px 14px;
-        border-bottom: 1px solid var(--border);
-      }
-      .modal-header h3 { font-size: 16px; font-weight: 600; }
-      .modal-close {
-        background: none; border: none; color: var(--text-muted);
-        font-size: 20px; cursor: pointer; padding: 2px 6px;
-        border-radius: 4px; line-height: 1;
-      }
-      .modal-close:hover { background: var(--bg-hover); color: var(--text-main); }
-      .modal-body { padding: 18px 20px; }
-      .modal-footer {
-        display: flex; justify-content: flex-end; gap: 10px;
-        padding: 14px 20px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 15;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        padding: 7px max(6px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
         border-top: 1px solid var(--border);
+        background: rgba(4,4,4,.97);
+        backdrop-filter: blur(14px);
       }
-      .modal-field { margin-bottom: 14px; }
-      .modal-message { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+      .mobile-navigation .nav-button { min-height: 54px; padding: 6px 3px; margin: 0; flex-direction: column; justify-content: center; gap: 4px; font-size: 10px; text-align: center; }
+      .mobile-navigation .nav-button.active { box-shadow: inset 0 2px var(--primary); }
+      .mobile-navigation .nav-dot { width: 15px; height: 15px; border-radius: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" data-dashboard-shell="admin-operations">
+    <aside class="sidebar">
+      <div class="brand"><b>FinalsRS</b> Operations</div>
+      <nav id="desktop-navigation">
+        <button class="nav-button admin-only active" data-view="overview"><span class="nav-dot"></span>Overview</button>
+        <button class="nav-button admin-only" data-view="health"><span class="nav-dot"></span>Bot Health</button>
+        <div class="nav-label admin-only">Management</div>
+        <button class="nav-button admin-only" data-view="channels"><span class="nav-dot"></span>Channels</button>
+        <button class="nav-button admin-only" data-view="users"><span class="nav-dot"></span>Users</button>
+        <button class="nav-button admin-only" data-view="message"><span class="nav-dot"></span>Message Bot</button>
+        <button class="nav-button staff-only" data-view="drops"><span class="nav-dot"></span>Drops</button>
+        <button class="nav-button admin-only" data-view="audit"><span class="nav-dot"></span>Audit Activity</button>
+      </nav>
+      <div class="sidebar-footer"><strong id="actor-name">Loading</strong><span id="actor-role">Checking access</span></div>
+    </aside>
 
-      /* ── Responsive ── */
-      @media (max-width: 768px) {
-        .app-container { grid-template-columns: 1fr; }
-        .sidebar { display: none; }
-        .grid-2, .grid-3, .grid-4, .stats-grid, .ops-health-strip { grid-template-columns: 1fr; }
-        .page-header { align-items: flex-start; flex-direction: column; gap: 14px; }
-        .page-actions { justify-content: flex-start; }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="app-container" data-dashboard-shell="admin-ops">
-      <!-- ────── Sidebar ────── -->
-      <aside class="sidebar">
-        <div class="logo">
-          <i class="fab fa-twitch"></i>
-          <h1>FinalsRS Admin</h1>
+    <main class="main">
+      <section class="view admin-only active" id="view-overview">
+        <header class="page-header">
+          <div><div class="kicker">Live operations</div><h1 id="overview-title">Checking FinalsRS</h1><p class="subtitle" id="overview-copy">Loading service health and recent activity.</p></div>
+          <div class="status-pill" id="overall-status"><span class="status-dot"></span><span>Checking</span></div>
+        </header>
+        <div class="metrics">
+          <article class="card"><div class="metric-label">Connected channels</div><div class="metric-value" id="metric-channels">--</div><div class="metric-detail" id="metric-channels-detail">Loading</div></article>
+          <article class="card"><div class="metric-label">All-time commands</div><div class="metric-value" id="metric-commands">--</div><div class="metric-detail good" id="metric-commands-detail">Loading</div></article>
+          <article class="card"><div class="metric-label">Command failures</div><div class="metric-value" id="metric-failures">--</div><div class="metric-detail" id="metric-failures-detail">Loading</div></article>
+          <article class="card"><div class="metric-label">Bot latency</div><div class="metric-value" id="metric-latency">--</div><div class="metric-detail" id="metric-latency-detail">Loading</div></article>
         </div>
-
-        <ul class="nav-menu">
-          <div class="sidebar-section-label">Operations</div>
-          <li class="nav-item active" data-role-scope="staff" onclick="switchSection('overview')">
-            <i class="fas fa-th-large"></i> Overview
-          </li>
-          <li class="nav-item" data-role-scope="staff" onclick="switchSection('bots')">
-            <i class="fas fa-chart-line"></i> Bot Analytics
-          </li>
-          <li class="nav-item" data-role-scope="staff" onclick="switchSection('content')">
-            <i class="fas fa-file-alt"></i> Content
-          </li>
-          <div class="sidebar-section-label admin-only">Admin</div>
-          <li class="nav-item admin-only" data-role-scope="admin" onclick="switchSection('users')">
-            <i class="fas fa-users"></i> Users
-          </li>
-          <li class="nav-item admin-only" data-role-scope="admin" onclick="switchSection('system')">
-            <i class="fas fa-cog"></i> System
-          </li>
-        </ul>
-
-        <div class="sidebar-footer">
-          <div class="user-profile">
-            <div class="user-avatar" id="sidebar-avatar">?</div>
-            <div>
-              <div class="user-name" id="sidebar-name">Loading...</div>
-              <div class="user-role" id="sidebar-role">Please wait</div>
+        <div class="dashboard-grid">
+          <article class="card">
+            <div class="card-header"><div><h2 class="card-title">Throughput</h2><p class="card-copy">Combined chat and command activity</p></div><span class="time" id="overview-observed">--</span></div>
+            <div class="chart-wrap"><canvas id="throughput-chart"></canvas></div>
+            <div class="throughput-rates">
+              <div class="rate"><span>Chat in</span><strong id="rate-in">0/m</strong></div>
+              <div class="rate"><span>Chat out</span><strong id="rate-out">0/m</strong></div>
+              <div class="rate"><span>Commands</span><strong id="rate-commands">0/h</strong></div>
             </div>
-          </div>
+          </article>
+          <article class="card attention-card"><h2 class="card-title">Needs attention</h2><p class="card-copy">Warnings and recent recoveries</p><div class="list" id="incident-list"><div class="loading">Loading events</div></div></article>
         </div>
-      </aside>
-
-      <!-- ────── Main Content ────── -->
-      <main class="main-content">
-
-        <!-- ══════════════════════════════════════
-             OVERVIEW SECTION
-        ══════════════════════════════════════ -->
-        <div id="section-overview" class="view-section active">
-          <div class="page-header">
-            <div class="admin-section-heading">
-              <div class="page-kicker">Operations</div>
-              <h2 class="page-title">Overview</h2>
-              <div class="page-subtitle">Live health, bot activity, and the actions needed to keep FinalsRS running cleanly.</div>
-            </div>
-            <div class="page-actions">
-              <span class="last-refresh" id="ops-last-refresh">Not refreshed yet</span>
-              <button class="btn btn-ghost" onclick="refreshOverview()">
-                <i class="fas fa-sync-alt"></i> Refresh
-              </button>
-            </div>
-          </div>
-
-          <div id="staff-access-note" class="staff-access-note staff-only">
-            Staff mode: you can monitor overview health, review bot analytics, and manage content. User, broadcast, database, and deploy controls require Admin.
-          </div>
-
-          <!-- Metric cards -->
-          <div class="grid-4" style="margin-bottom:20px;">
-            <div class="card metric-card">
-              <div class="metric-label">Connected Channels</div>
-              <div class="metric-value" id="dash-channels">–</div>
-              <div class="metric-label">Active connections</div>
-            </div>
-            <div class="card metric-card">
-              <div class="metric-label">Commands Processed</div>
-              <div class="metric-value" id="dash-commands">–</div>
-              <div class="metric-label">Total interactions</div>
-            </div>
-            <div class="card metric-card">
-              <div class="metric-label">Uptime</div>
-              <div class="metric-value" id="dash-uptime" style="font-size:20px;">–</div>
-              <div class="metric-label">Since last restart</div>
-            </div>
-            <div class="card metric-card">
-              <div class="metric-label">System Status</div>
-              <div class="metric-value" id="dash-status" style="font-size:18px; color:var(--text-muted);">
-                <i class="fas fa-circle-notch fa-spin"></i>
-              </div>
-              <div class="metric-label" id="dash-status-label">Checking...</div>
-            </div>
-          </div>
-
-          <div id="ops-health-strip" class="ops-health-strip">
-            <div class="ops-health-item">
-              <div class="ops-health-label">CPU</div>
-              <div class="ops-health-value" id="ops-cpu">–</div>
-            </div>
-            <div class="ops-health-item">
-              <div class="ops-health-label">Memory</div>
-              <div class="ops-health-value" id="ops-memory">–</div>
-            </div>
-            <div class="ops-health-item">
-              <div class="ops-health-label">Latency</div>
-              <div class="ops-health-value" id="ops-latency">–</div>
-            </div>
-            <div class="ops-health-item">
-              <div class="ops-health-label">Access Level</div>
-              <div class="ops-health-value" id="ops-access">Checking</div>
-            </div>
-          </div>
-
-          <!-- Performance + Quick Actions -->
-          <div class="grid-2">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">System Performance</div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:18px;">
-                <div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-                    <span class="metric-label">CPU Usage</span>
-                    <span id="cpu-val">0%</span>
-                  </div>
-                  <div class="progress-bg">
-                    <div id="cpu-bar" class="progress-fill" style="width:0%;background:var(--primary)"></div>
-                  </div>
-                </div>
-                <div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-                    <span class="metric-label">Memory Usage</span>
-                    <span id="mem-val">0MB</span>
-                  </div>
-                  <div class="progress-bg">
-                    <div id="mem-bar" class="progress-fill" style="width:0%;background:var(--info)"></div>
-                  </div>
-                </div>
-                <div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-                    <span class="metric-label">Bot Latency</span>
-                    <span id="lat-val">0ms</span>
-                  </div>
-                  <div class="progress-bg">
-                    <div id="lat-bar" class="progress-fill" style="width:0%;background:var(--warning)"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card admin-only danger-zone">
-              <div class="card-header">
-                <div>
-                  <div class="card-title">Admin Control Room</div>
-                  <div class="card-subtitle">High-impact bot and deployment actions.</div>
-                </div>
-              </div>
-              <div class="quick-actions-grid">
-                <button class="btn btn-primary" onclick="restartBot()">
-                  <i class="fas fa-power-off"></i> Restart Bot
-                </button>
-                <button class="btn btn-primary" onclick="refreshBotToken()">
-                  <i class="fas fa-key"></i> Refresh Token
-                </button>
-                <button class="btn btn-danger" onclick="pauseBot()" disabled title="Coming soon">
-                  <i class="fas fa-pause"></i> Pause Bots
-                </button>
-                <button class="btn btn-success" onclick="resumeBot()" disabled title="Coming soon">
-                  <i class="fas fa-play"></i> Resume Bots
-                </button>
-                <button class="btn btn-info" onclick="window.open('/statistics','_blank')">
-                  <i class="fas fa-chart-line"></i> Open Statistics
-                </button>
-                <button class="btn" style="background:var(--warning);color:#000;" onclick="triggerDeploy()">
-                  <i class="fas fa-cloud-upload-alt"></i> Deploy Update
-                </button>
-              </div>
-              <div id="action-status" style="margin-top:12px;font-size:13px;color:var(--text-muted);"></div>
-            </div>
-          </div>
+        <div class="lower-grid">
+          <article class="card"><h2 class="card-title">Service state</h2><div class="list" id="service-list"><div class="loading">Loading services</div></div></article>
+          <article class="card"><h2 class="card-title">Active command usage</h2><p class="card-copy">Historical totals include retired commands; this list does not.</p><div class="list" id="command-list"><div class="loading">Loading commands</div></div></article>
         </div>
+      </section>
 
-        <!-- ══════════════════════════════════════
-             USERS SECTION  (admin only)
-        ══════════════════════════════════════ -->
-        <div id="section-users" class="view-section">
-          <div class="page-header">
-            <div class="admin-section-heading">
-              <div class="page-kicker">Admin</div>
-              <h2 class="page-title">Users</h2>
-              <div class="page-subtitle">Audit roles, subscription access, bans, and connected channel state.</div>
-            </div>
-            <div class="page-actions">
-              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-                <i class="fas fa-sync"></i> Refresh
-              </button>
-            </div>
-          </div>
+      <section class="view admin-only" id="view-health">
+        <header class="page-header"><div><div class="kicker">Diagnostics</div><h1>Bot Health</h1><p class="subtitle">Read-only process, connection, and resource history.</p></div><select class="select" id="health-range" style="width:auto"><option value="24h">24 hours</option><option value="7d">7 days</option><option value="30d">30 days</option></select></header>
+        <div class="card" id="health-content"><div class="loading">Open this view to load diagnostics.</div></div>
+      </section>
 
-          <div class="subtab-bar">
-            <div class="subtab active" onclick="switchSubTab('users','channels')">Channels</div>
-            <div class="subtab" onclick="switchSubTab('users','manage')">Manage Users</div>
-            <div class="subtab" onclick="switchSubTab('users','subscriptions')">Subscriptions</div>
-          </div>
+      <section class="view admin-only" id="view-channels">
+        <header class="page-header"><div><div class="kicker">Management</div><h1>Channels</h1><p class="subtitle">Review configured channels and their current administrative state.</p></div></header>
+        <div class="card"><div id="channels-content" class="loading">Loading channels</div></div>
+      </section>
 
-          <!-- Channels sub-panel -->
-          <div id="users-channels" class="sub-panel active">
-            <div id="channels-list" class="channels-grid">
-              <div style="color:var(--text-muted);padding:20px;">Loading channels...</div>
-            </div>
-          </div>
+      <section class="view admin-only" id="view-users">
+        <header class="page-header"><div><div class="kicker">Management</div><h1>Users</h1><p class="subtitle">Manage roles, bans, and subscription access without exposing credentials.</p></div></header>
+        <div class="toolbar"><input class="input" id="user-search" placeholder="Search users" style="max-width:360px"><button class="btn" id="user-search-button">Search</button></div>
+        <div class="card"><div id="users-content" class="loading">Loading users</div></div>
+      </section>
 
-          <!-- Manage Users sub-panel -->
-          <div id="users-manage" class="sub-panel">
-            <div class="card">
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Username</th>
-                      <th>Twitch ID</th>
-                      <th>Role</th>
-                      <th style="width:200px;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="users-body">
-                    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Subscriptions sub-panel -->
-          <div id="users-subscriptions" class="sub-panel">
-            <!-- Stats -->
-            <div class="stats-grid" id="subscription-stats">
-              <div class="stat-card">
-                <div class="stat-value" id="stat-twitch-subscribers">–</div>
-                <div class="stat-label">Twitch Subs</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="stat-manual-grants">–</div>
-                <div class="stat-label">Manual Grants</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="stat-custom-bots">–</div>
-                <div class="stat-label">Custom Bots</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="stat-role-bypass">–</div>
-                <div class="stat-label">Role Bypass</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value" id="stat-total-premium">–</div>
-                <div class="stat-label">Total Premium</div>
-              </div>
-            </div>
-
-            <!-- Grant / Revoke -->
-            <div class="grid-2" style="margin-bottom:16px;">
-              <div class="card">
-                <div class="card-header">
-                  <div class="card-title"><i class="fas fa-crown" style="color:var(--warning)"></i> Grant Subscription</div>
-                </div>
-                <div class="modal-field">
-                  <label>Twitch Username</label>
-                  <input id="grant-sub-username" class="input" placeholder="username" />
-                </div>
-                <div class="modal-field">
-                  <label>Duration (days)</label>
-                  <input id="grant-sub-days" class="input" type="number" value="30" min="1" max="365" />
-                </div>
-                <button class="btn btn-primary" onclick="grantSubscription()">
-                  <i class="fas fa-gift"></i> Grant
-                </button>
-                <div id="grant-sub-result" style="margin-top:8px;font-size:13px;"></div>
-              </div>
-
-              <div class="card">
-                <div class="card-header">
-                  <div class="card-title"><i class="fas fa-user-shield" style="color:var(--info)"></i> Set User Role</div>
-                </div>
-                <div class="modal-field">
-                  <label>Twitch Username</label>
-                  <input id="set-role-username" class="input" placeholder="username" />
-                </div>
-                <div class="modal-field">
-                  <label>Role</label>
-                  <select id="set-role-select" class="input">
-                    <option value="Basic user">Basic user</option>
-                    <option value="subscriber">subscriber (early access)</option>
-                    <option value="tester">tester (bypass subscription)</option>
-                    <option value="analyst">analyst</option>
-                    <option value="Staff">Staff</option>
-                    <option value="admin">admin</option>
-                  </select>
-                </div>
-                <button class="btn btn-primary" onclick="setUserRoleByUsername()">
-                  <i class="fas fa-save"></i> Set Role
-                </button>
-                <div id="set-role-result" style="margin-top:8px;font-size:13px;"></div>
-              </div>
-            </div>
-
-            <!-- Active subscribers table -->
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title"><i class="fas fa-list" style="color:var(--primary)"></i> Active Subscribers</div>
-                <button class="btn btn-ghost btn-sm" onclick="refreshSubscriptionStats()"><i class="fas fa-sync"></i> Refresh</button>
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Username</th><th>Tier</th><th>Status</th><th>Custom Bot</th><th>Expires</th><th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="subscribers-table-body">
-                    <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+      <section class="view admin-only" id="view-message">
+        <header class="page-header"><div><div class="kicker">Admin only</div><h1>Message Bot</h1><p class="subtitle">Send one message to explicitly selected channels. There is no broadcast mode.</p></div></header>
+        <div class="card">
+          <label for="message-text" class="metric-label">Message</label>
+          <textarea class="textarea" id="message-text" maxlength="450" placeholder="Write the message the bot should send"></textarea>
+          <div class="card-header" style="margin-top:18px"><div><h2 class="card-title">Selected channels</h2><p class="card-copy">Choose at least one channel.</p></div><span class="time" id="selected-count">0 selected</span></div>
+          <div class="channel-picker" id="message-channels"><div class="loading">Loading channels</div></div>
+          <button class="btn btn-primary" id="send-message-button">Send to selected channels</button>
         </div>
+      </section>
 
-        <!-- ══════════════════════════════════════
-             CONTENT SECTION
-        ══════════════════════════════════════ -->
-        <div id="section-content" class="view-section">
-          <div class="page-header">
-            <div class="admin-section-heading">
-              <div class="page-kicker">Staff Workspace</div>
-              <h2 class="page-title">Content</h2>
-              <div class="page-subtitle">
-                Manage Twitch Drops content, public command responses, and user feedback workflows.
-              </div>
-              <div class="staff-only" style="color:var(--text-muted);font-size:14px;margin-top:8px;">
-                Staff access is scoped to the Twitch Drops page and image uploads.
-              </div>
-            </div>
-            <div class="page-actions">
-              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-                <i class="fas fa-sync"></i> Refresh
-              </button>
-            </div>
-          </div>
-
-          <div class="subtab-bar">
-            <div class="subtab active" onclick="switchSubTab('content','drops')">Drops</div>
-            <div class="subtab admin-only" onclick="switchSubTab('content','commands')">Commands</div>
-            <div class="subtab admin-only" onclick="switchSubTab('content','feedback')">Feedback</div>
-          </div>
-
-          <!-- Drops sub-panel -->
-          <div id="content-drops" class="sub-panel active">
-            <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-              <button class="btn btn-primary" onclick="saveDropsConfig()">
-                <i class="fas fa-save"></i> Save Changes
-              </button>
-            </div>
-            <div class="card" style="margin-bottom:16px;">
-              <div class="card-title" style="margin-bottom:14px;">Global Settings</div>
-              <div class="grid-2">
-                <div>
-                  <label>Last Updated Text</label>
-                  <input id="drop-last-updated" class="input" placeholder="e.g. November 28, 2026" />
-                </div>
-                <div>
-                  <label>Featured Image URL</label>
-                  <div style="display:flex;gap:8px;">
-                    <input id="drop-featured-image" class="input" placeholder="Path to image" />
-                    <input type="file" id="drop-image-upload" style="display:none;" accept="image/*" onchange="handleImageUpload(this)" />
-                    <button class="btn btn-ghost" onclick="document.getElementById('drop-image-upload').click()">
-                      <i class="fas fa-upload"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Active Drops</div>
-                <button class="btn btn-success btn-sm" onclick="addDropItem()">
-                  <i class="fas fa-plus"></i> Add Item
-                </button>
-              </div>
-              <div id="drops-items-container" style="display:flex;flex-direction:column;gap:10px;">
-                <div style="color:var(--text-muted);text-align:center;padding:20px;">Loading...</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Commands sub-panel -->
-          <div id="content-commands" class="sub-panel admin-only">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Custom Commands</div>
-                <button class="btn btn-success btn-sm" onclick="openAddCommandModal()">
-                  <i class="fas fa-plus"></i> Add Command
-                </button>
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr><th>Trigger</th><th>Response</th><th style="width:80px;">Actions</th></tr>
-                  </thead>
-                  <tbody id="commands-body">
-                    <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Feedback sub-panel -->
-          <div id="content-feedback" class="sub-panel admin-only">
-            <div class="card">
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr><th>Date</th><th>User</th><th>Type</th><th>Message</th><th style="width:80px;">Actions</th></tr>
-                  </thead>
-                  <tbody id="feedback-body">
-                    <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+      <section class="view staff-only" id="view-drops">
+        <header class="page-header"><div><div class="kicker">Content</div><h1>Drops</h1><p class="subtitle">Staff and admins can update the validated Drops configuration.</p></div></header>
+        <div class="card">
+          <label for="drops-json" class="metric-label">Configuration</label>
+          <textarea class="textarea" id="drops-json" style="min-height:360px;font-family:ui-monospace,monospace"></textarea>
+          <div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" id="save-drops-button">Save Drops</button><input class="input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="drop-image" style="max-width:320px"><button class="btn" id="upload-drop-button">Upload image</button></div>
         </div>
+      </section>
 
-        <!-- ══════════════════════════════════════
-             BOTS SECTION
-        ══════════════════════════════════════ -->
-        <div id="section-bots" class="view-section">
-          <div class="page-header">
-            <div class="admin-section-heading">
-              <div class="page-kicker">Telemetry</div>
-              <h2 class="page-title">Bot Analytics</h2>
-              <div class="page-subtitle">Command health, usage patterns, broadcast tooling, and live logs.</div>
-            </div>
-            <div class="page-actions">
-              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-                <i class="fas fa-sync"></i> Refresh
-              </button>
-            </div>
-          </div>
+      <section class="view admin-only" id="view-audit">
+        <header class="page-header"><div><div class="kicker">Security</div><h1>Audit Activity</h1><p class="subtitle">Structured administrative actions without raw request bodies or message contents.</p></div></header>
+        <div class="card"><div id="audit-content" class="loading">Loading audit activity</div></div>
+      </section>
+    </main>
+  </div>
 
-          <div class="subtab-bar">
-            <div class="subtab active" onclick="switchSubTab('bots','analytics')">Analytics</div>
-            <div class="subtab admin-only" onclick="switchSubTab('bots','broadcast')">Broadcast</div>
-            <div class="subtab admin-only" onclick="switchSubTab('bots','logs')">System Logs</div>
-          </div>
+  <nav class="mobile-navigation" id="mobile-navigation">
+    <button class="nav-button admin-only active" data-view="overview"><span class="nav-dot"></span>Overview</button>
+    <button class="nav-button admin-only" data-view="health"><span class="nav-dot"></span>Health</button>
+    <button class="nav-button admin-only" data-view="channels"><span class="nav-dot"></span>Channels</button>
+    <button class="nav-button admin-only" data-view="users"><span class="nav-dot"></span>Users</button>
+    <button class="nav-button staff-only" data-view="drops"><span class="nav-dot"></span>Drops</button>
+  </nav>
 
-          <!-- Analytics sub-panel -->
-          <div id="bots-analytics" class="sub-panel active">
-            <div class="grid-3" style="margin-bottom:20px;">
-              <div class="card">
-                <div class="card-header">
-                  <div class="card-title">Total Commands</div>
-                  <i class="fas fa-terminal" style="color:var(--text-muted);"></i>
-                </div>
-                <div style="font-size:30px;font-weight:700;" id="analytics-total">–</div>
-                <div class="card-subtitle">All time</div>
-              </div>
-              <div class="card">
-                <div class="card-header">
-                  <div class="card-title">Unique Users</div>
-                  <i class="fas fa-users" style="color:var(--text-muted);"></i>
-                </div>
-                <div style="font-size:30px;font-weight:700;" id="analytics-unique">–</div>
-                <div class="card-subtitle">Used the bot</div>
-              </div>
-              <div class="card">
-                <div class="card-header">
-                  <div class="card-title">Success Rate</div>
-                  <i class="fas fa-check-circle" style="color:var(--text-muted);"></i>
-                </div>
-                <div style="font-size:30px;font-weight:700;" id="analytics-success">–</div>
-                <div class="card-subtitle">Commands executed</div>
-              </div>
-            </div>
+  <script>
+    const state = { role: null, csrf: null, chart: null, overview: null, channels: [] };
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    const formatNumber = (value) => new Intl.NumberFormat().format(Number(value) || 0);
+    const timeAgo = (value) => {
+      const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+      if (seconds < 60) return `${seconds}s ago`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    };
+    function toast(message) {
+      document.querySelector('.toast')?.remove();
+      const element = document.createElement('div');
+      element.className = 'toast';
+      element.textContent = message;
+      document.body.appendChild(element);
+      setTimeout(() => element.remove(), 3500);
+    }
+    async function api(url, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (options.body && !(options.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+      if (state.csrf && options.method && options.method !== 'GET') headers['x-csrf-token'] = state.csrf;
+      const response = await fetch(url, { credentials: 'same-origin', ...options, headers });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+      return data;
+    }
+    function applyRole(role) {
+      state.role = role;
+      const admin = role === 'admin';
+      document.body.classList.toggle('role-admin', admin);
+      document.body.classList.toggle('role-staff', role === 'Staff');
+      document.querySelectorAll('.admin-only').forEach((element) => element.hidden = !admin);
+      document.querySelectorAll('.staff-only').forEach((element) => element.hidden = !(admin || role === 'Staff'));
+      if (!admin) switchView('drops');
+    }
+    function switchView(view) {
+      document.querySelectorAll('.view').forEach((element) => element.classList.toggle('active', element.id === `view-${view}`));
+      document.querySelectorAll('[data-view]').forEach((element) => element.classList.toggle('active', element.dataset.view === view));
+      if (view === 'health') loadHealth();
+      if (view === 'channels') loadChannels();
+      if (view === 'users') loadUsers();
+      if (view === 'message') loadMessageChannels();
+      if (view === 'drops') loadDrops();
+      if (view === 'audit') loadAudit();
+    }
+    document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => switchView(button.dataset.view)));
 
-            <div class="grid-2" style="margin-bottom:20px;">
-              <div class="card">
-                <div class="card-title" style="margin-bottom:16px;">Usage (Last 24 Hours)</div>
-                <div id="hourly-chart-container" style="height:200px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">
-                  Loading chart...
-                </div>
-              </div>
-              <div class="card">
-                <div class="card-title" style="margin-bottom:16px;">Top Commands</div>
-                <div id="top-commands-list" style="display:flex;flex-direction:column;gap:10px;">
-                  <div style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="card" style="margin-bottom:20px;">
-              <div class="card-title" style="margin-bottom:14px;">Command Statistics</div>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Command</th><th>Usage</th><th>Success Rate</th><th>Avg Response</th></tr></thead>
-                  <tbody id="command-stats-table">
-                    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="card">
-              <div class="card-title" style="margin-bottom:14px;">Recent Commands</div>
-              <div class="table-container">
-                <table>
-                  <thead><tr><th>Time</th><th>Command</th><th>User</th><th>Status</th><th>Response</th></tr></thead>
-                  <tbody id="recent-commands-table">
-                    <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Broadcast sub-panel -->
-          <div id="bots-broadcast" class="sub-panel admin-only">
-            <div class="card" style="max-width:800px;">
-              <div class="modal-field">
-                <label>Target Channels</label>
-                <div id="broadcast-targets" style="padding:8px;border:1px solid var(--border);border-radius:6px;min-height:36px;display:flex;flex-wrap:wrap;gap:5px;">
-                  <span style="color:var(--text-muted);font-style:italic;font-size:13px;">Select channels from Users → Channels or leave empty for ALL.</span>
-                </div>
-              </div>
-              <div class="modal-field">
-                <label>Message</label>
-                <textarea id="broadcast-msg" class="input" style="min-height:110px;resize:vertical;" placeholder="Type your announcement..."></textarea>
-              </div>
-              <div style="display:flex;justify-content:flex-end;">
-                <button class="btn btn-primary" onclick="sendBroadcast()">
-                  <i class="fas fa-paper-plane"></i> Send Broadcast
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Logs sub-panel -->
-          <div id="bots-logs" class="sub-panel admin-only">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <span style="font-size:12px;color:var(--text-muted);"><i class="fas fa-circle" style="color:var(--success);font-size:8px;"></i> Auto-refreshing every 20s</span>
-              <button class="btn btn-ghost btn-sm" onclick="fetchLogs()"><i class="fas fa-sync"></i> Refresh Now</button>
-            </div>
-            <div id="logs-viewer" class="log-container"></div>
-          </div>
-        </div>
-
-        <!-- ══════════════════════════════════════
-             SYSTEM SECTION  (admin only)
-        ══════════════════════════════════════ -->
-        <div id="section-system" class="view-section">
-          <div class="page-header">
-            <div class="admin-section-heading">
-              <div class="page-kicker">Admin</div>
-              <h2 class="page-title">System</h2>
-              <div class="page-subtitle">Database inspection, feature flags, and internal analyst access.</div>
-            </div>
-            <div class="page-actions">
-              <button class="btn btn-ghost" onclick="refreshCurrentSubTab()">
-                <i class="fas fa-sync"></i> Refresh
-              </button>
-            </div>
-          </div>
-
-          <div class="subtab-bar">
-            <div class="subtab active" onclick="switchSubTab('system','database')">Database</div>
-            <div class="subtab" onclick="switchSubTab('system','settings')">Settings</div>
-            <div class="subtab" onclick="switchSubTab('system','analyst')">Analyst Access</div>
-          </div>
-
-          <!-- Database sub-panel -->
-          <div id="system-database" class="sub-panel active">
-            <div class="control-toolbar">
-              <div>
-                <div class="card-title">Database Editor</div>
-                <div class="card-subtitle">Sensitive fields are redacted and blocked from edits.</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:12px;">
-              <label style="margin:0;white-space:nowrap;">Table:</label>
-              <select id="db-table-select" class="input" style="width:200px;" onchange="loadDbTable()">
-                <option value="StreamSessions">StreamSessions</option>
-                <option value="Channels">Channels</option>
-                <option value="CustomResponse">CustomResponse</option>
-                <option value="RankGoals">RankGoals</option>
-                <option value="CommandUsage">CommandUsage</option>
-              </select>
-              </div>
-            </div>
-            <div id="db-editor-container">
-              <div style="color:var(--text-muted);padding:20px;text-align:center;">Select a table above.</div>
-            </div>
-          </div>
-
-          <!-- Settings sub-panel -->
-          <div id="system-settings" class="sub-panel">
-            <div class="grid-2">
-              <div class="card">
-                <div class="card-title" style="margin-bottom:14px;">API Configuration</div>
-                <div class="modal-field">
-                  <label>Admin API Key</label>
-                  <input id="settings-api-key" type="password" class="input" placeholder="Enter API Key" />
-                  <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Required for restart and deploy actions.</div>
-                </div>
-                <button class="btn btn-primary" onclick="saveSettings()">Save Key</button>
-              </div>
-              <div class="card">
-                <div class="card-title" style="margin-bottom:14px;">Feature Flags</div>
-                <div style="display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:14px;">User Dashboard Access</span>
-                  <button id="toggle-dashboard-btn" class="btn btn-success" onclick="toggleUserDashboard()">Enabled</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Analyst Access sub-panel -->
-          <div id="system-analyst" class="sub-panel">
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">Temporary Users (JSON)</div>
-                <button class="btn btn-primary btn-sm" onclick="openAddSimpleUserModal()">
-                  <i class="fas fa-plus"></i> Add User
-                </button>
-              </div>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr><th>Username</th><th>Role</th><th>Created At</th><th>Actions</th></tr>
-                  </thead>
-                  <tbody id="simple-users-body">
-                    <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </main>
-    </div>
-
-    <!-- ── Toast Container ── -->
-    <div id="toast-container"></div>
-
-    <!-- ── Modal Overlay ── -->
-    <div id="modal-overlay" class="modal-overlay hidden">
-      <div class="modal">
-        <div class="modal-header">
-          <h3 id="modal-title">Modal</h3>
-          <button class="modal-close" onclick="closeModal()">×</button>
-        </div>
-        <div id="modal-body" class="modal-body"></div>
-        <div id="modal-footer" class="modal-footer"></div>
-      </div>
-    </div>
-
-    <script>
-      // ══════════════════════════════════════════════════════════════
-      // STATE & CONFIG
-      // ══════════════════════════════════════════════════════════════
-      let CSRF_TOKEN = null;
-      const API_KEY_STORAGE = 'twitch_bot_api_key';
-      let selectedChannels = new Set();
-      let currentSection = 'overview';
-      let currentSubTabs = {};   // { sectionId: activeSubTabId }
-      let modalConfirmCallback = null;
-      let modalSubmitCallback = null;
-
-      // ══════════════════════════════════════════════════════════════
-      // TOAST NOTIFICATIONS  (replaces alert())
-      // ══════════════════════════════════════════════════════════════
-      function toast(message, type = 'info', duration = 4000) {
-        const icons = { success: 'check-circle', error: 'times-circle', warning: 'exclamation-triangle', info: 'info-circle' };
-        const container = document.getElementById('toast-container');
-        const el = document.createElement('div');
-        el.className = `toast toast-${type}`;
-        el.innerHTML = `<i class="fas fa-${icons[type] || 'info-circle'}"></i><span>${escapeHtml(message)}</span>`;
-        container.appendChild(el);
-        setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, duration);
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // MODAL SYSTEM  (replaces confirm(), prompt())
-      // ══════════════════════════════════════════════════════════════
-      function closeModal() {
-        document.getElementById('modal-overlay').classList.add('hidden');
-        modalConfirmCallback = null;
-        modalSubmitCallback = null;
-      }
-
-      function showConfirm(title, message, onConfirm) {
-        document.getElementById('modal-title').textContent = title;
-        document.getElementById('modal-body').innerHTML = `<p class="modal-message">${escapeHtml(message)}</p>`;
-        document.getElementById('modal-footer').innerHTML = `
-          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-danger" id="modal-confirm-btn">Confirm</button>
-        `;
-        modalConfirmCallback = onConfirm;
-        document.getElementById('modal-confirm-btn').onclick = () => { closeModal(); onConfirm(); };
-        document.getElementById('modal-overlay').classList.remove('hidden');
-      }
-
-      function showPrompt(title, fields, onSubmit) {
-        document.getElementById('modal-title').textContent = title;
-        const fieldsHtml = fields.map(f => `
-          <div class="modal-field">
-            <label>${escapeHtml(f.label)}</label>
-            ${f.type === 'select'
-              ? `<select id="mf-${f.id}" class="input">${f.options.map(o => `<option value="${o.value}">${o.label}</option>`).join('')}</select>`
-              : `<input id="mf-${f.id}" class="input" type="${f.type || 'text'}" placeholder="${escapeHtml(f.placeholder || '')}" value="${escapeHtml(f.default || '')}" />`
-            }
-          </div>
-        `).join('');
-        document.getElementById('modal-body').innerHTML = fieldsHtml;
-        document.getElementById('modal-footer').innerHTML = `
-          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-          <button class="btn btn-primary" id="modal-submit-btn">Submit</button>
-        `;
-        modalSubmitCallback = onSubmit;
-        document.getElementById('modal-submit-btn').onclick = () => {
-          const values = {};
-          fields.forEach(f => { values[f.id] = document.getElementById(`mf-${f.id}`).value; });
-          closeModal();
-          onSubmit(values);
-        };
-        document.getElementById('modal-overlay').classList.remove('hidden');
-        // Focus first input
-        const first = document.querySelector('#modal-body .input');
-        if (first) first.focus();
-      }
-
-      // Close on overlay click
-      document.getElementById('modal-overlay').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
+    function renderChart(data) {
+      const points = data.throughput || [];
+      const commandTrend = data.commands?.trend || [];
+      const labels = points.length ? points.map((point) => point.timestamp) : commandTrend.map((point) => point.timestamp);
+      const chatValues = points.map((point) => point.chatIn + point.chatOut);
+      const commandValues = commandTrend.slice(-labels.length).map((point) => point.commands);
+      const context = document.getElementById('throughput-chart');
+      state.chart?.destroy();
+      state.chart = new Chart(context, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Chat',
+              data: chatValues,
+              borderColor: '#ed1b2f',
+              backgroundColor: 'rgba(237,27,47,.16)',
+              borderWidth: 2,
+              pointRadius: 0,
+              fill: true,
+              tension: .38,
+            },
+            {
+              label: 'Commands',
+              data: commandValues,
+              borderColor: '#777',
+              backgroundColor: 'transparent',
+              borderWidth: 1.5,
+              pointRadius: 0,
+              tension: .38,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { color: '#888', boxWidth: 10 } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#666', maxTicksLimit: 8 } },
+            y: { beginAtZero: true, grid: { color: '#151515' }, ticks: { color: '#666' } },
+          },
+        },
       });
-
-      // ══════════════════════════════════════════════════════════════
-      // NAVIGATION
-      // ══════════════════════════════════════════════════════════════
-      function switchSection(sectionId) {
-        // Role guard
-        const adminSections = ['users', 'system'];
-        if (adminSections.includes(sectionId) && window.USER_ROLE !== 'admin') {
-          console.warn('Unauthorized access attempt to ' + sectionId);
-          toast('Admin access is required for that section.', 'warning');
-          return;
-        }
-
-        currentSection = sectionId;
-
-        // Update sidebar
-        document.querySelectorAll('.nav-item').forEach(el => {
-          el.classList.remove('active');
-          if (el.getAttribute('onclick')?.includes(`'${sectionId}'`)) el.classList.add('active');
-        });
-
-        // Show section
-        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-        const section = document.getElementById(`section-${sectionId}`);
-        if (section) section.classList.add('active');
-
-        // Trigger loads on first visit
-        if (sectionId === 'users') {
-          const sub = currentSubTabs['users'] || 'channels';
-          triggerSubLoad('users', sub);
-        } else if (sectionId === 'content') {
-          const sub = currentSubTabs['content'] || 'drops';
-          triggerSubLoad('content', sub);
-        } else if (sectionId === 'bots') {
-          const sub = currentSubTabs['bots'] || 'analytics';
-          triggerSubLoad('bots', sub);
-        } else if (sectionId === 'system') {
-          const sub = currentSubTabs['system'] || 'database';
-          triggerSubLoad('system', sub);
-        }
+    }
+    function eventRows(events) {
+      if (!events?.length) return '<div class="empty">No recent operational events.</div>';
+      return events.map((event) => `<div class="list-row"><span class="event-dot ${escapeHtml(event.severity)}"></span><span>${escapeHtml(event.type.replaceAll('_', ' '))}${event.channel ? ` · ${escapeHtml(event.channel)}` : ''}</span><span class="time">${timeAgo(event.timestamp)}</span></div>`).join('');
+    }
+    async function loadOverview() {
+      try {
+        const data = await api('/admin/api/operations/overview?range=24h');
+        state.overview = data;
+        const status = document.getElementById('overall-status');
+        status.className = `status-pill ${data.status}`;
+        status.querySelector('span:last-child').textContent = data.status;
+        document.getElementById('overview-title').textContent = data.status === 'operational' ? 'FinalsRS is healthy' : data.status === 'degraded' ? 'FinalsRS needs attention' : 'FinalsRS is unavailable';
+        document.getElementById('overview-copy').textContent = data.channels.reconnecting ? `${data.channels.reconnecting} channel(s) are recovering.` : 'No active incidents detected.';
+        document.getElementById('metric-channels').textContent = `${data.channels.connected} / ${data.channels.expected}`;
+        document.getElementById('metric-channels-detail').textContent = data.channels.reconnecting ? `${data.channels.reconnecting} reconnecting` : 'All expected channels connected';
+        document.getElementById('metric-channels-detail').className = `metric-detail ${data.channels.reconnecting ? 'warn' : 'good'}`;
+        document.getElementById('metric-commands').textContent = formatNumber(data.commands.allTime);
+        document.getElementById('metric-commands-detail').textContent = `${formatNumber(data.commands.today)} today`;
+        document.getElementById('metric-failures').textContent = `${data.commands.failureRate}%`;
+        document.getElementById('metric-failures-detail').textContent = `${formatNumber(data.commands.failures)} failures in range`;
+        document.getElementById('metric-failures-detail').className = `metric-detail ${data.commands.failureRate < 1 ? 'good' : 'warn'}`;
+        document.getElementById('metric-latency').textContent = data.bot.latencyMs == null ? '--' : `${data.bot.latencyMs}ms`;
+        document.getElementById('metric-latency-detail').textContent = data.bot.controlApiReachable ? 'Control API responding' : 'Control API unavailable';
+        document.getElementById('metric-latency-detail').className = `metric-detail ${data.bot.controlApiReachable ? 'good' : 'warn'}`;
+        document.getElementById('overview-observed').textContent = `Updated ${timeAgo(data.observedAt)}`;
+        document.getElementById('incident-list').innerHTML = eventRows(data.incidents);
+        document.getElementById('service-list').innerHTML = [
+          ['Control API', data.bot.controlApiReachable],
+          ['EventSub', data.services.eventSubHealthy],
+          ['Cache freshness', data.services.cacheAgeSeconds != null && data.services.cacheAgeSeconds < 1200],
+        ].map(([label, ok]) => `<div class="list-row"><span class="event-dot ${ok ? '' : 'warning'}"></span><span>${label}</span><span class="time">${ok ? 'Healthy' : 'Attention'}</span></div>`).join('');
+        document.getElementById('command-list').innerHTML = data.commands.activeCommands.length
+          ? data.commands.activeCommands.map((command) => `<div class="list-row"><span class="event-dot"></span><span>!${escapeHtml(command.command)}</span><strong>${formatNumber(command.count)}</strong></div>`).join('')
+          : '<div class="empty">No command usage in this range.</div>';
+        const recent = data.throughput.at(-1) || { chatIn: 0, chatOut: 0 };
+        document.getElementById('rate-in').textContent = `${recent.chatIn || 0}/15m`;
+        document.getElementById('rate-out').textContent = `${recent.chatOut || 0}/15m`;
+        document.getElementById('rate-commands').textContent = `${data.commands.trend.at(-1)?.commands || 0}/h`;
+        renderChart(data);
+      } catch (error) {
+        document.getElementById('overview-title').textContent = 'Operations data unavailable';
+        document.getElementById('overview-copy').textContent = error.message;
+        document.getElementById('incident-list').innerHTML = `<div class="panel-error">${escapeHtml(error.message)}</div>`;
       }
-
-      function switchSubTab(sectionId, tabId) {
-        const adminTabs = ['content-commands', 'content-feedback', 'bots-broadcast', 'bots-logs'];
-        if (adminTabs.includes(`${sectionId}-${tabId}`) && window.USER_ROLE !== 'admin') {
-          console.warn('Unauthorized access attempt to ' + sectionId + '/' + tabId);
-          return;
-        }
-
-        currentSubTabs[sectionId] = tabId;
-
-        // Update tab bar within the section
-        const section = document.getElementById(`section-${sectionId}`);
-        if (!section) return;
-        section.querySelectorAll('.subtab').forEach(el => {
-          el.classList.remove('active');
-          if (el.getAttribute('onclick')?.includes(`'${tabId}'`)) el.classList.add('active');
-        });
-
-        // Show sub-panel
-        section.querySelectorAll('.sub-panel').forEach(el => el.classList.remove('active'));
-        const panel = document.getElementById(`${sectionId}-${tabId}`);
-        if (panel) panel.classList.add('active');
-
-        triggerSubLoad(sectionId, tabId);
-      }
-
-      function triggerSubLoad(sectionId, tabId) {
-        const key = `${sectionId}-${tabId}`;
-        if (key === 'users-channels') fetchChannels();
-        else if (key === 'users-manage') fetchUsers();
-        else if (key === 'users-subscriptions') refreshSubscriptionStats();
-        else if (key === 'content-drops') loadDropsConfig();
-        else if (key === 'content-commands') fetchCommands();
-        else if (key === 'content-feedback') fetchFeedback();
-        else if (key === 'bots-analytics') loadAnalytics();
-        else if (key === 'bots-logs') fetchLogs();
-        else if (key === 'system-database') loadDbTable();
-        else if (key === 'system-analyst') fetchSimpleUsers();
-        else if (key === 'system-settings') loadDashboardToggleState();
-      }
-
-      function refreshCurrentSubTab() {
-        const sub = currentSubTabs[currentSection];
-        if (sub) triggerSubLoad(currentSection, sub);
-        else if (currentSection === 'overview') refreshOverview();
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // INITIALIZATION
-      // ══════════════════════════════════════════════════════════════
-      document.addEventListener('DOMContentLoaded', async () => {
-        await ensureCsrfToken();
-        await checkUserRole();
-        loadSettings();
-        refreshOverview();
-        startPolling();
-      });
-
-      async function checkUserRole() {
-        try {
-          const res = await fetch('/admin/api/me');
-          const data = await res.json();
-          window.USER_ROLE = data.role;
-          document.getElementById('sidebar-name').textContent = data.username;
-          document.getElementById('sidebar-role').textContent = data.role;
-          document.getElementById('sidebar-avatar').textContent = data.username.charAt(0).toUpperCase();
-          const isAdminRole = data.role === 'admin';
-          document.getElementById('ops-access').textContent = isAdminRole ? 'Admin' : 'Staff';
-          if (isAdminRole) {
-            document.body.classList.add('is-admin');
-          } else {
-            document.body.classList.add('is-staff');
-            currentSubTabs.content = 'drops';
-            currentSubTabs.bots = 'analytics';
-            switchSection('overview');
-          }
-        } catch (err) {
-          console.error('Failed to check user role:', err);
-        }
-      }
-
-      function startPolling() {
-        setInterval(fetchPerformance, 5000);
-        setInterval(() => {
-          if (currentSection === 'bots' && currentSubTabs['bots'] === 'logs') fetchLogs();
-        }, 20000);
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // OVERVIEW
-      // ══════════════════════════════════════════════════════════════
-      function refreshOverview() {
-        fetchBotStatus();
-        fetchPerformance();
-        updateLastRefresh();
-      }
-
-      async function fetchBotStatus() {
-        try {
-          const res = await fetch('/admin/api/stats');
-          const data = await res.json();
-          if (data.stats) {
-            document.getElementById('dash-commands').textContent = data.stats.commandsProcessed.toLocaleString();
-            document.getElementById('dash-uptime').textContent = formatUptime(data.stats.uptime);
-          }
-        } catch (e) {}
-      }
-
-      async function fetchPerformance() {
-        try {
-          const res = await fetch('/admin/api/performance');
-          const metrics = await res.json();
-          if (metrics?.cpu) {
-            const cpuPct = metrics.cpu.usage;
-            document.getElementById('cpu-val').textContent = cpuPct.toFixed(1) + '%';
-            document.getElementById('ops-cpu').textContent = cpuPct.toFixed(1) + '%';
-            document.getElementById('cpu-bar').style.width = cpuPct + '%';
-            document.getElementById('cpu-bar').style.background =
-              cpuPct >= 80 ? 'var(--danger)' : cpuPct >= 60 ? 'var(--warning)' : 'var(--primary)';
-
-            const memUsed = (metrics.memory.used / 1024 / 1024).toFixed(0);
-            const memTotal = (metrics.memory.total / 1024 / 1024).toFixed(0);
-            const memPct = (metrics.memory.used / metrics.memory.total) * 100;
-            document.getElementById('mem-val').textContent = `${memUsed}MB / ${memTotal}MB`;
-            document.getElementById('ops-memory').textContent = `${memUsed}MB`;
-            document.getElementById('mem-bar').style.width = memPct + '%';
-
-            if (metrics.botLatency) {
-              document.getElementById('lat-val').textContent = metrics.botLatency.toFixed(0) + 'ms';
-              document.getElementById('ops-latency').textContent = metrics.botLatency.toFixed(0) + 'ms';
-              document.getElementById('lat-bar').style.width = Math.min(metrics.botLatency, 100) + '%';
-            } else {
-              document.getElementById('ops-latency').textContent = '–';
-            }
-
-            // Dynamic system status
-            const statusEl = document.getElementById('dash-status');
-            const labelEl = document.getElementById('dash-status-label');
-            if (cpuPct >= 80 || memPct >= 90) {
-              statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i>';
-              statusEl.style.color = 'var(--danger)';
-              labelEl.textContent = 'High load detected';
-            } else if (cpuPct >= 60 || memPct >= 75) {
-              statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color:var(--warning)"></i>';
-              statusEl.style.color = 'var(--warning)';
-              labelEl.textContent = 'Moderate load';
-            } else {
-              statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Healthy';
-              statusEl.style.color = 'var(--success)';
-              labelEl.textContent = 'All systems operational';
-            }
-          }
-        } catch (e) { console.error(e); }
-      }
-
-      function updateLastRefresh() {
-        const el = document.getElementById('ops-last-refresh');
-        if (!el) return;
-        el.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-      }
-
-      function formatUptime(seconds) {
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        return `${h}h ${m}m`;
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // CHANNELS
-      // ══════════════════════════════════════════════════════════════
-      async function fetchChannels() {
-        const list = document.getElementById('channels-list');
-        list.innerHTML = '<div style="color:var(--text-muted);padding:20px;">Loading channels...</div>';
-        try {
-          const res = await fetch('/admin/api/channels');
-          const data = await res.json();
-          list.innerHTML = '';
-          let count = 0;
-          if (data.channels) {
-            count = data.channels.length;
-            data.channels.forEach(chData => {
-              const ch = typeof chData === 'string' ? chData : chData.username;
-              const role = typeof chData === 'string' ? '' : chData.role;
-              const isSelected = selectedChannels.has(ch);
-              list.innerHTML += `
-                <div class="channel-card">
-                  <div class="channel-header">
-                    <div style="font-weight:600;font-size:14px;">
-                      <span class="status-dot"></span>${escapeHtml(ch)}
-                      <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">[${escapeHtml(role || 'Basic user')}]</span>
-                    </div>
-                    <button class="btn btn-ghost btn-sm" onclick="toggleChannelSelection('${escapeHtml(ch)}')" title="Select for broadcast">
-                      <i class="fas ${isSelected ? 'fa-check-square' : 'fa-plus-square'}"></i>
-                    </button>
-                  </div>
-                  <div style="display:flex;gap:6px;">
-                    <input id="msg-${escapeHtml(ch)}" class="input" placeholder="Message..." style="padding:5px 8px;font-size:12px;">
-                    <button class="btn btn-primary btn-sm" onclick="sendToChannel('${escapeHtml(ch)}')">
-                      <i class="fas fa-paper-plane"></i>
-                    </button>
-                  </div>
-                </div>`;
-            });
-          }
-          document.getElementById('dash-channels').textContent = count;
-        } catch (e) {
-          list.innerHTML = '<div style="color:var(--danger);padding:20px;">Failed to load channels</div>';
-        }
-      }
-
-      function toggleChannelSelection(ch) {
-        if (selectedChannels.has(ch)) selectedChannels.delete(ch);
-        else selectedChannels.add(ch);
-        fetchChannels();
-        updateBroadcastTargets();
-      }
-
-      function updateBroadcastTargets() {
-        const container = document.getElementById('broadcast-targets');
-        if (selectedChannels.size === 0) {
-          container.innerHTML = '<span style="color:var(--text-muted);font-style:italic;font-size:13px;">Select channels from Users → Channels or leave empty for ALL.</span>';
-          return;
-        }
-        container.innerHTML = '';
-        selectedChannels.forEach(ch => {
-          container.innerHTML += `<span style="background:var(--primary);color:#fff;padding:2px 8px;border-radius:12px;font-size:12px;">${escapeHtml(ch)}</span>`;
-        });
-      }
-
-      async function sendToChannel(ch) {
-        if (window.USER_ROLE !== 'admin') {
-          toast('Only admins can message channels.', 'error');
-          return;
-        }
-        const input = document.getElementById(`msg-${ch}`);
-        const msg = input?.value;
-        if (!msg) return;
-        try {
-          await ensureCsrfToken();
-          await fetch('/admin/api/message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ channel: ch, message: msg }),
-          });
-          input.value = '';
-          toast(`Sent to ${ch}`, 'success');
-        } catch (e) { toast('Failed to send', 'error'); }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // USERS
-      // ══════════════════════════════════════════════════════════════
-      async function fetchUsers() {
-        const body = document.getElementById('users-body');
-        body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">Loading users...</td></tr>';
-        try {
-          const res = await fetch('/admin/api/users');
-          const data = await res.json();
-          if (!data.users) throw new Error('No users found');
-          body.innerHTML = '';
-          data.users.forEach(user => {
-            const banBtn = user.banned
-              ? `<button class="btn btn-success btn-sm" onclick="doUnban('${user.id}', '${escapeHtml(user.username)}')">Unban</button>`
-              : `<button class="btn btn-danger btn-sm" onclick="doBan('${user.id}', '${escapeHtml(user.username)}')">Ban</button>`;
-            const banBadge = user.banned ? `<span style="color:var(--danger);font-size:11px;display:block;">(Banned)</span>` : '';
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>
-                <strong>${escapeHtml(user.username)}</strong>
-                ${banBadge}
-              </td>
-              <td><code style="font-size:11px;color:var(--text-muted);">${escapeHtml(user.twitch_user_id || 'N/A')}</code></td>
-              <td>
-                <select class="input" style="padding:4px;font-size:12px;width:auto;" onchange="setUserRoleInline('${escapeHtml(user.username)}', this.value)">
-                  <option value="Basic user" ${user.role === 'Basic user' ? 'selected' : ''}>Basic user</option>
-                  <option value="subscriber" ${user.role === 'subscriber' ? 'selected' : ''}>subscriber</option>
-                  <option value="tester" ${user.role === 'tester' ? 'selected' : ''}>Tester</option>
-                  <option value="Staff" ${user.role === 'Staff' ? 'selected' : ''}>Staff</option>
-                  <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                </select>
-                <span id="role-status-${escapeHtml(user.username)}" style="font-size:11px;margin-left:4px;"></span>
-              </td>
-              <td style="display:flex;gap:6px;align-items:center;">
-                <button class="btn btn-primary btn-sm" onclick="openGrantSubModal('${user.id}', '${escapeHtml(user.username)}')">Grant Sub</button>
-                ${banBtn}
-              </td>`;
-            body.appendChild(tr);
-          });
-        } catch (err) {
-          body.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
-        }
-      }
-
-      async function setUserRoleInline(username, role) {
-        const statusEl = document.getElementById(`role-status-${username}`);
-        if (statusEl) { statusEl.textContent = '…'; statusEl.style.color = 'var(--text-muted)'; }
-        try {
-          await ensureCsrfToken();
-          const res = await fetch('/admin/api/users/set-role', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ username, role }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            if (statusEl) { statusEl.textContent = '✓'; statusEl.style.color = 'var(--success)'; setTimeout(() => { statusEl.textContent = ''; }, 2000); }
-          } else {
-            if (statusEl) { statusEl.textContent = '✗'; statusEl.style.color = 'var(--danger)'; }
-            toast(data.error || 'Failed to update role', 'error');
-          }
-        } catch (err) {
-          toast('Network error: ' + err.message, 'error');
-        }
-      }
-
-      function doBan(userId, username) {
-        showPrompt(`Ban ${username}`, [
-          { id: 'reason', label: 'Reason for ban', placeholder: 'Enter reason...' }
-        ], async (vals) => {
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/users/${userId}/ban`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ reason: vals.reason }),
-            });
-            const data = await res.json();
-            if (data.success) { toast(`${username} banned`, 'success'); fetchUsers(); }
-            else toast(data.error || 'Ban failed', 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      function doUnban(userId, username) {
-        showConfirm(`Unban ${username}?`, `This will restore ${username}'s access to the bot.`, async () => {
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/users/${userId}/unban`, {
-              method: 'POST',
-              headers: { 'CSRF-Token': CSRF_TOKEN },
-            });
-            const data = await res.json();
-            if (data.success) { toast(`${username} unbanned`, 'success'); fetchUsers(); }
-            else toast(data.error || 'Unban failed', 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      function openGrantSubModal(userId, username) {
-        showPrompt(`Grant Subscription — ${username}`, [
-          { id: 'days', label: 'Duration (days)', type: 'number', default: '30' },
-          { id: 'tier', label: 'Tier', type: 'select', options: [{ value: 'custom_bot', label: 'Custom Bot (Standard)' }] }
-        ], async (vals) => {
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/users/${userId}/grant-subscription`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ durationDays: parseInt(vals.days) || 30, tier: vals.tier }),
-            });
-            const data = await res.json();
-            if (data.success) { toast(data.message, 'success'); fetchUsers(); }
-            else toast(data.error || 'Grant failed', 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // SUBSCRIPTIONS
-      // ══════════════════════════════════════════════════════════════
-      async function refreshSubscriptionStats() {
-        try {
-          const [statsRes, subsRes] = await Promise.all([
-            fetch('/admin/api/subscription-stats'),
-            fetch('/admin/api/subscriptions'),
-          ]);
-          const stats = await statsRes.json();
-          const subsData = await subsRes.json();
-
-          document.getElementById('stat-twitch-subscribers').textContent = stats.twitchSubscribers ?? 0;
-          document.getElementById('stat-manual-grants').textContent = stats.manualGrants ?? 0;
-          document.getElementById('stat-custom-bots').textContent = stats.customBotUsers ?? 0;
-          document.getElementById('stat-role-bypass').textContent = stats.roleBypass?.total ?? 0;
-          document.getElementById('stat-total-premium').textContent = stats.totalPremiumAccess ?? 0;
-
-          const tbody = document.getElementById('subscribers-table-body');
-          if (subsData.subscriptions?.length) {
-            tbody.innerHTML = subsData.subscriptions.map(sub => `
-              <tr>
-                <td><strong>${escapeHtml(sub.username)}</strong></td>
-                <td>${escapeHtml(tierName(sub.tier))}</td>
-                <td><span style="color:${sub.subscription?.status === 'active' ? 'var(--success)' : 'var(--text-muted)'};">${escapeHtml(sub.subscription?.status || 'active')}</span></td>
-                <td>${sub.customBot ? escapeHtml(sub.customBot.username) : '<span style="color:var(--text-muted);">None</span>'}</td>
-                <td>${sub.subscription?.periodEnd ? new Date(sub.subscription.periodEnd).toLocaleDateString() : '–'}</td>
-                <td>
-                  <button class="btn btn-danger btn-sm" onclick="revokeSubscriptionById(${sub.id}, '${escapeHtml(sub.username)}')">Revoke</button>
-                </td>
-              </tr>`).join('');
-          } else {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No active subscribers</td></tr>';
-          }
-        } catch (err) { console.error('Failed to refresh subscription stats:', err); }
-      }
-
-      function tierName(tier) {
-        const map = { '1000': 'Tier 1', '2000': 'Tier 2', '3000': 'Tier 3', 'custom_bot': 'Manual Grant' };
-        return map[tier] || tier || 'Unknown';
-      }
-
-      async function grantSubscription() {
-        const username = document.getElementById('grant-sub-username').value.trim().toLowerCase();
-        const days = parseInt(document.getElementById('grant-sub-days').value) || 30;
-        const resultDiv = document.getElementById('grant-sub-result');
-        if (!username) { resultDiv.innerHTML = '<span style="color:var(--danger)">Enter a username</span>'; return; }
-        try {
-          const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
-          const searchData = await searchRes.json();
-          const user = searchData.users?.find(u => u.username.toLowerCase() === username);
-          if (!user) { resultDiv.innerHTML = `<span style="color:var(--danger)">User "${escapeHtml(username)}" not found</span>`; return; }
-          await ensureCsrfToken();
-          const res = await fetch(`/admin/api/users/${user.id}/grant-subscription`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ durationDays: days, tier: 'custom_bot' }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            resultDiv.innerHTML = `<span style="color:var(--success)">${escapeHtml(data.message)}</span>`;
-            document.getElementById('grant-sub-username').value = '';
-            refreshSubscriptionStats();
-          } else {
-            resultDiv.innerHTML = `<span style="color:var(--danger)">${escapeHtml(data.error)}</span>`;
-          }
-        } catch (err) { resultDiv.innerHTML = `<span style="color:var(--danger)">Error: ${escapeHtml(err.message)}</span>`; }
-      }
-
-      function revokeSubscriptionById(userId, username) {
-        showConfirm(`Revoke subscription from ${username}?`,
-          `This will remove premium access and deactivate their custom bot.`,
-          async () => {
-            try {
-              await ensureCsrfToken();
-              const res = await fetch(`/admin/api/users/${userId}/revoke-subscription`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              });
-              const data = await res.json();
-              if (data.success) { toast('Subscription revoked', 'success'); refreshSubscriptionStats(); }
-              else toast('Error: ' + data.error, 'error');
-            } catch (err) { toast('Error: ' + err.message, 'error'); }
-          }
-        );
-      }
-
-      async function setUserRoleByUsername() {
-        const username = document.getElementById('set-role-username').value.trim().toLowerCase();
-        const role = document.getElementById('set-role-select').value;
-        const resultDiv = document.getElementById('set-role-result');
-        if (!username) { resultDiv.innerHTML = '<span style="color:var(--danger)">Enter a username</span>'; return; }
-        try {
-          const searchRes = await fetch(`/admin/api/users?search=${encodeURIComponent(username)}`);
-          const searchData = await searchRes.json();
-          const user = searchData.users?.find(u => u.username.toLowerCase() === username);
-          if (!user) { resultDiv.innerHTML = `<span style="color:var(--danger)">User "${escapeHtml(username)}" not found</span>`; return; }
-          await ensureCsrfToken();
-          const res = await fetch(`/admin/api/users/${user.id}/set-role`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ role }),
-          });
-          const data = await res.json();
-          if (data.success) {
-            resultDiv.innerHTML = `<span style="color:var(--success)">${escapeHtml(data.message)}</span>`;
-            document.getElementById('set-role-username').value = '';
-          } else {
-            resultDiv.innerHTML = `<span style="color:var(--danger)">${escapeHtml(data.error)}</span>`;
-          }
-        } catch (err) { resultDiv.innerHTML = `<span style="color:var(--danger)">Error: ${escapeHtml(err.message)}</span>`; }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // DROPS
-      // ══════════════════════════════════════════════════════════════
-      async function loadDropsConfig() {
-        const container = document.getElementById('drops-items-container');
-        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">Loading...</div>';
-        try {
-          const res = await fetch('/admin/api/drops');
-          if (!res.ok) throw new Error('Failed to load');
-          const data = await res.json();
-          document.getElementById('drop-last-updated').value = data.lastUpdated || '';
-          document.getElementById('drop-featured-image').value = data.featuredImage || '';
-          container.innerHTML = '';
-          if (data.drops?.length) data.drops.forEach(drop => addDropItem(drop));
-        } catch (err) { container.innerHTML = `<div style="color:var(--danger)">Error: ${escapeHtml(err.message)}</div>`; }
-      }
-
-      function addDropItem(data = {}) {
-        const container = document.getElementById('drops-items-container');
-        const id = Date.now() + Math.random().toString().slice(2,5);
-        const div = document.createElement('div');
-        div.id = `drop-row-${id}`;
-        div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 38px;gap:8px;align-items:center;background:var(--bg-app);padding:10px;border-radius:6px;border:1px solid var(--border);';
-        div.innerHTML = `
-          <div>
-            <label>Name</label>
-            <input class="input drop-name" value="${escapeHtml(data.name||'')}" placeholder="Item Name">
-          </div>
-          <div>
-            <label>Category</label>
-            <input class="input drop-cat" value="${escapeHtml(data.category||'')}" placeholder="Category">
-          </div>
-          <div>
-            <label>Duration</label>
-            <input class="input drop-dur" value="${escapeHtml(data.duration||'')}" placeholder="e.g. 1 hour">
-          </div>
-          <div style="display:flex;align-items:flex-end;height:100%;">
-            <button class="btn btn-danger btn-sm" onclick="document.getElementById('drop-row-${id}').remove()">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>`;
-        container.appendChild(div);
-      }
-
-      async function saveDropsConfig() {
-        const drops = [];
-        document.querySelectorAll('.drop-edit-row, [id^=drop-row-]').forEach(row => {
-          drops.push({
-            name: row.querySelector('.drop-name').value,
-            category: row.querySelector('.drop-cat').value,
-            duration: row.querySelector('.drop-dur').value,
-            icon: 'circle',
-          });
-        });
-        const config = {
-          lastUpdated: document.getElementById('drop-last-updated').value,
-          featuredImage: document.getElementById('drop-featured-image').value,
-          drops,
-        };
-        try {
-          await ensureCsrfToken();
-          const res = await fetch('/admin/api/drops', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify(config),
-          });
-          const data = await res.json();
-          if (data.success) toast('Drops config saved!', 'success');
-          else toast('Error: ' + data.error, 'error');
-        } catch (err) { toast('Error: ' + err.message, 'error'); }
-      }
-
-      async function handleImageUpload(input) {
-        if (!input.files?.[0]) return;
-        const formData = new FormData();
-        formData.append('image', input.files[0]);
-        try {
-          await ensureCsrfToken();
-          const res = await fetch('/admin/api/upload', {
-            method: 'POST',
-            headers: { 'CSRF-Token': CSRF_TOKEN },
-            body: formData,
-          });
-          const data = await res.json();
-          if (data.success) {
-            document.getElementById('drop-featured-image').value = data.url;
-            toast('Image uploaded!', 'success');
-          } else { toast('Upload failed: ' + data.error, 'error'); }
-        } catch (err) { toast('Error: ' + err.message, 'error'); }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // COMMANDS  (wired to /admin/db/CustomResponse)
-      // ══════════════════════════════════════════════════════════════
-      async function fetchCommands() {
-        const tbody = document.getElementById('commands-body');
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>';
-        try {
-          const res = await fetch('/admin/api/commands');
-          const data = await res.json();
-          if (!data.commands?.length) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted);">No custom commands yet</td></tr>';
-            return;
-          }
-          tbody.innerHTML = data.commands.map(cmd => `
-            <tr>
-              <td><strong style="color:var(--primary);">!${escapeHtml(cmd.command)}</strong></td>
-              <td style="max-width:400px;word-break:break-word;">${escapeHtml(cmd.response)}</td>
-              <td>
-                <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteCommand('${escapeHtml(cmd.command)}')">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>`).join('');
-        } catch (err) {
-          tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
-        }
-      }
-
-      function openAddCommandModal() {
-        showPrompt('Add Custom Command', [
-          { id: 'name', label: 'Command trigger (without !)', placeholder: 'e.g. hello' },
-          { id: 'response', label: 'Response text', placeholder: 'What the bot replies...' },
-        ], async (vals) => {
-          if (!vals.name || !vals.response) { toast('Both fields are required', 'error'); return; }
-          try {
-            await ensureCsrfToken();
-            // Use the DB route which supports full CRUD
-            const res = await fetch('/admin/db/CustomResponse', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ command: vals.name.replace(/^!/, ''), response: vals.response }),
-            });
-            const data = await res.json();
-            if (data.success || data.id || res.ok) {
-              toast('Command added!', 'success');
-              fetchCommands();
-            } else {
-              toast(data.error || 'Failed to add command', 'error');
-            }
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      function deleteCommand(name) {
-        if (window.USER_ROLE !== 'admin') {
-          toast('Only admins can delete commands.', 'error');
-          return;
-        }
-        showConfirm(`Delete !${name}?`, 'This command will be permanently removed.', async () => {
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/commands/${encodeURIComponent(name)}`, {
-              method: 'DELETE',
-              headers: { 'CSRF-Token': CSRF_TOKEN },
-            });
-            if (res.ok) { toast('Command deleted', 'success'); fetchCommands(); }
-            else toast('Failed to delete command', 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // FEEDBACK
-      // ══════════════════════════════════════════════════════════════
-      async function fetchFeedback() {
-        const body = document.getElementById('feedback-body');
-        try {
-          const res = await fetch('/admin/api/feedback');
-          const data = await res.json();
-          if (!data.feedback?.length) {
-            body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No feedback yet</td></tr>';
-            return;
-          }
-          body.innerHTML = data.feedback.map(f => {
-            const date = new Date(f.created_at).toLocaleString();
-            const typeColor = f.type === 'bug' ? 'var(--danger)' : f.type === 'feature' ? 'var(--info)' : 'var(--text-muted)';
-            return `
-              <tr>
-                <td style="font-size:12px;color:var(--text-muted);white-space:nowrap;">${date}</td>
-                <td><strong>${escapeHtml(f.username || 'Anonymous')}</strong></td>
-                <td><span style="color:${typeColor};font-weight:600;font-size:11px;text-transform:uppercase;">${escapeHtml(f.type)}</span></td>
-                <td style="max-width:400px;word-break:break-word;">${escapeHtml(f.message)}</td>
-                <td>
-                  <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteFeedback(${f.id})">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </td>
-              </tr>`;
-          }).join('');
-        } catch (err) {
-          body.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--danger);">Error: ${escapeHtml(err.message)}</td></tr>`;
-        }
-      }
-
-      function deleteFeedback(id) {
-        if (window.USER_ROLE !== 'admin') {
-          toast('Only admins can delete feedback.', 'error');
-          return;
-        }
-        showConfirm('Remove feedback entry?', 'This action cannot be undone.', async () => {
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/feedback/${id}`, {
-              method: 'DELETE',
-              headers: { 'CSRF-Token': CSRF_TOKEN },
-            });
-            if (res.ok) { toast('Feedback removed', 'success'); fetchFeedback(); }
-            else toast('Failed to delete feedback', 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // ANALYTICS
-      // ══════════════════════════════════════════════════════════════
-      async function loadAnalytics() {
-        try {
-          const res = await fetch('/admin/api/analytics');
-          const data = await res.json();
-
-          const totalCommands = data.usageByCommand?.reduce((s,c) => s+c.count, 0) || 0;
-          const totalSuccess = data.usageByCommand?.reduce((s,c) => s+c.successCount, 0) || 0;
-          const successRate = totalCommands > 0 ? ((totalSuccess/totalCommands)*100).toFixed(1) : '0';
-
-          document.getElementById('analytics-total').textContent = data.totalUsage?.toLocaleString() || '0';
-          document.getElementById('analytics-unique').textContent = data.uniqueUsers?.toLocaleString() || '0';
-          document.getElementById('analytics-success').textContent = successRate + '%';
-
-          // Top commands
-          const topList = document.getElementById('top-commands-list');
-          if (data.usageByCommand?.length) {
-            topList.innerHTML = data.usageByCommand.slice(0,5).map((cmd, idx) => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:var(--bg-hover);border-radius:var(--radius);">
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <div style="width:22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">${idx+1}</div>
-                  <div>
-                    <div style="font-weight:600;color:var(--primary);">!${escapeHtml(cmd.command)}</div>
-                    <div style="font-size:11px;color:var(--text-muted);">${cmd.count} uses</div>
-                  </div>
-                </div>
-                <div style="font-size:12px;color:var(--text-muted);">${cmd.successRate.toFixed(1)}% success</div>
-              </div>`).join('');
-          } else {
-            topList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">No commands used yet</div>';
-          }
-
-          // Stats table
-          const statsTable = document.getElementById('command-stats-table');
-          if (data.usageByCommand?.length) {
-            statsTable.innerHTML = data.usageByCommand.map(cmd => `
-              <tr>
-                <td><strong style="color:var(--primary);">!${escapeHtml(cmd.command)}</strong></td>
-                <td>${cmd.count.toLocaleString()}</td>
-                <td><span style="color:${cmd.successRate>=95?'var(--success)':cmd.successRate>=80?'var(--warning)':'var(--danger)'};">${cmd.successRate.toFixed(1)}%</span></td>
-                <td>${cmd.avgResponseTime||0}ms</td>
-              </tr>`).join('');
-          } else {
-            statsTable.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">No data</td></tr>';
-          }
-
-          // Recent commands table
-          const recentTable = document.getElementById('recent-commands-table');
-          if (data.recentCommands?.length) {
-            recentTable.innerHTML = data.recentCommands.slice(0,20).map(cmd => {
-              const t = new Date(cmd.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-              return `
-                <tr>
-                  <td>${t}</td>
-                  <td><strong>!${escapeHtml(cmd.command)}</strong></td>
-                  <td>${escapeHtml(cmd.user)}</td>
-                  <td><span style="color:${cmd.success?'var(--success)':'var(--danger)'};">${cmd.success?'✓ Success':'✗ Failed'}</span></td>
-                  <td>${cmd.responseTime||0}ms</td>
-                </tr>`;
-            }).join('');
-          } else {
-            recentTable.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No recent commands</td></tr>';
-          }
-
-          // Hourly chart
-          const chartContainer = document.getElementById('hourly-chart-container');
-          if (data.hourlyUsage?.length) {
-            const maxCount = Math.max(...data.hourlyUsage.map(h => h.count));
-            chartContainer.innerHTML = `
-              <div style="width:100%;display:flex;align-items:flex-end;gap:3px;height:180px;padding:10px 0;">
-                ${data.hourlyUsage.map(h => {
-                  const height = maxCount ? (h.count/maxCount)*100 : 0;
-                  const hour = new Date(h.hour).getHours();
-                  return `
-                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                      <div style="width:100%;background:var(--bg-hover);border-radius:3px 3px 0 0;position:relative;min-height:100px;">
-                        <div style="position:absolute;bottom:0;width:100%;background:linear-gradient(180deg,var(--primary),var(--primary-hover));height:${height}%;border-radius:3px 3px 0 0;"></div>
-                        ${h.count > 0 ? `<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:600;">${h.count}</div>` : ''}
-                      </div>
-                      <div style="font-size:9px;color:var(--text-muted);">${hour}:00</div>
-                    </div>`;
-                }).join('')}
-              </div>`;
-          } else {
-            chartContainer.innerHTML = '<div style="text-align:center;color:var(--text-muted);">No data for the last 24 hours</div>';
-          }
-        } catch (err) { console.error('Failed to load analytics:', err); }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // BROADCAST
-      // ══════════════════════════════════════════════════════════════
-      async function sendBroadcast() {
-        if (window.USER_ROLE !== 'admin') {
-          toast('Only admins can broadcast messages.', 'error');
-          return;
-        }
-        const msg = document.getElementById('broadcast-msg').value;
-        if (!msg) { toast('Message is required', 'error'); return; }
-        const targets = selectedChannels.size > 0 ? Array.from(selectedChannels) : null;
-        try {
-          await ensureCsrfToken();
-          if (targets) {
-            for (const ch of targets) {
-              await fetch('/admin/api/message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-                body: JSON.stringify({ channel: ch, message: msg }),
-              });
-            }
-          } else {
-            await fetch('/admin/api/message', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ message: msg }),
-            });
-          }
-          document.getElementById('broadcast-msg').value = '';
-          toast('Broadcast sent!', 'success');
-        } catch (e) { toast('Broadcast failed', 'error'); }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // LOGS
-      // ══════════════════════════════════════════════════════════════
-      async function fetchLogs() {
-        try {
-          const res = await fetch('/admin/api/logs');
-          const logs = await res.json();
-          const viewer = document.getElementById('logs-viewer');
-          viewer.innerHTML = '';
-          if (logs.entries) {
-            logs.entries.forEach(entry => {
-              const time = new Date(entry.timestamp).toLocaleTimeString();
-              const cls = entry.level === 'info' ? 'log-info' : entry.level === 'warn' ? 'log-warn' : 'log-error';
-              viewer.innerHTML += `
-                <div class="log-entry">
-                  <span class="log-time">[${time}]</span>
-                  <span class="${cls}">${escapeHtml(entry.message)}</span>
-                </div>`;
-            });
-            viewer.scrollTop = viewer.scrollHeight;
-          }
-        } catch (e) { console.error('Failed to fetch logs:', e); }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // DATABASE EDITOR
-      // ══════════════════════════════════════════════════════════════
-      async function loadDbTable() {
-        const table = document.getElementById('db-table-select').value;
-        const container = document.getElementById('db-editor-container');
-        container.innerHTML = '<div style="color:var(--text-muted);padding:20px;">Loading...</div>';
-        try {
-          const res = await fetch(`/admin/db/${table}`);
-          const data = await res.json();
-          const rows = data.rows || [];
-          if (!rows.length) {
-            container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">No records found</div>';
-            return;
-          }
-          const keys = Object.keys(rows[0]);
-          let html = '<div class="card"><div class="table-container"><table><thead><tr>';
-          keys.forEach(k => { html += `<th>${escapeHtml(k)}</th>`; });
-          html += '<th>Actions</th></tr></thead><tbody>';
-          rows.forEach(row => {
-            html += '<tr>';
-            keys.forEach(k => {
-              let val = row[k] !== null ? String(row[k]) : '';
-              if (table === 'Channels' && k.includes('token')) val = '••••••';
-              html += `<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(val)}</td>`;
-            });
-            const id = row[keys[0]];
-            html += `<td><button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick='deleteDbRow("${table}","${id}")'><i class="fas fa-trash"></i></button></td></tr>`;
-          });
-          html += '</tbody></table></div></div>';
-          container.innerHTML = html;
-        } catch (err) {
-          container.innerHTML = `<div style="color:var(--danger);padding:20px;">Error: ${escapeHtml(err.message)}</div>`;
-        }
-      }
-
-      function deleteDbRow(table, id) {
-        showConfirm('Delete row?', `Permanently remove row ${id} from ${table}.`, async () => {
-          await fetch(`/admin/db/${table}/${id}`, { method: 'DELETE' });
-          loadDbTable();
-        });
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // SIMPLE AUTH (Analyst Access)
-      // ══════════════════════════════════════════════════════════════
-      async function fetchSimpleUsers() {
-        const tbody = document.getElementById('simple-users-body');
-        try {
-          const res = await fetch('/admin/api/simple-users');
-          const users = await res.json();
-          if (!users.length) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">No users found</td></tr>';
-            return;
-          }
-          tbody.innerHTML = users.map(u => `
-            <tr>
-              <td><strong>${escapeHtml(u.username)}</strong></td>
-              <td>${escapeHtml(u.role)}</td>
-              <td style="color:var(--text-muted);font-size:12px;">${new Date(u.createdAt).toLocaleDateString()}</td>
-              <td>
-                <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="deleteSimpleUser('${escapeHtml(u.username)}')">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>`).join('');
-        } catch (err) { console.error(err); }
-      }
-
-      function openAddSimpleUserModal() {
-        showPrompt('Add Analyst User', [
-          { id: 'username', label: 'Username', placeholder: 'Username' },
-          { id: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
-          { id: 'role', label: 'Role', type: 'select', options: [{ value: 'analyst', label: 'Analyst' }, { value: 'admin', label: 'Admin' }] },
-        ], async (vals) => {
-          if (!vals.username || !vals.password) { toast('Username and password required', 'error'); return; }
-          try {
-            await ensureCsrfToken();
-            const res = await fetch('/admin/api/simple-users', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ username: vals.username, password: vals.password, role: vals.role }),
-            });
-            const data = await res.json();
-            if (data.success) { toast('User added', 'success'); fetchSimpleUsers(); }
-            else toast('Error: ' + data.error, 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      function deleteSimpleUser(username) {
-        showConfirm(`Delete user ${username}?`, 'This will remove their login access.', async () => {
-          try {
-            await ensureCsrfToken();
-            const res = await fetch(`/admin/api/simple-users/${encodeURIComponent(username)}`, {
-              method: 'DELETE',
-              headers: { 'CSRF-Token': CSRF_TOKEN },
-            });
-            const data = await res.json();
-            if (data.success) { toast('User deleted', 'success'); fetchSimpleUsers(); }
-            else toast('Error: ' + data.error, 'error');
-          } catch (err) { toast('Error: ' + err.message, 'error'); }
-        });
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // SETTINGS
-      // ══════════════════════════════════════════════════════════════
-      function loadSettings() {
-        const key = localStorage.getItem(API_KEY_STORAGE);
-        if (key) document.getElementById('settings-api-key').value = key;
-      }
-
-      function saveSettings() {
-        const key = document.getElementById('settings-api-key').value;
-        localStorage.setItem(API_KEY_STORAGE, key);
-        toast('API key saved', 'success');
-      }
-
-      function getApiKey() {
-        return document.getElementById('settings-api-key').value || localStorage.getItem(API_KEY_STORAGE);
-      }
-
-      async function loadDashboardToggleState() {
-        try {
-          const res = await fetch('/admin/api/user-dashboard-access');
-          const d = await res.json();
-          const btn = document.getElementById('toggle-dashboard-btn');
-          btn.textContent = d.enabled ? 'Enabled' : 'Disabled';
-          btn.className = d.enabled ? 'btn btn-success' : 'btn btn-danger';
-        } catch (e) {}
-      }
-
-      async function toggleUserDashboard() {
-        const btn = document.getElementById('toggle-dashboard-btn');
-        const newState = btn.textContent.trim() !== 'Enabled';
-        await ensureCsrfToken();
-        const res = await fetch('/admin/api/user-dashboard-access', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-          body: JSON.stringify({ enabled: newState }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          btn.textContent = newState ? 'Enabled' : 'Disabled';
-          btn.className = newState ? 'btn btn-success' : 'btn btn-danger';
-          toast(`User dashboard ${newState ? 'enabled' : 'disabled'}`, 'success');
-        }
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // BOT ACTIONS
-      // ══════════════════════════════════════════════════════════════
-      async function restartBot() {
-        const key = getApiKey();
-        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
-        showConfirm('Restart Bot?', 'This will restart the bot process via PM2.', async () => {
-          await ensureCsrfToken();
-          const res = await fetch('/admin/api/restart-bot', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-            body: JSON.stringify({ key }),
-          });
-          const data = await res.json();
-          if (data.success) toast('Restarting bot...', 'success');
-          else toast('Restart failed', 'error');
-        });
-      }
-
-      async function pauseBot() { toast('Pause bot is not yet implemented', 'warning'); }
-      async function resumeBot() { toast('Resume bot is not yet implemented', 'warning'); }
-
-      async function refreshBotToken() {
-        await ensureCsrfToken();
-        const res = await fetch('/admin/api/refresh-bot-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-          body: JSON.stringify({}),
-        });
-        const data = await res.json();
-        toast(data.success ? 'Token refresh requested' : 'Refresh failed', data.success ? 'success' : 'error');
-      }
-
-      async function triggerDeploy() {
-        const key = getApiKey();
-        if (!key) { toast('API Key required. Set it in System → Settings.', 'error'); return; }
-        showConfirm('Deploy Update?', 'This will pull the latest code from Git and restart the bot.', async () => {
-          const statusEl = document.getElementById('action-status');
-          await ensureCsrfToken();
-          try {
-            const res = await fetch('/admin/api/deploy', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'CSRF-Token': CSRF_TOKEN },
-              body: JSON.stringify({ key }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              toast('Deploy initiated. Bot restarting...', 'success');
-              if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)">Deploy initiated</span>';
-            } else {
-              toast('Deploy failed: ' + (data.error || data.message || 'Unknown error'), 'error');
-              if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger)">Deploy failed</span>';
-            }
-          } catch (e) {
-            toast('Deploy request failed', 'error');
-          }
-        });
-      }
-
-      // ══════════════════════════════════════════════════════════════
-      // UTILITIES
-      // ══════════════════════════════════════════════════════════════
-      async function ensureCsrfToken() {
-        if (CSRF_TOKEN) return CSRF_TOKEN;
-        try {
-          const res = await fetch('/admin/api/csrf');
-          const data = await res.json();
-          CSRF_TOKEN = data?.csrfToken || null;
-        } catch {}
-        return CSRF_TOKEN;
-      }
-
-      function escapeHtml(text) {
-        if (text === null || text === undefined) return '';
-        return String(text)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-      }
-
-      // Initial load of dashboard toggle for Settings (lazy)
-      document.getElementById('section-system')
-        ?.querySelector('.subtab[onclick*="settings"]')
-        ?.addEventListener('click', loadDashboardToggleState);
-    </script>
-  </body>
+    }
+    async function loadHealth() {
+      const container = document.getElementById('health-content');
+      container.innerHTML = '<div class="loading">Loading diagnostics</div>';
+      try {
+        const data = await api(`/admin/api/operations/health?range=${encodeURIComponent(document.getElementById('health-range').value)}`);
+        const stale = Date.now() - new Date(data.observedAt).getTime() > 60000;
+        container.innerHTML = `<div class="metrics"><div><div class="metric-label">Status</div><div class="metric-value">${escapeHtml(data.status)}</div></div><div><div class="metric-label">Uptime</div><div class="metric-value">${formatNumber(data.bot.uptimeSeconds)}s</div></div><div><div class="metric-label">Samples</div><div class="metric-value">${formatNumber(data.performanceHistory.length)}</div></div><div><div class="metric-label">Freshness</div><div class="metric-value ${stale ? 'stale' : ''}">${stale ? 'Stale' : 'Current'}</div></div></div>`;
+      } catch (error) { container.innerHTML = `<div class="panel-error">${escapeHtml(error.message)}</div>`; }
+    }
+    document.getElementById('health-range').addEventListener('change', loadHealth);
+
+    function table(headers, rows) {
+      if (!rows.length) return '<div class="empty">No records found.</div>';
+      return `<div class="table-wrap"><table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+    }
+    async function loadChannels() {
+      const container = document.getElementById('channels-content');
+      try {
+        const data = await api('/admin/api/channels');
+        state.channels = data.channels;
+        container.innerHTML = table(['Channel','Role','Bot','State'], data.channels.map((channel) => `<tr><td>${escapeHtml(channel.username)}</td><td>${escapeHtml(channel.role)}</td><td>${channel.botEnabled ? 'Enabled' : 'Disabled'}</td><td>${channel.banned ? 'Banned' : 'Active'}</td></tr>`));
+      } catch (error) { container.innerHTML = `<div class="panel-error">${escapeHtml(error.message)}</div>`; }
+    }
+    async function loadUsers() {
+      const container = document.getElementById('users-content');
+      const search = document.getElementById('user-search').value.trim();
+      try {
+        const data = await api(`/admin/api/users${search ? `?search=${encodeURIComponent(search)}` : ''}`);
+        container.innerHTML = table(['User','Role','Subscription','State','Actions'], data.users.map((user) => `<tr><td>${escapeHtml(user.username)}</td><td>${escapeHtml(user.role)}</td><td>${user.hasSubscription ? escapeHtml(user.subscriptionTier || 'Active') : 'None'}</td><td>${user.banned ? 'Banned' : 'Active'}</td><td><div class="actions"><button class="btn" onclick="changeRole(${user.id}, '${escapeHtml(user.role)}')">Role</button><button class="btn ${user.banned ? '' : 'btn-danger'}" onclick="${user.banned ? 'unbanUser' : 'banUser'}(${user.id})">${user.banned ? 'Unban' : 'Ban'}</button><button class="btn" onclick="${user.hasSubscription ? 'revokeSubscription' : 'grantSubscription'}(${user.id})">${user.hasSubscription ? 'Revoke sub' : 'Grant sub'}</button></div></td></tr>`));
+      } catch (error) { container.innerHTML = `<div class="panel-error">${escapeHtml(error.message)}</div>`; }
+    }
+    document.getElementById('user-search-button').addEventListener('click', loadUsers);
+    async function changeRole(id, current) {
+      const role = prompt('New role: Basic user, tester, analyst, Staff, admin', current);
+      if (!role) return;
+      try { await api(`/admin/api/users/${id}/set-role`, { method:'POST', body:JSON.stringify({ role }) }); toast('Role updated'); loadUsers(); } catch (error) { toast(error.message); }
+    }
+    async function banUser(id) {
+      const reason = prompt('Ban reason');
+      if (reason === null) return;
+      try { await api(`/admin/api/users/${id}/ban`, { method:'POST', body:JSON.stringify({ reason }) }); toast('User banned'); loadUsers(); } catch (error) { toast(error.message); }
+    }
+    async function unbanUser(id) {
+      try { await api(`/admin/api/users/${id}/unban`, { method:'POST', body:'{}' }); toast('User unbanned'); loadUsers(); } catch (error) { toast(error.message); }
+    }
+    async function grantSubscription(id) {
+      try { await api(`/admin/api/users/${id}/grant-subscription`, { method:'POST', body:JSON.stringify({ durationDays:30, tier:'custom_bot' }) }); toast('Subscription granted'); loadUsers(); } catch (error) { toast(error.message); }
+    }
+    async function revokeSubscription(id) {
+      try { await api(`/admin/api/users/${id}/revoke-subscription`, { method:'POST', body:'{}' }); toast('Subscription revoked'); loadUsers(); } catch (error) { toast(error.message); }
+    }
+
+    async function loadMessageChannels() {
+      if (!state.channels.length) await loadChannels();
+      document.getElementById('message-channels').innerHTML = state.channels.map((channel) => `<label class="channel-option"><input type="checkbox" value="${escapeHtml(channel.username)}"> ${escapeHtml(channel.username)}</label>`).join('');
+      document.querySelectorAll('#message-channels input').forEach((input) => input.addEventListener('change', updateSelectedCount));
+      updateSelectedCount();
+    }
+    function updateSelectedCount() {
+      document.getElementById('selected-count').textContent = `${document.querySelectorAll('#message-channels input:checked').length} selected`;
+    }
+    document.getElementById('send-message-button').addEventListener('click', async () => {
+      const channels = [...document.querySelectorAll('#message-channels input:checked')].map((input) => input.value);
+      const message = document.getElementById('message-text').value.trim();
+      try { const data = await api('/admin/api/message', { method:'POST', body:JSON.stringify({ channels, message }) }); toast(`Sent to ${data.results.filter((result) => result.success).length} channel(s)`); } catch (error) { toast(error.message); }
+    });
+
+    async function loadDrops() {
+      try { const data = await api('/admin/api/drops'); document.getElementById('drops-json').value = JSON.stringify(data, null, 2); } catch (error) { toast(error.message); }
+    }
+    document.getElementById('save-drops-button').addEventListener('click', async () => {
+      try { const value = JSON.parse(document.getElementById('drops-json').value); await api('/admin/api/drops', { method:'POST', body:JSON.stringify(value) }); toast('Drops saved'); } catch (error) { toast(error.message); }
+    });
+    document.getElementById('upload-drop-button').addEventListener('click', async () => {
+      const file = document.getElementById('drop-image').files[0];
+      if (!file) return toast('Choose an image');
+      const body = new FormData(); body.append('image', file);
+      try { const result = await api('/admin/api/upload', { method:'POST', body }); toast(`Uploaded ${result.url}`); } catch (error) { toast(error.message); }
+    });
+    async function loadAudit() {
+      const container = document.getElementById('audit-content');
+      try {
+        const data = await api('/admin/api/operations/audit?limit=50');
+        container.innerHTML = table(['Actor','Action','Target','Outcome','Time'], data.events.map((event) => `<tr><td>${escapeHtml(event.actor)} <span class="time">${escapeHtml(event.actorRole)}</span></td><td>${escapeHtml(event.action)}</td><td>${escapeHtml(event.target || '—')}</td><td>${escapeHtml(event.outcome)}</td><td>${timeAgo(event.timestamp)}</td></tr>`));
+      } catch (error) { container.innerHTML = `<div class="panel-error">${escapeHtml(error.message)}</div>`; }
+    }
+
+    async function bootstrap() {
+      try {
+        const [me, csrf] = await Promise.all([api('/admin/api/me'), api('/admin/api/csrf')]);
+        state.csrf = csrf.csrfToken;
+        document.getElementById('actor-name').textContent = me.username || 'Admin';
+        document.getElementById('actor-role').textContent = me.role;
+        applyRole(me.role);
+        if (me.role === 'admin') loadOverview(); else loadDrops();
+      } catch { location.href = '/admin/login'; }
+    }
+    bootstrap();
+    setInterval(() => { if (state.role === 'admin' && document.getElementById('view-overview').classList.contains('active')) loadOverview(); }, 30000);
+  </script>
+</body>
 </html>

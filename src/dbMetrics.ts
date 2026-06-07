@@ -153,6 +153,56 @@ Referral.init(
   }
 );
 
+export class OperationalEvent extends Model {}
+OperationalEvent.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    type: { type: DataTypes.STRING(64), allowNull: false },
+    severity: { type: DataTypes.STRING(16), allowNull: false, defaultValue: "info" },
+    channel: { type: DataTypes.STRING(100), allowNull: true },
+    durationMs: { type: DataTypes.INTEGER, allowNull: true },
+    attemptCount: { type: DataTypes.INTEGER, allowNull: true },
+    reasonCode: { type: DataTypes.STRING(80), allowNull: true },
+    outcome: { type: DataTypes.STRING(24), allowNull: true },
+    timestamp: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize: sequelizeMetrics,
+    modelName: "OperationalEvent",
+    tableName: "OperationalEvents",
+    timestamps: false,
+    indexes: [
+      { fields: ["timestamp"] },
+      { fields: ["type", "timestamp"] },
+      { fields: ["channel", "timestamp"] },
+    ],
+  }
+);
+
+export class AdminAuditEvent extends Model {}
+AdminAuditEvent.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    actor: { type: DataTypes.STRING(100), allowNull: false },
+    actorRole: { type: DataTypes.STRING(32), allowNull: false },
+    action: { type: DataTypes.STRING(64), allowNull: false },
+    target: { type: DataTypes.STRING(255), allowNull: true },
+    outcome: { type: DataTypes.STRING(24), allowNull: false },
+    timestamp: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize: sequelizeMetrics,
+    modelName: "AdminAuditEvent",
+    tableName: "AdminAuditEvents",
+    timestamps: false,
+    indexes: [
+      { fields: ["timestamp"] },
+      { fields: ["actor", "timestamp"] },
+      { fields: ["action", "timestamp"] },
+    ],
+  }
+);
+
 export const metricsDbReady = sequelizeMetrics
   .sync()
   .then(async () => {
@@ -199,7 +249,7 @@ export const metricsDbReady = sequelizeMetrics
   .then(() => {
     // Start periodic cleanup of old metrics (e.g., every 24 hours)
     const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
-    setInterval(async () => {
+    const cleanupTimer = setInterval(async () => {
       try {
         const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -220,6 +270,7 @@ export const metricsDbReady = sequelizeMetrics
         logger.error("[metrics-db] Failed to clean up old metrics:", err);
       }
     }, CLEANUP_INTERVAL);
+    cleanupTimer.unref();
   })
   .catch((err) => {
     logger.error("[metrics-db] failed to sync:", err);

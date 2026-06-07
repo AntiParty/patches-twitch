@@ -7,6 +7,7 @@ import { trackMessageIn, trackMessageOut } from "./messageRateTracker";
 import { refreshToken as getAppAccessToken } from "./twitchUtils";
 import { sendWarningToDiscord } from "../handlers/discordHandler";
 import { getChatDropResolution } from "./chatDropResolution";
+import { recordOperationalEvent } from "../services/operationalEvents.service";
 
 interface IRCClient {
   socket: net.Socket;
@@ -241,12 +242,27 @@ async function handleReconnect(username: string, commandHandler: Record<string, 
 
   const delay = getReconnectDelay(client.reconnectAttempts);
   logger.info(`[DEBUG] Attempting to reconnect ${username} in ${delay}ms (attempt ${client.reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+  void recordOperationalEvent({
+    type: "irc_reconnect_started",
+    severity: "warning",
+    channel: username,
+    attemptCount: client.reconnectAttempts + 1,
+    durationMs: delay,
+  });
 
   client.reconnectTimeout = setTimeout(async () => {
     try {
       await reconnectChatBot(username, commandHandler);
+      const recoveredAttemptCount = client.reconnectAttempts + 1;
       client.reconnectAttempts = 0; // Reset attempts on successful reconnection
       logger.info(`[DEBUG] Successfully reconnected bot for ${username}`);
+      void recordOperationalEvent({
+        type: "irc_recovered",
+        severity: "info",
+        channel: username,
+        attemptCount: recoveredAttemptCount,
+        outcome: "success",
+      });
     } catch (err) {
       client.reconnectAttempts++;
       logger.error(`[DEBUG] Reconnection failed for ${username}:`, err);
@@ -567,6 +583,12 @@ export const startChatBot = async (
         connectingChannels.delete(sanitizedUsername);
       }
       logger.info(`[DEBUG] Bot authenticated and joined #${sanitizedUsername}`);
+      void recordOperationalEvent({
+        type: "irc_connected",
+        severity: "info",
+        channel: sanitizedUsername,
+        outcome: "success",
+      });
       settleAuthResult(true);
     }
 
@@ -802,6 +824,12 @@ export const startChatBot = async (
   });
   socket.on("close", () => {
     logger.info(`[DEBUG] IRC closed for ${sanitizedUsername}`);
+    void recordOperationalEvent({
+      type: "irc_disconnected",
+      severity: clients[sanitizedUsername]?.intentionalDisconnect ? "info" : "warning",
+      channel: sanitizedUsername,
+      reasonCode: clients[sanitizedUsername]?.intentionalDisconnect ? "intentional" : "socket_closed",
+    });
     // Always clear the heartbeat interval
     clearInterval(heartbeat);
     // Belt-and-suspenders: also clear any lingering start-guard entry.

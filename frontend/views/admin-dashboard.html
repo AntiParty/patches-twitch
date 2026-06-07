@@ -34,39 +34,52 @@
     button, input, select, textarea { font: inherit; }
     button { min-height: 40px; }
     button:active { transform: scale(0.96); }
-    .shell { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100vh; }
+    .shell { display: grid; grid-template-columns: 244px minmax(0, 1fr); min-height: 100vh; }
     .sidebar {
       position: sticky;
       top: 0;
       height: 100vh;
-      padding: 24px 16px;
-      background: var(--sidebar);
+      padding: 20px 14px;
+      background: linear-gradient(180deg, #080808 0%, #030303 100%);
       border-right: 1px solid var(--border);
     }
-    .brand { padding: 0 10px 26px; font-size: 17px; font-weight: 850; letter-spacing: -.03em; }
-    .brand b { color: var(--primary); }
-    .nav-label { margin: 20px 10px 7px; color: #555; font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 26px; font-size: 16px; font-weight: 850;
+    letter-spacing: -.03em; }
+    .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #fff;
+    background: var(--primary); box-shadow: 0 10px 28px rgba(237,27,47,.18); }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-copy b { color: #fff; }
+    .brand-copy span { margin-top: 4px; color: #666; font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    }
+    .nav-label { margin: 17px 12px 7px; color: #484848; font-size: 9px; font-weight: 850; letter-spacing: .16em;
+    text-transform: uppercase; }
     .nav-button {
       width: 100%;
-      display: flex;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
       align-items: center;
-      gap: 10px;
-      min-height: 44px;
-      padding: 0 12px;
+      gap: 8px;
+      min-height: 48px;
+      padding: 5px 8px;
       margin: 3px 0;
       border: 0;
-      border-radius: 8px;
+      border-radius: 12px;
       background: transparent;
       color: var(--muted);
       cursor: pointer;
       text-align: left;
       font-weight: 750;
-      transition-property: background-color, color, transform;
+      transition-property: background-color, color, transform, box-shadow;
       transition-duration: 160ms;
     }
-    .nav-button:hover { background: #0e0e0e; color: var(--text); }
-    .nav-button.active { color: #fff; background: #141414; box-shadow: inset 3px 0 var(--primary); }
-    .nav-dot { width: 8px; height: 8px; border-radius: 3px; background: currentColor; opacity: .75; }
+    .nav-button:hover { background: #101010; color: var(--text); }
+    .nav-button:focus-visible { outline: 2px solid rgba(237,27,47,.7); outline-offset: 2px; }
+    .nav-button.active { color: #fff; background: #151515; box-shadow: inset 0 0 0 1px #202020; }
+    .nav-icon { width: 38px; height: 38px; padding: 10px; border-radius: 10px; color: #777; transition: color 160ms
+    ease, background-color 160ms ease, box-shadow 160ms ease; }
+    .nav-button:hover .nav-icon { color: #bbb; }
+    .nav-button.active .nav-icon { color: #fff; background: var(--primary); box-shadow: 0 8px 22px rgba(237,27,47,.22);
+    }
     body:not(.role-admin) .admin-only { display: none !important; }
     body:not(.role-admin):not(.role-staff) .staff-only { display: none !important; }
     body.role-staff .mobile-navigation { grid-template-columns: 1fr; }
@@ -141,6 +154,26 @@
     .empty, .panel-error, .loading { padding: 28px; color: var(--muted); text-align: center; }
     .panel-error { color: var(--danger); }
     .stale { color: var(--warning); font-size: 11px; }
+    .drops-stack { display: grid; gap: 16px; }
+    .drops-card { padding: 20px; }
+    .drops-card-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom:
+    18px; }
+    .drops-card-header h2 { margin: 0; font-size: 17px; }
+    .drops-settings { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(320px, 1.2fr); gap: 16px; }
+    .field { display: grid; gap: 7px; color: #c9c0ad; font-size: 12px; }
+    .upload-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+    .drop-rows { display: grid; gap: 10px; }
+    .drop-row { display: grid; grid-template-columns: minmax(200px, 2fr) minmax(160px, 1fr) minmax(140px, 1fr) 68px;
+    gap: 9px; align-items: end; padding: 12px; border: 1px solid #1b1d20; border-radius: 10px; background: #070809; }
+    .drop-remove { min-height: 44px; padding: 0 9px; color: #ff4d61; border-color: rgba(255,77,97,.28); background:
+    rgba(255,35,64,.08); }
+    .drop-remove:hover { background: rgba(255,35,64,.16); }
+    .drop-empty { padding: 32px 16px; border: 1px dashed #282828; border-radius: 10px; color: var(--muted); text-align:
+    center; }
+    .save-bar { position: sticky; bottom: 14px; display: flex; justify-content: flex-end; padding: 12px; border: 1px
+    solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(8,8,8,.9); backdrop-filter: blur(16px);
+    box-shadow: 0 16px 50px rgba(0,0,0,.45); }
+    #add-drop-button { white-space: nowrap; }
     .mobile-navigation { display: none; }
     .toast { position: fixed; right: 18px; bottom: 18px; z-index: 20; max-width: 360px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 9px; background: #111; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
     @media (max-width: 980px) {
@@ -171,25 +204,79 @@
         background: rgba(4,4,4,.97);
         backdrop-filter: blur(14px);
       }
-      .mobile-navigation .nav-button { min-height: 54px; padding: 6px 3px; margin: 0; flex-direction: column; justify-content: center; gap: 4px; font-size: 10px; text-align: center; }
+      .mobile-navigation .nav-button { display: flex; min-height: 54px; padding: 6px 3px; margin: 0; flex-direction:
+      column; justify-content: center; gap: 4px; font-size: 10px; text-align: center; }
       .mobile-navigation .nav-button.active { box-shadow: inset 0 2px var(--primary); }
-      .mobile-navigation .nav-dot { width: 15px; height: 15px; border-radius: 5px; }
+      .mobile-navigation .nav-icon { width: 30px; height: 30px; padding: 7px; }
+      .drops-settings, .drop-row { grid-template-columns: 1fr; }
+      .drop-remove { width: 100%; }
+      .upload-field { grid-template-columns: 1fr; }
+      .save-bar { bottom: 76px; }
     }
   </style>
 </head>
 <body>
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute">
+    <symbol id="icon-overview" viewBox="0 0 24 24">
+      <path d="M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-health" viewBox="0 0 24 24">
+      <path
+        d="M3 12h4l2-5 4 10 2-5h6M5 5.5A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 7 .5c2.1 2.2 2 5.6-.2 7.8L12 21l-6.8-6.7A5.5 5.5 0 0 1 5 5.5Z"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    </symbol>
+    <symbol id="icon-channels" viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+      <path d="m10 9 5 3-5 3V9Z" fill="currentColor" />
+    </symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24">
+      <path
+        d="M16 20v-1.5A4.5 4.5 0 0 0 11.5 14h-4A4.5 4.5 0 0 0 3 18.5V20M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7-1a3 3 0 0 1 0 6m1.5 0a4 4 0 0 1 3 3.9V20"
+        fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-message" viewBox="0 0 24 24">
+      <path d="M5 5h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 3v-4.2A2 2 0 0 1 3 15V7a2 2 0 0 1 2-2Z" fill="none"
+        stroke="currentColor" stroke-width="1.8" />
+      <path d="M7 9h10M7 13h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-drops" viewBox="0 0 24 24">
+      <path d="M12 3s6 6.3 6 11a6 6 0 0 1-12 0c0-4.7 6-11 6-11Z" fill="none" stroke="currentColor" stroke-width="1.8" />
+      <path d="M9 15.5a3.2 3.2 0 0 0 3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+    <symbol id="icon-audit" viewBox="0 0 24 24">
+      <path d="M7 4h10M7 8h10M7 12h6M5 2h14a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="none"
+        stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+      <path d="m14.5 17 1.5 1.5 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+    </symbol>
+  </svg>
   <div class="shell" data-dashboard-shell="admin-operations">
     <aside class="sidebar">
-      <div class="brand"><b>FinalsRS</b> Operations</div>
+      <div class="brand"><span class="brand-mark">F</span><span
+          class="brand-copy"><b>FinalsRS</b><span>Operations</span></span></div>
       <nav id="desktop-navigation">
-        <button class="nav-button admin-only active" data-view="overview"><span class="nav-dot"></span>Overview</button>
-        <button class="nav-button admin-only" data-view="health"><span class="nav-dot"></span>Bot Health</button>
+        <div class="nav-label admin-only">Operations</div>
+        <button class="nav-button admin-only active" data-view="overview"><svg class="nav-icon">
+            <use href="#icon-overview"></use>
+          </svg><span>Overview</span></button>
+        <button class="nav-button admin-only" data-view="health"><svg class="nav-icon">
+            <use href="#icon-health"></use>
+          </svg><span>Bot Health</span></button>
         <div class="nav-label admin-only">Management</div>
-        <button class="nav-button admin-only" data-view="channels"><span class="nav-dot"></span>Channels</button>
-        <button class="nav-button admin-only" data-view="users"><span class="nav-dot"></span>Users</button>
-        <button class="nav-button admin-only" data-view="message"><span class="nav-dot"></span>Message Bot</button>
-        <button class="nav-button staff-only" data-view="drops"><span class="nav-dot"></span>Drops</button>
-        <button class="nav-button admin-only" data-view="audit"><span class="nav-dot"></span>Audit Activity</button>
+        <button class="nav-button admin-only" data-view="channels"><svg class="nav-icon">
+            <use href="#icon-channels"></use>
+          </svg><span>Channels</span></button>
+        <button class="nav-button admin-only" data-view="users"><svg class="nav-icon">
+            <use href="#icon-users"></use>
+          </svg><span>Users</span></button>
+        <button class="nav-button admin-only" data-view="message"><svg class="nav-icon">
+            <use href="#icon-message"></use>
+          </svg><span>Message Bot</span></button>
+        <button class="nav-button staff-only" data-view="drops"><svg class="nav-icon">
+            <use href="#icon-drops"></use>
+          </svg><span>Drops</span></button>
+        <button class="nav-button admin-only" data-view="audit"><svg class="nav-icon">
+            <use href="#icon-audit"></use>
+          </svg><span>Audit Activity</span></button>
       </nav>
       <div class="sidebar-footer"><strong id="actor-name">Loading</strong><span id="actor-role">Checking access</span></div>
     </aside>
@@ -252,11 +339,42 @@
       </section>
 
       <section class="view staff-only" id="view-drops">
-        <header class="page-header"><div><div class="kicker">Content</div><h1>Drops</h1><p class="subtitle">Staff and admins can update the validated Drops configuration.</p></div></header>
-        <div class="card">
-          <label for="drops-json" class="metric-label">Configuration</label>
-          <textarea class="textarea" id="drops-json" style="min-height:360px;font-family:ui-monospace,monospace"></textarea>
-          <div class="toolbar" style="margin-top:12px"><button class="btn btn-primary" id="save-drops-button">Save Drops</button><input class="input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="drop-image" style="max-width:320px"><button class="btn" id="upload-drop-button">Upload image</button></div>
+        <header class="page-header">
+          <div>
+            <div class="kicker">Staff Workspace</div>
+            <h1>Drops</h1>
+            <p class="subtitle">Manage the public Drops page and the !drops command without editing JSON.</p>
+          </div>
+        </header>
+        <div class="drops-stack">
+          <div class="card drops-card">
+            <div class="drops-card-header">
+              <div>
+                <h2>Global Settings</h2>
+                <p class="subtitle">Shared information displayed above the active Drops.</p>
+              </div>
+            </div>
+            <div class="drops-settings">
+              <label class="field">Last Updated Text<input class="input" id="drops-last-updated"
+                  placeholder="June 7, 2026"></label>
+              <div class="upload-field">
+                <label class="field">Featured Image URL<input class="input" id="drops-featured-image"
+                    placeholder="/uploads/drop.webp"></label>
+                <div><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" id="drop-image"
+                    hidden><button class="btn" id="upload-drop-button">Upload image</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="card drops-card">
+            <div class="drops-card-header">
+              <div>
+                <h2>Active Drops</h2>
+                <p class="subtitle">Add current rewards and remove anything no longer available.</p>
+              </div><button class="btn" id="add-drop-button">+ Add Item</button>
+            </div>
+            <div class="drop-rows" id="drops-list"></div>
+          </div>
+          <div class="save-bar"><button class="btn btn-primary" id="save-drops-button">Save Changes</button></div>
         </div>
       </section>
 
@@ -268,15 +386,25 @@
   </div>
 
   <nav class="mobile-navigation" id="mobile-navigation">
-    <button class="nav-button admin-only active" data-view="overview"><span class="nav-dot"></span>Overview</button>
-    <button class="nav-button admin-only" data-view="health"><span class="nav-dot"></span>Health</button>
-    <button class="nav-button admin-only" data-view="channels"><span class="nav-dot"></span>Channels</button>
-    <button class="nav-button admin-only" data-view="users"><span class="nav-dot"></span>Users</button>
-    <button class="nav-button staff-only" data-view="drops"><span class="nav-dot"></span>Drops</button>
+    <button class="nav-button admin-only active" data-view="overview"><svg class="nav-icon">
+        <use href="#icon-overview"></use>
+      </svg><span>Overview</span></button>
+    <button class="nav-button admin-only" data-view="health"><svg class="nav-icon">
+        <use href="#icon-health"></use>
+      </svg><span>Health</span></button>
+    <button class="nav-button admin-only" data-view="channels"><svg class="nav-icon">
+        <use href="#icon-channels"></use>
+      </svg><span>Channels</span></button>
+    <button class="nav-button admin-only" data-view="users"><svg class="nav-icon">
+        <use href="#icon-users"></use>
+      </svg><span>Users</span></button>
+    <button class="nav-button staff-only" data-view="drops"><svg class="nav-icon">
+        <use href="#icon-drops"></use>
+      </svg><span>Drops</span></button>
   </nav>
 
   <script>
-    const state = { role: null, csrf: null, chart: null, overview: null, channels: [] };
+    const state = { role: null, csrf: null, chart: null, overview: null, channels: [], drops: [] };
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
     const formatNumber = (value) => new Intl.NumberFormat().format(Number(value) || 0);
     const timeAgo = (value) => {
@@ -482,17 +610,104 @@
       try { const data = await api('/admin/api/message', { method:'POST', body:JSON.stringify({ channels, message }) }); toast(`Sent to ${data.results.filter((result) => result.success).length} channel(s)`); } catch (error) { toast(error.message); }
     });
 
-    async function loadDrops() {
-      try { const data = await api('/admin/api/drops'); document.getElementById('drops-json').value = JSON.stringify(data, null, 2); } catch (error) { toast(error.message); }
+    function createDropField(labelText, field, value) {
+    const label = document.createElement('label');
+    label.className = 'field';
+    label.textContent = labelText;
+    const input = document.createElement('input');
+    input.className = 'input';
+    input.dataset.field = field;
+    input.value = value || '';
+    label.appendChild(input);
+    return label;
     }
+    function renderDrops() {
+    const container = document.getElementById('drops-list');
+    container.replaceChildren();
+    if (!state.drops.length) {
+    const empty = document.createElement('div');
+    empty.className = 'drop-empty';
+    empty.textContent = 'No active Drops. Add an item when a new campaign starts.';
+    container.appendChild(empty);
+    return;
+    }
+    state.drops.forEach((drop, index) => {
+    const row = document.createElement('div');
+    row.className = 'drop-row';
+    row.dataset.index = String(index);
+    row.append(
+    createDropField('Name', 'name', drop.name),
+    createDropField('Category', 'category', drop.category),
+    createDropField('Duration', 'duration', drop.duration),
+    );
+    const remove = document.createElement('button');
+    remove.className = 'btn drop-remove';
+    remove.type = 'button';
+    remove.setAttribute('data-action', 'remove-drop');
+    remove.dataset.index = String(index);
+    remove.setAttribute('aria-label', `Remove ${drop.name || 'drop'}`);
+    remove.textContent = 'Delete';
+    row.appendChild(remove);
+    container.appendChild(row);
+    });
+    }
+    function readDropRows() {
+    return [...document.querySelectorAll('.drop-row')].map((row) => ({
+    name: row.querySelector('[data-field="name"]').value.trim(),
+    category: row.querySelector('[data-field="category"]').value.trim(),
+    duration: row.querySelector('[data-field="duration"]').value.trim(),
+    }));
+    }
+    async function loadDrops() {
+      try {
+      const data = await api('/admin/api/drops');
+      document.getElementById('drops-last-updated').value = data.lastUpdated || '';
+      document.getElementById('drops-featured-image').value = data.featuredImage || '';
+      state.drops = Array.isArray(data.drops) ? data.drops : [];
+      renderDrops();
+      } catch (error) { toast(error.message); }
+    }
+    document.getElementById('add-drop-button').addEventListener('click', () => {
+    state.drops = [...readDropRows(), { name: '', category: '', duration: '' }];
+    renderDrops();
+    const rows = document.querySelectorAll('.drop-row');
+    rows[rows.length - 1]?.querySelector('input')?.focus();
+    });
+    document.getElementById('drops-list').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-action="remove-drop"]');
+    if (!button) return;
+    state.drops = readDropRows().filter((_drop, index) => index !== Number(button.dataset.index));
+    renderDrops();
+    });
     document.getElementById('save-drops-button').addEventListener('click', async () => {
-      try { const value = JSON.parse(document.getElementById('drops-json').value); await api('/admin/api/drops', { method:'POST', body:JSON.stringify(value) }); toast('Drops saved'); } catch (error) { toast(error.message); }
+      const value = {
+      lastUpdated: document.getElementById('drops-last-updated').value,
+      featuredImage: document.getElementById('drops-featured-image').value,
+      drops: readDropRows(),
+      };
+      try {
+      const result = await api('/admin/api/drops', { method:'POST', body:JSON.stringify(value) });
+      state.drops = result.config.drops;
+      renderDrops();
+      toast('Drops saved');
+      } catch (error) { toast(error.message); }
     });
     document.getElementById('upload-drop-button').addEventListener('click', async () => {
       const file = document.getElementById('drop-image').files[0];
-      if (!file) return toast('Choose an image');
+      if (!file) {
+      document.getElementById('drop-image').click();
+      return;
+      }
       const body = new FormData(); body.append('image', file);
-      try { const result = await api('/admin/api/upload', { method:'POST', body }); toast(`Uploaded ${result.url}`); } catch (error) { toast(error.message); }
+      try {
+      const result = await api('/admin/api/upload', { method:'POST', body });
+      document.getElementById('drops-featured-image').value = result.url;
+      document.getElementById('drop-image').value = '';
+      toast('Image uploaded');
+      } catch (error) { toast(error.message); }
+      });
+      document.getElementById('drop-image').addEventListener('change', () => {
+      if (document.getElementById('drop-image').files[0]) document.getElementById('upload-drop-button').click();
     });
     async function loadAudit() {
       const container = document.getElementById('audit-content');

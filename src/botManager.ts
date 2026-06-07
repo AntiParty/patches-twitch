@@ -11,6 +11,8 @@ import {
 } from "./util/twitchUtils";
 import logger from "./util/logger";
 import axios from "axios";
+import { restartBotIdentity } from "./services/botIdentityRestart.service";
+import { clients } from "./util/ircBot";
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 
@@ -285,6 +287,31 @@ export class BotManager {
     const channels = await this.getChannels();
     this.startTokenValidationInterval();
     await this.loadChannels(channels);
+  }
+
+  public async restartBotFromCurrentState(username: string) {
+    return restartBotIdentity(username, {
+      getChannel: async (channelUsername) => {
+        const channel: any = await Channel.findOne({ where: { username: channelUsername } });
+        if (!channel) return null;
+        return {
+          username: channel.username,
+          access_token: channel.access_token,
+          refresh_token: channel.refresh_token,
+          twitch_user_id: channel.twitch_user_id,
+        };
+      },
+      stopBot: async (channelUsername) => this.stopBotForUser(channelUsername, false),
+      startBot: async (channel) => this.startBotForUser(
+        channel.username,
+        channel.access_token || "",
+        channel.refresh_token || "",
+        channel.twitch_user_id || "",
+      ),
+      hasClient: (channelUsername) => Boolean(clients[channelUsername]),
+      isAuthenticated: (channelUsername) => Boolean(clients[channelUsername]?.connected),
+      sleep: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    });
   }
 
   public async loadChannels(prefetchedChannels?: Channel[]) {

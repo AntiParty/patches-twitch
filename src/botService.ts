@@ -117,6 +117,21 @@ dbReady.then(async () => {
       }
     });
 
+    controlApp.post("/restart-channel-bot", async (req: any, res: any) => {
+      const username = String(req.body?.username || "").trim().toLowerCase();
+      if (!username) return res.status(400).json({ success: false, error: "Missing username" });
+
+      try {
+        const result = await botManager.restartBotFromCurrentState(username);
+        if (!result.success) return res.status(502).json(result);
+        logger.info(`[ControlAPI] Restarted ${username} from current bot identity state`);
+        return res.json(result);
+      } catch (error) {
+        logger.error(`[ControlAPI] Failed to restart ${username} from current state:`, error);
+        return res.status(500).json({ success: false, error: "Internal error" });
+      }
+    });
+
     // Remove channel and disconnect EventSub WebSocket
     controlApp.post("/remove-channel", async (req: any, res: any) => {
       const { twitch_user_id, username } = req.body;

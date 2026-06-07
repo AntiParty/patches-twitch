@@ -51,4 +51,23 @@ describe('admin dashboard shell', () => {
         assert.match(dashboardHtml, /font-variant-numeric:\s*tabular-nums/i);
         assert.match(dashboardHtml, /transform:\s*scale\(0\.96\)/i);
     });
+
+    it('renders a structured Drops editor instead of raw JSON', () => {
+        [
+            'id="drops-last-updated"',
+            'id="drops-featured-image"',
+            'id="drops-list"',
+            'id="add-drop-button"',
+            'id="save-drops-button"',
+            'data-action="remove-drop"',
+        ].forEach((expectedMarkup) => assert.ok(dashboardHtml.includes(expectedMarkup)));
+        assert.ok(!dashboardHtml.includes('id="drops-json"'));
+    });
+
+    it('uses inline SVG icons and an icon tile navigation state', () => {
+        assert.ok(dashboardHtml.includes('class="nav-icon"'));
+        assert.ok(dashboardHtml.includes('<svg'));
+        assert.ok(dashboardHtml.includes('.nav-button.active .nav-icon'));
+        assert.ok(!dashboardHtml.includes('class="nav-dot"'));
+    });
 });

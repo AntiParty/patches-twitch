@@ -140,11 +140,10 @@ router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, requ
     try {
       const channel = await Channel.findByPk(channelId);
       if (channel) {
-        await axios.post("http://localhost:4000/reconnect-custom-bot", {
-          twitch_user_id: channel.twitch_user_id,
-          username: username,
+        const restart = await axios.post("http://localhost:4000/restart-channel-bot", {
+          username,
         });
-        swapSuccess = true;
+        swapSuccess = restart.data?.success === true;
         logger.info(`[Custom Bot] Swapped back to default bot for ${username}`);
       }
     } catch (swapError) {

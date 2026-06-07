@@ -5,6 +5,7 @@ import multer from 'multer';
 import { requireStaffAPI } from '@/middleware/auth.middleware';
 import { logAdminAction } from '@/util/adminLogger';
 import logger from '@/util/logger';
+import { normalizeDropsConfig } from '@/services/dropsConfig.service';
 
 const router = Router();
 const dropsPath = path.join(process.cwd(), 'frontend', 'public', 'drops.json');
@@ -34,28 +35,34 @@ const upload = multer({
 router.get('/api/drops', requireStaffAPI, async (_req: any, res: any) => {
     try {
         const raw = await fs.readFile(dropsPath, 'utf8');
-        res.json(JSON.parse(raw));
+        res.json(normalizeDropsConfig(JSON.parse(raw)));
     } catch (error: any) {
-        if (error?.code === 'ENOENT') return res.json({ drops: [] });
+        if (error?.code === 'ENOENT') {
+            return res.json({ lastUpdated: '', featuredImage: '', drops: [] });
+        }
         logger.error('[Drops] Failed to read configuration:', error);
         res.status(500).json({ error: 'Failed to read Drops configuration' });
     }
 });
 
 router.post('/api/drops', requireStaffAPI, async (req: any, res: any) => {
-    if (!req.body || !Array.isArray(req.body.drops)) {
-        return res.status(400).json({ error: 'Invalid Drops configuration' });
-    }
     try {
-        await fs.writeFile(dropsPath, JSON.stringify({ drops: req.body.drops }, null, 2), 'utf8');
+        const config = normalizeDropsConfig(req.body);
+        await fs.writeFile(dropsPath, JSON.stringify(config, null, 2), 'utf8');
         await logAdminAction(
             req.session?.username || req.session?.twitchUsername || 'unknown',
             req.session?.role || 'Staff',
             'DROPS_UPDATED',
             { target: 'drops', outcome: 'success' },
         );
-        res.json({ success: true });
+        res.json({ success: true, config });
     } catch (error) {
+        if (error instanceof Error && (
+            error.message.startsWith('Invalid Drops configuration')
+            || error.message.includes('no more than')
+        )) {
+            return res.status(400).json({ error: (error as Error).message });
+        }
         logger.error('[Drops] Failed to save configuration:', error);
         res.status(500).json({ error: 'Failed to save Drops configuration' });
     }

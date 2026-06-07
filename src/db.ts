@@ -6,6 +6,7 @@ import fs from 'fs';
 import { error } from 'console';
 import logger from "@/util/logger"; // Logging utility
 import { Op } from 'sequelize';
+import { migratePredictionPresets } from './scripts/migrate_prediction_presets';
 
 dotenv.config();
 
@@ -96,6 +97,17 @@ class StreamSession extends Model {
   declare start_score: number;
   declare start_wt_rank: number | null;
   declare started_at: Date;
+}
+
+class PredictionPreset extends Model {
+  declare id: number;
+  declare channel_id: number;
+  declare alias: string;
+  declare title: string;
+  declare outcomes_json: string;
+  declare duration_seconds: number;
+  declare created_at: Date;
+  declare updated_at: Date;
 }
 
 // Channel model initialization
@@ -248,6 +260,61 @@ StreamSession.init(
     modelName: 'StreamSession',
     tableName: 'StreamSessions',
     timestamps: false
+  }
+);
+
+PredictionPreset.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    channel_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Channels',
+        key: 'id',
+      },
+    },
+    alias: {
+      type: DataTypes.STRING(24),
+      allowNull: false,
+    },
+    title: {
+      type: DataTypes.STRING(45),
+      allowNull: false,
+    },
+    outcomes_json: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    duration_seconds: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 120,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'PredictionPreset',
+    tableName: 'PredictionPresets',
+    timestamps: false,
+    indexes: [
+      { unique: true, fields: ['channel_id', 'alias'] },
+      { fields: ['channel_id'] },
+    ],
   }
 );
 
@@ -509,6 +576,7 @@ async function runMigrations() {
       logger.info('[Migration] auth_revoked column added successfully.');
     }
 
+    await migratePredictionPresets(queryInterface);
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
   }
@@ -799,4 +867,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };

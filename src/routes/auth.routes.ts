@@ -9,6 +9,7 @@ import logger from '@/util/logger';
 import { verifyOAuthState } from '@/util/crypto';
 import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
 import { clearRefreshPermanentFailed } from '@/util/twitchUtils';
+import { getBroadcasterOAuthScopes } from '@/util/twitchScopes';
 
 const router = Router();
 
@@ -31,9 +32,7 @@ const getRedirectUri = () => {
  * Generate Twitch OAuth URL for user login
  */
 const getAuthUrl = () => {
-    const scope = encodeURIComponent(
-        "channel:moderate user:read:chat user:bot channel:bot user:read:subscriptions"
-    );
+    const scope = encodeURIComponent(getBroadcasterOAuthScopes().join(' '));
     const redirectUri = encodeURIComponent(getRedirectUri());
     return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
 };

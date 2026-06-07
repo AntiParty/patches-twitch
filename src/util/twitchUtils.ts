@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import fetch from 'node-fetch';
 import { Channel, CustomBotAccount } from '../db';
 import logger from '@/util/logger';
 import { decryptToken, encryptToken } from './crypto';

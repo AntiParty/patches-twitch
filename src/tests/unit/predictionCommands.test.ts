@@ -94,6 +94,31 @@ describe('Prediction chat commands', () => {
     assert.deepEqual(deleted, ['ranked']);
   });
 
+  it('bounds long preset lists to a single Twitch-safe reply', async () => {
+    const execute = createPresetCommand({
+      findChannel: async () => ({ id: 7, username: 'antiparty' }),
+      presets: {
+        save: async () => 'created',
+        list: async () => Array.from({ length: 60 }, (_, index) => ({
+          id: index + 1,
+          channelId: 7,
+          alias: `preset-${String(index).padStart(2, '0')}`,
+          title: 'Will we win?',
+          outcomes: ['Yes', 'No'],
+          durationSeconds: 120,
+        })),
+        get: async () => null,
+        delete: async () => false,
+      },
+    });
+    const list = context();
+
+    await execute(list.ctx, '#antiparty', '', list.ctx.tags, ['p', 'list']);
+
+    assert(list.replies[0].message.length <= 450);
+    assert.match(list.replies[0].message, /more/);
+  });
+
   it('lets a moderator start a preset while using the broadcaster channel record', async () => {
     let startedChannelId = 0;
     const execute = createStartCommand({

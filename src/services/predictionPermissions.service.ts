@@ -1,5 +1,12 @@
 function badges(tags: Record<string, any>): Record<string, any> {
-  return tags?.badges && typeof tags.badges === 'object' ? tags.badges : {};
+  if (tags?.badges && typeof tags.badges === 'object') return tags.badges;
+  if (typeof tags?.badges !== 'string') return {};
+  return Object.fromEntries(
+    tags.badges
+      .split(',')
+      .map((badge: string) => badge.split('/', 2))
+      .filter(([name]: string[]) => Boolean(name)),
+  );
 }
 
 function hasBadge(tags: Record<string, any>, name: string): boolean {

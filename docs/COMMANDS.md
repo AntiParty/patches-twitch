@@ -114,6 +114,49 @@ Unlink your THE FINALS account from the bot.
 
 ---
 
+## Twitch Channel Points Predictions
+
+Predictions are available to Twitch Affiliates and Partners. Existing bot
+commands continue working without any permission change, but the broadcaster
+must visit `https://finalsrs.com/reauth` once before prediction start, end, or
+cancel commands can use the required `channel:manage:predictions` permission.
+
+### Broadcaster: manage presets
+
+```text
+!preset p add ranked | Will we win this match? | Yes | No | 120
+!preset p list
+!preset p show ranked
+!preset p delete ranked
+```
+
+- The alias is chosen by the broadcaster and must be one word using letters,
+  numbers, `_`, or `-`.
+- Adding an existing alias overwrites that preset.
+- Presets support 2-5 unique outcomes.
+- Duration is optional, defaults to 120 seconds, and must be 30-1800 seconds.
+- Alias, title, and outcomes are checked against the bot's blocked words,
+  phrases, and regular expressions. Rejected content is not saved.
+
+### Broadcaster or moderator: operate predictions
+
+```text
+!start p ranked
+!end p 2
+!end p No
+!cancel p
+```
+
+- `!end p` accepts either the one-based outcome number or exact outcome text,
+  matched case-insensitively.
+- `!cancel p` refunds participating viewers through Twitch.
+- The bot queries Twitch for the current active or locked prediction, so end and
+  cancel continue working after a bot or server restart.
+- Moderators initiate the operation using the broadcaster's authorization, so
+  moderators remain able to vote.
+
+---
+
 ## 🎨 Customization Commands
 
 ### `!editcmd <command> [response]`

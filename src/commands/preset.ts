@@ -61,8 +61,20 @@ export function createPresetCommand(deps: PresetCommandDependencies = production
       if (action === 'list') {
         const presets = await deps.presets.list(channelRecord.id);
         const aliases = presets.map((preset) => preset.alias);
+        const prefix = `@${displayName}, prediction presets: `;
+        const visible = [...aliases];
+        let hidden = 0;
+        while (visible.length > 0) {
+          const suffix = hidden > 0 ? ` (+${hidden} more)` : '';
+          if (`${prefix}${visible.join(', ')}${suffix}.`.length <= 450) break;
+          visible.pop();
+          hidden += 1;
+        }
+        const summary = aliases.length === 0
+          ? 'none saved'
+          : `${visible.join(', ')}${hidden > 0 ? ` (+${hidden} more)` : ''}`;
         await ctx.say(
-          `@${displayName}, prediction presets: ${aliases.length ? aliases.join(', ') : 'none saved'}.`,
+          `${prefix}${summary}.`,
           messageId,
         );
         return;

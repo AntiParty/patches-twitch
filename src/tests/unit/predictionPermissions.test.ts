@@ -8,6 +8,7 @@ import {
 describe('Prediction permissions', () => {
   it('recognizes the broadcaster by badge or channel-name equality', () => {
     assert.equal(isBroadcaster('someone', '#antiparty', { badges: { broadcaster: '1' } }), true);
+    assert.equal(isBroadcaster('someone', '#antiparty', { badges: 'broadcaster/1,subscriber/12' }), true);
     assert.equal(isBroadcaster('AntiParty', '#antiparty', { badges: {} }), true);
     assert.equal(isBroadcaster('viewer', '#antiparty', { badges: {} }), false);
   });
@@ -24,6 +25,10 @@ describe('Prediction permissions', () => {
     assert.equal(canOperatePredictions('antiparty', '#antiparty', {}), true);
     assert.equal(
       canOperatePredictions('moderator', '#antiparty', { badges: { moderator: '1' } }),
+      true,
+    );
+    assert.equal(
+      canOperatePredictions('moderator', '#antiparty', { badges: 'moderator/1,subscriber/3' }),
       true,
     );
     assert.equal(canOperatePredictions('viewer', '#antiparty', { role: 'owner' }), false);

@@ -9,6 +9,7 @@ import {
   TwitchPrediction,
   createTwitchPredictionsService,
 } from '@/services/twitchPredictions.service';
+import { decryptChannelAccessToken } from '@/util/twitchUtils';
 
 function prediction(overrides: Partial<TwitchPrediction> = {}): TwitchPrediction {
   return {
@@ -68,6 +69,10 @@ function createHarness(options: {
 }
 
 describe('Twitch predictions service', () => {
+  it('can load and decrypt a legacy plain broadcaster token without node-fetch', () => {
+    assert.equal(decryptChannelAccessToken({ access_token: 'plain-token' }), 'plain-token');
+  });
+
   it('requires reauthorization when the broadcaster token lacks the prediction scope', async () => {
     const { service, requests } = createHarness({ scopes: ['user:read:chat'] });
 

@@ -1,0 +1,55 @@
+<h2>Choose the Operations sidebar direction</h2>
+<p class="subtitle">All three keep the black theme, replace the dots with real SVG-style icons, and use a clearer active state.</p>
+
+<div class="cards" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:18px">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#030303">
+      <div style="width:100%;min-height:410px;padding:18px 12px;background:#070707;border:1px solid #1b1b1b;border-radius:18px;color:#eee;font-family:Inter,system-ui">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 10px 22px;font-weight:800"><span style="display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#f0183b;color:white">F</span><span>FinalsRS</span></div>
+        <div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.13em;padding:8px 12px">OPERATIONS</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:#171717;color:white;border-left:3px solid #f0183b"><span>⌂</span><b>Overview</b></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;color:#888"><span>♡</span>Bot Health</div>
+        <div style="font-size:10px;color:#555;font-weight:800;letter-spacing:.13em;padding:18px 12px 8px">MANAGE</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;color:#888"><span>◫</span>Channels</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;color:#888"><span>♙</span>Users</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;color:#888"><span>✉</span>Message Bot</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;color:#888"><span>◆</span>Drops</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;color:#888"><span>≡</span>Audit Activity</div>
+      </div>
+    </div>
+    <div class="card-body"><h3>A. Compact Product Nav</h3><p>Quiet, familiar, and dense. Strongest fit for a serious internal tool.</p></div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#030303">
+      <div style="width:100%;min-height:410px;padding:18px 14px;background:linear-gradient(180deg,#0b0b0b,#050505);border:1px solid #242424;border-radius:18px;color:#eee;font-family:Inter,system-ui">
+        <div style="padding:0 8px 24px"><div style="font-size:11px;color:#f0183b;font-weight:900;letter-spacing:.14em">FINALSRS</div><div style="font-size:20px;font-weight:800;margin-top:3px">Operations</div></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;border:1px solid #333;border-radius:12px;background:#181818;color:white"><span style="color:#f0183b">⌂</span><b>Overview</b><span style="margin-left:auto;color:#555">›</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;color:#888"><span>♡</span>Bot Health</div>
+        <div style="height:1px;background:#1e1e1e;margin:13px 4px"></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;color:#888"><span>◫</span>Channels</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;color:#888"><span>♙</span>Users</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;color:#888"><span>✉</span>Message Bot</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;color:#888"><span>◆</span>Drops</div>
+        <div style="display:flex;align-items:center;gap:12px;padding:13px;color:#888"><span>≡</span>Audit Activity</div>
+      </div>
+    </div>
+    <div class="card-body"><h3>B. Framed Navigation</h3><p>More visual structure and larger targets, with a polished enterprise-console feel.</p></div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:14px;background:#030303">
+      <div style="width:100%;min-height:410px;padding:18px 10px;background:#050505;border:1px solid #1b1b1b;border-radius:18px;color:#eee;font-family:Inter,system-ui">
+        <div style="display:flex;align-items:center;gap:9px;padding:0 9px 24px;font-weight:800"><span style="width:9px;height:25px;border-radius:4px;background:#f0183b"></span>FinalsRS Ops</div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;border-radius:12px;background:#151515;color:white"><span style="display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#f0183b">⌂</span><b style="padding-left:9px">Overview</b></div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;color:#888"><span style="display:grid;place-items:center;width:38px;height:38px">♡</span><span style="padding-left:9px">Bot Health</span></div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;color:#888"><span style="display:grid;place-items:center;width:38px;height:38px">◫</span><span style="padding-left:9px">Channels</span></div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;color:#888"><span style="display:grid;place-items:center;width:38px;height:38px">♙</span><span style="padding-left:9px">Users</span></div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;color:#888"><span style="display:grid;place-items:center;width:38px;height:38px">✉</span><span style="padding-left:9px">Message Bot</span></div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;color:#888"><span style="display:grid;place-items:center;width:38px;height:38px">◆</span><span style="padding-left:9px">Drops</span></div>
+        <div style="display:grid;grid-template-columns:40px 1fr;align-items:center;padding:7px;color:#888"><span style="display:grid;place-items:center;width:38px;height:38px">≡</span><span style="padding-left:9px">Audit Activity</span></div>
+      </div>
+    </div>
+    <div class="card-body"><h3>C. Icon Rail Hybrid</h3><p>Bolder and more branded. Icons carry more weight and the active item feels distinct.</p></div>
+  </div>
+</div>

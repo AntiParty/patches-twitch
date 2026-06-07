@@ -549,7 +549,7 @@
       try {
         const data = await api(`/admin/api/operations/health?range=${encodeURIComponent(document.getElementById('health-range').value)}`);
         const stale = Date.now() - new Date(data.observedAt).getTime() > 60000;
-        container.innerHTML = `<div class="metrics"><div><div class="metric-label">Status</div><div class="metric-value">${escapeHtml(data.status)}</div></div><div><div class="metric-label">Uptime</div><div class="metric-value">${formatNumber(data.bot.uptimeSeconds)}s</div></div><div><div class="metric-label">Samples</div><div class="metric-value">${formatNumber(data.performanceHistory.length)}</div></div><div><div class="metric-label">Freshness</div><div class="metric-value ${stale ? 'stale' : ''}">${stale ? 'Stale' : 'Current'}</div></div></div>`;
+        container.innerHTML = `<div class="metrics"><div><div class="metric-label">Status</div><div class="metric-value">${escapeHtml(data.status)}</div></div><div><div class="metric-label">Uptime</div><div class="metric-value">${formatDuration(data.bot.uptimeSeconds)}</div></div><div><div class="metric-label">Samples</div><div class="metric-value">${formatNumber(data.performanceHistory.length)}</div></div><div><div class="metric-label">Freshness</div><div class="metric-value ${stale ? 'stale' : ''}">${stale ? 'Stale' : 'Current'}</div></div></div>`;
       } catch (error) { container.innerHTML = `<div class="panel-error">${escapeHtml(error.message)}</div>`; }
     }
     document.getElementById('health-range').addEventListener('change', loadHealth);
@@ -557,6 +557,23 @@
     function table(headers, rows) {
       if (!rows.length) return '<div class="empty">No records found.</div>';
       return `<div class="table-wrap"><table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+    }
+    function formatDuration(seconds) {
+      seconds = Math.floor(seconds);
+
+      const days = Math.floor(seconds / 86400);
+
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor(seconds / 60);
+      
+      const parts = [];
+
+      if (days) parts.push(`${days}d`);
+      if (hours) parts.push(`${hours}h`);
+      if (minutes) parts.push(`${minutes}m`);
+      if (seconds || parts.length === 0) parts.push(`${seconds}s`);
+
+      return parts.join(' ');
     }
     async function loadChannels() {
       const container = document.getElementById('channels-content');

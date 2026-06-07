@@ -1,5 +1,6 @@
 import { strict as assert } from 'assert';
-import { Channel, PredictionPreset, dbReady } from '@/db';
+import { Op } from 'sequelize';
+import { Channel, CustomResponse, PredictionPreset, dbReady } from '@/db';
 
 describe('PredictionPreset model', function () {
   this.timeout(15000);
@@ -17,6 +18,9 @@ describe('PredictionPreset model', function () {
       await PredictionPreset.destroy({ where: { channel_id: createdChannelIds } });
     }
     await Channel.destroy({ where: { username: usernames } });
+    await CustomResponse.destroy({
+      where: { channel: { [Op.like]: 'prediction-model-%' } },
+    });
   });
 
   it('enforces alias uniqueness per channel while allowing the alias in another channel', async () => {

@@ -50,10 +50,22 @@ function stringifyEnv(vars: Record<string, string>, original: string): string {
  * Uses BASE_URL env var, or falls back to environment-based default
  */
 export function getBaseUrl(): string {
-  return process.env.BASE_URL ||
-    (process.env.NODE_ENV === 'production'
-      ? 'https://finalsrs.com'
-      : 'http://localhost:3000');
+  const raw = (process.env.BASE_URL || '').trim();
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const parsed = new URL(raw || 'https://finalsrs.com');
+      const hostname = parsed.hostname.toLowerCase();
+      const isLoopback = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+      if (parsed.protocol !== 'https:' || isLoopback) {
+        return 'https://finalsrs.com';
+      }
+      return `${parsed.protocol}//${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}`;
+    } catch {
+      return 'https://finalsrs.com';
+    }
+  }
+
+  return raw || 'http://localhost:3000';
 }
 
 /**
@@ -65,7 +77,7 @@ export function getTwitchRedirectUri(): string {
     : 'http://localhost:3000/callback';
 
   const raw = (process.env.TWITCH_REDIRECT_URI || fallback).trim();
-  const normalized = raw.replace(/^htts:\/\//i, 'https://');
+  const normalized = raw.replace(/^http:\/\//i, 'https://');
 
   try {
     const parsed = new URL(normalized);

@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import dashboardRoutes from './dashboard.routes';
 import commandsRoutes from './commands.routes';
+import predictionsRoutes from './predictions.routes';
 import rankGoalRoutes from './rankgoal.routes';
 import analyticsRoutes from './analytics.routes';
 import subscriptionRoutes from './subscription.routes';
@@ -14,6 +15,7 @@ const router = Router();
 // Mount user routes
 router.use(dashboardRoutes);
 router.use(commandsRoutes);
+router.use(predictionsRoutes);
 router.use(rankGoalRoutes);
 router.use(analyticsRoutes);
 router.use(subscriptionRoutes);

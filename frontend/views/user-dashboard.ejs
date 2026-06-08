@@ -1636,6 +1636,10 @@
           <li class="nav-item" data-view="rank-tracker" onclick="switchView('rank-tracker')">
             <i class="fas fa-chart-line"></i> <span>Rank Tracker</span>
           </li>
+          <li class="nav-item" data-view="predictions" onclick="switchView('predictions')">
+            <i class="fa-solid fa-flag-checkered"></i>
+            <span>Predictions</span>
+          </li>
           <li class="nav-item" data-view="overlays" onclick="switchView('overlays')">
             <i class="fas fa-tv"></i> <span>Stream Overlays</span>
           </li>
@@ -2319,6 +2323,14 @@
           </div>
         </div>
 
+        <div id="view-predictions" class="view-section">
+          <div class="card">
+            <h2>Predictions</h2>
+            <div id="predictions-status">Loading status...</div>
+            <div id="presets-list">Loading presets...</div>
+            <div style="margin-top:12px; color:var(--text-muted); font-size:13px">Use the dashboard to create and edit presets. Moderators and the broadcaster can operate predictions via chat <code>!p</code>.</div>
+          </div>
+        </div>
         <div id="view-overlays" class="view-section">
           <div class="header">
             <h2 class="page-title">Stream Overlays</h2>

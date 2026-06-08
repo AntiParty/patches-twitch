@@ -322,15 +322,22 @@ describe('Twitch predictions service', () => {
       );
     });
 
-    it('reports reauth_required when token authorization validation fails', async () => {
-      const { service } = createHarness({
-        validationError: new Error('raw token validation failure'),
+    it('refreshes and retries validation HTTP 401 before requiring reauthorization', async () => {
+      const unauthorized: any = new Error('raw unauthorized validation response');
+      unauthorized.response = {
+        status: 401,
+        data: { message: 'Invalid OAuth token' },
+      };
+      const { service, validations } = createHarness({
+        validationError: unauthorized,
       });
 
       assert.deepEqual(
         await service.getAuthorizationStatus(7),
         { state: 'reauth_required', reauthUrl: '/reauth' },
       );
+      assert.deepEqual(validations, ['token-one', 'token-two']);
+      await assert.rejects(service.getCurrent(7), PredictionReauthRequiredError);
     });
 
     it('reports unavailable with the standard Affiliate or Partner message', async () => {
@@ -360,6 +367,64 @@ describe('Twitch predictions service', () => {
           await service.getAuthorizationStatus(7),
           { state: 'temporarily_unavailable' },
         );
+      }
+    });
+
+    it('preserves temporary validation failures for status and prediction operations', async () => {
+      const failures = [
+        { name: 'rate limit', status: 429 },
+        { name: 'server error', status: 500 },
+        { name: 'network error' },
+      ];
+
+      for (const failureCase of failures) {
+        const createFailure = () => {
+          const error: any = new Error(
+            failureCase.status
+              ? `raw ${failureCase.name} secret-token`
+              : 'raw OAuth validation network error secret-token',
+          );
+          if (failureCase.status) {
+            error.response = {
+              status: failureCase.status,
+              data: { message: `raw Twitch ${failureCase.name} payload` },
+            };
+          }
+          return error;
+        };
+        const statusHarness = createHarness({ validationError: createFailure() });
+        assert.deepEqual(
+          await statusHarness.service.getAuthorizationStatus(7),
+          { state: 'temporarily_unavailable' },
+          failureCase.name,
+        );
+
+        const operations = [
+          (service: ReturnType<typeof createTwitchPredictionsService>) => service.getCurrent(7),
+          (service: ReturnType<typeof createTwitchPredictionsService>) => service.start(7, {
+            id: 1,
+            channelId: 7,
+            alias: 'ranked',
+            title: 'Will we win?',
+            outcomes: ['Yes', 'No'],
+            durationSeconds: 120,
+          }),
+          (service: ReturnType<typeof createTwitchPredictionsService>) => service.resolve(7, '1'),
+          (service: ReturnType<typeof createTwitchPredictionsService>) => service.cancel(7),
+        ];
+        for (const operation of operations) {
+          const operationHarness = createHarness({ validationError: createFailure() });
+          await assert.rejects(
+            operation(operationHarness.service),
+            (error: unknown) => {
+              assert(error instanceof PredictionTemporaryError);
+              assert.equal(error.message.includes('secret-token'), false);
+              assert.equal(error.message.toLowerCase().includes('raw'), false);
+              return true;
+            },
+            failureCase.name,
+          );
+        }
       }
     });
 

@@ -157,7 +157,7 @@ export function createTwitchPredictionsService(
       metadata = await deps.validateToken(accessToken);
     } catch (error: unknown) {
       if (responseStatus(error) === 401) throw error;
-      throw reauthError();
+      throw new PredictionTemporaryError('Twitch predictions are temporarily unavailable.');
     }
     const scopes = Array.isArray(metadata.scopes) ? metadata.scopes : [];
     if (

@@ -8,6 +8,7 @@ import commandsRoutes from './commands.routes';
 import rankGoalRoutes from './rankgoal.routes';
 import analyticsRoutes from './analytics.routes';
 import subscriptionRoutes from './subscription.routes';
+import predictionRoutes from './predictions.routes';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use(commandsRoutes);
 router.use(rankGoalRoutes);
 router.use(analyticsRoutes);
 router.use(subscriptionRoutes);
+router.use(predictionRoutes);
 
 export default router;

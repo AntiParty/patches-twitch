@@ -125,6 +125,34 @@ export function validatePresetInput(input: ParsedPresetInput): ValidatedPresetIn
   return { alias, title, outcomes, durationSeconds: input.durationSeconds };
 }
 
+function parseStructuredPresetInput(input: unknown): ParsedPresetInput {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    Array.isArray(input)
+  ) {
+    throw new PredictionPresetValidationError('Prediction preset payload is invalid.');
+  }
+
+  const candidate = input as Record<string, unknown>;
+  if (
+    typeof candidate.alias !== 'string' ||
+    typeof candidate.title !== 'string' ||
+    !Array.isArray(candidate.outcomes) ||
+    !candidate.outcomes.every((outcome) => typeof outcome === 'string') ||
+    typeof candidate.durationSeconds !== 'number'
+  ) {
+    throw new PredictionPresetValidationError('Prediction preset payload is invalid.');
+  }
+
+  return {
+    alias: candidate.alias,
+    title: candidate.title,
+    outcomes: candidate.outcomes,
+    durationSeconds: candidate.durationSeconds,
+  };
+}
+
 export async function validatePresetContent(
   input: ValidatedPresetInput,
   dependencies?: PresetContentDependencies,
@@ -227,10 +255,10 @@ export function createPredictionPresetService(
 
     async saveInput(
       channelId: number,
-      input: ParsedPresetInput,
+      input: unknown,
       context: SaveContext,
     ): Promise<'created' | 'updated'> {
-      return saveValidatedInput(channelId, input, context);
+      return saveValidatedInput(channelId, parseStructuredPresetInput(input), context);
     },
 
     async list(channelId: number): Promise<PredictionPresetData[]> {

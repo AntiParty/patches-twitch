@@ -238,6 +238,105 @@ describe('Prediction preset service', () => {
     assert.equal(upsertCalls, 0);
   });
 
+  it('rejects malformed structured payload shapes before content or repository access', async () => {
+    const malformedPayloads: Array<{ name: string; input: unknown }> = [
+      { name: 'empty object', input: {} },
+      {
+        name: 'numeric alias',
+        input: {
+          alias: 123,
+          title: 'Will we climb?',
+          outcomes: ['Yes', 'No'],
+          durationSeconds: 120,
+        },
+      },
+      {
+        name: 'non-string title',
+        input: {
+          alias: 'ranked',
+          title: false,
+          outcomes: ['Yes', 'No'],
+          durationSeconds: 120,
+        },
+      },
+      {
+        name: 'string outcomes',
+        input: {
+          alias: 'ranked',
+          title: 'Will we climb?',
+          outcomes: 'Yes,No',
+          durationSeconds: 120,
+        },
+      },
+      {
+        name: 'non-string outcome',
+        input: {
+          alias: 'ranked',
+          title: 'Will we climb?',
+          outcomes: ['Yes', 2],
+          durationSeconds: 120,
+        },
+      },
+      {
+        name: 'non-number duration',
+        input: {
+          alias: 'ranked',
+          title: 'Will we climb?',
+          outcomes: ['Yes', 'No'],
+          durationSeconds: '120',
+        },
+      },
+    ];
+
+    for (const testCase of malformedPayloads) {
+      let findCalls = 0;
+      let upsertCalls = 0;
+      let blockedChecks = 0;
+      let warningCalls = 0;
+      const service = createPredictionPresetService({
+        repository: {
+          findOne: async () => {
+            findCalls += 1;
+            return null;
+          },
+          upsert: async () => {
+            upsertCalls += 1;
+          },
+          findAll: async () => [],
+          destroy: async () => 0,
+        },
+        isBlocked: () => {
+          blockedChecks += 1;
+          return false;
+        },
+        warn: async () => {
+          warningCalls += 1;
+        },
+      });
+
+      await assert.rejects(
+        service.saveInput(1, testCase.input, {
+          channel: 'antiparty',
+          actor: 'Antiparty',
+          command: 'dashboard',
+        }),
+        (error: unknown) => {
+          assert(
+            error instanceof PredictionPresetValidationError,
+            `${testCase.name} should throw PredictionPresetValidationError`,
+          );
+          assert.equal(error.message, 'Prediction preset payload is invalid.');
+          return true;
+        },
+      );
+
+      assert.equal(findCalls, 0, `${testCase.name} should not query existing presets`);
+      assert.equal(upsertCalls, 0, `${testCase.name} should not upsert`);
+      assert.equal(blockedChecks, 0, `${testCase.name} should not run content checks`);
+      assert.equal(warningCalls, 0, `${testCase.name} should not warn`);
+    }
+  });
+
   it('warns and does not upsert blocked structured input', async () => {
     let upsertCalls = 0;
     const warnings: PresetWarningDetails[] = [];

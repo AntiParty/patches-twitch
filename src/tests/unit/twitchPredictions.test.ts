@@ -1,5 +1,6 @@
 import { strict as assert } from 'assert';
 import {
+  PredictionAuthorizationStatus,
   PredictionActiveConflictError,
   PredictionInvalidOutcomeError,
   PredictionNoActiveError,
@@ -29,16 +30,20 @@ function createHarness(options: {
   validatedUserId?: string;
   responses?: Array<any>;
   refreshedToken?: string | null;
+  channel?: any | null;
+  accessToken?: string | null;
+  validationError?: Error;
 } = {}) {
   const requests: any[] = [];
   const validations: string[] = [];
   const responses = [...(options.responses || [])];
-  let token = 'token-one';
-  const channel = {
+  let token = options.accessToken === undefined ? 'token-one' : options.accessToken;
+  const defaultChannel = {
     id: 7,
     username: 'antiparty',
     twitch_user_id: 'broadcaster-1',
   };
+  const channel = options.channel === undefined ? defaultChannel : options.channel;
 
   const service = createTwitchPredictionsService({
     request: async (config) => {
@@ -49,6 +54,7 @@ function createHarness(options: {
     },
     validateToken: async (accessToken) => {
       validations.push(accessToken);
+      if (options.validationError) throw options.validationError;
       return {
         user_id: options.validatedUserId || 'broadcaster-1',
         scopes: options.scopes || ['channel:manage:predictions'],
@@ -255,5 +261,126 @@ describe('Twitch predictions service', () => {
       createHarness({ responses: [temporary] }).service.getCurrent(7),
       PredictionTemporaryError,
     );
+  });
+
+  describe('authorization status', () => {
+    it('reports ready after validating authorization and probing prediction eligibility', async () => {
+      const { service, requests } = createHarness();
+
+      const status: PredictionAuthorizationStatus = await service.getAuthorizationStatus(7);
+
+      assert.deepEqual(status, { state: 'ready' });
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].method, 'GET');
+    });
+
+    it('reports reauth_required for missing channel identity or token', async () => {
+      const cases = [
+        createHarness({ channel: null }),
+        createHarness({
+          channel: { id: 7, username: 'antiparty', twitch_user_id: null },
+        }),
+        createHarness({ accessToken: null }),
+      ];
+
+      for (const { service, requests } of cases) {
+        assert.deepEqual(
+          await service.getAuthorizationStatus(7),
+          { state: 'reauth_required', reauthUrl: '/reauth' },
+        );
+        assert.equal(requests.length, 0);
+      }
+    });
+
+    it('reports reauth_required for missing scope or token owner mismatch', async () => {
+      for (const harness of [
+        createHarness({ scopes: ['user:read:chat'] }),
+        createHarness({ validatedUserId: 'someone-else' }),
+      ]) {
+        assert.deepEqual(
+          await harness.service.getAuthorizationStatus(7),
+          { state: 'reauth_required', reauthUrl: '/reauth' },
+        );
+        assert.equal(harness.requests.length, 0);
+      }
+    });
+
+    it('reports reauth_required when expired authorization cannot be refreshed', async () => {
+      const unauthorized: any = new Error('raw oauth failure with secret-token');
+      unauthorized.response = {
+        status: 401,
+        data: { message: 'Invalid OAuth token secret-token' },
+      };
+      const { service } = createHarness({
+        validationError: unauthorized,
+        refreshedToken: null,
+      });
+
+      assert.deepEqual(
+        await service.getAuthorizationStatus(7),
+        { state: 'reauth_required', reauthUrl: '/reauth' },
+      );
+    });
+
+    it('reports reauth_required when token authorization validation fails', async () => {
+      const { service } = createHarness({
+        validationError: new Error('raw token validation failure'),
+      });
+
+      assert.deepEqual(
+        await service.getAuthorizationStatus(7),
+        { state: 'reauth_required', reauthUrl: '/reauth' },
+      );
+    });
+
+    it('reports unavailable with the standard Affiliate or Partner message', async () => {
+      const unavailable: any = new Error('raw eligibility payload');
+      unavailable.response = {
+        status: 400,
+        data: { message: 'The broadcaster must be a partner or affiliate' },
+      };
+      const { service } = createHarness({ responses: [unavailable] });
+
+      assert.deepEqual(await service.getAuthorizationStatus(7), {
+        state: 'unavailable',
+        message: 'Channel Points Predictions require Affiliate or Partner status.',
+      });
+    });
+
+    it('reports temporarily_unavailable for transient Twitch failures', async () => {
+      for (const twitchStatus of [429, 500, 503]) {
+        const failure: any = new Error(`raw failure ${twitchStatus}`);
+        failure.response = {
+          status: twitchStatus,
+          data: { message: `raw Twitch payload ${twitchStatus}` },
+        };
+        const { service } = createHarness({ responses: [failure] });
+
+        assert.deepEqual(
+          await service.getAuthorizationStatus(7),
+          { state: 'temporarily_unavailable' },
+        );
+      }
+    });
+
+    it('never exposes tokens, raw Twitch payloads, or raw errors in status results', async () => {
+      const secret = 'super-secret-access-token';
+      const rawPayload = 'raw-private-twitch-payload';
+      const failure: any = new Error(`raw-error-${secret}`);
+      failure.response = {
+        status: 500,
+        data: { message: rawPayload },
+      };
+      const statuses: PredictionAuthorizationStatus[] = [];
+
+      statuses.push(await createHarness({ accessToken: secret }).service.getAuthorizationStatus(7));
+      statuses.push(await createHarness({ responses: [failure] }).service.getAuthorizationStatus(7));
+      statuses.push(await createHarness({ accessToken: null }).service.getAuthorizationStatus(7));
+
+      const serialized = JSON.stringify(statuses);
+      assert.equal(serialized.includes(secret), false);
+      assert.equal(serialized.includes(rawPayload), false);
+      assert.equal(serialized.includes('raw-error'), false);
+    });
   });
 });

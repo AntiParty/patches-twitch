@@ -8,6 +8,12 @@ const PREDICTION_REAUTH_URL = 'https://finalsrs.com/reauth';
 
 export type TwitchPredictionStatus = 'ACTIVE' | 'LOCKED' | 'RESOLVED' | 'CANCELED';
 
+export type PredictionAuthorizationStatus =
+  | { state: 'ready' }
+  | { state: 'reauth_required'; reauthUrl: '/reauth' }
+  | { state: 'unavailable'; message: string }
+  | { state: 'temporarily_unavailable' };
+
 export interface TwitchPredictionOutcome {
   id: string;
   title: string;
@@ -144,7 +150,13 @@ export function createTwitchPredictionsService(
       return;
     }
 
-    const metadata = await deps.validateToken(accessToken);
+    let metadata: TokenMetadata;
+    try {
+      metadata = await deps.validateToken(accessToken);
+    } catch (error: unknown) {
+      if (responseStatus(error) === 401) throw error;
+      throw reauthError();
+    }
     const scopes = Array.isArray(metadata.scopes) ? metadata.scopes : [];
     if (
       !scopes.includes(REQUIRED_SCOPE) ||
@@ -209,8 +221,26 @@ export function createTwitchPredictionsService(
     });
   }
 
+  async function getAuthorizationStatus(
+    channelId: number,
+  ): Promise<PredictionAuthorizationStatus> {
+    try {
+      await getCurrent(channelId);
+      return { state: 'ready' };
+    } catch (error: unknown) {
+      if (error instanceof PredictionReauthRequiredError) {
+        return { state: 'reauth_required', reauthUrl: '/reauth' };
+      }
+      if (error instanceof PredictionUnavailableError) {
+        return { state: 'unavailable', message: error.message };
+      }
+      return { state: 'temporarily_unavailable' };
+    }
+  }
+
   return {
     getCurrent,
+    getAuthorizationStatus,
 
     async start(channelId: number, preset: PredictionPresetData): Promise<TwitchPrediction> {
       const current = await getCurrent(channelId);

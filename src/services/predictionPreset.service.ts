@@ -191,29 +191,46 @@ export function createPredictionPresetService(
   const repository = dependencies.repository || (PredictionPreset as unknown as PresetRepository);
   const isBlocked = dependencies.isBlocked || defaultIsBlocked;
   const warn = dependencies.warn || defaultWarn;
+  type SaveContext = Omit<PresetContentDependencies, 'isBlocked' | 'warn'>;
+
+  async function saveValidatedInput(
+    channelId: number,
+    rawInput: ParsedPresetInput,
+    context: SaveContext,
+  ): Promise<'created' | 'updated'> {
+    const input = validatePresetInput(rawInput);
+    await validatePresetContent(input, { ...context, isBlocked, warn });
+    const existing = await repository.findOne({
+      where: { channel_id: channelId, alias: input.alias },
+    });
+    const now = new Date();
+    await repository.upsert({
+      channel_id: channelId,
+      alias: input.alias,
+      title: input.title,
+      outcomes_json: JSON.stringify(input.outcomes),
+      duration_seconds: input.durationSeconds,
+      created_at: existing?.get?.('created_at') ?? existing?.created_at ?? now,
+      updated_at: now,
+    });
+    return existing ? 'updated' : 'created';
+  }
 
   return {
     async save(
       channelId: number,
       args: string[],
-      context: Omit<PresetContentDependencies, 'isBlocked' | 'warn'>,
+      context: SaveContext,
     ): Promise<'created' | 'updated'> {
-      const input = validatePresetInput(parsePresetAddArgs(args));
-      await validatePresetContent(input, { ...context, isBlocked, warn });
-      const existing = await repository.findOne({
-        where: { channel_id: channelId, alias: input.alias },
-      });
-      const now = new Date();
-      await repository.upsert({
-        channel_id: channelId,
-        alias: input.alias,
-        title: input.title,
-        outcomes_json: JSON.stringify(input.outcomes),
-        duration_seconds: input.durationSeconds,
-        created_at: existing?.get?.('created_at') ?? existing?.created_at ?? now,
-        updated_at: now,
-      });
-      return existing ? 'updated' : 'created';
+      return saveValidatedInput(channelId, parsePresetAddArgs(args), context);
+    },
+
+    async saveInput(
+      channelId: number,
+      input: ParsedPresetInput,
+      context: SaveContext,
+    ): Promise<'created' | 'updated'> {
+      return saveValidatedInput(channelId, input, context);
     },
 
     async list(channelId: number): Promise<PredictionPresetData[]> {

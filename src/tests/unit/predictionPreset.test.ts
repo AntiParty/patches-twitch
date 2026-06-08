@@ -131,4 +131,151 @@ describe('Prediction preset service', () => {
     );
     assert.equal(upsertCalls, 0);
   });
+
+  it('saves structured input with normalized values and returns created', async () => {
+    const upserts: any[] = [];
+    const service = createPredictionPresetService({
+      repository: {
+        findOne: async () => null,
+        upsert: async (values) => {
+          upserts.push(values);
+        },
+        findAll: async () => [],
+        destroy: async () => 0,
+      },
+      isBlocked: () => false,
+      warn: async () => undefined,
+    });
+
+    const result = await service.saveInput(1, {
+      alias: ' Ranked_One ',
+      title: ' Will we climb? ',
+      outcomes: [' Gain RS ', ' Lose RS '],
+      durationSeconds: 300,
+    }, {
+      channel: 'antiparty',
+      actor: 'Antiparty',
+      command: 'dashboard',
+    });
+
+    assert.equal(result, 'created');
+    assert.equal(upserts.length, 1);
+    assert.equal(upserts[0].channel_id, 1);
+    assert.equal(upserts[0].alias, 'ranked_one');
+    assert.equal(upserts[0].title, 'Will we climb?');
+    assert.equal(upserts[0].outcomes_json, JSON.stringify(['Gain RS', 'Lose RS']));
+    assert.equal(upserts[0].duration_seconds, 300);
+    assert(upserts[0].created_at instanceof Date);
+    assert(upserts[0].updated_at instanceof Date);
+  });
+
+  it('returns updated and preserves created_at for an existing structured preset', async () => {
+    const createdAt = new Date('2026-01-02T03:04:05.000Z');
+    let saved: any;
+    const service = createPredictionPresetService({
+      repository: {
+        findOne: async () => ({ created_at: createdAt }),
+        upsert: async (values) => {
+          saved = values;
+        },
+        findAll: async () => [],
+        destroy: async () => 0,
+      },
+      isBlocked: () => false,
+      warn: async () => undefined,
+    });
+
+    const result = await service.saveInput(1, {
+      alias: 'ranked',
+      title: 'Updated title',
+      outcomes: ['Up', 'Down'],
+      durationSeconds: 120,
+    }, {
+      channel: 'antiparty',
+      actor: 'Antiparty',
+      command: 'dashboard',
+    });
+
+    assert.equal(result, 'updated');
+    assert.equal(saved.created_at, createdAt);
+    assert(saved.updated_at instanceof Date);
+  });
+
+  it('does not upsert invalid structured input', async () => {
+    let findCalls = 0;
+    let upsertCalls = 0;
+    const service = createPredictionPresetService({
+      repository: {
+        findOne: async () => {
+          findCalls += 1;
+          return null;
+        },
+        upsert: async () => {
+          upsertCalls += 1;
+        },
+        findAll: async () => [],
+        destroy: async () => 0,
+      },
+      isBlocked: () => false,
+      warn: async () => undefined,
+    });
+
+    await assert.rejects(
+      service.saveInput(1, {
+        alias: 'two words',
+        title: 'Will we climb?',
+        outcomes: ['Yes', 'No'],
+        durationSeconds: 120,
+      }, {
+        channel: 'antiparty',
+        actor: 'Antiparty',
+        command: 'dashboard',
+      }),
+      PredictionPresetValidationError,
+    );
+
+    assert.equal(findCalls, 0);
+    assert.equal(upsertCalls, 0);
+  });
+
+  it('warns and does not upsert blocked structured input', async () => {
+    let upsertCalls = 0;
+    const warnings: PresetWarningDetails[] = [];
+    const service = createPredictionPresetService({
+      repository: {
+        findOne: async () => null,
+        upsert: async () => {
+          upsertCalls += 1;
+        },
+        findAll: async () => [],
+        destroy: async () => 0,
+      },
+      isBlocked: (text) => text === 'blocked',
+      warn: async (details) => {
+        warnings.push(details);
+      },
+    });
+
+    await assert.rejects(
+      service.saveInput(1, {
+        alias: 'ranked',
+        title: 'blocked',
+        outcomes: ['Yes', 'No'],
+        durationSeconds: 120,
+      }, {
+        channel: 'antiparty',
+        actor: 'Antiparty',
+        command: 'dashboard',
+      }),
+      PredictionPresetContentError,
+    );
+
+    assert.equal(upsertCalls, 0);
+    assert.deepEqual(warnings, [{
+      channel: 'antiparty',
+      actor: 'Antiparty',
+      command: 'dashboard',
+      field: 'title',
+    }]);
+  });
 });

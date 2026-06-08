@@ -1,10 +1,10 @@
 import axios from 'axios';
 import { Channel } from '@/db';
 import { PredictionPresetData, predictionPresetService } from './predictionPreset.service';
-import { getBaseUrl } from '@/util/envUtils';
 
 const REQUIRED_SCOPE = 'channel:manage:predictions';
 const SCOPE_CACHE_TTL_MS = 5 * 60 * 1000;
+const PREDICTION_REAUTH_URL = 'https://finalsrs.com/reauth';
 
 export type TwitchPredictionStatus = 'ACTIVE' | 'LOCKED' | 'RESOLVED' | 'CANCELED';
 
@@ -45,7 +45,6 @@ interface TwitchPredictionsDependencies {
   refreshAccessToken: (channel: any) => Promise<string | null>;
   loadChannel: (channelId: number) => Promise<any | null>;
   getAccessToken: (channel: any) => string | null;
-  getBaseUrl: () => string;
   now: () => number;
   validatePresetContent: (preset: PredictionPresetData, channel: ChannelLike) => Promise<void>;
 }
@@ -111,7 +110,6 @@ function productionDependencies(): TwitchPredictionsDependencies {
     refreshAccessToken: (channel) => require('@/util/twitchUtils').refreshAccessToken(channel),
     loadChannel: (channelId) => Channel.findByPk(channelId),
     getAccessToken: (channel) => require('@/util/twitchUtils').decryptChannelAccessToken(channel),
-    getBaseUrl,
     now: Date.now,
     validatePresetContent: (preset, channel) => predictionPresetService.validateForTwitch(
       preset,
@@ -127,7 +125,7 @@ export function createTwitchPredictionsService(
   const scopeCache = new Map<number, { token: string; expiresAt: number }>();
 
   function reauthError(): PredictionReauthRequiredError {
-    return new PredictionReauthRequiredError(`${deps.getBaseUrl().replace(/\/$/, '')}/reauth`);
+    return new PredictionReauthRequiredError(PREDICTION_REAUTH_URL);
   }
 
   async function loadChannel(channelId: number): Promise<any> {

@@ -60,7 +60,6 @@ function createHarness(options: {
     },
     loadChannel: async () => channel,
     getAccessToken: () => token,
-    getBaseUrl: () => 'https://finalsrs.com',
     now: () => 1_000,
     validatePresetContent: async () => undefined,
   });
@@ -74,17 +73,24 @@ describe('Twitch predictions service', () => {
   });
 
   it('requires reauthorization when the broadcaster token lacks the prediction scope', async () => {
-    const { service, requests } = createHarness({ scopes: ['user:read:chat'] });
+    const previousBaseUrl = process.env.BASE_URL;
+    process.env.BASE_URL = 'http://localhost:3000';
+    try {
+      const { service, requests } = createHarness({ scopes: ['user:read:chat'] });
 
-    await assert.rejects(
-      service.getCurrent(7),
-      (error: unknown) => {
-        assert(error instanceof PredictionReauthRequiredError);
-        assert.equal(error.reauthUrl, 'https://finalsrs.com/reauth');
-        return true;
-      },
-    );
-    assert.equal(requests.length, 0);
+      await assert.rejects(
+        service.getCurrent(7),
+        (error: unknown) => {
+          assert(error instanceof PredictionReauthRequiredError);
+          assert.equal(error.reauthUrl, 'https://finalsrs.com/reauth');
+          return true;
+        },
+      );
+      assert.equal(requests.length, 0);
+    } finally {
+      if (previousBaseUrl === undefined) delete process.env.BASE_URL;
+      else process.env.BASE_URL = previousBaseUrl;
+    }
   });
 
   it('requires reauthorization when token ownership does not match the broadcaster', async () => {

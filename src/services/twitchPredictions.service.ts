@@ -88,7 +88,9 @@ function mapTwitchError(error: any, reauthUrl: string): Error {
     return new PredictionReauthRequiredError(reauthUrl);
   }
   if (message.includes('partner') || message.includes('affiliate')) {
-    return new PredictionUnavailableError('Channel Points Predictions require Affiliate or Partner status.');
+    return new PredictionUnavailableError(
+      'Channel Points Predictions require Twitch Affiliate or Partner status.',
+    );
   }
   if (message.includes('active prediction') || message.includes('prediction already')) {
     return new PredictionActiveConflictError('A prediction is already active.');

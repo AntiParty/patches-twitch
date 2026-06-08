@@ -343,7 +343,7 @@ describe('Twitch predictions service', () => {
 
       assert.deepEqual(await service.getAuthorizationStatus(7), {
         state: 'unavailable',
-        message: 'Channel Points Predictions require Affiliate or Partner status.',
+        message: 'Channel Points Predictions require Twitch Affiliate or Partner status.',
       });
     });
 

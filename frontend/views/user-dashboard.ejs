@@ -38,6 +38,8 @@
         // Call these functions if they exist (they'll be defined later)
         if (viewId === "commands" && typeof fetchCommands === "function")
           fetchCommands();
+        if (viewId === "predictions" && typeof fetchPredictions === "function")
+          fetchPredictions();
         if (viewId === "rank-tracker" && typeof loadRankGoal === "function")
           loadRankGoal();
         if (viewId === "analytics" && typeof loadAnalytics === "function")
@@ -2327,11 +2329,201 @@
           <div class="card">
             <h2>Predictions</h2>
             <div id="predictions-status">Loading status...</div>
+            <div style="margin-top:8px; margin-bottom:12px;"><button id="create-preset" class="btn">Create preset</button></div>
             <div id="presets-list">Loading presets...</div>
             <div style="margin-top:12px; color:var(--text-muted); font-size:13px">Use the dashboard to create and edit presets. Moderators and the broadcaster can operate predictions via chat <code>!p</code>.</div>
           </div>
+
+          <!-- Preset modal -->
+          <div id="preset-modal" class="card" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:520px; max-width:95%; z-index:1200;">
+            <h3 id="modal-title">Create preset</h3>
+            <div style="margin-top:8px;">
+              <label>Alias (one word)</label>
+              <input id="preset-alias" type="text" style="width:100%; padding:8px; margin-top:6px;" />
+            </div>
+            <div style="margin-top:8px;">
+              <label>Title</label>
+              <input id="preset-title" type="text" style="width:100%; padding:8px; margin-top:6px;" />
+            </div>
+            <div id="outcomes-container" style="margin-top:8px;">
+              <label>Outcomes</label>
+              <div id="outcomes-list"></div>
+              <div style="margin-top:6px;"><button id="add-outcome" class="btn">Add outcome</button></div>
+            </div>
+            <div style="margin-top:8px;">
+              <label>Duration (seconds)</label>
+              <input id="preset-duration" type="number" min="30" max="1800" value="120" style="width:100%; padding:8px; margin-top:6px;" />
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end;">
+              <button id="cancel-preset" class="btn">Cancel</button>
+              <button id="save-preset" class="btn">Save</button>
+            </div>
+          </div>
+
         </div>
         <div id="view-overlays" class="view-section">
+
+        <script>
+          (function(){
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            function el(tag, attrs = {}, text) {
+              const e = document.createElement(tag);
+              Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+              if (text !== undefined) e.textContent = text;
+              return e;
+            }
+
+            async function fetchStatus() {
+              const statusEl = document.getElementById('predictions-status');
+              statusEl.textContent = 'Checking...';
+              try {
+                const res = await fetch('/api/user/predictions/status', { headers: { 'csrf-token': csrf } });
+                const json = await res.json();
+                if (json.status === 'ready') {
+                  statusEl.textContent = 'Ready';
+                } else if (json.status === 'reauth_required') {
+                  statusEl.innerHTML = 'Reauthorization required. <a href="' + (json.reauthUrl || '/reauth') + '">Reauthorize with Twitch</a>';
+                } else if (json.status === 'unavailable') {
+                  statusEl.textContent = 'Unavailable for Channel Points Predictions';
+                } else {
+                  statusEl.textContent = 'Unknown';
+                }
+              } catch (err) {
+                statusEl.textContent = 'Error checking status';
+              }
+            }
+
+            async function fetchPresets() {
+              const list = document.getElementById('presets-list');
+              list.textContent = 'Loading...';
+              try {
+                const res = await fetch('/api/user/prediction-presets', { headers: { 'csrf-token': csrf } });
+                if (!res.ok) throw new Error('fetch failed');
+                const json = await res.json();
+                renderPresets(json.presets || []);
+              } catch (err) {
+                list.textContent = 'Failed to load presets';
+              }
+            }
+
+            function renderPresets(presets) {
+              const list = document.getElementById('presets-list');
+              list.innerHTML = '';
+              if (!presets.length) {
+                list.textContent = 'No presets saved.';
+                return;
+              }
+              presets.forEach(p => {
+                const row = document.createElement('div');
+                row.style.padding = '8px 0';
+                row.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+                const title = el('div', {}, p.alias + ' — ' + p.title + ' (' + p.durationSeconds + 's)');
+                row.appendChild(title);
+                const outcomes = el('div', { style: 'color:var(--text-muted); font-size:13px; margin-top:6px;' }, p.outcomes.map((o,i)=> (i+1)+'. '+o).join('  '));
+                row.appendChild(outcomes);
+                const actions = document.createElement('div');
+                actions.style.marginTop = '8px';
+                const editBtn = el('button', { class: 'btn' }, 'Edit');
+                editBtn.onclick = () => openPresetModal(p);
+                const delBtn = el('button', { class: 'btn', style: 'margin-left:8px; background:var(--danger);' }, 'Delete');
+                delBtn.onclick = () => deletePreset(p.alias);
+                actions.appendChild(editBtn);
+                actions.appendChild(delBtn);
+                row.appendChild(actions);
+                list.appendChild(row);
+              });
+            }
+
+            function openPresetModal(preset) {
+              document.getElementById('preset-modal').style.display = 'block';
+              document.getElementById('modal-title').textContent = preset ? 'Edit preset' : 'Create preset';
+              document.getElementById('preset-alias').value = preset ? preset.alias : '';
+              document.getElementById('preset-alias').disabled = !!preset; // cannot change alias when editing
+              document.getElementById('preset-title').value = preset ? preset.title : '';
+              document.getElementById('preset-duration').value = preset ? String(preset.durationSeconds) : '120';
+              const outcomesList = document.getElementById('outcomes-list');
+              outcomesList.innerHTML = '';
+              const base = preset ? preset.outcomes.slice() : ['',''];
+              base.forEach(o => addOutcomeInput(o));
+              document.getElementById('save-preset').onclick = () => savePreset(preset);
+            }
+
+            function closePresetModal() {
+              document.getElementById('preset-modal').style.display = 'none';
+            }
+
+            function addOutcomeInput(value) {
+              const outcomes = document.getElementById('outcomes-list');
+              const row = document.createElement('div');
+              row.style.display = 'flex';
+              row.style.gap = '8px';
+              row.style.marginTop = '6px';
+              const inp = document.createElement('input');
+              inp.type = 'text';
+              inp.value = value || '';
+              inp.style.flex = '1';
+              inp.style.padding = '6px';
+              const remove = document.createElement('button');
+              remove.textContent = 'Remove';
+              remove.className = 'btn';
+              remove.onclick = () => outcomes.removeChild(row);
+              row.appendChild(inp);
+              row.appendChild(remove);
+              outcomes.appendChild(row);
+            }
+
+            async function savePreset(original) {
+              const alias = document.getElementById('preset-alias').value.trim();
+              const title = document.getElementById('preset-title').value.trim();
+              const duration = Number(document.getElementById('preset-duration').value) || 120;
+              const outcomes = Array.from(document.getElementById('outcomes-list').querySelectorAll('input')).map(i=>i.value.trim()).filter(Boolean);
+              const payload = { alias, title, outcomes, durationSeconds: duration };
+              const saveBtn = document.getElementById('save-preset');
+              saveBtn.disabled = true;
+              saveBtn.textContent = 'Saving...';
+              try {
+                const url = original ? '/api/user/prediction-presets/' + encodeURIComponent(original.alias) : '/api/user/prediction-presets';
+                const method = original ? 'PUT' : 'POST';
+                const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'csrf-token': csrf }, body: JSON.stringify(payload) });
+                if (!res.ok) throw new Error('save failed');
+                await fetchPresets();
+                closePresetModal();
+              } catch (err) {
+                alert('Failed to save preset: ' + (err.message || ''));
+              } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+              }
+            }
+
+            async function deletePreset(alias) {
+              if (!confirm('Delete preset "' + alias + '"?')) return;
+              try {
+                const res = await fetch('/api/user/prediction-presets/' + encodeURIComponent(alias), { method: 'DELETE', headers: { 'csrf-token': csrf } });
+                if (!res.ok) throw new Error('delete failed');
+                await fetchPresets();
+              } catch (err) {
+                alert('Failed to delete preset');
+              }
+            }
+
+            // Wiring
+            document.getElementById('create-preset').addEventListener('click', ()=>openPresetModal(null));
+            document.getElementById('cancel-preset').addEventListener('click', ()=>closePresetModal());
+            document.getElementById('add-outcome').addEventListener('click', (e)=>{ e.preventDefault(); addOutcomeInput(''); });
+
+            // Exposed for switchView
+            window.fetchPredictions = async function() { await fetchStatus(); await fetchPresets(); };
+
+            // If current view is predictions on load, fetch
+            setTimeout(()=>{
+              if (document.querySelector('.nav-item.active')?.getAttribute('data-view') === 'predictions') {
+                fetchPredictions();
+              }
+            }, 200);
+          })();
+        </script>
           <div class="header">
             <h2 class="page-title">Stream Overlays</h2>
             <button class="btn btn-ghost" onclick="regenerateOverlayToken()">

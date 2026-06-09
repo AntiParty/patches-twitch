@@ -7,7 +7,7 @@ import {
   getCurrentRankedScore,
 } from "../../services/rankedScore.service";
 
-describe("Ranked score service", () => {
+describe("rankedScore service", () => {
   const cacheDir = path.join(process.cwd(), "cache");
   const cacheFile = path.join(cacheDir, "regular_s99999.json");
 

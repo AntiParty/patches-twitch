@@ -7,7 +7,16 @@ import {
   PredictionPresetValidationError,
   predictionPresetService,
 } from '@/services/predictionPreset.service';
-import { twitchPredictionsService } from '@/services/twitchPredictions.service';
+import {
+  PredictionActiveConflictError,
+  PredictionInvalidOutcomeError,
+  PredictionNoActiveError,
+  PredictionReauthRequiredError,
+  PredictionTemporaryError,
+  PredictionUnavailableError,
+  TwitchPrediction,
+  twitchPredictionsService,
+} from '@/services/twitchPredictions.service';
 import logger from '@/util/logger';
 
 interface ChannelIdentity {
@@ -22,7 +31,10 @@ interface PredictionRouteDependencies {
     typeof predictionPresetService,
     'list' | 'saveInput' | 'get' | 'delete'
   >;
-  predictionService: Pick<typeof twitchPredictionsService, 'getAuthorizationStatus'>;
+  predictionService: Pick<
+    typeof twitchPredictionsService,
+    'getAuthorizationStatus' | 'getCurrent' | 'start' | 'resolve' | 'cancel'
+  >;
   logger: Pick<typeof logger, 'error'>;
 }
 
@@ -57,6 +69,35 @@ function errorResponse(
   if (error instanceof PredictionPresetContentError) {
     return res.status(400).json({ error: 'Preset contains blocked content.' });
   }
+  if (error instanceof PredictionReauthRequiredError) {
+    return res.status(403).json({
+      error: 'Prediction authorization required.',
+      state: 'reauth_required',
+      reauthUrl: '/reauth',
+    });
+  }
+  if (error instanceof PredictionNoActiveError) {
+    return res.status(409).json({ error: 'There is no active prediction.' });
+  }
+  if (error instanceof PredictionActiveConflictError) {
+    return res.status(409).json({ error: 'A prediction is already active.' });
+  }
+  if (error instanceof PredictionInvalidOutcomeError) {
+    return res.status(400).json({
+      error: 'That outcome was not found.',
+      choices: error.choices,
+    });
+  }
+  if (error instanceof PredictionUnavailableError) {
+    return res.status(403).json({
+      error: 'Channel Points Predictions require Twitch Affiliate or Partner status.',
+    });
+  }
+  if (error instanceof PredictionTemporaryError) {
+    return res.status(503).json({
+      error: 'Twitch predictions are temporarily unavailable.',
+    });
+  }
   const metadata: Record<string, string | number> = { operation };
   if (typeof error === 'object' && error !== null) {
     const candidate = error as Record<string, any>;
@@ -79,6 +120,21 @@ function errorResponse(
   }
   dependencies.logger.error('[PredictionDashboard] Request failed', metadata);
   return res.status(500).json({ error: 'Prediction request failed.' });
+}
+
+function serializePrediction(prediction: TwitchPrediction | null): TwitchPrediction | null {
+  if (!prediction) return null;
+  return {
+    id: String(prediction.id),
+    title: String(prediction.title),
+    status: prediction.status,
+    outcomes: Array.isArray(prediction.outcomes)
+      ? prediction.outcomes.map((outcome) => ({
+        id: String(outcome.id),
+        title: String(outcome.title),
+      }))
+      : [],
+  };
 }
 
 export function createPredictionRouteHandlers(
@@ -163,6 +219,41 @@ export function createPredictionRouteHandlers(
       const status = await dependencies.predictionService.getAuthorizationStatus(channel.id);
       return res.json(status);
     }),
+
+    current: (req: any, res: any) => withChannel(req, res, 'current', async (channel) => {
+      const prediction = await dependencies.predictionService.getCurrent(channel.id);
+      return res.json({ prediction: serializePrediction(prediction) });
+    }),
+
+    start: (req: any, res: any) => withChannel(req, res, 'start', async (channel) => {
+      const alias = typeof req.body?.alias === 'string' ? req.body.alias.trim() : '';
+      if (!alias) {
+        return res.status(400).json({ error: 'Prediction alias is required.' });
+      }
+      const preset = await dependencies.presetService.get(channel.id, alias);
+      if (!preset) {
+        return res.status(404).json({ error: 'Prediction preset not found.' });
+      }
+      const prediction = await dependencies.predictionService.start(channel.id, preset);
+      return res.json({ prediction: serializePrediction(prediction) });
+    }),
+
+    resolve: (req: any, res: any) => withChannel(req, res, 'resolve', async (channel) => {
+      const rawSelection = req.body?.selection;
+      const selection = typeof rawSelection === 'string' || typeof rawSelection === 'number'
+        ? String(rawSelection).trim()
+        : '';
+      if (!selection) {
+        return res.status(400).json({ error: 'Prediction outcome is required.' });
+      }
+      const prediction = await dependencies.predictionService.resolve(channel.id, selection);
+      return res.json({ prediction: serializePrediction(prediction) });
+    }),
+
+    cancel: (req: any, res: any) => withChannel(req, res, 'cancel', async (channel) => {
+      const prediction = await dependencies.predictionService.cancel(channel.id);
+      return res.json({ prediction: serializePrediction(prediction) });
+    }),
   };
 }
 
@@ -179,6 +270,10 @@ export function createPredictionRoutes(
   router.put('/api/user/prediction-presets/:alias', auth, csrf, handlers.update);
   router.delete('/api/user/prediction-presets/:alias', auth, csrf, handlers.remove);
   router.get('/api/user/predictions/status', auth, handlers.status);
+  router.get('/api/user/predictions/current', auth, handlers.current);
+  router.post('/api/user/predictions/start', auth, csrf, handlers.start);
+  router.post('/api/user/predictions/resolve', auth, csrf, handlers.resolve);
+  router.post('/api/user/predictions/cancel', auth, csrf, handlers.cancel);
 
   return router;
 }

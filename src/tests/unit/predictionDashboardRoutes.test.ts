@@ -7,6 +7,14 @@ import {
   PredictionPresetContentError,
   PredictionPresetValidationError,
 } from '@/services/predictionPreset.service';
+import {
+  PredictionActiveConflictError,
+  PredictionInvalidOutcomeError,
+  PredictionNoActiveError,
+  PredictionReauthRequiredError,
+  PredictionTemporaryError,
+  PredictionUnavailableError,
+} from '@/services/twitchPredictions.service';
 
 type Handler = (req: any, res: any) => Promise<any>;
 
@@ -34,6 +42,10 @@ function createHarness(overrides: Record<string, any> = {}) {
     get: [],
     delete: [],
     status: [],
+    current: [],
+    start: [],
+    resolve: [],
+    cancel: [],
     errors: [],
   };
   const preset = {
@@ -76,6 +88,50 @@ function createHarness(overrides: Record<string, any> = {}) {
         calls.status.push(channelId);
         return { state: 'ready' };
       },
+      getCurrent: async (channelId: number) => {
+        calls.current.push(channelId);
+        return {
+          id: 'prediction-1',
+          title: 'How will ranked go?',
+          status: 'ACTIVE',
+          outcomes: [
+            { id: 'outcome-1', title: 'Down' },
+            { id: 'outcome-2', title: 'Up' },
+          ],
+          accessToken: 'must-not-leak',
+        };
+      },
+      start: async (channelId: number, selectedPreset: unknown) => {
+        calls.start.push({ channelId, preset: selectedPreset });
+        return {
+          id: 'prediction-2',
+          title: 'How will ranked go?',
+          status: 'ACTIVE',
+          outcomes: [
+            { id: 'outcome-1', title: 'Down' },
+            { id: 'outcome-2', title: 'Up' },
+          ],
+          raw: { token: 'must-not-leak' },
+        };
+      },
+      resolve: async (channelId: number, selection: string) => {
+        calls.resolve.push({ channelId, selection });
+        return {
+          id: 'prediction-1',
+          title: 'How will ranked go?',
+          status: 'RESOLVED',
+          outcomes: [{ id: 'outcome-2', title: 'Up' }],
+        };
+      },
+      cancel: async (channelId: number) => {
+        calls.cancel.push(channelId);
+        return {
+          id: 'prediction-1',
+          title: 'How will ranked go?',
+          status: 'CANCELED',
+          outcomes: [{ id: 'outcome-1', title: 'Down' }],
+        };
+      },
     },
     logger: {
       error: (...args: any[]) => calls.errors.push(args),
@@ -105,7 +161,7 @@ async function invoke(
   return res;
 }
 
-describe('prediction dashboard route handlers', () => {
+describe('Prediction dashboard routes', () => {
   it('lists presets scoped to the authenticated session channel', async () => {
     const harness = createHarness();
     const res = await invoke(harness.handlers.list, {
@@ -296,9 +352,189 @@ describe('prediction dashboard route handlers', () => {
     assert.equal(serializedLogs.includes(refreshToken), false);
     assert.equal(harness.calls.errors[0].includes(error), false);
   });
+
+  it('returns the current prediction scoped to the session channel without raw fields', async () => {
+    const harness = createHarness();
+    const res = await invoke(harness.handlers.current, {
+      body: { channelId: 999 },
+      query: { channelId: '999' },
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(harness.calls.current, [7]);
+    assert.deepEqual(res.body, {
+      prediction: {
+        id: 'prediction-1',
+        title: 'How will ranked go?',
+        status: 'ACTIVE',
+        outcomes: [
+          { id: 'outcome-1', title: 'Down' },
+          { id: 'outcome-2', title: 'Up' },
+        ],
+      },
+    });
+    assert.equal(JSON.stringify(res.body).includes('must-not-leak'), false);
+  });
+
+  it('returns null when there is no current prediction', async () => {
+    const harness = createHarness({
+      predictionService: {
+        getAuthorizationStatus: async () => ({ state: 'ready' }),
+        getCurrent: async () => null,
+        start: async () => null,
+        resolve: async () => null,
+        cancel: async () => null,
+      },
+    });
+    const res = await invoke(harness.handlers.current);
+
+    assert.deepEqual(res.body, { prediction: null });
+  });
+
+  it('starts a stored preset by alias for the session channel', async () => {
+    const harness = createHarness();
+    const res = await invoke(harness.handlers.start, {
+      body: { alias: 'ranked', channelId: 999 },
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(harness.calls.get, [{ channelId: 7, alias: 'ranked' }]);
+    assert.deepEqual(harness.calls.start, [{ channelId: 7, preset: harness.preset }]);
+    assert.equal(res.body.prediction.id, 'prediction-2');
+    assert.equal(JSON.stringify(res.body).includes('must-not-leak'), false);
+  });
+
+  it('returns 404 when starting a missing preset', async () => {
+    const harness = createHarness({
+      presetService: {
+        list: async () => [],
+        saveInput: async () => 'created',
+        get: async () => null,
+        delete: async () => false,
+      },
+    });
+    const res = await invoke(harness.handlers.start, { body: { alias: 'missing' } });
+
+    assert.equal(res.statusCode, 404);
+    assert.deepEqual(res.body, { error: 'Prediction preset not found.' });
+    assert.deepEqual(harness.calls.start, []);
+  });
+
+  for (const alias of [undefined, null, '', '   ', 42, []]) {
+    it(`rejects malformed start aliases: ${JSON.stringify(alias)}`, async () => {
+      const harness = createHarness();
+      const res = await invoke(harness.handlers.start, { body: { alias } });
+
+      assert.equal(res.statusCode, 400);
+      assert.deepEqual(res.body, { error: 'Prediction alias is required.' });
+      assert.deepEqual(harness.calls.get, []);
+    });
+  }
+
+  it('resolves by an outcome number converted to a string', async () => {
+    const harness = createHarness();
+    const res = await invoke(harness.handlers.resolve, { body: { selection: 2 } });
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(harness.calls.resolve, [{ channelId: 7, selection: '2' }]);
+    assert.equal(res.body.prediction.status, 'RESOLVED');
+  });
+
+  it('resolves by exact outcome text', async () => {
+    const harness = createHarness();
+    await invoke(harness.handlers.resolve, { body: { selection: 'Up' } });
+
+    assert.deepEqual(harness.calls.resolve, [{ channelId: 7, selection: 'Up' }]);
+  });
+
+  for (const selection of [undefined, null, '', '   ', [], {}]) {
+    it(`rejects malformed resolve selections: ${JSON.stringify(selection)}`, async () => {
+      const harness = createHarness();
+      const res = await invoke(harness.handlers.resolve, { body: { selection } });
+
+      assert.equal(res.statusCode, 400);
+      assert.deepEqual(res.body, { error: 'Prediction outcome is required.' });
+      assert.deepEqual(harness.calls.resolve, []);
+    });
+  }
+
+  it('cancels the current prediction for the session channel', async () => {
+    const harness = createHarness();
+    const res = await invoke(harness.handlers.cancel, {
+      body: { channelId: 999 },
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(harness.calls.cancel, [7]);
+    assert.equal(res.body.prediction.status, 'CANCELED');
+  });
+
+  it('maps prediction domain errors to safe dashboard responses', async () => {
+    const cases = [
+      {
+        error: new PredictionReauthRequiredError('https://finalsrs.com/reauth'),
+        status: 403,
+        body: {
+          error: 'Prediction authorization required.',
+          state: 'reauth_required',
+          reauthUrl: '/reauth',
+        },
+      },
+      {
+        error: new PredictionNoActiveError('secret upstream detail'),
+        status: 409,
+        body: { error: 'There is no active prediction.' },
+      },
+      {
+        error: new PredictionActiveConflictError('secret upstream detail'),
+        status: 409,
+        body: { error: 'A prediction is already active.' },
+      },
+      {
+        error: new PredictionInvalidOutcomeError(['1. Down', '2. Up']),
+        status: 400,
+        body: {
+          error: 'That outcome was not found.',
+          choices: ['1. Down', '2. Up'],
+        },
+      },
+      {
+        error: new PredictionUnavailableError('secret upstream detail'),
+        status: 403,
+        body: {
+          error: 'Channel Points Predictions require Twitch Affiliate or Partner status.',
+        },
+      },
+      {
+        error: new PredictionTemporaryError('secret upstream detail'),
+        status: 503,
+        body: { error: 'Twitch predictions are temporarily unavailable.' },
+      },
+    ];
+
+    for (const item of cases) {
+      const harness = createHarness({
+        predictionService: {
+          getAuthorizationStatus: async () => ({ state: 'ready' }),
+          getCurrent: async () => {
+            throw item.error;
+          },
+          start: async () => null,
+          resolve: async () => null,
+          cancel: async () => null,
+        },
+      });
+      const res = await invoke(harness.handlers.current);
+
+      assert.equal(res.statusCode, item.status);
+      assert.deepEqual(res.body, item.body);
+      assert.equal(JSON.stringify(res.body).includes('secret upstream detail'), false);
+      assert.deepEqual(harness.calls.errors, []);
+    }
+  });
 });
 
-describe('prediction dashboard router wiring', () => {
+describe('Prediction dashboard routes wiring', () => {
   it('protects all routes with auth and mutations with CSRF', () => {
     const auth = (_req: any, _res: any, next: any) => next();
     const csrf = (_req: any, _res: any, next: any) => next();
@@ -312,6 +548,10 @@ describe('prediction dashboard router wiring', () => {
     const byPath = new Map(layers.map((layer: any) => [layer.route.path, layer.route.stack]));
 
     assert.equal((byPath.get('/api/user/prediction-presets') as any[]).length >= 2, true);
+    assert.equal(byPath.has('/api/user/predictions/current'), true);
+    assert.equal(byPath.has('/api/user/predictions/start'), true);
+    assert.equal(byPath.has('/api/user/predictions/resolve'), true);
+    assert.equal(byPath.has('/api/user/predictions/cancel'), true);
     for (const layer of layers) {
       const middleware = layer.route.stack.map((entry: any) => entry.handle);
       assert.equal(middleware.includes(auth), true, `${layer.route.path} should require auth`);

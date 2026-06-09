@@ -2,6 +2,10 @@ import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
+import {
+  findRankedPlayer,
+  getLatestRegularLeaderboardData,
+} from "../services/rankedScore.service";
 
 export interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -47,16 +51,7 @@ export async function getLatestCacheFile(prefix: string): Promise<string | null>
 }
 
 export async function getLatestLeaderboardData() {
-  const file = await getLatestCacheFile("regular_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("[record] Failed to read leaderboard cache:", err);
-    return null;
-  }
+  return getLatestRegularLeaderboardData();
 }
 
 export async function getLatestWorldTourData() {
@@ -128,17 +123,7 @@ export const execute = async (
       return;
     }
 
-    const finalsName = playerId.toLowerCase();
-    const findPlayer = (data: any[] | null, name: string) => {
-      if (!data) return null;
-      let player = data.find((p) => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find((p) => p.name.toLowerCase().startsWith(baseName));
-      }
-      return player;
-    };
-    const player = findPlayer(cachedData, finalsName);
+    const player = findRankedPlayer(cachedData, playerId);
 
     if (!player) {
       await ctx.say(

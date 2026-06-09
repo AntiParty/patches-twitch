@@ -34,13 +34,44 @@ function safeDecryptToken(encryptedOrPlainToken: string): string | null {
   return encryptedOrPlainToken;
 }
 
-export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ username: string, thumbnailUrl?: string }[]> {
+export interface TwitchLiveStream {
+  username: string;
+  thumbnailUrl?: string;
+  gameId: string;
+  gameName: string;
+  startedAt: Date;
+}
+
+function parseLiveStream(stream: any): TwitchLiveStream | null {
+  const startedAt = new Date(stream?.started_at);
+  if (!stream?.started_at || !Number.isFinite(startedAt.getTime())) {
+    logger.warn("[getLiveStreams] Skipping stream with invalid started_at");
+    return null;
+  }
+
+  let thumbnailUrl = stream.thumbnail_url || "";
+  if (thumbnailUrl) {
+    thumbnailUrl = thumbnailUrl
+      .replace("{width}", "320")
+      .replace("{height}", "180");
+  }
+
+  return {
+    username: String(stream.user_login || "").toLowerCase(),
+    thumbnailUrl: thumbnailUrl || undefined,
+    gameId: typeof stream.game_id === "string" ? stream.game_id : "",
+    gameName: typeof stream.game_name === "string" ? stream.game_name : "",
+    startedAt,
+  };
+}
+
+export async function getLiveStreamsForUsers(usernames: string[]): Promise<TwitchLiveStream[]> {
   const clientId = process.env.TWITCH_CLIENT_ID;
   // Prefer app access token for stream status checks (more reliable than bot token)
   const accessToken = process.env.TWITCH_APP_ACCESS_TOKEN || process.env.TWITCH_BOT_TOKEN;
   if (!clientId || !accessToken || usernames.length === 0) return [];
 
-  const results: { username: string, thumbnailUrl?: string }[] = [];
+  const results: TwitchLiveStream[] = [];
   const BATCH_SIZE = 100; // Twitch API supports up to 100 user_login params per request
 
   for (let i = 0; i < usernames.length; i += BATCH_SIZE) {
@@ -64,14 +95,8 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ use
       const data: any = await response.json();
       if (data.data && Array.isArray(data.data)) {
         for (const stream of data.data) {
-          let thumb = stream.thumbnail_url || '';
-          if (thumb) {
-            thumb = thumb.replace('{width}', '320').replace('{height}', '180');
-          }
-          results.push({
-            username: stream.user_login.toLowerCase(),
-            thumbnailUrl: thumb || undefined,
-          });
+          const parsed = parseLiveStream(stream);
+          if (parsed) results.push(parsed);
         }
       }
 
@@ -89,14 +114,8 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<{ use
         const pageData: any = await pageResp.json();
         if (pageData.data && Array.isArray(pageData.data)) {
           for (const stream of pageData.data) {
-            let thumb = stream.thumbnail_url || '';
-            if (thumb) {
-              thumb = thumb.replace('{width}', '320').replace('{height}', '180');
-            }
-            results.push({
-              username: stream.user_login.toLowerCase(),
-              thumbnailUrl: thumb || undefined,
-            });
+            const parsed = parseLiveStream(stream);
+            if (parsed) results.push(parsed);
           }
         }
         cursor = pageData.pagination?.cursor;

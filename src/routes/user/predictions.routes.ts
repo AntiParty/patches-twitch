@@ -49,6 +49,7 @@ function errorResponse(
   error: unknown,
   res: any,
   dependencies: PredictionRouteDependencies,
+  operation: string,
 ) {
   if (error instanceof PredictionPresetValidationError) {
     return res.status(400).json({ error: error.message });
@@ -56,7 +57,27 @@ function errorResponse(
   if (error instanceof PredictionPresetContentError) {
     return res.status(400).json({ error: 'Preset contains blocked content.' });
   }
-  dependencies.logger.error('[PredictionDashboard] Request failed:', error);
+  const metadata: Record<string, string | number> = { operation };
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as Record<string, any>;
+    if (
+      typeof candidate.name === 'string'
+      && /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(candidate.name)
+    ) {
+      metadata.name = candidate.name;
+    }
+    const status = candidate.response?.status ?? candidate.status;
+    if (Number.isInteger(status) && status >= 100 && status <= 599) {
+      metadata.status = status;
+    }
+    if (
+      typeof candidate.code === 'string'
+      && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(candidate.code)
+    ) {
+      metadata.code = candidate.code;
+    }
+  }
+  dependencies.logger.error('[PredictionDashboard] Request failed', metadata);
   return res.status(500).json({ error: 'Prediction request failed.' });
 }
 
@@ -80,6 +101,7 @@ export function createPredictionRouteHandlers(
   async function withChannel(
     req: any,
     res: any,
+    operationName: string,
     operation: (channel: ChannelIdentity) => Promise<any>,
   ) {
     try {
@@ -87,17 +109,17 @@ export function createPredictionRouteHandlers(
       if (!channel) return res.status(404).json({ error: 'Channel not found.' });
       return await operation(channel);
     } catch (error: unknown) {
-      return errorResponse(error, res, dependencies);
+      return errorResponse(error, res, dependencies, operationName);
     }
   }
 
   return {
-    list: (req: any, res: any) => withChannel(req, res, async (channel) => {
+    list: (req: any, res: any) => withChannel(req, res, 'list', async (channel) => {
       const presets = await dependencies.presetService.list(channel.id);
       return res.json({ presets });
     }),
 
-    create: (req: any, res: any) => withChannel(req, res, async (channel) => {
+    create: (req: any, res: any) => withChannel(req, res, 'create', async (channel) => {
       const operation = await dependencies.presetService.saveInput(
         channel.id,
         req.body,
@@ -112,7 +134,7 @@ export function createPredictionRouteHandlers(
       return res.json({ operation, preset });
     }),
 
-    update: (req: any, res: any) => withChannel(req, res, async (channel) => {
+    update: (req: any, res: any) => withChannel(req, res, 'update', async (channel) => {
       const body = typeof req.body === 'object' && req.body !== null && !Array.isArray(req.body)
         ? { ...req.body, alias: req.params.alias }
         : { alias: req.params.alias };
@@ -129,7 +151,7 @@ export function createPredictionRouteHandlers(
       return res.json({ operation, preset });
     }),
 
-    remove: (req: any, res: any) => withChannel(req, res, async (channel) => {
+    remove: (req: any, res: any) => withChannel(req, res, 'remove', async (channel) => {
       const deleted = await dependencies.presetService.delete(channel.id, req.params.alias);
       if (!deleted) {
         return res.status(404).json({ error: 'Prediction preset not found.' });
@@ -137,7 +159,7 @@ export function createPredictionRouteHandlers(
       return res.json({ success: true, alias: req.params.alias });
     }),
 
-    status: (req: any, res: any) => withChannel(req, res, async (channel) => {
+    status: (req: any, res: any) => withChannel(req, res, 'status', async (channel) => {
       const status = await dependencies.predictionService.getAuthorizationStatus(channel.id);
       return res.json(status);
     }),

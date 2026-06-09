@@ -256,12 +256,25 @@ describe('prediction dashboard route handlers', () => {
     assert.deepEqual(res.body, { error: 'Preset contains blocked content.' });
   });
 
-  it('hides unexpected errors and tokens while logging with a module prefix', async () => {
-    const secret = 'oauth:super-secret-token';
+  it('redacts unexpected error details from prediction dashboard logs', async () => {
+    const accessToken = 'oauth:super-secret-access-token';
+    const refreshToken = 'super-secret-refresh-token';
+    const error = Object.assign(new Error(`Twitch failed with ${accessToken}`), {
+      name: 'AxiosError',
+      code: 'ERR_BAD_RESPONSE',
+      response: {
+        status: 503,
+        data: { message: `upstream leaked ${refreshToken}` },
+      },
+      config: {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+      request: { accessToken, refreshToken },
+    });
     const harness = createHarness({
       predictionService: {
         getAuthorizationStatus: async () => {
-          throw new Error(`Twitch failed with ${secret}`);
+          throw error;
         },
       },
     });
@@ -269,8 +282,19 @@ describe('prediction dashboard route handlers', () => {
 
     assert.equal(res.statusCode, 500);
     assert.deepEqual(res.body, { error: 'Prediction request failed.' });
-    assert.equal(JSON.stringify(res.body).includes(secret), false);
-    assert.equal(String(harness.calls.errors[0][0]).startsWith('[PredictionDashboard]'), true);
+    assert.deepEqual(harness.calls.errors, [[
+      '[PredictionDashboard] Request failed',
+      {
+        operation: 'status',
+        name: 'AxiosError',
+        status: 503,
+        code: 'ERR_BAD_RESPONSE',
+      },
+    ]]);
+    const serializedLogs = JSON.stringify(harness.calls.errors);
+    assert.equal(serializedLogs.includes(accessToken), false);
+    assert.equal(serializedLogs.includes(refreshToken), false);
+    assert.equal(harness.calls.errors[0].includes(error), false);
   });
 });
 

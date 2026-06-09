@@ -19,7 +19,7 @@ function response(body: unknown): FetchResponse {
   };
 }
 
-describe("Twitch live stream metadata", () => {
+describe("Twitch stream metadata", () => {
   const originalFetch = global.fetch;
   const originalClientId = process.env.TWITCH_CLIENT_ID;
   const originalAppToken = process.env.TWITCH_APP_ACCESS_TOKEN;

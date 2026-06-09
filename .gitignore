@@ -49,3 +49,4 @@ frontend/public/drops.json
 # VPS failover scripts: secrets and seed artifacts
 scripts/backup-config.sh
 scripts/seed-output/
+.worktrees/

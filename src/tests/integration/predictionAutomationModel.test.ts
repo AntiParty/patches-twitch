@@ -1,56 +1,60 @@
 import { strict as assert } from 'assert';
-import {
-  Channel,
-  CustomResponse,
-  PredictionAutomationConfig,
-  PredictionAutomationRun,
-  dbReady,
-  sequelize,
-} from '@/db';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
+import { DataTypes, Sequelize } from 'sequelize';
+import { initPredictionAutomationModels } from '@/models/predictionAutomation';
 import { migratePredictionAutomation } from '@/scripts/migrate_prediction_automation';
 
-describe('Prediction automation models', function () {
+describe('Prediction automation persistence', function () {
   this.timeout(15000);
 
-  const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const usernames = [
-    `prediction-automation-a-${suffix}`,
-    `prediction-automation-b-${suffix}`,
-  ];
-  const createdChannelIds: number[] = [];
+  let tempDir: string;
+  let sequelize: Sequelize;
+  let models: ReturnType<typeof initPredictionAutomationModels>;
+  let nextChannelId: number;
 
-  before(async () => {
-    await dbReady;
-  });
-
-  after(async () => {
-    if (createdChannelIds.length > 0) {
-      await PredictionAutomationRun.destroy({
-        where: { channel_id: createdChannelIds },
-      });
-      await PredictionAutomationConfig.destroy({
-        where: { channel_id: createdChannelIds },
-      });
-    }
-    await Channel.destroy({ where: { username: usernames } });
-    await CustomResponse.destroy({ where: { channel: usernames } });
-
-    const remainingOwnedResponses = await CustomResponse.count({
-      where: { channel: usernames },
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'prediction-automation-'));
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: path.join(tempDir, 'automation.sqlite'),
+      logging: false,
     });
-    assert.equal(remainingOwnedResponses, 0);
+    await sequelize.getQueryInterface().createTable('Channels', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      username: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+    });
+    await migratePredictionAutomation(sequelize.getQueryInterface());
+    models = initPredictionAutomationModels(sequelize);
+    nextChannelId = 1;
   });
 
-  async function createChannel(username: string) {
-    const channel = await Channel.create({ username });
-    createdChannelIds.push(channel.id);
-    return channel;
+  afterEach(async () => {
+    await sequelize.close();
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  async function createChannel(username: string): Promise<number> {
+    const id = nextChannelId++;
+    await sequelize.getQueryInterface().bulkInsert(
+      'Channels',
+      [{ id, username }],
+    );
+    return id;
   }
 
-  it('runs the prediction automation migration twice without changing the schema', async () => {
+  it('runs the migration twice without changing the schema', async () => {
     const queryInterface = sequelize.getQueryInterface();
 
-    await migratePredictionAutomation(queryInterface);
     await migratePredictionAutomation(queryInterface);
 
     const configTable = await queryInterface.describeTable('PredictionAutomationConfigs');
@@ -70,10 +74,10 @@ describe('Prediction automation models', function () {
     assert.ok(runIndexes.some((index) => index.name === 'prediction_automation_runs_channel_id'));
   });
 
-  it('applies prediction automation config defaults', async () => {
-    const channel = await createChannel(usernames[0]);
-    const config = await PredictionAutomationConfig.create({
-      channel_id: channel.id,
+  it('applies config defaults and enforces one config per channel', async () => {
+    const channelId = await createChannel('automation-defaults');
+    const config = await models.PredictionAutomationConfig.create({
+      channel_id: channelId,
     });
 
     assert.equal(config.enabled, false);
@@ -81,60 +85,235 @@ describe('Prediction automation models', function () {
     assert.equal(config.voting_window_seconds, 1800);
     assert.ok(config.created_at instanceof Date);
     assert.ok(config.updated_at instanceof Date);
-  });
-
-  it('allows only one automation config per channel', async () => {
-    const channel = await Channel.findOne({ where: { username: usernames[0] } });
-    assert.ok(channel);
 
     await assert.rejects(
-      PredictionAutomationConfig.create({ channel_id: channel.id }),
+      models.PredictionAutomationConfig.create({ channel_id: channelId }),
       /unique/i,
     );
   });
 
-  it('creates a scheduled automation run with nullable lifecycle fields', async () => {
-    const channel = await Channel.findOne({ where: { username: usernames[0] } });
-    assert.ok(channel);
-
-    const run = await PredictionAutomationRun.create({
-      channel_id: channel.id,
-      stream_started_at: new Date('2026-06-08T12:00:00.000Z'),
-      session_start_score: 45000,
-      status: 'scheduled',
+  it('updates updated_at when a config changes', async () => {
+    const channelId = await createChannel('automation-timestamps');
+    const config = await models.PredictionAutomationConfig.create({
+      channel_id: channelId,
     });
+    const originalUpdatedAt = config.updated_at.getTime();
 
-    assert.equal(run.status, 'scheduled');
-    assert.equal(run.session_start_score, 45000);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await config.update({ enabled: true });
+
+    assert.ok(config.updated_at.getTime() > originalUpdatedAt);
+  });
+
+  it('validates delay and voting window bounds at model level', async () => {
+    const channelId = await createChannel('automation-validation');
+
+    for (const startDelay of [0, 61]) {
+      await assert.rejects(
+        models.PredictionAutomationConfig.create({
+          channel_id: channelId,
+          start_delay_minutes: startDelay,
+        }),
+        /validation/i,
+      );
+    }
+
+    for (const votingWindow of [29, 1801]) {
+      await assert.rejects(
+        models.PredictionAutomationConfig.create({
+          channel_id: channelId,
+          voting_window_seconds: votingWindow,
+        }),
+        /validation/i,
+      );
+    }
+  });
+
+  it('creates a run, permits nullable lifecycle fields, and rejects duplicate streams', async () => {
+    const channelId = await createChannel('automation-runs');
+    const streamStartedAt = new Date('2026-06-08T12:00:00.000Z');
+    const values = {
+      channel_id: channelId,
+      stream_started_at: streamStartedAt,
+      session_start_score: 45000,
+      status: 'scheduled' as const,
+    };
+    const run = await models.PredictionAutomationRun.create(values);
+
     assert.equal(run.prediction_id, null);
     assert.equal(run.outcomes_json, null);
     assert.equal(run.offline_detected_at, null);
     assert.equal(run.resolution_deadline_at, null);
     assert.equal(run.last_resolution_attempt_at, null);
     assert.equal(run.terminal_reason, null);
-    assert.ok(run.created_at instanceof Date);
-    assert.ok(run.updated_at instanceof Date);
+
+    await assert.rejects(
+      models.PredictionAutomationRun.create(values),
+      /unique/i,
+    );
   });
 
-  it('rejects duplicate runs for the same channel and stream start', async () => {
-    const channel = await Channel.findOne({ where: { username: usernames[0] } });
-    assert.ok(channel);
-    const streamStartedAt = new Date('2026-06-08T13:00:00.000Z');
-    const values = {
-      channel_id: channel.id,
-      stream_started_at: streamStartedAt,
-      session_start_score: 45100,
-      status: 'scheduled' as const,
-    };
+  it('rejects invalid run statuses at the database boundary', async () => {
+    const channelId = await createChannel('automation-status-check');
 
-    await PredictionAutomationRun.create(values);
-    await assert.rejects(PredictionAutomationRun.create(values), /unique/i);
+    await assert.rejects(
+      sequelize.query(
+        `INSERT INTO PredictionAutomationRuns
+          (channel_id, stream_started_at, session_start_score, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        {
+          replacements: [
+            channelId,
+            '2026-06-08 12:00:00.000 +00:00',
+            45000,
+            'invalid',
+            '2026-06-08 12:00:00.000 +00:00',
+            '2026-06-08 12:00:00.000 +00:00',
+          ],
+        },
+      ),
+      (error: unknown) => {
+        const databaseMessage = (error as {
+          parent?: { message?: string };
+        }).parent?.message;
+        return /check constraint failed/i.test(databaseMessage ?? '');
+      },
+    );
+  });
+});
 
-    const secondChannel = await createChannel(usernames[1]);
-    const otherRun = await PredictionAutomationRun.create({
-      ...values,
-      channel_id: secondChannel.id,
+describe('Prediction automation partial migration repair', function () {
+  this.timeout(15000);
+
+  let tempDir: string;
+  let sequelize: Sequelize;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'prediction-automation-partial-'));
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: path.join(tempDir, 'partial.sqlite'),
+      logging: false,
     });
-    assert.equal(otherRun.channel_id, secondChannel.id);
+    const queryInterface = sequelize.getQueryInterface();
+    await queryInterface.createTable('Channels', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+    });
+    await queryInterface.createTable('PredictionAutomationConfigs', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      channel_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      enabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+      start_delay_minutes: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 10,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    });
+    await queryInterface.createTable('PredictionAutomationRuns', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      channel_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      stream_started_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+      },
+      session_start_score: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      status: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+      updated_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW,
+      },
+    });
+    await queryInterface.bulkInsert('Channels', [{ id: 1 }]);
+    await queryInterface.bulkInsert('PredictionAutomationConfigs', [{
+      channel_id: 1,
+      enabled: false,
+      start_delay_minutes: 10,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }]);
+    await queryInterface.bulkInsert('PredictionAutomationRuns', [{
+      channel_id: 1,
+      stream_started_at: new Date('2026-06-08T12:00:00.000Z'),
+      session_start_score: 45000,
+      status: 'scheduled',
+      created_at: new Date(),
+      updated_at: new Date(),
+    }]);
+  });
+
+  afterEach(async () => {
+    await sequelize.close();
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('adds missing columns and indexes without replacing existing rows', async () => {
+    const queryInterface = sequelize.getQueryInterface();
+
+    await migratePredictionAutomation(queryInterface);
+
+    const configTable = await queryInterface.describeTable('PredictionAutomationConfigs');
+    const runTable = await queryInterface.describeTable('PredictionAutomationRuns');
+    const configRows = await sequelize.query(
+      'SELECT id, channel_id FROM PredictionAutomationConfigs',
+      { type: 'SELECT' },
+    ) as Array<{ id: number; channel_id: number }>;
+    const runRows = await sequelize.query(
+      'SELECT id, channel_id, status FROM PredictionAutomationRuns',
+      { type: 'SELECT' },
+    ) as Array<{ id: number; channel_id: number; status: string }>;
+
+    assert.ok(configTable.voting_window_seconds);
+    assert.ok(runTable.prediction_id);
+    assert.ok(runTable.outcomes_json);
+    assert.ok(runTable.offline_detected_at);
+    assert.ok(runTable.resolution_deadline_at);
+    assert.ok(runTable.last_resolution_attempt_at);
+    assert.ok(runTable.terminal_reason);
+    assert.deepEqual(configRows, [{ id: 1, channel_id: 1 }]);
+    assert.deepEqual(runRows, [{ id: 1, channel_id: 1, status: 'scheduled' }]);
   });
 });

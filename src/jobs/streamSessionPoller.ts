@@ -1,10 +1,7 @@
 import { getLiveStreamsForUsers, refreshToken } from '../util/twitchUtils';
 import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
-import {
-  findRankedPlayer,
-  getLatestRegularLeaderboardData,
-} from '../services/rankedScore.service';
+import { getLatestLeaderboardData } from '@/commands/record';
 import logger from '../util/logger';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
@@ -159,8 +156,20 @@ export const startStreamSessionPolling = async () => {
           }
 
           // --- 2. Has player_id — always attempt session creation (not gated by alert state) ---
-          const cachedData = await getLatestRegularLeaderboardData();
-          const player = findRankedPlayer(cachedData, channel.player_id);
+          const playerId = channel.player_id.toLowerCase();
+          const cachedData = await getLatestLeaderboardData();
+
+          const findPlayer = (data: any[] | null, name: string) => {
+            if (!data) return null;
+            let player = data.find(p => p.name.toLowerCase() === name);
+            if (!player && name.includes("#")) {
+              const baseName = name.split("#")[0];
+              player = data.find(p => p.name.toLowerCase().startsWith(baseName));
+            }
+            return player;
+          };
+
+          const player = findPlayer(cachedData, playerId);
 
           if (!player) {
             const detectedAt = liveDetectedTime.get(userLower) ?? now;

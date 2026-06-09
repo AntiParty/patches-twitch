@@ -317,3 +317,86 @@ describe('Prediction automation partial migration repair', function () {
     assert.deepEqual(runRows, [{ id: 1, channel_id: 1, status: 'scheduled' }]);
   });
 });
+
+describe('Prediction automation sync-before-migration repair', function () {
+  this.timeout(15000);
+
+  let tempDir: string;
+  let sequelize: Sequelize;
+
+  beforeEach(async () => {
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'prediction-automation-sync-'));
+    sequelize = new Sequelize({
+      dialect: 'sqlite',
+      storage: path.join(tempDir, 'sync-order.sqlite'),
+      logging: false,
+    });
+    const queryInterface = sequelize.getQueryInterface();
+    await queryInterface.createTable('Channels', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+    });
+    await queryInterface.createTable('PredictionAutomationConfigs', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      enabled: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+    });
+    await queryInterface.createTable('PredictionAutomationRuns', {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
+      },
+      channel_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      stream_started_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+      },
+      session_start_score: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+    });
+    initPredictionAutomationModels(sequelize);
+  });
+
+  afterEach(async () => {
+    await sequelize.close();
+    await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  it('survives sync before migration and repairs missing indexed columns and indexes', async () => {
+    await sequelize.sync();
+    await migratePredictionAutomation(sequelize.getQueryInterface());
+
+    const queryInterface = sequelize.getQueryInterface();
+    const configTable = await queryInterface.describeTable('PredictionAutomationConfigs');
+    const runTable = await queryInterface.describeTable('PredictionAutomationRuns');
+    const configIndexes = await queryInterface.showIndex(
+      'PredictionAutomationConfigs',
+    ) as unknown as Array<{ name: string }>;
+    const runIndexes = await queryInterface.showIndex(
+      'PredictionAutomationRuns',
+    ) as unknown as Array<{ name: string }>;
+
+    assert.ok(configTable.channel_id);
+    assert.ok(runTable.status);
+    assert.ok(configIndexes.some((index) => index.name === 'prediction_automation_configs_channel_unique'));
+    assert.ok(runIndexes.some((index) => index.name === 'prediction_automation_runs_channel_stream_unique'));
+    assert.ok(runIndexes.some((index) => index.name === 'prediction_automation_runs_status'));
+    assert.ok(runIndexes.some((index) => index.name === 'prediction_automation_runs_channel_id'));
+  });
+});

@@ -96,13 +96,6 @@ export function initPredictionAutomationModels(sequelize: Sequelize) {
       timestamps: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at',
-      indexes: [
-        {
-          unique: true,
-          fields: ['channel_id'],
-          name: 'prediction_automation_configs_channel_unique',
-        },
-      ],
     },
   );
 
@@ -185,21 +178,6 @@ export function initPredictionAutomationModels(sequelize: Sequelize) {
       timestamps: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at',
-      indexes: [
-        {
-          unique: true,
-          fields: ['channel_id', 'stream_started_at'],
-          name: 'prediction_automation_runs_channel_stream_unique',
-        },
-        {
-          fields: ['status'],
-          name: 'prediction_automation_runs_status',
-        },
-        {
-          fields: ['channel_id'],
-          name: 'prediction_automation_runs_channel_id',
-        },
-      ],
     },
   );
 

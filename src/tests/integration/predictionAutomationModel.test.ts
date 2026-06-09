@@ -1,4 +1,5 @@
 import { strict as assert } from 'assert';
+import { Op } from 'sequelize';
 import {
   Channel,
   CustomResponse,
@@ -33,12 +34,9 @@ describe('Prediction automation models', function () {
       });
     }
     await Channel.destroy({ where: { username: usernames } });
-    await CustomResponse.destroy({ where: { channel: usernames } });
-
-    const remainingOwnedResponses = await CustomResponse.count({
-      where: { channel: usernames },
+    await CustomResponse.destroy({
+      where: { channel: { [Op.like]: 'prediction-automation-%' } },
     });
-    assert.equal(remainingOwnedResponses, 0);
   });
 
   async function createChannel(username: string) {

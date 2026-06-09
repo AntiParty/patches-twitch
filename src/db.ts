@@ -7,6 +7,7 @@ import { error } from 'console';
 import logger from "@/util/logger"; // Logging utility
 import { Op } from 'sequelize';
 import { migratePredictionPresets } from './scripts/migrate_prediction_presets';
+import { migratePredictionAutomation } from './scripts/migrate_prediction_automation';
 
 dotenv.config();
 
@@ -106,6 +107,40 @@ class PredictionPreset extends Model {
   declare title: string;
   declare outcomes_json: string;
   declare duration_seconds: number;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+class PredictionAutomationConfig extends Model {
+  declare id: number;
+  declare channel_id: number;
+  declare enabled: boolean;
+  declare start_delay_minutes: number;
+  declare voting_window_seconds: number;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+type PredictionAutomationRunStatus =
+  | 'scheduled'
+  | 'active'
+  | 'resolving'
+  | 'resolved'
+  | 'canceled'
+  | 'skipped';
+
+class PredictionAutomationRun extends Model {
+  declare id: number;
+  declare channel_id: number;
+  declare stream_started_at: Date;
+  declare session_start_score: number;
+  declare prediction_id: string | null;
+  declare outcomes_json: string | null;
+  declare status: PredictionAutomationRunStatus;
+  declare offline_detected_at: Date | null;
+  declare resolution_deadline_at: Date | null;
+  declare last_resolution_attempt_at: Date | null;
+  declare terminal_reason: string | null;
   declare created_at: Date;
   declare updated_at: Date;
 }
@@ -314,6 +349,172 @@ PredictionPreset.init(
     indexes: [
       { unique: true, fields: ['channel_id', 'alias'] },
       { fields: ['channel_id'] },
+    ],
+  }
+);
+
+PredictionAutomationConfig.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    channel_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Channels',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
+    enabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    start_delay_minutes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 10,
+    },
+    voting_window_seconds: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1800,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'PredictionAutomationConfig',
+    tableName: 'PredictionAutomationConfigs',
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ['channel_id'],
+        name: 'prediction_automation_configs_channel_unique',
+      },
+    ],
+  }
+);
+
+PredictionAutomationRun.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    channel_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Channels',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
+    stream_started_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    session_start_score: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    prediction_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    outcomes_json: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    status: {
+      type: DataTypes.ENUM(
+        'scheduled',
+        'active',
+        'resolving',
+        'resolved',
+        'canceled',
+        'skipped',
+      ),
+      allowNull: false,
+      validate: {
+        isIn: [[
+          'scheduled',
+          'active',
+          'resolving',
+          'resolved',
+          'canceled',
+          'skipped',
+        ]],
+      },
+    },
+    offline_detected_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    resolution_deadline_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    last_resolution_attempt_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    terminal_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'PredictionAutomationRun',
+    tableName: 'PredictionAutomationRuns',
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ['channel_id', 'stream_started_at'],
+        name: 'prediction_automation_runs_channel_stream_unique',
+      },
+      {
+        fields: ['status'],
+        name: 'prediction_automation_runs_status',
+      },
+      {
+        fields: ['channel_id'],
+        name: 'prediction_automation_runs_channel_id',
+      },
     ],
   }
 );
@@ -577,6 +778,7 @@ async function runMigrations() {
     }
 
     await migratePredictionPresets(queryInterface);
+    await migratePredictionAutomation(queryInterface);
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
   }
@@ -867,4 +1069,21 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };
+export {
+  sequelize,
+  Channel,
+  StreamSession,
+  PredictionPreset,
+  PredictionAutomationConfig,
+  PredictionAutomationRun,
+  CustomResponse,
+  RankGoal,
+  CommandUsage,
+  Feedback,
+  Subscription,
+  CustomBotAccount,
+  PeakRank,
+  dbReady,
+  getCustomResponse,
+  setCustomResponse,
+};

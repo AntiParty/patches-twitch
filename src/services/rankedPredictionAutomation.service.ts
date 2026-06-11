@@ -14,6 +14,7 @@ import {
 import { getCurrentRankedScore } from './rankedScore.service';
 import { twitchPredictionsService } from './twitchPredictions.service';
 import { predictionPresetService } from './predictionPreset.service';
+import { hasPredictionAutomationAccess } from './predictionAutomationAccess.service';
 
 export interface LiveStreamIdentity {
   id: string;
@@ -29,6 +30,8 @@ interface ChannelRecord {
   username: string;
   player_id: string | null;
   session_start_rs: number | null;
+  has_subscription?: boolean;
+  role?: string | null;
 }
 
 interface RunRecord {
@@ -205,6 +208,9 @@ export function createRankedPredictionAutomationService(
     }
 
     const channel = await deps.loadChannel(channelId);
+    if (!hasPredictionAutomationAccess(channel)) {
+      return setStatus(run, 'needs_attention', { failure_reason: 'subscription_required' });
+    }
     if (!channel?.player_id) {
       return setStatus(run, 'needs_attention', { failure_reason: 'linked_player_required' });
     }
@@ -314,6 +320,11 @@ export function createRankedPredictionAutomationService(
       const channel = await deps.loadChannel(channelId);
       if (!channel) {
         throw new PredictionAutomationPrerequisiteError('Channel not found.');
+      }
+      if (valid.enabled && !hasPredictionAutomationAccess(channel)) {
+        throw new PredictionAutomationPrerequisiteError(
+          'Automatic predictions are currently available to subscribers and test users.',
+        );
       }
       await deps.validateContent(channel, valid);
       if (valid.enabled) {

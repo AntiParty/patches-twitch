@@ -9,6 +9,8 @@ describe('rankpred command', () => {
       findChannel: async () => ({
         id: 7,
         username: 'antiparty',
+        has_subscription: true,
+        role: 'Basic user',
       }),
       getLiveStreams: async () => [{
         id: 'stream-1',
@@ -75,6 +77,22 @@ describe('rankpred command', () => {
       ['start'],
     );
     assert.match(messages[0], /broadcaster or a moderator/i);
+    assert.equal(state.evaluated.length, 0);
+  });
+
+  it('rejects channels without subscriber or tester access', async () => {
+    const state = setup('start', {
+      findChannel: async () => ({
+        id: 7,
+        username: 'antiparty',
+        has_subscription: false,
+        role: 'Basic user',
+      }),
+    });
+
+    await state.run();
+
+    assert.match(state.messages[0], /subscribers and test users/i);
     assert.equal(state.evaluated.length, 0);
   });
 });

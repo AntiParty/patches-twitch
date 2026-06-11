@@ -659,4 +659,28 @@ describe('Prediction dashboard routes wiring', () => {
       );
     }
   });
+
+  it('gates only automatic prediction routes with subscription access', () => {
+    const auth = (_req: any, _res: any, next: any) => next();
+    const csrf = (_req: any, _res: any, next: any) => next();
+    const subscription = (_req: any, _res: any, next: any) => next();
+    const router: any = createPredictionRoutes({
+      requireUserAPI: auth,
+      csrfProtection: csrf,
+      requireSubscriptionAPI: subscription,
+      loadChannelById: async () => ({ id: 7, username: 'streamer' }),
+      loadChannelByUsername: async () => ({ id: 7, username: 'streamer' }),
+    });
+    const layers = router.stack.filter((layer: any) => layer.route);
+
+    for (const layer of layers) {
+      const middleware = layer.route.stack.map((entry: any) => entry.handle);
+      const automatic = String(layer.route.path).startsWith('/api/user/predictions/automation');
+      assert.equal(
+        middleware.includes(subscription),
+        automatic,
+        `${layer.route.path} subscription gate mismatch`,
+      );
+    }
+  });
 });

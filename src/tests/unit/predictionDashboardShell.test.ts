@@ -53,6 +53,7 @@ describe('Prediction dashboard shell', () => {
       'id="prediction-automation-question"',
       'id="prediction-automation-outcomes"',
       'id="prediction-automation-status"',
+      'Subscriber early access',
       '/api/user/predictions/automation',
       '/api/user/predictions/automation/start',
       '/api/user/predictions/automation/cancel',

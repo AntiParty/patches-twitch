@@ -2734,10 +2734,10 @@
                   <div class="prediction-live-empty">Loading automatic prediction status...</div>
                 </div>
                 <div class="prediction-live-actions" style="margin-top: 12px">
-                  <button class="btn btn-success-solid" type="button" onclick="startPredictionAutomationNow()">
+                  <button id="prediction-automation-start" class="btn btn-success-solid" type="button" onclick="startPredictionAutomationNow()">
                     <i class="fas fa-play"></i> Start Now
                   </button>
-                  <button class="btn btn-danger-solid" type="button" onclick="cancelPredictionAutomation()">
+                  <button id="prediction-automation-cancel" class="btn btn-danger-solid" type="button" onclick="cancelPredictionAutomation()">
                     Cancel &amp; Refund
                   </button>
                 </div>
@@ -3975,6 +3975,8 @@
             renderSelectedPredictionPreset();
             if (automationResult.status === "fulfilled") {
               renderPredictionAutomation(automationResult.value);
+            } else if (automationResult.reason?.data?.state === "subscription_required") {
+              renderPredictionAutomationAccessRequired(automationResult.reason.data);
             } else {
               renderPredictionAutomationStatus(null, "Automatic prediction status is temporarily unavailable.");
             }
@@ -4414,6 +4416,12 @@
 
       function renderPredictionAutomation(data) {
         predictionAutomationConfig = data.config;
+        document
+          .getElementById("prediction-automation-form")
+          .querySelectorAll("input, select, button")
+          .forEach((control) => { control.disabled = false; });
+        document.getElementById("prediction-automation-start").disabled = false;
+        document.getElementById("prediction-automation-cancel").disabled = false;
         document.getElementById("prediction-automation-enabled").checked = Boolean(data.config.enabled);
         document.getElementById("prediction-automation-delay").value = String(data.config.startDelaySeconds);
         document.getElementById("prediction-automation-window").value = String(data.config.votingWindowSeconds);
@@ -4426,6 +4434,30 @@
           data.config.enabled ? null : "Automation is disabled.",
           data.live
         );
+      }
+
+      function renderPredictionAutomationAccessRequired(data) {
+        const form = document.getElementById("prediction-automation-form");
+        form.querySelectorAll("input, select, button").forEach((control) => {
+          control.disabled = true;
+        });
+        document.getElementById("prediction-automation-start").disabled = true;
+        document.getElementById("prediction-automation-cancel").disabled = true;
+
+        const panel = document.getElementById("prediction-automation-status");
+        panel.replaceChildren();
+        const title = predictionElement("div", "prediction-live-title", "Subscriber early access");
+        const detail = predictionElement(
+          "div",
+          "prediction-card-copy",
+          data.error || "Automatic predictions are currently available to subscribers and test users."
+        );
+        const link = predictionElement("a", "btn btn-primary", "Subscribe for access");
+        link.href = data.subscribeUrl || "https://www.twitch.tv/subs/antiparty";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.marginTop = "14px";
+        panel.append(title, detail, link);
       }
 
       function renderPredictionAutomationStatus(run, fallback, live = null) {

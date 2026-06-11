@@ -10,6 +10,7 @@ function harness(options: {
   finalRs?: number | null;
   currentPrediction?: any;
   validateContent?: () => Promise<void>;
+  hasAccess?: boolean;
 } = {}) {
   const runs: any[] = [];
   const started: any[] = [];
@@ -21,6 +22,8 @@ function harness(options: {
     username: 'antiparty',
     player_id: 'Player#1234',
     session_start_rs: options.startRs === undefined ? 50000 : options.startRs,
+    has_subscription: options.hasAccess === undefined ? true : options.hasAccess,
+    role: 'Basic user',
   };
   let now = options.now ?? Date.parse('2026-06-11T12:11:00Z');
 
@@ -202,5 +205,15 @@ describe('Ranked prediction automation service', () => {
       }),
       /blocked content/,
     );
+  });
+
+  it('does not start automation after subscriber or tester access expires', async () => {
+    const state = harness({ hasAccess: false });
+
+    const run = await state.service.evaluateStream(7, liveStream);
+
+    assert.equal(run.status, 'needs_attention');
+    assert.equal(run.failure_reason, 'subscription_required');
+    assert.equal(state.started.length, 0);
   });
 });

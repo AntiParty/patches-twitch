@@ -3,9 +3,15 @@ import { canOperatePredictions } from '@/services/predictionPermissions.service'
 import { rankedPredictionAutomationService } from '@/services/rankedPredictionAutomation.service';
 import { getLiveStreamsForUsers } from '@/util/twitchUtils';
 import logger from '@/util/logger';
+import { hasPredictionAutomationAccess } from '@/services/predictionAutomationAccess.service';
 
 interface RankpredCommandDependencies {
-  findChannel: (username: string) => Promise<{ id: number; username: string } | null>;
+  findChannel: (username: string) => Promise<{
+    id: number;
+    username: string;
+    has_subscription?: boolean;
+    role?: string | null;
+  } | null>;
   getLiveStreams: typeof getLiveStreamsForUsers;
   automation: Pick<
     typeof rankedPredictionAutomationService,
@@ -46,6 +52,13 @@ export function createRankpredCommand(
     const channelRecord = await deps.findChannel(username);
     if (!channelRecord) {
       await ctx.say(`@${displayName}, this channel is not linked to the bot.`, messageId);
+      return;
+    }
+    if (!hasPredictionAutomationAccess(channelRecord)) {
+      await ctx.say(
+        `@${displayName}, automatic ranked predictions are currently available to subscribers and test users.`,
+        messageId,
+      );
       return;
     }
 

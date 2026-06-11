@@ -26,6 +26,7 @@ import {
   PredictionAutomationValidationError,
 } from '@/models/predictionAutomation';
 import { getLiveStreamsForUsers } from '@/util/twitchUtils';
+import { hasPredictionAutomationAccess } from '@/services/predictionAutomationAccess.service';
 
 interface ChannelIdentity {
   id: number;
@@ -54,6 +55,21 @@ interface PredictionRouteDependencies {
 interface PredictionRouterDependencies extends Partial<PredictionRouteDependencies> {
   requireUserAPI?: typeof requireUserAPI;
   csrfProtection?: typeof csrfProtection;
+  requireSubscriptionAPI?: (req: any, res: any, next: any) => any;
+}
+
+function requirePredictionAutomationAccess(req: any, res: any, next: any) {
+  if (hasPredictionAutomationAccess({
+    hasSubscription: Boolean(req.session?.hasSubscription),
+    role: req.session?.role,
+  })) {
+    return next();
+  }
+  return res.status(403).json({
+    error: 'Automatic predictions are currently available to subscribers and test users.',
+    state: 'subscription_required',
+    subscribeUrl: 'https://www.twitch.tv/subs/antiparty',
+  });
 }
 
 const productionDependencies: PredictionRouteDependencies = {
@@ -364,6 +380,7 @@ export function createPredictionRoutes(
   const handlers = createPredictionRouteHandlers(dependencies);
   const auth = dependencies.requireUserAPI || requireUserAPI;
   const csrf = dependencies.csrfProtection || csrfProtection;
+  const subscription = dependencies.requireSubscriptionAPI || requirePredictionAutomationAccess;
 
   router.get('/api/user/prediction-presets', auth, handlers.list);
   router.post('/api/user/prediction-presets', auth, csrf, handlers.create);
@@ -374,10 +391,10 @@ export function createPredictionRoutes(
   router.post('/api/user/predictions/start', auth, csrf, handlers.start);
   router.post('/api/user/predictions/resolve', auth, csrf, handlers.resolve);
   router.post('/api/user/predictions/cancel', auth, csrf, handlers.cancel);
-  router.get('/api/user/predictions/automation', auth, handlers.automation);
-  router.put('/api/user/predictions/automation', auth, csrf, handlers.updateAutomation);
-  router.post('/api/user/predictions/automation/start', auth, csrf, handlers.startAutomation);
-  router.post('/api/user/predictions/automation/cancel', auth, csrf, handlers.cancelAutomation);
+  router.get('/api/user/predictions/automation', auth, subscription, handlers.automation);
+  router.put('/api/user/predictions/automation', auth, csrf, subscription, handlers.updateAutomation);
+  router.post('/api/user/predictions/automation/start', auth, csrf, subscription, handlers.startAutomation);
+  router.post('/api/user/predictions/automation/cancel', auth, csrf, subscription, handlers.cancelAutomation);
 
   return router;
 }

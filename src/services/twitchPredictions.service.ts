@@ -223,6 +223,56 @@ export function createTwitchPredictionsService(
     });
   }
 
+  async function getById(
+    channelId: number,
+    predictionId: string,
+  ): Promise<TwitchPrediction | null> {
+    return runAuthorized(channelId, async (channel, accessToken) => {
+      const response = await deps.request({
+        method: 'GET',
+        url: 'https://api.twitch.tv/helix/predictions',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID || '',
+        },
+        params: {
+          broadcaster_id: String(channel.twitch_user_id),
+          id: predictionId,
+        },
+      });
+      return extractPredictions(response)[0] || null;
+    });
+  }
+
+  async function patchById(
+    channelId: number,
+    predictionId: string,
+    status: 'RESOLVED' | 'CANCELED',
+    winningOutcomeId?: string,
+  ): Promise<TwitchPrediction> {
+    return runAuthorized(channelId, async (channel, accessToken) => {
+      const data: Record<string, unknown> = {
+        broadcaster_id: String(channel.twitch_user_id),
+        id: predictionId,
+        status,
+      };
+      if (status === 'RESOLVED') data.winning_outcome_id = winningOutcomeId;
+      const response = await deps.request({
+        method: 'PATCH',
+        url: 'https://api.twitch.tv/helix/predictions',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID || '',
+          'Content-Type': 'application/json',
+        },
+        data,
+      });
+      const prediction = extractPredictions(response)[0];
+      if (!prediction) throw new PredictionTemporaryError('Twitch returned no prediction.');
+      return prediction;
+    });
+  }
+
   async function getAuthorizationStatus(
     channelId: number,
   ): Promise<PredictionAuthorizationStatus> {
@@ -242,7 +292,16 @@ export function createTwitchPredictionsService(
 
   return {
     getCurrent,
+    getById,
     getAuthorizationStatus,
+    resolveById: (
+      channelId: number,
+      predictionId: string,
+      winningOutcomeId: string,
+    ) => patchById(channelId, predictionId, 'RESOLVED', winningOutcomeId),
+    cancelById: (channelId: number, predictionId: string) => (
+      patchById(channelId, predictionId, 'CANCELED')
+    ),
 
     async start(channelId: number, preset: PredictionPresetData): Promise<TwitchPrediction> {
       const current = await getCurrent(channelId);

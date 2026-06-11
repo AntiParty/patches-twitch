@@ -3,6 +3,7 @@ import { getActiveSessions, Channel, StreamSession } from '../db';
 import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData } from '@/commands/record';
 import logger from '../util/logger';
+import { rankedPredictionAutomationService } from '@/services/rankedPredictionAutomation.service';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
 const alertedMissingSession: Map<string, number> = new Map(); // username -> timestamp of alert
@@ -114,8 +115,19 @@ export const startStreamSessionPolling = async () => {
           // (avoids race condition where stream just ended and EventSub is about to fire)
           const sessionAge = now - new Date(session.started_at).getTime();
           if (sessionAge > 5 * 60 * 1000) {
-            await StreamSession.destroy({ where: { channel: session.channel } });
-            logger.info(`[Poller] Cleaned up stale session for ${session.channel} (offline but session existed)`);
+            try {
+              const channel = await Channel.findOne({
+                where: sequelizeCaseInsensitiveWhere('username', session.channel),
+              });
+              if (channel) {
+                await rankedPredictionAutomationService.finalizeCurrent(channel.id);
+                await channel.update({ session_start_rs: null });
+              }
+              await StreamSession.destroy({ where: { channel: session.channel } });
+              logger.info(`[Poller] Cleaned up stale session for ${session.channel} (offline but session existed)`);
+            } catch (error) {
+              logger.error(`[AutoPrediction] Finalization failed for ${session.channel}:`, error);
+            }
           }
         }
       }
@@ -189,13 +201,18 @@ export const startStreamSessionPolling = async () => {
           }
 
           // --- 3. Player found — create session ---
-          const startScore = player.rankScore ?? 0;
+          if (!Number.isFinite(player.rankScore)) {
+            logger.warn(`[Poller] Ranked score unavailable for ${user.username}; session not started.`);
+            continue;
+          }
+          const startScore = Number(player.rankScore);
           await StreamSession.upsert({
             channel: userLower,
             start_score: startScore,
             start_wt_rank: null,
             started_at: new Date()
           });
+          await channel.update({ session_start_rs: startScore });
           await sendDiscordAlert({
             type: 'info',
             title: 'StreamSession Started Automatically',
@@ -204,6 +221,33 @@ export const startStreamSessionPolling = async () => {
           alertedMissingSession.delete(userLower);
         } else {
           alertedMissingSession.delete(userLower);
+        }
+      }
+
+      for (const user of liveStreams) {
+        const channel = await Channel.findOne({
+          where: sequelizeCaseInsensitiveWhere('username', user.username),
+        });
+        if (!channel) continue;
+        const existingSession = activeSessions.find(
+          (session) => String(session.channel || '').toLowerCase() === user.username.toLowerCase(),
+        );
+        if (
+          existingSession
+          && !Number.isFinite(channel.session_start_rs)
+          && Number.isFinite(existingSession.start_score)
+        ) {
+          await channel.update({ session_start_rs: Number(existingSession.start_score) });
+        }
+        try {
+          await rankedPredictionAutomationService.evaluateStream(channel.id, {
+            id: user.id,
+            username: user.username,
+            gameName: user.gameName,
+            startedAt: user.startedAt,
+          });
+        } catch (error) {
+          logger.error(`[AutoPrediction] Evaluation failed for ${user.username}:`, error);
         }
       }
     } catch (err) {

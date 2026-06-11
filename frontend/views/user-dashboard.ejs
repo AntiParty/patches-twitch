@@ -2664,6 +2664,89 @@
               </div>
             </div>
           </div>
+
+          <div class="card" style="margin-top: 18px">
+            <div class="prediction-card-heading">
+              <div>
+                <div class="card-title">Automatic Ranked Predictions</div>
+                <div class="prediction-card-copy">
+                  Automatically open a ranked RS prediction while live in THE FINALS and settle it when the stream ends.
+                </div>
+              </div>
+              <span class="prediction-live-status">Beta</span>
+            </div>
+
+            <div class="prediction-layout">
+              <form id="prediction-automation-form" class="prediction-form" onsubmit="savePredictionAutomation(event)">
+                <label class="prediction-preset" style="display: flex; align-items: center; gap: 12px; cursor: pointer">
+                  <input id="prediction-automation-enabled" type="checkbox" style="width: 20px; height: 20px" />
+                  <span>
+                    <strong>Enable Automatic Ranked Predictions</strong>
+                    <span class="prediction-card-copy" style="display: block">
+                      Disabled by default. Requires a linked ranked player and Twitch prediction permission.
+                    </span>
+                  </span>
+                </label>
+
+                <div class="prediction-form-grid" style="margin-top: 14px">
+                  <div class="prediction-field">
+                    <label for="prediction-automation-delay">Start delay</label>
+                    <select id="prediction-automation-delay" class="input">
+                      <option value="300">5 minutes</option>
+                      <option value="480">8 minutes</option>
+                      <option value="600">10 minutes</option>
+                      <option value="900">15 minutes</option>
+                      <option value="1200">20 minutes</option>
+                      <option value="1800">30 minutes</option>
+                    </select>
+                  </div>
+                  <div class="prediction-field">
+                    <label for="prediction-automation-window">Voting window (seconds)</label>
+                    <input id="prediction-automation-window" class="input" type="number" min="30" max="1800" step="1" required />
+                  </div>
+                </div>
+
+                <div class="prediction-field" style="margin-top: 12px">
+                  <label for="prediction-automation-question">Prediction question</label>
+                  <input id="prediction-automation-question" class="input" maxlength="45" required />
+                </div>
+
+                <div class="prediction-field" style="margin-top: 12px">
+                  <label>Outcome ranges (2-5)</label>
+                  <div class="prediction-card-copy" style="margin-bottom: 10px">
+                    Leave the first minimum and last maximum blank for full coverage.
+                  </div>
+                  <div id="prediction-automation-outcomes" class="prediction-outcomes"></div>
+                  <button id="prediction-automation-add-outcome" class="btn btn-ghost btn-sm" type="button" onclick="addPredictionAutomationOutcome()">
+                    <i class="fas fa-plus"></i> Add range
+                  </button>
+                </div>
+
+                <div class="prediction-form-actions">
+                  <button id="prediction-automation-save" class="btn btn-primary" type="submit">
+                    <i class="fas fa-save"></i> Save automation
+                  </button>
+                </div>
+              </form>
+
+              <div>
+                <div id="prediction-automation-status" class="prediction-live-state" aria-live="polite">
+                  <div class="prediction-live-empty">Loading automatic prediction status...</div>
+                </div>
+                <div class="prediction-live-actions" style="margin-top: 12px">
+                  <button class="btn btn-success-solid" type="button" onclick="startPredictionAutomationNow()">
+                    <i class="fas fa-play"></i> Start Now
+                  </button>
+                  <button class="btn btn-danger-solid" type="button" onclick="cancelPredictionAutomation()">
+                    Cancel &amp; Refund
+                  </button>
+                </div>
+                <div class="prediction-card-copy" style="margin-top: 12px">
+                  Start Now bypasses only the timer. Category, starting RS, OAuth, duplicate, and active-prediction checks still apply.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Rank Tracker View -->
@@ -3777,6 +3860,7 @@
       let editingPredictionPresetAlias = null;
       let activePredictionId = null;
       let predictionLoadPromise = null;
+      let predictionAutomationConfig = null;
 
       function predictionElement(tag, className, text) {
         const element = document.createElement(tag);
@@ -3866,8 +3950,9 @@
           predictionRequest("/api/user/predictions/status"),
           predictionRequest("/api/user/prediction-presets"),
           predictionRequest("/api/user/predictions/current"),
+          predictionRequest("/api/user/predictions/automation"),
         ])
-          .then(([statusResult, presetResult, currentResult]) => {
+          .then(([statusResult, presetResult, currentResult, automationResult]) => {
             const status = statusResult.status === "fulfilled"
               ? statusResult.value
               : statusResult.reason?.data?.state === "reauth_required"
@@ -3888,6 +3973,11 @@
                 : null
             );
             renderSelectedPredictionPreset();
+            if (automationResult.status === "fulfilled") {
+              renderPredictionAutomation(automationResult.value);
+            } else {
+              renderPredictionAutomationStatus(null, "Automatic prediction status is temporarily unavailable.");
+            }
             if (presetResult.status === "rejected") {
               throw presetResult.reason;
             }
@@ -4262,6 +4352,189 @@
           showToast("Prediction canceled and Channel Points refunded.", "success");
         } catch (error) {
           showToast(error.message || "Failed to cancel prediction.", "danger");
+        }
+      }
+
+      function addPredictionAutomationOutcome(outcome = {}) {
+        const list = document.getElementById("prediction-automation-outcomes");
+        if (!list || list.children.length >= 5) return;
+        const row = predictionElement("div", "prediction-outcome-row");
+        row.style.gridTemplateColumns = "minmax(150px, 1fr) minmax(90px, .55fr) minmax(90px, .55fr) 40px";
+
+        const label = predictionElement("input", "input");
+        label.maxLength = 25;
+        label.required = true;
+        label.placeholder = "Outcome label";
+        label.value = outcome.label || "";
+        label.dataset.autoOutcomeLabel = "true";
+
+        const minimum = predictionElement("input", "input");
+        minimum.type = "number";
+        minimum.step = "1";
+        minimum.placeholder = "Min";
+        minimum.value = outcome.minDelta === null || outcome.minDelta === undefined
+          ? ""
+          : String(outcome.minDelta);
+        minimum.dataset.autoOutcomeMin = "true";
+
+        const maximum = predictionElement("input", "input");
+        maximum.type = "number";
+        maximum.step = "1";
+        maximum.placeholder = "Max";
+        maximum.value = outcome.maxDelta === null || outcome.maxDelta === undefined
+          ? ""
+          : String(outcome.maxDelta);
+        maximum.dataset.autoOutcomeMax = "true";
+
+        const remove = predictionElement("button", "btn btn-ghost prediction-icon-button");
+        remove.type = "button";
+        remove.setAttribute("aria-label", "Remove automatic prediction outcome");
+        const icon = predictionElement("i");
+        icon.className = "fas fa-xmark";
+        remove.appendChild(icon);
+        remove.addEventListener("click", () => {
+          if (list.children.length <= 2) {
+            showToast("Automatic predictions need at least two outcomes.", "warning");
+            return;
+          }
+          row.remove();
+          refreshPredictionAutomationOutcomeButton();
+        });
+
+        row.append(label, minimum, maximum, remove);
+        list.appendChild(row);
+        refreshPredictionAutomationOutcomeButton();
+      }
+
+      function refreshPredictionAutomationOutcomeButton() {
+        const list = document.getElementById("prediction-automation-outcomes");
+        const button = document.getElementById("prediction-automation-add-outcome");
+        if (list && button) button.disabled = list.children.length >= 5;
+      }
+
+      function renderPredictionAutomation(data) {
+        predictionAutomationConfig = data.config;
+        document.getElementById("prediction-automation-enabled").checked = Boolean(data.config.enabled);
+        document.getElementById("prediction-automation-delay").value = String(data.config.startDelaySeconds);
+        document.getElementById("prediction-automation-window").value = String(data.config.votingWindowSeconds);
+        document.getElementById("prediction-automation-question").value = data.config.question || "";
+        const list = document.getElementById("prediction-automation-outcomes");
+        list.replaceChildren();
+        (data.config.outcomes || []).forEach((outcome) => addPredictionAutomationOutcome(outcome));
+        renderPredictionAutomationStatus(
+          data.run,
+          data.config.enabled ? null : "Automation is disabled.",
+          data.live
+        );
+      }
+
+      function renderPredictionAutomationStatus(run, fallback, live = null) {
+        const panel = document.getElementById("prediction-automation-status");
+        if (!panel) return;
+        panel.replaceChildren();
+        const title = predictionElement(
+          "div",
+          "prediction-live-title",
+          run ? String(run.status || "unknown").replaceAll("_", " ") : (fallback || "Waiting for a stream")
+        );
+        const detail = predictionElement(
+          "div",
+          "prediction-card-copy",
+          run?.failureReason
+            ? `Reason: ${String(run.failureReason).replaceAll("_", " ")}`
+            : "FinalsRS will use the existing session starting RS and settle only its stored Twitch prediction."
+        );
+        panel.append(title, detail);
+        if (live) {
+          const metrics = predictionElement("div", "prediction-outcome-summary");
+          const values = [
+            ["Stream", live.isLive ? (live.category || "Live") : "Offline"],
+            ["Starting RS", live.startingRs === null ? "Waiting" : Number(live.startingRs).toLocaleString()],
+            ["Latest RS", live.latestRs === null ? "Unavailable" : Number(live.latestRs).toLocaleString()],
+            ["Delta", live.delta === null ? "Unavailable" : `${live.delta >= 0 ? "+" : ""}${Number(live.delta).toLocaleString()}`],
+          ];
+          if (live.secondsUntilStart !== null && live.secondsUntilStart > 0) {
+            values.push(["Auto-start", `${Math.ceil(live.secondsUntilStart / 60)}m`]);
+          }
+          values.forEach(([label, value]) => {
+            metrics.appendChild(predictionElement(
+              "span",
+              "prediction-outcome-chip",
+              `${label}: ${value}`
+            ));
+          });
+          panel.appendChild(metrics);
+        }
+      }
+
+      function readPredictionAutomationOutcomes() {
+        return Array.from(document.getElementById("prediction-automation-outcomes").children).map((row) => {
+          const label = row.querySelector("[data-auto-outcome-label]").value.trim();
+          const minimum = row.querySelector("[data-auto-outcome-min]").value;
+          const maximum = row.querySelector("[data-auto-outcome-max]").value;
+          return {
+            label,
+            minDelta: minimum === "" ? null : Number(minimum),
+            maxDelta: maximum === "" ? null : Number(maximum),
+          };
+        });
+      }
+
+      async function savePredictionAutomation(event) {
+        event.preventDefault();
+        const button = document.getElementById("prediction-automation-save");
+        button.disabled = true;
+        try {
+          const data = await predictionRequest("/api/user/predictions/automation", {
+            method: "PUT",
+            body: JSON.stringify({
+              enabled: document.getElementById("prediction-automation-enabled").checked,
+              startDelaySeconds: Number(document.getElementById("prediction-automation-delay").value),
+              votingWindowSeconds: Number(document.getElementById("prediction-automation-window").value),
+              question: document.getElementById("prediction-automation-question").value.trim(),
+              outcomes: readPredictionAutomationOutcomes(),
+            }),
+          });
+          predictionAutomationConfig = data.config;
+          showToast("Automatic prediction settings saved.", "success");
+          await loadPredictions();
+        } catch (error) {
+          showToast(error.message || "Failed to save automatic prediction settings.", "danger");
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function startPredictionAutomationNow() {
+        try {
+          const data = await predictionRequest("/api/user/predictions/automation/start", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          renderPredictionAutomationStatus(data.run);
+          showToast("Automatic ranked prediction start requested.", "success");
+          await loadPredictions();
+        } catch (error) {
+          showToast(error.message || "Automatic prediction could not start safely.", "danger");
+        }
+      }
+
+      async function cancelPredictionAutomation() {
+        const confirmed = await showConfirm(
+          "Cancel automatic prediction",
+          "Cancel the automatic prediction and refund all Channel Points?"
+        );
+        if (!confirmed) return;
+        try {
+          const data = await predictionRequest("/api/user/predictions/automation/cancel", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          renderPredictionAutomationStatus(data.run);
+          showToast("Automatic prediction canceled and refunded.", "success");
+          await loadPredictions();
+        } catch (error) {
+          showToast(error.message || "Failed to cancel automatic prediction.", "danger");
         }
       }
 

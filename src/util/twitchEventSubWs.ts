@@ -5,6 +5,7 @@ import { Channel, StreamSession } from '../db';
 import { getLatestLeaderboardData } from '@/commands/record';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
+import { rankedPredictionAutomationService } from '@/services/rankedPredictionAutomation.service';
 
 export interface UserSubscription {
   userId: string;
@@ -70,12 +71,14 @@ async function handleStreamOffline(broadcasterName: string, broadcasterId: strin
       channel = await Channel.findOne({ where: { username: broadcasterName } });
     }
 
-    if (!channel?.player_id) {
-      logger.warn(`No linked THE FINALS account for ${broadcasterName} / ID: ${broadcasterId}`);
+    if (!channel) {
+      logger.warn(`No channel found for ${broadcasterName} / ID: ${broadcasterId}`);
       return;
     }
 
+    await rankedPredictionAutomationService.finalizeCurrent(channel.id);
     await StreamSession.destroy({ where: { channel: broadcasterName.toLowerCase() } });
+    await channel.update({ session_start_rs: null });
     sendInfoToDiscord(`StreamSession destroyed for ${broadcasterName} - ${new Date().toLocaleString()}`);
     logger.info(`StreamSession destroyed for ${broadcasterName}`);
   } catch (err) {
@@ -114,7 +117,11 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
       setTimeout(() => handleStreamOnline(broadcasterName, broadcasterId), 5 * 60 * 1000);
       return;
     }
-    const startScore = player.rankScore ?? 0;
+    if (!Number.isFinite(player.rankScore)) {
+      logger.warn(`[EventSub] Ranked score unavailable for ${broadcasterName}; session not started.`);
+      return;
+    }
+    const startScore = Number(player.rankScore);
 
     await StreamSession.upsert({
       channel: broadcasterName.toLowerCase(),
@@ -122,6 +129,7 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
       start_wt_rank: null,
       started_at: new Date()
     });
+    await channel.update({ session_start_rs: startScore });
     sendInfoToDiscord(`StreamSession created for ${broadcasterName} | start_score: ${startScore}`);
     logger.info(
       `StreamSession created for ${broadcasterName} | start_score: ${startScore}`

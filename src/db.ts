@@ -7,6 +7,7 @@ import { error } from 'console';
 import logger from "@/util/logger"; // Logging utility
 import { Op } from 'sequelize';
 import { migratePredictionPresets } from './scripts/migrate_prediction_presets';
+import { migratePredictionAutomation } from './scripts/migrate_prediction_automation';
 
 dotenv.config();
 
@@ -106,6 +107,32 @@ class PredictionPreset extends Model {
   declare title: string;
   declare outcomes_json: string;
   declare duration_seconds: number;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+class PredictionAutomationConfig extends Model {
+  declare id: number;
+  declare broadcaster_id: number;
+  declare enabled: boolean;
+  declare start_delay_seconds: number;
+  declare voting_window_seconds: number;
+  declare question: string;
+  declare outcomes_json: string;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+class PredictionAutomationRun extends Model {
+  declare id: number;
+  declare broadcaster_id: number;
+  declare twitch_stream_id: string;
+  declare status: string;
+  declare twitch_prediction_id: string | null;
+  declare twitch_outcome_ids_json: string | null;
+  declare prediction_created_at: Date | null;
+  declare resolved_at: Date | null;
+  declare failure_reason: string | null;
   declare created_at: Date;
   declare updated_at: Date;
 }
@@ -316,6 +343,66 @@ PredictionPreset.init(
       { fields: ['channel_id'] },
     ],
   }
+);
+
+PredictionAutomationConfig.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    broadcaster_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      unique: true,
+      references: { model: 'Channels', key: 'id' },
+    },
+    enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    start_delay_seconds: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 600 },
+    voting_window_seconds: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 600 },
+    question: {
+      type: DataTypes.STRING(45),
+      allowNull: false,
+      defaultValue: 'How much RS will I gain this stream?',
+    },
+    outcomes_json: { type: DataTypes.TEXT, allowNull: false },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize,
+    modelName: 'PredictionAutomationConfig',
+    tableName: 'PredictionAutomationConfigs',
+    timestamps: false,
+    indexes: [{ unique: true, fields: ['broadcaster_id'] }],
+  },
+);
+
+PredictionAutomationRun.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    broadcaster_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: { model: 'Channels', key: 'id' },
+    },
+    twitch_stream_id: { type: DataTypes.STRING(64), allowNull: false },
+    status: { type: DataTypes.STRING(32), allowNull: false },
+    twitch_prediction_id: { type: DataTypes.STRING(64), allowNull: true },
+    twitch_outcome_ids_json: { type: DataTypes.TEXT, allowNull: true },
+    prediction_created_at: { type: DataTypes.DATE, allowNull: true },
+    resolved_at: { type: DataTypes.DATE, allowNull: true },
+    failure_reason: { type: DataTypes.STRING(255), allowNull: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize,
+    modelName: 'PredictionAutomationRun',
+    tableName: 'PredictionAutomationRuns',
+    timestamps: false,
+    indexes: [
+      { unique: true, fields: ['broadcaster_id', 'twitch_stream_id'] },
+      { fields: ['status'] },
+    ],
+  },
 );
 
 // RankGoal model - Track user rank goals
@@ -577,13 +664,15 @@ async function runMigrations() {
     }
 
     await migratePredictionPresets(queryInterface);
+    await migratePredictionAutomation(queryInterface);
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
   }
 }
 
 // Sync the database and export a promise for sync completion
-const dbReady = sequelize.sync()
+const dbReady = migratePredictionAutomation(sequelize.getQueryInterface())
+  .then(() => sequelize.sync())
   .then(async () => {
     await runMigrations();
     logger.info('Database synced and migrations checked.');
@@ -867,4 +956,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };

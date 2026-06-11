@@ -18,6 +18,14 @@ import {
   twitchPredictionsService,
 } from '@/services/twitchPredictions.service';
 import logger from '@/util/logger';
+import {
+  PredictionAutomationPrerequisiteError,
+  rankedPredictionAutomationService,
+} from '@/services/rankedPredictionAutomation.service';
+import {
+  PredictionAutomationValidationError,
+} from '@/models/predictionAutomation';
+import { getLiveStreamsForUsers } from '@/util/twitchUtils';
 
 interface ChannelIdentity {
   id: number;
@@ -35,6 +43,11 @@ interface PredictionRouteDependencies {
     typeof twitchPredictionsService,
     'getAuthorizationStatus' | 'getCurrent' | 'start' | 'resolve' | 'cancel'
   >;
+  automationService: Pick<
+    typeof rankedPredictionAutomationService,
+    'getConfig' | 'saveConfig' | 'getCurrentRun' | 'getStatus' | 'evaluateStream' | 'cancelCurrent'
+  >;
+  getLiveStreams: typeof getLiveStreamsForUsers;
   logger: Pick<typeof logger, 'error'>;
 }
 
@@ -54,6 +67,8 @@ const productionDependencies: PredictionRouteDependencies = {
   },
   presetService: predictionPresetService,
   predictionService: twitchPredictionsService,
+  automationService: rankedPredictionAutomationService,
+  getLiveStreams: getLiveStreamsForUsers,
   logger,
 };
 
@@ -68,6 +83,12 @@ function errorResponse(
   }
   if (error instanceof PredictionPresetContentError) {
     return res.status(400).json({ error: 'Preset contains blocked content.' });
+  }
+  if (error instanceof PredictionAutomationValidationError) {
+    return res.status(400).json({ error: error.message });
+  }
+  if (error instanceof PredictionAutomationPrerequisiteError) {
+    return res.status(409).json({ error: error.message });
   }
   if (error instanceof PredictionReauthRequiredError) {
     return res.status(403).json({
@@ -254,6 +275,85 @@ export function createPredictionRouteHandlers(
       const prediction = await dependencies.predictionService.cancel(channel.id);
       return res.json({ prediction: serializePrediction(prediction) });
     }),
+
+    automation: (req: any, res: any) => withChannel(
+      req,
+      res,
+      'automation',
+      async (channel) => {
+        const stream = (await dependencies.getLiveStreams([channel.username]))[0] || null;
+        const status = await dependencies.automationService.getStatus(channel.id, stream);
+        const run: any = status.run;
+        return res.json({
+          config: status.config,
+          run: run ? {
+            id: Number(run.id),
+            streamId: String(run.twitch_stream_id),
+            status: String(run.status),
+            predictionId: run.twitch_prediction_id
+              ? String(run.twitch_prediction_id)
+              : null,
+            failureReason: run.failure_reason ? String(run.failure_reason) : null,
+            predictionCreatedAt: run.prediction_created_at || null,
+            resolvedAt: run.resolved_at || null,
+          } : null,
+          live: {
+            isLive: status.isLive,
+            category: status.category,
+            startingRs: status.startingRs,
+            latestRs: status.latestRs,
+            delta: status.delta,
+            secondsUntilStart: status.secondsUntilStart,
+          },
+        });
+      },
+    ),
+
+    updateAutomation: (req: any, res: any) => withChannel(
+      req,
+      res,
+      'updateAutomation',
+      async (channel) => {
+        const body = req.body || {};
+        const config = await dependencies.automationService.saveConfig(channel.id, {
+          enabled: body.enabled,
+          startDelaySeconds: body.startDelaySeconds ?? body.start_delay_seconds,
+          votingWindowSeconds: body.votingWindowSeconds ?? body.voting_window_seconds,
+          question: body.question,
+          outcomes: body.outcomes,
+        });
+        return res.json({ config });
+      },
+    ),
+
+    startAutomation: (req: any, res: any) => withChannel(
+      req,
+      res,
+      'startAutomation',
+      async (channel) => {
+        const stream = (await dependencies.getLiveStreams([channel.username]))[0];
+        if (!stream) return res.status(409).json({ error: 'The stream is not live.' });
+        const run = await dependencies.automationService.evaluateStream(
+          channel.id,
+          stream,
+          { bypassDelay: true },
+        );
+        return res.json({ run });
+      },
+    ),
+
+    cancelAutomation: (req: any, res: any) => withChannel(
+      req,
+      res,
+      'cancelAutomation',
+      async (channel) => {
+        const run = await dependencies.automationService.cancelCurrent(channel.id);
+        if (!run) {
+          return res.status(409).json({ error: 'There is no automatic prediction to cancel.' });
+        }
+        return res.json({ run });
+      },
+    ),
   };
 }
 
@@ -274,6 +374,10 @@ export function createPredictionRoutes(
   router.post('/api/user/predictions/start', auth, csrf, handlers.start);
   router.post('/api/user/predictions/resolve', auth, csrf, handlers.resolve);
   router.post('/api/user/predictions/cancel', auth, csrf, handlers.cancel);
+  router.get('/api/user/predictions/automation', auth, handlers.automation);
+  router.put('/api/user/predictions/automation', auth, csrf, handlers.updateAutomation);
+  router.post('/api/user/predictions/automation/start', auth, csrf, handlers.startAutomation);
+  router.post('/api/user/predictions/automation/cancel', auth, csrf, handlers.cancelAutomation);
 
   return router;
 }

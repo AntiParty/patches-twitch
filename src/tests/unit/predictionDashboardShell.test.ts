@@ -42,4 +42,22 @@ describe('Prediction dashboard shell', () => {
     assert(!source.includes('${preset.title}'));
     assert(!source.includes('${prediction.title}'));
   });
+
+  it('includes automatic ranked prediction settings and actions', () => {
+    const source = fs.readFileSync(dashboardPath, 'utf8');
+    for (const marker of [
+      'id="prediction-automation-form"',
+      'id="prediction-automation-enabled"',
+      'id="prediction-automation-delay"',
+      'id="prediction-automation-window"',
+      'id="prediction-automation-question"',
+      'id="prediction-automation-outcomes"',
+      'id="prediction-automation-status"',
+      '/api/user/predictions/automation',
+      '/api/user/predictions/automation/start',
+      '/api/user/predictions/automation/cancel',
+    ]) {
+      assert(source.includes(marker), `Missing automation dashboard marker: ${marker}`);
+    }
+  });
 });

@@ -224,6 +224,39 @@ describe('Twitch predictions service', () => {
     assert.equal(requests[1].data.status, 'CANCELED');
   });
 
+  it('fetches, resolves, and cancels an exact stored prediction ID', async () => {
+    const active = prediction({ id: 'stored-prediction' });
+    const resolved = prediction({ id: 'stored-prediction', status: 'RESOLVED' });
+    const canceled = prediction({ id: 'stored-prediction', status: 'CANCELED' });
+    const { service, requests } = createHarness({
+      responses: [
+        { data: { data: [active] } },
+        { data: { data: [resolved] } },
+        { data: { data: [canceled] } },
+      ],
+    });
+
+    assert.deepEqual(await service.getById(7, 'stored-prediction'), active);
+    assert.deepEqual(
+      await service.resolveById(7, 'stored-prediction', 'yes-id'),
+      resolved,
+    );
+    assert.deepEqual(await service.cancelById(7, 'stored-prediction'), canceled);
+
+    assert.equal(requests[0].params.id, 'stored-prediction');
+    assert.deepEqual(requests[1].data, {
+      broadcaster_id: 'broadcaster-1',
+      id: 'stored-prediction',
+      status: 'RESOLVED',
+      winning_outcome_id: 'yes-id',
+    });
+    assert.deepEqual(requests[2].data, {
+      broadcaster_id: 'broadcaster-1',
+      id: 'stored-prediction',
+      status: 'CANCELED',
+    });
+  });
+
   it('reports no active prediction when Twitch has no active or locked state', async () => {
     const { service } = createHarness({
       responses: [{ data: { data: [prediction({ status: 'RESOLVED' })] } }],

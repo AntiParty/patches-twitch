@@ -46,6 +46,10 @@ function createHarness(overrides: Record<string, any> = {}) {
     start: [],
     resolve: [],
     cancel: [],
+    automationGet: [],
+    automationSave: [],
+    automationStart: [],
+    automationCancel: [],
     errors: [],
   };
   const preset = {
@@ -133,6 +137,63 @@ function createHarness(overrides: Record<string, any> = {}) {
         };
       },
     },
+    automationService: {
+      getConfig: async (channelId: number) => {
+        calls.automationGet.push(channelId);
+        return {
+          enabled: false,
+          startDelaySeconds: 600,
+          votingWindowSeconds: 600,
+          question: 'How much RS will I gain this stream?',
+          outcomes: [
+            { label: 'Down', minDelta: null, maxDelta: -1 },
+            { label: 'Up', minDelta: 0, maxDelta: null },
+          ],
+        };
+      },
+      saveConfig: async (channelId: number, input: any) => {
+        calls.automationSave.push({ channelId, input });
+        return input;
+      },
+      getCurrentRun: async () => null,
+      getStatus: async (channelId: number) => {
+        calls.automationGet.push(channelId);
+        return {
+          config: {
+            enabled: false,
+            startDelaySeconds: 600,
+            votingWindowSeconds: 600,
+            question: 'How much RS will I gain this stream?',
+            outcomes: [
+              { label: 'Down', minDelta: null, maxDelta: -1 },
+              { label: 'Up', minDelta: 0, maxDelta: null },
+            ],
+          },
+          run: null,
+          isLive: false,
+          category: null,
+          startingRs: null,
+          latestRs: null,
+          delta: null,
+          secondsUntilStart: null,
+        };
+      },
+      evaluateStream: async (channelId: number, stream: any, options: any) => {
+        calls.automationStart.push({ channelId, stream, options });
+        return { id: 1, status: 'voting' };
+      },
+      cancelCurrent: async (channelId: number) => {
+        calls.automationCancel.push(channelId);
+        return { id: 1, status: 'canceled' };
+      },
+    },
+    getLiveStreams: async () => [{
+      id: 'stream-1',
+      username: 'streamer',
+      gameId: 'game-1',
+      gameName: 'THE FINALS',
+      startedAt: '2026-06-11T12:00:00Z',
+    }],
     logger: {
       error: (...args: any[]) => calls.errors.push(args),
     },
@@ -532,6 +593,38 @@ describe('Prediction dashboard routes', () => {
       assert.deepEqual(harness.calls.errors, []);
     }
   });
+
+  it('reads and updates automatic prediction settings for the session channel', async () => {
+    const harness = createHarness();
+    const current = await invoke(harness.handlers.automation);
+    assert.equal(current.statusCode, 200);
+    assert.equal(current.body.config.enabled, false);
+
+    const input = {
+      enabled: true,
+      startDelaySeconds: 600,
+      votingWindowSeconds: 600,
+      question: 'How much RS?',
+      outcomes: [
+        { label: 'Down', minDelta: null, maxDelta: -1 },
+        { label: 'Up', minDelta: 0, maxDelta: null },
+      ],
+    };
+    const updated = await invoke(harness.handlers.updateAutomation, { body: input });
+    assert.equal(updated.statusCode, 200);
+    assert.deepEqual(harness.calls.automationSave, [{ channelId: 7, input }]);
+  });
+
+  it('starts immediately and cancels through the shared automation service', async () => {
+    const harness = createHarness();
+    const started = await invoke(harness.handlers.startAutomation);
+    assert.equal(started.body.run.status, 'voting');
+    assert.deepEqual(harness.calls.automationStart[0].options, { bypassDelay: true });
+
+    const canceled = await invoke(harness.handlers.cancelAutomation);
+    assert.equal(canceled.body.run.status, 'canceled');
+    assert.deepEqual(harness.calls.automationCancel, [7]);
+  });
 });
 
 describe('Prediction dashboard routes wiring', () => {
@@ -552,6 +645,9 @@ describe('Prediction dashboard routes wiring', () => {
     assert.equal(byPath.has('/api/user/predictions/start'), true);
     assert.equal(byPath.has('/api/user/predictions/resolve'), true);
     assert.equal(byPath.has('/api/user/predictions/cancel'), true);
+    assert.equal(byPath.has('/api/user/predictions/automation'), true);
+    assert.equal(byPath.has('/api/user/predictions/automation/start'), true);
+    assert.equal(byPath.has('/api/user/predictions/automation/cancel'), true);
     for (const layer of layers) {
       const middleware = layer.route.stack.map((entry: any) => entry.handle);
       assert.equal(middleware.includes(auth), true, `${layer.route.path} should require auth`);

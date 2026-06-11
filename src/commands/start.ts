@@ -44,7 +44,9 @@ export function createStartCommand(deps: StartCommandDependencies = productionDe
     }
     try {
       await deps.predictions.start(channelRecord.id, preset);
-      await ctx.say(`@${displayName}, prediction "${preset.title}" started.`, messageId);
+      await ctx.say(
+        `Prediction started: "${preset.title}" Vote now with Channel Points!`,
+      );
     } catch (error) {
       if (!isPredictionDomainError(error)) logger.error('[start] Prediction start failed:', error);
       await ctx.say(`@${displayName}, ${predictionChatError(error)}`, messageId);

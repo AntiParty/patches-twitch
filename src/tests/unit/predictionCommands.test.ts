@@ -144,8 +144,11 @@ describe('Prediction chat commands', () => {
 
     await execute(moderator.ctx, '#antiparty', '', moderator.ctx.tags, ['p', 'ranked']);
     assert.equal(startedChannelId, 7);
-    assert.match(moderator.replies[0].message, /started/i);
-    assert.equal(moderator.replies[0].replyId, 'message-1');
+    assert.equal(
+      moderator.replies[0].message,
+      'Prediction started: "Will we win?" Vote now with Channel Points!',
+    );
+    assert.equal(moderator.replies[0].replyId, undefined);
   });
 
   it('returns the broadcaster reauthorization URL for prediction-only scope failures', async () => {

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import axios from 'axios';
 import { Channel } from '@/db';
 import { requireUserAPI } from '@/middleware/auth.middleware';
 import { csrfProtection } from '@/middleware/csrf.middleware';
@@ -49,6 +50,7 @@ interface PredictionRouteDependencies {
     'getConfig' | 'saveConfig' | 'getCurrentRun' | 'getStatus' | 'evaluateStream' | 'cancelCurrent'
   >;
   getLiveStreams: typeof getLiveStreamsForUsers;
+  announce: (channel: string, message: string) => Promise<void>;
   logger: Pick<typeof logger, 'error'>;
 }
 
@@ -85,6 +87,13 @@ const productionDependencies: PredictionRouteDependencies = {
   predictionService: twitchPredictionsService,
   automationService: rankedPredictionAutomationService,
   getLiveStreams: getLiveStreamsForUsers,
+  announce: async (channel, message) => {
+    await axios.post(
+      'http://127.0.0.1:4000/send-message',
+      { channel, message },
+      { timeout: 5000 },
+    );
+  },
   logger,
 };
 
@@ -272,6 +281,18 @@ export function createPredictionRouteHandlers(
         return res.status(404).json({ error: 'Prediction preset not found.' });
       }
       const prediction = await dependencies.predictionService.start(channel.id, preset);
+      try {
+        await dependencies.announce(
+          channel.username,
+          `Prediction started: "${preset.title}" Vote now with Channel Points!`,
+        );
+      } catch {
+        dependencies.logger.error('[PredictionDashboard] Chat announcement failed', {
+          operation: 'start',
+          channelId: channel.id,
+          predictionId: prediction.id,
+        });
+      }
       return res.json({ prediction: serializePrediction(prediction) });
     }),
 

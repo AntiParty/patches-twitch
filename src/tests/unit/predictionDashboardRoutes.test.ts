@@ -46,6 +46,7 @@ function createHarness(overrides: Record<string, any> = {}) {
     start: [],
     resolve: [],
     cancel: [],
+    announce: [],
     automationGet: [],
     automationSave: [],
     automationStart: [],
@@ -196,6 +197,9 @@ function createHarness(overrides: Record<string, any> = {}) {
       gameName: 'THE FINALS',
       startedAt: '2026-06-11T12:00:00Z',
     }],
+    announce: async (channel: string, message: string) => {
+      calls.announce.push({ channel, message });
+    },
     logger: {
       error: (...args: any[]) => calls.errors.push(args),
     },
@@ -463,8 +467,28 @@ describe('Prediction dashboard routes', () => {
     assert.equal(res.statusCode, 200);
     assert.deepEqual(harness.calls.get, [{ channelId: 7, alias: 'ranked' }]);
     assert.deepEqual(harness.calls.start, [{ channelId: 7, preset: harness.preset }]);
+    assert.deepEqual(harness.calls.announce, [{
+      channel: 'streamer',
+      message: 'Prediction started: "How will ranked go?" Vote now with Channel Points!',
+    }]);
     assert.equal(res.body.prediction.id, 'prediction-2');
     assert.equal(JSON.stringify(res.body).includes('must-not-leak'), false);
+  });
+
+  it('returns the created prediction when its dashboard chat announcement fails', async () => {
+    const harness = createHarness({
+      announce: async () => {
+        throw new Error('control API unavailable');
+      },
+    });
+
+    const res = await invoke(harness.handlers.start, {
+      body: { alias: 'ranked' },
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.prediction.id, 'prediction-2');
+    assert.equal(harness.calls.errors.length, 1);
   });
 
   it('returns 404 when starting a missing preset', async () => {

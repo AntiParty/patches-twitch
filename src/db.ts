@@ -115,6 +115,7 @@ class PredictionAutomationConfig extends Model {
   declare id: number;
   declare broadcaster_id: number;
   declare enabled: boolean;
+  declare mode: string;
   declare start_delay_seconds: number;
   declare voting_window_seconds: number;
   declare question: string;
@@ -127,10 +128,15 @@ class PredictionAutomationRun extends Model {
   declare id: number;
   declare broadcaster_id: number;
   declare twitch_stream_id: string;
+  declare mode: string;
+  declare cycle_index: number;
   declare status: string;
   declare twitch_prediction_id: string | null;
   declare twitch_outcome_ids_json: string | null;
   declare prediction_created_at: Date | null;
+  declare baseline_rs: number | null;
+  declare resolution_deadline_at: Date | null;
+  declare cooldown_until: Date | null;
   declare resolved_at: Date | null;
   declare failure_reason: string | null;
   declare created_at: Date;
@@ -355,6 +361,7 @@ PredictionAutomationConfig.init(
       references: { model: 'Channels', key: 'id' },
     },
     enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    mode: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'stream_total' },
     start_delay_seconds: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 600 },
     voting_window_seconds: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 600 },
     question: {
@@ -384,10 +391,15 @@ PredictionAutomationRun.init(
       references: { model: 'Channels', key: 'id' },
     },
     twitch_stream_id: { type: DataTypes.STRING(64), allowNull: false },
+    mode: { type: DataTypes.STRING(32), allowNull: false, defaultValue: 'stream_total' },
+    cycle_index: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
     status: { type: DataTypes.STRING(32), allowNull: false },
     twitch_prediction_id: { type: DataTypes.STRING(64), allowNull: true },
     twitch_outcome_ids_json: { type: DataTypes.TEXT, allowNull: true },
     prediction_created_at: { type: DataTypes.DATE, allowNull: true },
+    baseline_rs: { type: DataTypes.INTEGER, allowNull: true },
+    resolution_deadline_at: { type: DataTypes.DATE, allowNull: true },
+    cooldown_until: { type: DataTypes.DATE, allowNull: true },
     resolved_at: { type: DataTypes.DATE, allowNull: true },
     failure_reason: { type: DataTypes.STRING(255), allowNull: true },
     created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
@@ -399,8 +411,12 @@ PredictionAutomationRun.init(
     tableName: 'PredictionAutomationRuns',
     timestamps: false,
     indexes: [
-      { unique: true, fields: ['broadcaster_id', 'twitch_stream_id'] },
-      { fields: ['status'] },
+      {
+        name: 'prediction_automation_run_cycle_unique',
+        unique: true,
+        fields: ['broadcaster_id', 'twitch_stream_id', 'cycle_index'],
+      },
+      { name: 'prediction_automation_run_status', fields: ['status'] },
     ],
   },
 );

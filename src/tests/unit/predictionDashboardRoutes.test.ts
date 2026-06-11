@@ -142,6 +142,7 @@ function createHarness(overrides: Record<string, any> = {}) {
         calls.automationGet.push(channelId);
         return {
           enabled: false,
+          mode: 'stream_total',
           startDelaySeconds: 600,
           votingWindowSeconds: 600,
           question: 'How much RS will I gain this stream?',
@@ -161,6 +162,7 @@ function createHarness(overrides: Record<string, any> = {}) {
         return {
           config: {
             enabled: false,
+            mode: 'stream_total',
             startDelaySeconds: 600,
             votingWindowSeconds: 600,
             question: 'How much RS will I gain this stream?',
@@ -602,6 +604,7 @@ describe('Prediction dashboard routes', () => {
 
     const input = {
       enabled: true,
+      mode: 'next_result',
       startDelaySeconds: 600,
       votingWindowSeconds: 600,
       question: 'How much RS?',

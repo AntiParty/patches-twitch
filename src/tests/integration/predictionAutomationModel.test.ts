@@ -17,7 +17,7 @@ describe('Prediction automation models', () => {
     await Channel.destroy({ where: { username: 'automation-model-test' } });
   });
 
-  it('persists one configuration and one run per Twitch stream', async () => {
+  it('persists one configuration and distinct prediction cycles per Twitch stream', async () => {
     const channel = await Channel.create({
       username: 'automation-model-test',
       twitch_user_id: '991',
@@ -25,6 +25,7 @@ describe('Prediction automation models', () => {
     const config = await PredictionAutomationConfig.create({
       broadcaster_id: channel.id,
       enabled: true,
+      mode: 'next_result',
       start_delay_seconds: 600,
       voting_window_seconds: 600,
       question: 'How much RS will I gain?',
@@ -36,16 +37,32 @@ describe('Prediction automation models', () => {
     const run = await PredictionAutomationRun.create({
       broadcaster_id: channel.id,
       twitch_stream_id: 'stream-123',
+      mode: 'next_result',
+      cycle_index: 1,
       status: 'scheduled',
+      baseline_rs: 50000,
+    });
+    const secondRun = await PredictionAutomationRun.create({
+      broadcaster_id: channel.id,
+      twitch_stream_id: 'stream-123',
+      mode: 'next_result',
+      cycle_index: 2,
+      status: 'scheduled',
+      baseline_rs: 50100,
     });
 
     assert.equal(config.enabled, true);
+    assert.equal(config.mode, 'next_result');
     assert.equal(run.twitch_stream_id, 'stream-123');
+    assert.equal(secondRun.cycle_index, 2);
+    assert.equal(secondRun.baseline_rs, 50100);
 
     await assert.rejects(
       PredictionAutomationRun.create({
         broadcaster_id: channel.id,
         twitch_stream_id: 'stream-123',
+        mode: 'next_result',
+        cycle_index: 2,
         status: 'scheduled',
       }),
       /unique/i,

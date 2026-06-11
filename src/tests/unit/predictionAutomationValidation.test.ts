@@ -9,9 +9,27 @@ import {
 describe('Prediction automation validation', () => {
   it('provides the approved disabled defaults', () => {
     assert.equal(DEFAULT_PREDICTION_AUTOMATION_CONFIG.enabled, false);
+    assert.equal(DEFAULT_PREDICTION_AUTOMATION_CONFIG.mode, 'stream_total');
     assert.equal(DEFAULT_PREDICTION_AUTOMATION_CONFIG.startDelaySeconds, 600);
     assert.equal(DEFAULT_PREDICTION_AUTOMATION_CONFIG.votingWindowSeconds, 600);
     assert.equal(DEFAULT_PREDICTION_AUTOMATION_CONFIG.outcomes.length, 4);
+  });
+
+  it('accepts the fixed gain or lose outcomes for next-result mode', () => {
+    const config = validatePredictionAutomationInput({
+      ...DEFAULT_PREDICTION_AUTOMATION_CONFIG,
+      mode: 'next_result',
+      question: 'Will the next ranked result gain or lose RS?',
+      outcomes: [
+        { label: 'Lose RS', minDelta: null, maxDelta: -1 },
+        { label: 'Gain RS', minDelta: 1, maxDelta: null },
+      ],
+    });
+
+    assert.equal(config.mode, 'next_result');
+    assert.equal(findMatchingOutcome(config.outcomes, -1)?.label, 'Lose RS');
+    assert.equal(findMatchingOutcome(config.outcomes, 1)?.label, 'Gain RS');
+    assert.equal(findMatchingOutcome(config.outcomes, 0), null);
   });
 
   it('accepts exhaustive non-overlapping ranges and matches exactly one outcome', () => {

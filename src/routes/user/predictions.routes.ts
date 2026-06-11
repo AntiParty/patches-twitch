@@ -305,12 +305,17 @@ export function createPredictionRouteHandlers(
           run: run ? {
             id: Number(run.id),
             streamId: String(run.twitch_stream_id),
+            mode: run.mode ? String(run.mode) : 'stream_total',
+            cycleIndex: Number(run.cycle_index || 1),
             status: String(run.status),
             predictionId: run.twitch_prediction_id
               ? String(run.twitch_prediction_id)
               : null,
             failureReason: run.failure_reason ? String(run.failure_reason) : null,
             predictionCreatedAt: run.prediction_created_at || null,
+            baselineRs: Number.isFinite(run.baseline_rs) ? Number(run.baseline_rs) : null,
+            resolutionDeadlineAt: run.resolution_deadline_at || null,
+            cooldownUntil: run.cooldown_until || null,
             resolvedAt: run.resolved_at || null,
           } : null,
           live: {
@@ -333,6 +338,7 @@ export function createPredictionRouteHandlers(
         const body = req.body || {};
         const config = await dependencies.automationService.saveConfig(channel.id, {
           enabled: body.enabled,
+          mode: body.mode,
           startDelaySeconds: body.startDelaySeconds ?? body.start_delay_seconds,
           votingWindowSeconds: body.votingWindowSeconds ?? body.voting_window_seconds,
           question: body.question,

@@ -15,6 +15,7 @@ export const AUTO_PREDICTION_RUN_STATUSES = [
 ] as const;
 
 export type AutoPredictionRunStatus = typeof AUTO_PREDICTION_RUN_STATUSES[number];
+export type PredictionAutomationMode = 'stream_total' | 'next_result';
 
 export interface RankedPredictionOutcomeConfig {
   label: string;
@@ -24,6 +25,7 @@ export interface RankedPredictionOutcomeConfig {
 
 export interface PredictionAutomationConfigData {
   enabled: boolean;
+  mode: PredictionAutomationMode;
   startDelaySeconds: number;
   votingWindowSeconds: number;
   question: string;
@@ -32,6 +34,7 @@ export interface PredictionAutomationConfigData {
 
 export const DEFAULT_PREDICTION_AUTOMATION_CONFIG: PredictionAutomationConfigData = {
   enabled: false,
+  mode: 'stream_total',
   startDelaySeconds: 600,
   votingWindowSeconds: 600,
   question: 'How much RS will I gain this stream?',
@@ -65,6 +68,9 @@ export function validatePredictionAutomationInput(
   }
   if (typeof input.enabled !== 'boolean') {
     throw new PredictionAutomationValidationError('Enabled must be true or false.');
+  }
+  if (!['stream_total', 'next_result'].includes(input.mode)) {
+    throw new PredictionAutomationValidationError('Prediction mode is invalid.');
   }
 
   const startDelaySeconds = requiredInteger(input.startDelaySeconds, 'Start delay');
@@ -115,24 +121,44 @@ export function validatePredictionAutomationInput(
     return a.minDelta - b.minDelta;
   });
 
-  if (sorted[0].minDelta !== null || sorted[sorted.length - 1].maxDelta !== null) {
+  if (input.mode === 'next_result') {
+    const expected = [
+      { label: 'Lose RS', minDelta: null, maxDelta: -1 },
+      { label: 'Gain RS', minDelta: 1, maxDelta: null },
+    ];
+    if (
+      sorted.length !== expected.length
+      || sorted.some((outcome, index) => (
+        outcome.label !== expected[index].label
+        || outcome.minDelta !== expected[index].minDelta
+        || outcome.maxDelta !== expected[index].maxDelta
+      ))
+    ) {
+      throw new PredictionAutomationValidationError(
+        'Next-result predictions must use the Gain RS and Lose RS outcomes.',
+      );
+    }
+  } else if (sorted[0].minDelta !== null || sorted[sorted.length - 1].maxDelta !== null) {
     throw new PredictionAutomationValidationError(
       'Outcome ranges must cover every possible ranked score delta.',
     );
   }
 
-  for (let index = 0; index < sorted.length - 1; index += 1) {
-    const currentMax = sorted[index].maxDelta;
-    const nextMin = sorted[index + 1].minDelta;
-    if (currentMax === null || nextMin === null || nextMin !== currentMax + 1) {
-      throw new PredictionAutomationValidationError(
-        'Outcome ranges cannot overlap or contain gaps.',
-      );
+  if (input.mode === 'stream_total') {
+    for (let index = 0; index < sorted.length - 1; index += 1) {
+      const currentMax = sorted[index].maxDelta;
+      const nextMin = sorted[index + 1].minDelta;
+      if (currentMax === null || nextMin === null || nextMin !== currentMax + 1) {
+        throw new PredictionAutomationValidationError(
+          'Outcome ranges cannot overlap or contain gaps.',
+        );
+      }
     }
   }
 
   return {
     enabled: input.enabled,
+    mode: input.mode,
     startDelaySeconds,
     votingWindowSeconds,
     question,

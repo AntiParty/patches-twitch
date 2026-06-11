@@ -8,7 +8,9 @@ function harness(options: {
   now?: number;
   startRs?: number | null;
   finalRs?: number | null;
+  config?: Partial<typeof DEFAULT_PREDICTION_AUTOMATION_CONFIG>;
   currentPrediction?: any;
+  predictionById?: any;
   validateContent?: () => Promise<void>;
   hasAccess?: boolean;
 } = {}) {
@@ -16,7 +18,12 @@ function harness(options: {
   const started: any[] = [];
   const resolved: any[] = [];
   const canceled: any[] = [];
-  const config = { ...DEFAULT_PREDICTION_AUTOMATION_CONFIG, enabled: true };
+  const announcements: string[] = [];
+  const config = {
+    ...DEFAULT_PREDICTION_AUTOMATION_CONFIG,
+    enabled: true,
+    ...options.config,
+  };
   const channel = {
     id: 7,
     username: 'antiparty',
@@ -26,6 +33,7 @@ function harness(options: {
     role: 'Basic user',
   };
   let now = options.now ?? Date.parse('2026-06-11T12:11:00Z');
+  let currentScore = options.finalRs === undefined ? 51000 : options.finalRs;
 
   const service = createRankedPredictionAutomationService({
     now: () => now,
@@ -33,30 +41,43 @@ function harness(options: {
     loadConfig: async () => config,
     saveConfig: async (_channelId, saved) => saved,
     findRun: async (_channelId, streamId) => (
-      runs.find((run) => run.twitch_stream_id === streamId) || null
+      [...runs].reverse().find((run) => run.twitch_stream_id === streamId) || null
     ),
     findCurrentRun: async () => runs[runs.length - 1] || null,
     createRun: async (values) => {
+      if (runs.some((run) => (
+        run.twitch_stream_id === values.twitch_stream_id
+        && Number(run.cycle_index || 1) === Number(values.cycle_index || 1)
+      ))) {
+        throw new Error('unique constraint');
+      }
       const run: any = { id: runs.length + 1, ...values };
       runs.push(run);
       return run;
     },
     updateRun: async (run, values) => Object.assign(run, values),
-    getCurrentScore: async () => (
-      options.finalRs === undefined ? 51000 : options.finalRs
-    ),
+    claimRun: async (run) => {
+      if (run.status === 'creating') return false;
+      run.status = 'creating';
+      return true;
+    },
+    getCurrentScore: async () => currentScore,
+    announce: async (_channel, message) => {
+      announcements.push(message);
+    },
     predictions: {
       getAuthorizationStatus: async () => ({ state: 'ready' as const }),
       getCurrent: async () => options.currentPrediction || null,
-      getById: async () => null,
+      getById: async () => options.predictionById || null,
       start: async (_channelId, preset) => {
         started.push(preset);
+        const predictionNumber = started.length;
         return {
-          id: 'prediction-1',
+          id: `prediction-${predictionNumber}`,
           title: preset.title,
           status: 'ACTIVE',
           outcomes: preset.outcomes.map((title: string, index: number) => ({
-            id: `outcome-${index + 1}`,
+            id: `prediction-${predictionNumber}-outcome-${index + 1}`,
             title,
           })),
         };
@@ -79,7 +100,10 @@ function harness(options: {
     started,
     resolved,
     canceled,
+    announcements,
     setNow: (value: number) => { now = value; },
+    setCurrentScore: (value: number | null) => { currentScore = value; },
+    setEnabled: (value: boolean) => { config.enabled = value; },
   };
 }
 
@@ -103,7 +127,7 @@ describe('Ranked prediction automation service', () => {
     assert.equal(runs.length, 1);
     assert.equal(runs[0].twitch_prediction_id, 'prediction-1');
     const stored = JSON.parse(runs[0].twitch_outcome_ids_json);
-    assert.equal(stored[3].id, 'outcome-4');
+    assert.equal(stored[3].id, 'prediction-1-outcome-4');
     assert.equal(stored[3].minDelta, 1000);
   });
 
@@ -171,7 +195,7 @@ describe('Ranked prediction automation service', () => {
     assert.equal(run?.status, 'resolved');
     assert.deepEqual(resolved, [{
       predictionId: 'prediction-1',
-      outcomeId: 'outcome-4',
+      outcomeId: 'prediction-1-outcome-4',
     }]);
     assert.deepEqual(canceled, []);
   });
@@ -215,5 +239,164 @@ describe('Ranked prediction automation service', () => {
     assert.equal(run.status, 'needs_attention');
     assert.equal(run.failure_reason, 'subscription_required');
     assert.equal(state.started.length, 0);
+  });
+
+  it('repeats next-result predictions after resolving a confirmed RS movement and cooldown', async () => {
+    const state = harness({
+      finalRs: 50000,
+      config: {
+        mode: 'next_result',
+        startDelaySeconds: 300,
+        votingWindowSeconds: 30,
+        question: 'Will the next ranked result gain or lose RS?',
+        outcomes: [
+          { label: 'Lose RS', minDelta: null, maxDelta: -1 },
+          { label: 'Gain RS', minDelta: 1, maxDelta: null },
+        ],
+      },
+      now: Date.parse('2026-06-11T12:06:00Z'),
+    });
+
+    const first = await state.service.evaluateStream(7, liveStream);
+    assert.equal(first.status, 'voting');
+    assert.equal(first.cycle_index, 1);
+    assert.equal(first.baseline_rs, 50000);
+    assert.equal(state.announcements.length, 1);
+    assert.match(state.announcements[0], /Vote now/i);
+
+    state.setNow(Date.parse('2026-06-11T12:06:31Z'));
+    const tracking = await state.service.evaluateStream(7, liveStream);
+    assert.equal(tracking.status, 'tracking');
+    assert.equal(state.resolved.length, 0);
+
+    state.setCurrentScore(50125);
+    const resolved = await state.service.evaluateStream(7, liveStream);
+    assert.equal(resolved.status, 'resolved');
+    assert.deepEqual(state.resolved, [{
+      predictionId: 'prediction-1',
+      outcomeId: 'prediction-1-outcome-2',
+    }]);
+
+    state.setNow(Date.parse('2026-06-11T12:08:30Z'));
+    const coolingDown = await state.service.evaluateStream(7, liveStream);
+    assert.equal(coolingDown.id, first.id);
+    assert.equal(state.started.length, 1);
+
+    state.setNow(Date.parse('2026-06-11T12:08:32Z'));
+    const second = await state.service.evaluateStream(7, liveStream);
+    assert.equal(second.status, 'voting');
+    assert.equal(second.cycle_index, 2);
+    assert.equal(second.baseline_rs, 50125);
+    assert.equal(state.started.length, 2);
+    assert.equal(state.announcements.length, 2);
+  });
+
+  it('refunds a stale next-result prediction and waits for RS movement before another cycle', async () => {
+    const state = harness({
+      finalRs: 50000,
+      config: {
+        mode: 'next_result',
+        startDelaySeconds: 300,
+        votingWindowSeconds: 30,
+        question: 'Will the next ranked result gain or lose RS?',
+        outcomes: [
+          { label: 'Lose RS', minDelta: null, maxDelta: -1 },
+          { label: 'Gain RS', minDelta: 1, maxDelta: null },
+        ],
+      },
+      now: Date.parse('2026-06-11T12:06:00Z'),
+    });
+
+    const first = await state.service.evaluateStream(7, liveStream);
+    state.setNow(Date.parse('2026-06-11T12:36:31Z'));
+    const timedOut = await state.service.evaluateStream(7, liveStream);
+
+    assert.equal(timedOut.status, 'canceled');
+    assert.equal(timedOut.failure_reason, 'score_change_timeout');
+    assert.deepEqual(state.canceled, ['prediction-1']);
+
+    state.setNow(Date.parse('2026-06-11T12:40:00Z'));
+    const stillStale = await state.service.evaluateStream(7, liveStream);
+    assert.equal(stillStale.id, first.id);
+    assert.equal(state.started.length, 1);
+
+    state.setCurrentScore(49950);
+    const moved = await state.service.evaluateStream(7, liveStream);
+    assert.equal(moved.cycle_index, 2);
+    assert.equal(moved.baseline_rs, 49950);
+    assert.equal(state.started.length, 2);
+  });
+
+  it('finishes an active next-result prediction after disabling but does not repeat it', async () => {
+    const state = harness({
+      finalRs: 50000,
+      config: {
+        mode: 'next_result',
+        startDelaySeconds: 300,
+        votingWindowSeconds: 30,
+        question: 'Will the next ranked result gain or lose RS?',
+        outcomes: [
+          { label: 'Lose RS', minDelta: null, maxDelta: -1 },
+          { label: 'Gain RS', minDelta: 1, maxDelta: null },
+        ],
+      },
+      now: Date.parse('2026-06-11T12:06:00Z'),
+    });
+
+    await state.service.evaluateStream(7, liveStream);
+    state.setEnabled(false);
+    state.setNow(Date.parse('2026-06-11T12:06:31Z'));
+    state.setCurrentScore(49900);
+
+    const resolved = await state.service.evaluateStream(7, liveStream);
+    assert.equal(resolved.status, 'resolved');
+    assert.deepEqual(state.resolved, [{
+      predictionId: 'prediction-1',
+      outcomeId: 'prediction-1-outcome-1',
+    }]);
+
+    state.setNow(Date.parse('2026-06-11T12:10:00Z'));
+    const disabled = await state.service.evaluateStream(7, liveStream);
+    assert.equal(disabled.status, 'skipped');
+    assert.equal(state.started.length, 1);
+  });
+
+  it('reconciles a next-result prediction canceled directly on Twitch', async () => {
+    const state = harness({
+      finalRs: 50000,
+      predictionById: { id: 'prediction-1', status: 'CANCELED', outcomes: [] },
+      config: {
+        mode: 'next_result',
+        startDelaySeconds: 300,
+        votingWindowSeconds: 30,
+        question: 'Will the next ranked result gain or lose RS?',
+        outcomes: [
+          { label: 'Lose RS', minDelta: null, maxDelta: -1 },
+          { label: 'Gain RS', minDelta: 1, maxDelta: null },
+        ],
+      },
+      now: Date.parse('2026-06-11T12:06:00Z'),
+    });
+
+    await state.service.evaluateStream(7, liveStream);
+    state.setNow(Date.parse('2026-06-11T12:06:10Z'));
+    const reconciled = await state.service.evaluateStream(7, liveStream);
+
+    assert.equal(reconciled.status, 'canceled');
+    assert.equal(reconciled.failure_reason, 'canceled_on_twitch');
+    assert.deepEqual(state.canceled, []);
+    assert.deepEqual(state.resolved, []);
+  });
+
+  it('allows only one Twitch create when two evaluators start the same cycle', async () => {
+    const state = harness();
+
+    const [first, second] = await Promise.all([
+      state.service.evaluateStream(7, liveStream),
+      state.service.evaluateStream(7, liveStream),
+    ]);
+
+    assert.equal(state.started.length, 1);
+    assert.equal(first.id, second.id);
   });
 });

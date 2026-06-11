@@ -2754,6 +2754,19 @@
                   </span>
                 </label>
 
+                <div class="prediction-field" style="margin-top: 14px">
+                  <label for="prediction-automation-mode">Prediction type</label>
+                  <select
+                    id="prediction-automation-mode"
+                    class="input"
+                    onchange="applyPredictionAutomationMode(true)"
+                  >
+                    <option value="stream_total">Whole stream RS change</option>
+                    <option value="next_result">Next ranked result (repeating)</option>
+                  </select>
+                  <div id="prediction-automation-mode-help" class="prediction-card-copy" style="margin-top: 8px"></div>
+                </div>
+
                 <div class="prediction-form-grid" style="margin-top: 14px">
                   <div class="prediction-field">
                     <label for="prediction-automation-delay">Start delay</label>
@@ -2778,8 +2791,8 @@
                 </div>
 
                 <div class="prediction-field" style="margin-top: 12px">
-                  <label>Outcome ranges (2-5)</label>
-                  <div class="prediction-card-copy" style="margin-bottom: 10px">
+                  <label id="prediction-automation-outcomes-label">Outcome ranges (2-5)</label>
+                  <div id="prediction-automation-outcomes-help" class="prediction-card-copy" style="margin-bottom: 10px">
                     Leave the first minimum and last maximum blank for full coverage.
                   </div>
                   <div id="prediction-automation-outcomes" class="prediction-outcomes"></div>
@@ -4480,6 +4493,51 @@
         if (list && button) button.disabled = list.children.length >= 5;
       }
 
+      const nextResultPredictionOutcomes = [
+        { label: "Lose RS", minDelta: null, maxDelta: -1 },
+        { label: "Gain RS", minDelta: 1, maxDelta: null },
+      ];
+      const streamTotalPredictionOutcomes = [
+        { label: "Down 500+", minDelta: null, maxDelta: -500 },
+        { label: "Roughly even", minDelta: -499, maxDelta: 499 },
+        { label: "Up 500+", minDelta: 500, maxDelta: 999 },
+        { label: "Up 1000+", minDelta: 1000, maxDelta: null },
+      ];
+
+      function applyPredictionAutomationMode(resetPreset = false) {
+        const mode = document.getElementById("prediction-automation-mode").value;
+        const nextResult = mode === "next_result";
+        const list = document.getElementById("prediction-automation-outcomes");
+        const question = document.getElementById("prediction-automation-question");
+        const help = document.getElementById("prediction-automation-mode-help");
+        const label = document.getElementById("prediction-automation-outcomes-label");
+        const outcomesHelp = document.getElementById("prediction-automation-outcomes-help");
+
+        if (resetPreset) {
+          const outcomes = nextResult
+            ? nextResultPredictionOutcomes
+            : streamTotalPredictionOutcomes;
+          list.replaceChildren();
+          outcomes.forEach((outcome) => addPredictionAutomationOutcome(outcome));
+          question.value = nextResult
+            ? "Will the next ranked result gain or lose RS?"
+            : "How much RS will I gain this stream?";
+        }
+
+        help.textContent = nextResult
+          ? "Repeats through the stream. It waits for a confirmed RS change, refunds after 30 minutes without one, then uses a 2-minute cooldown."
+          : "Creates one prediction for the stream and settles it from total RS change when the stream ends.";
+        label.textContent = nextResult ? "Fixed outcomes" : "Outcome ranges (2-5)";
+        outcomesHelp.textContent = nextResult
+          ? "Zero RS change keeps the prediction waiting; only a confirmed gain or loss settles it."
+          : "Leave the first minimum and last maximum blank for full coverage.";
+        list.querySelectorAll("input, button").forEach((control) => {
+          control.disabled = nextResult;
+        });
+        document.getElementById("prediction-automation-add-outcome").disabled =
+          nextResult || list.children.length >= 5;
+      }
+
       function renderPredictionAutomation(data) {
         predictionAutomationConfig = data.config;
         document
@@ -4489,12 +4547,14 @@
         document.getElementById("prediction-automation-start").disabled = false;
         document.getElementById("prediction-automation-cancel").disabled = false;
         document.getElementById("prediction-automation-enabled").checked = Boolean(data.config.enabled);
+        document.getElementById("prediction-automation-mode").value = data.config.mode || "stream_total";
         document.getElementById("prediction-automation-delay").value = String(data.config.startDelaySeconds);
         document.getElementById("prediction-automation-window").value = String(data.config.votingWindowSeconds);
         document.getElementById("prediction-automation-question").value = data.config.question || "";
         const list = document.getElementById("prediction-automation-outcomes");
         list.replaceChildren();
         (data.config.outcomes || []).forEach((outcome) => addPredictionAutomationOutcome(outcome));
+        applyPredictionAutomationMode(false);
         renderPredictionAutomationStatus(
           data.run,
           data.config.enabled ? null : "Automation is disabled.",
@@ -4540,7 +4600,9 @@
           "prediction-card-copy",
           run?.failureReason
             ? `Reason: ${String(run.failureReason).replaceAll("_", " ")}`
-            : "FinalsRS will use the existing session starting RS and settle only its stored Twitch prediction."
+            : run?.mode === "next_result"
+              ? `Cycle ${run.cycleIndex || 1} tracks the next confirmed RS gain or loss.`
+              : "FinalsRS will use the existing session starting RS and settle only its stored Twitch prediction."
         );
         panel.append(title, detail);
         if (live) {
@@ -4587,6 +4649,7 @@
             method: "PUT",
             body: JSON.stringify({
               enabled: document.getElementById("prediction-automation-enabled").checked,
+              mode: document.getElementById("prediction-automation-mode").value,
               startDelaySeconds: Number(document.getElementById("prediction-automation-delay").value),
               votingWindowSeconds: Number(document.getElementById("prediction-automation-window").value),
               question: document.getElementById("prediction-automation-question").value.trim(),

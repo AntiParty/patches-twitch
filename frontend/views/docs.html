@@ -798,11 +798,18 @@
               below the manual controls on the dashboard Predictions page.
             </p>
             <p>
-              FinalsRS waits for the configured delay, confirms the stream is
-              live in <strong>THE FINALS</strong>, and opens a prediction about
-              the stream's ranked-score change. It uses the existing session
-              starting RS and resolves only the exact prediction created for
-              that Twitch stream.
+              Choose <strong>Whole stream RS change</strong> for one prediction
+              settled when the stream ends, or
+              <strong>Next ranked result</strong> for repeating
+              <strong>Gain RS</strong> / <strong>Lose RS</strong> predictions.
+              Both modes wait for the configured delay and require the stream
+              to be live in <strong>THE FINALS</strong>.
+            </p>
+            <p>
+              Next-result predictions wait for a confirmed score movement after
+              voting closes. If RS does not change within 30 minutes, FinalsRS
+              cancels and refunds the prediction, then waits for fresh movement.
+              Successful cycles use a 2-minute cooldown before the next vote.
             </p>
             <div class="code-example">
               <span class="comment">// Bypass only the configured timer</span><br />
@@ -826,8 +833,8 @@
                 <span class="var-desc">Missing or unreliable score data causes a cancel and refund, never a guess.</span>
               </div>
               <div class="var-card">
-                <span class="var-code">One per stream</span>
-                <span class="var-desc">Persistent Twitch stream IDs prevent duplicate automatic predictions.</span>
+                <span class="var-code">Persistent cycles</span>
+                <span class="var-desc">Each repeating vote stores its own baseline and exact Twitch IDs to prevent duplicates.</span>
               </div>
             </div>
           </section>

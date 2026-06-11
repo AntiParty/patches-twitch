@@ -19,6 +19,10 @@ describe('prediction documentation', () => {
       '!rankpred start',
       '!rankpred status',
       '!rankpred cancel',
+      'Next ranked result',
+      'Gain RS',
+      'Lose RS',
+      '2-minute cooldown',
       'Subscribers and test users',
       'channel:manage:predictions',
     ]) {

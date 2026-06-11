@@ -38,6 +38,8 @@
         // Call these functions if they exist (they'll be defined later)
         if (viewId === "commands" && typeof fetchCommands === "function")
           fetchCommands();
+        if (viewId === "predictions" && typeof loadPredictions === "function")
+          loadPredictions();
         if (viewId === "rank-tracker" && typeof loadRankGoal === "function")
           loadRankGoal();
         if (viewId === "analytics" && typeof loadAnalytics === "function")
@@ -1362,6 +1364,298 @@
         transform: scale(0.96);
       }
 
+      .prediction-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 72px;
+        margin-bottom: 18px;
+        padding: 16px 18px;
+        border-radius: calc(var(--radius) + 4px);
+        background: rgba(255, 255, 255, 0.035);
+        box-shadow:
+          inset 0 0 0 1px var(--border),
+          0 12px 28px rgba(0, 0, 0, 0.12);
+      }
+
+      .prediction-status.is-ready {
+        box-shadow:
+          inset 3px 0 0 var(--success),
+          inset 0 0 0 1px var(--border),
+          0 12px 28px rgba(0, 0, 0, 0.12);
+      }
+
+      .prediction-status.is-warning {
+        box-shadow:
+          inset 3px 0 0 var(--warning),
+          inset 0 0 0 1px var(--border),
+          0 12px 28px rgba(0, 0, 0, 0.12);
+      }
+
+      .prediction-status-copy {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .prediction-status-icon {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        border-radius: 12px;
+        color: var(--text-main);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .prediction-status-title {
+        font-family: var(--font-display);
+        font-weight: 800;
+        text-wrap: balance;
+      }
+
+      .prediction-status-detail {
+        margin-top: 3px;
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.45;
+        text-wrap: pretty;
+      }
+
+      .prediction-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .prediction-card-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .prediction-card-copy {
+        margin-top: 5px;
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .prediction-preset-list {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .prediction-preset {
+        padding: 14px;
+        border-radius: calc(var(--radius) + 2px);
+        background: rgba(255, 255, 255, 0.03);
+        box-shadow: inset 0 0 0 1px var(--border);
+        transition-property: background-color, box-shadow, transform;
+        transition-duration: 180ms;
+        transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      .prediction-preset:hover,
+      .prediction-preset.is-selected {
+        background: rgba(255, 255, 255, 0.055);
+        box-shadow: inset 0 0 0 1px rgba(230, 32, 56, 0.42);
+      }
+
+      .prediction-preset.is-selected {
+        transform: translateY(-1px);
+      }
+
+      .prediction-preset-top,
+      .prediction-preset-actions,
+      .prediction-form-actions,
+      .prediction-live-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .prediction-preset-top {
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .prediction-preset-title {
+        font-weight: 800;
+        line-height: 1.35;
+        text-wrap: pretty;
+      }
+
+      .prediction-alias {
+        display: inline-flex;
+        margin-top: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.055);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+      }
+
+      .prediction-outcome-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 12px;
+      }
+
+      .prediction-outcome-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 5px 9px;
+        border-radius: 9px;
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.045);
+        font-size: 12px;
+      }
+
+      .prediction-preset-meta {
+        margin-top: 10px;
+        color: var(--text-muted);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .prediction-form {
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+      }
+
+      .prediction-form-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+        gap: 12px;
+      }
+
+      .prediction-field {
+        display: grid;
+        gap: 7px;
+      }
+
+      .prediction-field > label {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .prediction-outcomes {
+        display: grid;
+        gap: 8px;
+      }
+
+      .prediction-outcome-row {
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr) 40px;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .prediction-outcome-number {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .prediction-icon-button {
+        display: inline-grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        padding: 0;
+      }
+
+      .prediction-form-actions {
+        justify-content: space-between;
+        margin-top: 14px;
+      }
+
+      .prediction-live {
+        position: sticky;
+        top: 0;
+      }
+
+      .prediction-live-state {
+        min-height: 180px;
+        padding: 16px;
+        border-radius: calc(var(--radius) + 2px);
+        background:
+          radial-gradient(circle at top right, rgba(230, 32, 56, 0.1), transparent 48%),
+          rgba(255, 255, 255, 0.025);
+        box-shadow: inset 0 0 0 1px var(--border);
+      }
+
+      .prediction-live-empty {
+        display: grid;
+        min-height: 146px;
+        place-items: center;
+        color: var(--text-muted);
+        text-align: center;
+      }
+
+      .prediction-live-title {
+        font-family: var(--font-display);
+        font-size: 19px;
+        font-weight: 800;
+        line-height: 1.35;
+        text-wrap: balance;
+      }
+
+      .prediction-live-status {
+        display: inline-flex;
+        margin-top: 9px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        color: #fff;
+        background: rgba(230, 32, 56, 0.8);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .prediction-live-outcomes {
+        display: grid;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .prediction-resolve-button {
+        justify-content: flex-start;
+        width: 100%;
+        min-height: 44px;
+        text-align: left;
+      }
+
+      .prediction-live-actions {
+        margin-top: 14px;
+      }
+
+      .prediction-empty {
+        padding: 24px 14px;
+        border-radius: var(--radius);
+        color: var(--text-muted);
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: inset 0 0 0 1px var(--border);
+        font-size: 13px;
+        line-height: 1.55;
+        text-align: center;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         *,
         *::before,
@@ -1373,6 +1667,14 @@
       }
 
       @media (max-width: 1200px) {
+        .prediction-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .prediction-live {
+          position: static;
+        }
+
         .grid-3 {
           grid-template-columns: repeat(2, 1fr);
         }
@@ -1444,6 +1746,24 @@
         .grid-1-2 {
           grid-template-columns: 1fr;
           gap: 12px;
+        }
+
+        .prediction-status,
+        .prediction-preset-top,
+        .prediction-form-actions,
+        .prediction-live-actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .prediction-form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .prediction-preset-actions .btn,
+        .prediction-form-actions .btn,
+        .prediction-live-actions .btn {
+          width: 100%;
         }
 
         .overview-strip-actions {
@@ -1632,6 +1952,9 @@
           </li>
           <li class="nav-item" data-view="commands" onclick="switchView('commands')">
             <i class="fas fa-terminal"></i> <span>My Commands</span>
+          </li>
+          <li class="nav-item" data-view="predictions" onclick="switchView('predictions')">
+            <i class="fas fa-square-poll-horizontal"></i> <span>Predictions</span>
           </li>
           <li class="nav-item" data-view="rank-tracker" onclick="switchView('rank-tracker')">
             <i class="fas fa-chart-line"></i> <span>Rank Tracker</span>
@@ -2176,6 +2499,168 @@
                 "
               >
                 This is how the bot will respond in your chat.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Predictions View -->
+        <div id="view-predictions" class="view-section">
+          <div class="header">
+            <div>
+              <h2 class="page-title">Predictions</h2>
+              <div style="color: var(--text-muted); margin-top: 8px">
+                Build reusable Channel Points predictions and run them without leaving the dashboard.
+              </div>
+            </div>
+            <button id="prediction-refresh-button" class="btn btn-ghost" type="button" onclick="loadPredictions()">
+              <i class="fas fa-sync"></i> Refresh
+            </button>
+          </div>
+
+          <div id="prediction-auth-status" class="prediction-status" aria-live="polite">
+            <div class="prediction-status-copy">
+              <div class="prediction-status-icon">
+                <i class="fas fa-spinner fa-spin"></i>
+              </div>
+              <div>
+                <div class="prediction-status-title">Checking Twitch authorization</div>
+                <div class="prediction-status-detail">
+                  Confirming that FinalsRS can manage predictions for your channel.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="prediction-layout">
+            <div class="card">
+              <div class="prediction-card-heading">
+                <div>
+                  <div class="card-title">Prediction Presets</div>
+                  <div class="prediction-card-copy">
+                    Save a question once, then start it instantly whenever you need it.
+                  </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="resetPredictionPresetForm(true)">
+                  <i class="fas fa-plus"></i> New
+                </button>
+              </div>
+
+              <div id="prediction-presets-list" class="prediction-preset-list" aria-live="polite">
+                <div class="prediction-empty">
+                  Loading presets...
+                </div>
+              </div>
+
+              <form id="prediction-preset-form" class="prediction-form" onsubmit="savePredictionPreset(event)">
+                <div class="prediction-card-heading" style="margin-bottom: 14px">
+                  <div>
+                    <div id="prediction-form-title" class="card-title">Create Preset</div>
+                    <div class="prediction-card-copy">Aliases are one word and can be used in chat too.</div>
+                  </div>
+                </div>
+
+                <div class="prediction-form-grid">
+                  <div class="prediction-field">
+                    <label for="prediction-alias-input">Alias</label>
+                    <input
+                      id="prediction-alias-input"
+                      class="input"
+                      maxlength="24"
+                      pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,23}"
+                      placeholder="ranked"
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
+                  <div class="prediction-field">
+                    <label for="prediction-title-input">Question</label>
+                    <input
+                      id="prediction-title-input"
+                      class="input"
+                      maxlength="45"
+                      placeholder="How will this ranked session go?"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="prediction-field" style="margin-top: 12px">
+                  <label>Outcomes (2-5)</label>
+                  <div id="prediction-outcomes-list" class="prediction-outcomes"></div>
+                  <button
+                    id="prediction-add-outcome-button"
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    onclick="addPredictionOutcome()"
+                    style="justify-self: start"
+                  >
+                    <i class="fas fa-plus"></i> Add outcome
+                  </button>
+                </div>
+
+                <div class="prediction-field" style="margin-top: 12px; max-width: 260px">
+                  <label for="prediction-duration-input">Voting window (seconds)</label>
+                  <input
+                    id="prediction-duration-input"
+                    class="input"
+                    type="number"
+                    min="30"
+                    max="1800"
+                    step="1"
+                    value="120"
+                    required
+                  />
+                  <div class="prediction-card-copy" style="margin-top: 0">Twitch allows 30-1,800 seconds.</div>
+                </div>
+
+                <div class="prediction-form-actions">
+                  <button class="btn btn-ghost" type="button" onclick="resetPredictionPresetForm(true)">
+                    Clear
+                  </button>
+                  <button id="prediction-save-button" class="btn btn-primary" type="submit">
+                    <i class="fas fa-save"></i> Save preset
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div class="card prediction-live">
+              <div class="prediction-card-heading">
+                <div>
+                  <div class="card-title">Live Prediction</div>
+                  <div class="prediction-card-copy">
+                    Start the selected preset, choose the winner, or cancel and refund Channel Points.
+                  </div>
+                </div>
+              </div>
+
+              <div id="active-prediction-panel" class="prediction-live-state" aria-live="polite">
+                <div class="prediction-live-empty">
+                  <div>
+                    <i class="fas fa-circle-notch fa-spin" style="margin-bottom: 10px"></i>
+                    <div>Checking for an active prediction...</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="prediction-start-panel" style="margin-top: 16px">
+                <div class="prediction-card-copy" style="margin-bottom: 10px">
+                  Selected preset
+                </div>
+                <div id="prediction-selected-preset" class="prediction-empty">
+                  Select a preset from the list to start it.
+                </div>
+                <button
+                  id="prediction-start-button"
+                  class="btn btn-success-solid"
+                  type="button"
+                  onclick="startPredictionFromSelectedPreset()"
+                  style="width: 100%; margin-top: 12px"
+                  disabled
+                >
+                  <i class="fas fa-play"></i> Start selected preset
+                </button>
               </div>
             </div>
           </div>
@@ -3133,6 +3618,7 @@
         if (viewElement) viewElement.classList.add("active");
 
         if (viewId === "commands" && typeof fetchCommands === "function") fetchCommands();
+        if (viewId === "predictions" && typeof loadPredictions === "function") loadPredictions();
         if (viewId === "rank-tracker" && typeof loadRankGoal === "function") loadRankGoal();
         if (viewId === "analytics" && typeof loadAnalytics === "function") loadAnalytics();
 
@@ -3285,6 +3771,501 @@
         // Check progress for current step
         checkOnboardingProgress();
       }
+
+      let predictionPresets = [];
+      let selectedPredictionPresetAlias = null;
+      let editingPredictionPresetAlias = null;
+      let activePredictionId = null;
+      let predictionLoadPromise = null;
+
+      function predictionElement(tag, className, text) {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (text !== undefined) element.textContent = text;
+        return element;
+      }
+
+      async function predictionRequest(url, options = {}) {
+        const headers = { ...(options.headers || {}) };
+        if (options.body !== undefined) {
+          headers["Content-Type"] = "application/json";
+        }
+        if (options.method && options.method !== "GET") {
+          headers["X-CSRF-Token"] = document
+            .querySelector('meta[name="csrf-token"]')
+            .getAttribute("content");
+        }
+
+        const response = await fetch(url, { ...options, headers });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const error = new Error(data.error || "Prediction request failed.");
+          error.status = response.status;
+          error.data = data;
+          throw error;
+        }
+        return data;
+      }
+
+      function setPredictionAuthStatus(status) {
+        const container = document.getElementById("prediction-auth-status");
+        if (!container) return;
+        container.className = "prediction-status";
+        container.replaceChildren();
+
+        const copy = predictionElement("div", "prediction-status-copy");
+        const icon = predictionElement("div", "prediction-status-icon");
+        const iconNode = predictionElement("i");
+        const text = predictionElement("div");
+        const title = predictionElement("div", "prediction-status-title");
+        const detail = predictionElement("div", "prediction-status-detail");
+
+        let action = null;
+        if (status?.state === "ready") {
+          container.classList.add("is-ready");
+          iconNode.className = "fas fa-check";
+          title.textContent = "Twitch predictions are ready";
+          detail.textContent = "FinalsRS can create and manage Channel Points predictions for your channel.";
+        } else if (status?.state === "reauth_required") {
+          container.classList.add("is-warning");
+          iconNode.className = "fas fa-key";
+          title.textContent = "Twitch reauthorization required";
+          detail.textContent = "Approve prediction access before starting or managing Channel Points predictions.";
+          action = predictionElement("a", "btn btn-primary", "Reauthorize with Twitch");
+          action.href = status.reauthUrl || "/reauth";
+        } else if (status?.state === "unavailable") {
+          container.classList.add("is-warning");
+          iconNode.className = "fas fa-circle-exclamation";
+          title.textContent = "Predictions are unavailable";
+          detail.textContent = status.message || "Channel Points Predictions require Twitch Affiliate or Partner status.";
+        } else {
+          container.classList.add("is-warning");
+          iconNode.className = "fas fa-triangle-exclamation";
+          title.textContent = "Twitch is temporarily unavailable";
+          detail.textContent = "Your presets are safe. Refresh this page and try again shortly.";
+        }
+
+        icon.appendChild(iconNode);
+        text.append(title, detail);
+        copy.append(icon, text);
+        container.appendChild(copy);
+        if (action) container.appendChild(action);
+      }
+
+      async function loadPredictions() {
+        if (predictionLoadPromise) return predictionLoadPromise;
+        const refreshButton = document.getElementById("prediction-refresh-button");
+        const list = document.getElementById("prediction-presets-list");
+        if (refreshButton) refreshButton.disabled = true;
+        if (list) {
+          const loading = predictionElement("div", "prediction-empty", "Loading presets...");
+          list.replaceChildren(loading);
+        }
+
+        predictionLoadPromise = Promise.allSettled([
+          predictionRequest("/api/user/predictions/status"),
+          predictionRequest("/api/user/prediction-presets"),
+          predictionRequest("/api/user/predictions/current"),
+        ])
+          .then(([statusResult, presetResult, currentResult]) => {
+            const status = statusResult.status === "fulfilled"
+              ? statusResult.value
+              : statusResult.reason?.data?.state === "reauth_required"
+                ? {
+                    state: "reauth_required",
+                    reauthUrl: statusResult.reason.data.reauthUrl,
+                  }
+                : { state: "temporarily_unavailable" };
+            predictionPresets = presetResult.status === "fulfilled"
+              && Array.isArray(presetResult.value.presets)
+              ? presetResult.value.presets
+              : [];
+            setPredictionAuthStatus(status);
+            renderPredictionPresets(predictionPresets);
+            renderActivePrediction(
+              currentResult.status === "fulfilled"
+                ? currentResult.value.prediction || null
+                : null
+            );
+            renderSelectedPredictionPreset();
+            if (presetResult.status === "rejected") {
+              throw presetResult.reason;
+            }
+          })
+          .catch((error) => {
+            console.error("Failed to load prediction dashboard:", error);
+            const status = error.data?.state === "reauth_required"
+              ? { state: "reauth_required", reauthUrl: error.data.reauthUrl }
+              : { state: "temporarily_unavailable" };
+            setPredictionAuthStatus(status);
+            showToast(error.message || "Failed to load predictions.", "danger");
+          })
+          .finally(() => {
+            predictionLoadPromise = null;
+            if (refreshButton) refreshButton.disabled = false;
+          });
+
+        return predictionLoadPromise;
+      }
+
+      function renderPredictionPresets(presets) {
+        const list = document.getElementById("prediction-presets-list");
+        if (!list) return;
+        list.replaceChildren();
+
+        if (!presets.length) {
+          list.appendChild(predictionElement(
+            "div",
+            "prediction-empty",
+            "No presets yet. Create one below, then start it from this page whenever you go live."
+          ));
+          return;
+        }
+
+        presets.forEach((preset) => {
+          const card = predictionElement("div", "prediction-preset");
+          if (preset.alias === selectedPredictionPresetAlias) card.classList.add("is-selected");
+
+          const top = predictionElement("div", "prediction-preset-top");
+          const identity = predictionElement("div");
+          const title = predictionElement("div", "prediction-preset-title");
+          title.textContent = preset.title;
+          const alias = predictionElement("span", "prediction-alias", `!p start ${preset.alias}`);
+          identity.append(title, alias);
+
+          const actions = predictionElement("div", "prediction-preset-actions");
+          const editButton = predictionElement("button", "btn btn-ghost btn-sm", "Edit");
+          editButton.type = "button";
+          editButton.addEventListener("click", () => editPredictionPreset(preset.alias));
+          const selectButton = predictionElement("button", "btn btn-primary btn-sm", "Select");
+          selectButton.type = "button";
+          selectButton.addEventListener("click", () => selectPredictionPreset(preset.alias));
+          const deleteButton = predictionElement("button", "btn btn-danger btn-sm", "Delete");
+          deleteButton.type = "button";
+          deleteButton.addEventListener("click", () => deletePredictionPreset(preset.alias));
+          actions.append(editButton, selectButton, deleteButton);
+          top.append(identity, actions);
+
+          const outcomes = predictionElement("div", "prediction-outcome-summary");
+          (preset.outcomes || []).forEach((outcome, index) => {
+            const outcomeChip = predictionElement(
+              "span",
+              "prediction-outcome-chip",
+              `${index + 1}. `
+            );
+            const outcomeText = predictionElement("span");
+            outcomeChip.textContent = `${index + 1}. `;
+            outcomeText.textContent = outcome;
+            outcomeChip.appendChild(outcomeText);
+            outcomes.appendChild(outcomeChip);
+          });
+
+          const meta = predictionElement(
+            "div",
+            "prediction-preset-meta",
+            `${preset.durationSeconds}s voting window`
+          );
+          card.append(top, outcomes, meta);
+          list.appendChild(card);
+        });
+      }
+
+      function renderSelectedPredictionPreset() {
+        const panel = document.getElementById("prediction-selected-preset");
+        const startButton = document.getElementById("prediction-start-button");
+        if (!panel || !startButton) return;
+        const preset = predictionPresets.find(
+          (item) => item.alias === selectedPredictionPresetAlias
+        );
+        panel.replaceChildren();
+        if (!preset) {
+          panel.className = "prediction-empty";
+          panel.textContent = "Select a preset from the list to start it.";
+          startButton.disabled = true;
+          return;
+        }
+        panel.className = "prediction-preset is-selected";
+        const title = predictionElement("div", "prediction-preset-title");
+        title.textContent = preset.title;
+        const alias = predictionElement("span", "prediction-alias", preset.alias);
+        panel.append(title, alias);
+        startButton.disabled = Boolean(activePredictionId);
+      }
+
+      function renderActivePrediction(prediction) {
+        const panel = document.getElementById("active-prediction-panel");
+        const startPanel = document.getElementById("prediction-start-panel");
+        if (!panel || !startPanel) return;
+        panel.replaceChildren();
+
+        if (!prediction) {
+          activePredictionId = null;
+          const empty = predictionElement("div", "prediction-live-empty");
+          const content = predictionElement("div");
+          const icon = predictionElement("i");
+          icon.className = "fas fa-chart-simple";
+          icon.style.marginBottom = "10px";
+          const text = predictionElement("div", "", "No active prediction. Select a preset below and start it.");
+          content.append(icon, text);
+          empty.appendChild(content);
+          panel.appendChild(empty);
+          startPanel.style.display = "block";
+          renderSelectedPredictionPreset();
+          return;
+        }
+
+        activePredictionId = prediction.id;
+        startPanel.style.display = "none";
+
+        const title = predictionElement("div", "prediction-live-title");
+        title.textContent = prediction.title;
+        const status = predictionElement("span", "prediction-live-status", prediction.status || "ACTIVE");
+        const outcomes = predictionElement("div", "prediction-live-outcomes");
+
+        (prediction.outcomes || []).forEach((outcome, index) => {
+          const button = predictionElement("button", "btn btn-ghost prediction-resolve-button");
+          button.type = "button";
+          const number = predictionElement("span", "prediction-outcome-number", String(index + 1));
+          const outcomeTitle = predictionElement("span");
+          outcomeTitle.textContent = outcome.title;
+          button.append(number, outcomeTitle);
+          button.addEventListener("click", () => resolvePrediction(index + 1, outcome.title));
+          outcomes.appendChild(button);
+        });
+
+        const actions = predictionElement("div", "prediction-live-actions");
+        const cancelButton = predictionElement("button", "btn btn-danger-solid", "Cancel and refund");
+        cancelButton.type = "button";
+        cancelButton.addEventListener("click", cancelPrediction);
+        actions.appendChild(cancelButton);
+        panel.append(title, status, outcomes, actions);
+      }
+
+      function addPredictionOutcome(value = "") {
+        const list = document.getElementById("prediction-outcomes-list");
+        if (!list || list.children.length >= 5) return;
+        const row = predictionElement("div", "prediction-outcome-row");
+        const number = predictionElement(
+          "div",
+          "prediction-outcome-number",
+          String(list.children.length + 1)
+        );
+        const input = predictionElement("input", "input");
+        input.type = "text";
+        input.maxLength = 25;
+        input.required = true;
+        input.placeholder = `Outcome ${list.children.length + 1}`;
+        input.value = value;
+        input.setAttribute("data-prediction-outcome", "true");
+
+        const removeButton = predictionElement(
+          "button",
+          "btn btn-ghost prediction-icon-button"
+        );
+        removeButton.type = "button";
+        removeButton.setAttribute("aria-label", "Remove outcome");
+        const removeIcon = predictionElement("i");
+        removeIcon.className = "fas fa-xmark";
+        removeButton.appendChild(removeIcon);
+        removeButton.addEventListener("click", () => {
+          if (list.children.length <= 2) {
+            showToast("A prediction needs at least two outcomes.", "warning");
+            return;
+          }
+          row.remove();
+          refreshPredictionOutcomeRows();
+        });
+
+        row.append(number, input, removeButton);
+        list.appendChild(row);
+        refreshPredictionOutcomeRows();
+      }
+
+      function refreshPredictionOutcomeRows() {
+        const list = document.getElementById("prediction-outcomes-list");
+        const addButton = document.getElementById("prediction-add-outcome-button");
+        if (!list) return;
+        Array.from(list.children).forEach((row, index) => {
+          row.querySelector(".prediction-outcome-number").textContent = String(index + 1);
+          row.querySelector("input").placeholder = `Outcome ${index + 1}`;
+        });
+        if (addButton) addButton.disabled = list.children.length >= 5;
+      }
+
+      function resetPredictionPresetForm(focusAlias = false) {
+        editingPredictionPresetAlias = null;
+        document.getElementById("prediction-form-title").textContent = "Create Preset";
+        document.getElementById("prediction-alias-input").value = "";
+        document.getElementById("prediction-alias-input").disabled = false;
+        document.getElementById("prediction-title-input").value = "";
+        document.getElementById("prediction-duration-input").value = "120";
+        const outcomes = document.getElementById("prediction-outcomes-list");
+        outcomes.replaceChildren();
+        addPredictionOutcome();
+        addPredictionOutcome();
+        if (focusAlias) document.getElementById("prediction-alias-input").focus();
+      }
+
+      function editPredictionPreset(alias) {
+        const preset = predictionPresets.find((item) => item.alias === alias);
+        if (!preset) return;
+        editingPredictionPresetAlias = preset.alias;
+        document.getElementById("prediction-form-title").textContent = `Edit ${preset.alias}`;
+        document.getElementById("prediction-alias-input").value = preset.alias;
+        document.getElementById("prediction-alias-input").disabled = true;
+        document.getElementById("prediction-title-input").value = preset.title;
+        document.getElementById("prediction-duration-input").value = String(preset.durationSeconds);
+        const outcomes = document.getElementById("prediction-outcomes-list");
+        outcomes.replaceChildren();
+        (preset.outcomes || []).forEach((outcome) => addPredictionOutcome(outcome));
+        document.getElementById("prediction-title-input").focus();
+      }
+
+      async function savePredictionPreset(event) {
+        event.preventDefault();
+        const saveButton = document.getElementById("prediction-save-button");
+        const alias = document.getElementById("prediction-alias-input").value.trim();
+        const payload = {
+          alias,
+          title: document.getElementById("prediction-title-input").value.trim(),
+          outcomes: Array.from(
+            document.querySelectorAll("[data-prediction-outcome]")
+          ).map((input) => input.value.trim()),
+          durationSeconds: Number(document.getElementById("prediction-duration-input").value),
+        };
+
+        if (payload.outcomes.length < 2 || payload.outcomes.length > 5) {
+          showToast("Use between two and five outcomes.", "warning");
+          return;
+        }
+
+        const existing = predictionPresets.find((item) => item.alias === alias);
+        if (!editingPredictionPresetAlias && existing) {
+          const confirmed = await showConfirm(
+            "Overwrite preset",
+            `A preset named "${alias}" already exists. Replace it?`
+          );
+          if (!confirmed) return;
+        }
+
+        const originalLabel = saveButton.innerHTML;
+        saveButton.disabled = true;
+        saveButton.textContent = "Saving...";
+        try {
+          const url = editingPredictionPresetAlias
+            ? `/api/user/prediction-presets/${encodeURIComponent(editingPredictionPresetAlias)}`
+            : "/api/user/prediction-presets";
+          const method = editingPredictionPresetAlias ? "PUT" : "POST";
+          await predictionRequest(url, {
+            method,
+            body: JSON.stringify(payload),
+          });
+          showToast(
+            editingPredictionPresetAlias ? "Preset updated." : "Preset saved.",
+            "success"
+          );
+          selectedPredictionPresetAlias = alias.toLowerCase();
+          resetPredictionPresetForm();
+          await loadPredictions();
+        } catch (error) {
+          showToast(error.message || "Failed to save preset.", "danger");
+        } finally {
+          saveButton.disabled = false;
+          saveButton.innerHTML = originalLabel;
+        }
+      }
+
+      function selectPredictionPreset(alias) {
+        selectedPredictionPresetAlias = alias;
+        renderPredictionPresets(predictionPresets);
+        renderSelectedPredictionPreset();
+      }
+
+      async function deletePredictionPreset(alias) {
+        const confirmed = await showConfirm(
+          "Delete prediction preset",
+          `Delete "${alias}"? This cannot be undone.`
+        );
+        if (!confirmed) return;
+        try {
+          await predictionRequest(
+            `/api/user/prediction-presets/${encodeURIComponent(alias)}`,
+            { method: "DELETE" }
+          );
+          if (selectedPredictionPresetAlias === alias) selectedPredictionPresetAlias = null;
+          if (editingPredictionPresetAlias === alias) resetPredictionPresetForm();
+          showToast("Preset deleted.", "success");
+          await loadPredictions();
+        } catch (error) {
+          showToast(error.message || "Failed to delete preset.", "danger");
+        }
+      }
+
+      async function startPredictionFromSelectedPreset() {
+        if (!selectedPredictionPresetAlias) {
+          showToast("Select a preset first.", "warning");
+          return;
+        }
+        const button = document.getElementById("prediction-start-button");
+        button.disabled = true;
+        try {
+          const data = await predictionRequest("/api/user/predictions/start", {
+            method: "POST",
+            body: JSON.stringify({ alias: selectedPredictionPresetAlias }),
+          });
+          renderActivePrediction(data.prediction);
+          showToast("Prediction started on Twitch.", "success");
+        } catch (error) {
+          if (error.data?.state === "reauth_required") {
+            setPredictionAuthStatus({
+              state: "reauth_required",
+              reauthUrl: error.data.reauthUrl,
+            });
+          }
+          showToast(error.message || "Failed to start prediction.", "danger");
+        } finally {
+          button.disabled = Boolean(activePredictionId);
+        }
+      }
+
+      async function resolvePrediction(selection, outcomeName) {
+        const confirmed = await showConfirm(
+          "Resolve prediction",
+          `Declare "${outcomeName}" as the winning outcome?`
+        );
+        if (!confirmed) return;
+        try {
+          const data = await predictionRequest("/api/user/predictions/resolve", {
+            method: "POST",
+            body: JSON.stringify({ selection }),
+          });
+          renderActivePrediction(null);
+          showToast(`Prediction resolved with "${outcomeName}".`, "success");
+          return data;
+        } catch (error) {
+          showToast(error.message || "Failed to resolve prediction.", "danger");
+        }
+      }
+
+      async function cancelPrediction() {
+        const confirmed = await showConfirm(
+          "Cancel prediction",
+          "Cancel this prediction and refund all Channel Points?"
+        );
+        if (!confirmed) return;
+        try {
+          await predictionRequest("/api/user/predictions/cancel", {
+            method: "POST",
+            body: JSON.stringify({}),
+          });
+          renderActivePrediction(null);
+          showToast("Prediction canceled and Channel Points refunded.", "success");
+        } catch (error) {
+          showToast(error.message || "Failed to cancel prediction.", "danger");
+        }
+      }
+
+      resetPredictionPresetForm();
 
       function goToStepAction(step) {
         closeGettingStarted();

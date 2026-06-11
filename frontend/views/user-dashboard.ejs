@@ -2502,6 +2502,72 @@
               </div>
             </div>
           </div>
+
+          <div id="prediction-commands-early-access" class="card" style="margin-top: 18px">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Automatic Ranked Predictions</div>
+                <div class="card-subtitle">
+                  Stream automation commands for THE FINALS ranked sessions.
+                </div>
+              </div>
+              <span
+                style="
+                  font-size: 11px;
+                  font-weight: 700;
+                  color: <%= hasSubscription ? 'var(--success)' : 'var(--warning)' %>;
+                  background: <%= hasSubscription ? 'rgba(0, 179, 95, 0.12)' : 'rgba(245, 158, 11, 0.12)' %>;
+                  padding: 5px 9px;
+                  border-radius: 999px;
+                  white-space: nowrap;
+                "
+              >
+                <%= hasSubscription ? 'Available' : 'Subscriber / Tester' %>
+              </span>
+            </div>
+
+            <div class="prediction-card-copy" style="margin-bottom: 14px">
+              Currently available to paid subscribers and approved test users.
+              Broadcasters and moderators can use these commands once automation
+              is configured in the Predictions page.
+            </div>
+
+            <div class="var-grid" style="margin-top: 0">
+              <div class="var-card">
+                <span class="var-code">!rankpred start</span>
+                <span class="var-desc">
+                  Start immediately. This bypasses only the timer; all safety checks still apply.
+                </span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">!rankpred status</span>
+                <span class="var-desc">
+                  Show the current automatic prediction state.
+                </span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">!rankpred cancel</span>
+                <span class="var-desc">
+                  Cancel the automatic prediction and refund Channel Points.
+                </span>
+              </div>
+            </div>
+
+            <div class="prediction-form-actions" style="margin-top: 16px">
+              <% if (hasSubscription) { %>
+              <button class="btn btn-primary" type="button" onclick="switchView('predictions')">
+                <i class="fas fa-sliders"></i> Configure Predictions
+              </button>
+              <% } else { %>
+              <a class="btn btn-primary" href="/subscribe">
+                <i class="fas fa-star"></i> Get Early Access
+              </a>
+              <% } %>
+              <button class="btn btn-ghost" type="button" onclick="window.open('/docs#predictions', '_blank')">
+                View Guide
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Predictions View -->

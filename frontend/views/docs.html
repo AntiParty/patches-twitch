@@ -474,6 +474,7 @@
               <li><a href="#drops-cmd" class="nav-link">!drops</a></li>
               <li><a href="#goals" class="nav-link">!goal</a></li>
               <li><a href="#predict" class="nav-link">!predict</a></li>
+              <li><a href="#predictions" class="nav-link">Predictions</a></li>
             </ul>
           </div>
           <div class="nav-group">
@@ -727,6 +728,110 @@
             </div>
           </section>
 
+          <section id="predictions">
+            <div class="tag">Twitch Affiliate / Partner</div>
+            <h2>Channel Points Predictions</h2>
+            <p>
+              Create reusable Twitch Channel Points prediction presets and
+              operate them from the <strong>Predictions</strong> dashboard page
+              or directly from Twitch chat. The broadcaster must reauthorize
+              FinalsRS with <code>channel:manage:predictions</code> first.
+            </p>
+
+            <h3>Manual Prediction Presets</h3>
+            <p>
+              The broadcaster manages presets. The broadcaster or a Twitch
+              moderator may start, resolve, or cancel a prediction, allowing
+              moderators to help operate it while still being able to vote.
+            </p>
+            <div class="code-example">
+              <span class="comment">// Create or overwrite a preset</span><br />
+              <span class="cmd">!preset p add ranked | How will ranked go? | Down | Even | Up | 600</span><br /><br />
+              <span class="comment">// List, inspect, or delete presets</span><br />
+              <span class="cmd">!preset p list</span><br />
+              <span class="cmd">!preset p show ranked</span><br />
+              <span class="cmd">!preset p delete ranked</span><br /><br />
+              <span class="comment">// Operate the prediction</span><br />
+              <span class="cmd">!start p ranked</span><br />
+              <span class="cmd">!end p 2</span><br />
+              <span class="cmd">!end p Even</span><br />
+              <span class="cmd">!cancel p</span>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Limit</th>
+                    <th>Requirement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Alias</td>
+                    <td>One word using letters, numbers, <code>_</code>, or <code>-</code>.</td>
+                  </tr>
+                  <tr>
+                    <td>Question</td>
+                    <td>1-45 characters.</td>
+                  </tr>
+                  <tr>
+                    <td>Outcomes</td>
+                    <td>2-5 unique outcomes, up to 25 characters each.</td>
+                  </tr>
+                  <tr>
+                    <td>Voting window</td>
+                    <td>30-1,800 seconds.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              Questions and outcomes are checked against FinalsRS content
+              filters. Canceling refunds participating viewers.
+            </p>
+
+            <h3>Automatic Ranked Predictions</h3>
+            <div class="tag premium">Subscribers and test users</div>
+            <p>
+              Automatic ranked predictions are currently an early-access beta
+              for active subscribers and approved test roles. Configure them
+              below the manual controls on the dashboard Predictions page.
+            </p>
+            <p>
+              FinalsRS waits for the configured delay, confirms the stream is
+              live in <strong>THE FINALS</strong>, and opens a prediction about
+              the stream's ranked-score change. It uses the existing session
+              starting RS and resolves only the exact prediction created for
+              that Twitch stream.
+            </p>
+            <div class="code-example">
+              <span class="comment">// Bypass only the configured timer</span><br />
+              <span class="cmd">!rankpred start</span><br /><br />
+              <span class="comment">// Check the current automation state</span><br />
+              <span class="cmd">!rankpred status</span><br /><br />
+              <span class="comment">// Cancel and refund the automatic prediction</span><br />
+              <span class="cmd">!rankpred cancel</span>
+            </div>
+            <div class="var-grid">
+              <div class="var-card">
+                <span class="var-code">No replacement</span>
+                <span class="var-desc">Manual predictions are never canceled or replaced by automation.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">Exact Twitch IDs</span>
+                <span class="var-desc">FinalsRS settles only its stored prediction and outcome IDs.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">Missing RS</span>
+                <span class="var-desc">Missing or unreliable score data causes a cancel and refund, never a guess.</span>
+              </div>
+              <div class="var-card">
+                <span class="var-code">One per stream</span>
+                <span class="var-desc">Persistent Twitch stream IDs prevent duplicate automatic predictions.</span>
+              </div>
+            </div>
+          </section>
+
           <!-- Section: General Commands -->
           <section id="general">
             <div class="tag">Utility</div>
@@ -797,6 +902,7 @@
             <li><a href="#drops-cmd" class="nav-link">!drops Command</a></li>
             <li><a href="#goals" class="nav-link">Rank Goals</a></li>
             <li><a href="#predict" class="nav-link">Predict Cutoff</a></li>
+            <li><a href="#predictions" class="nav-link">Channel Points Predictions</a></li>
             <li><a href="#general" class="nav-link">Utility Commands</a></li>
           </ul>
         </nav>

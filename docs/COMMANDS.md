@@ -155,6 +155,41 @@ cancel commands can use the required `channel:manage:predictions` permission.
 - Moderators initiate the operation using the broadcaster's authorization, so
   moderators remain able to vote.
 
+### Automatic ranked predictions (early access)
+
+Automatic ranked predictions are currently available to active subscribers and
+approved test roles (`subscriber`, `tester`, `Staff`, and `admin`). Manual
+prediction presets remain available separately.
+
+Configure automatic predictions from the **Predictions** page in the dashboard:
+
+- Enable or disable future automatic runs.
+- Choose a 5, 8, 10, 15, 20, or 30 minute start delay.
+- Set a 30-1800 second voting window.
+- Set a question up to 45 characters.
+- Configure 2-5 outcome labels and complete, non-overlapping RS delta ranges.
+
+Automation starts only when the stream is live in **THE FINALS**, a linked
+ranked player and starting RS are available, prediction authorization is valid,
+and Twitch has no other active or locked prediction.
+
+```text
+!rankpred start
+!rankpred status
+!rankpred cancel
+```
+
+- `!rankpred start` bypasses only the configured timer. Every other safety check
+  still applies.
+- `!rankpred status` reports the current automatic prediction state.
+- `!rankpred cancel` cancels the automatic prediction and refunds viewers.
+- The broadcaster or a Twitch moderator may use these commands.
+- FinalsRS stores the exact Twitch prediction and outcome IDs for each stream.
+- Missing or unreliable starting RS, final RS, or outcome ranges cause a cancel
+  and refund instead of a guessed result.
+- FinalsRS never replaces or cancels a manual prediction to make room for
+  automation.
+
 ---
 
 ## 🎨 Customization Commands

@@ -50,3 +50,4 @@ frontend/public/drops.json
 scripts/backup-config.sh
 scripts/seed-output/
 .worktrees/
+/docs/superpowers

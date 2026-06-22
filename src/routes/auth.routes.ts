@@ -10,6 +10,7 @@ import { verifyOAuthState } from '@/util/crypto';
 import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
 import { clearRefreshPermanentFailed } from '@/util/twitchUtils';
 import { getBroadcasterOAuthScopes } from '@/util/twitchScopes';
+import { checkTwitchSubscription } from '@/services/twitchSubscription.service';
 
 const router = Router();
 
@@ -229,6 +230,26 @@ router.get("/callback", async (req: any, res: any) => {
         const channel = await Channel.findOne({ where: { username: twitchUsername } });
         const userRole = channel ? channel.role : 'Basic user';
 
+        // Refresh subscription status on every login using the fresh user token we just got.
+        // This unlocks premium features (e.g. automatic predictions) immediately for new
+        // subscribers and revokes them for lapsed subs, without waiting for a manual refresh.
+        // Falls back to the stored value if Twitch can't be reached — never blocks login.
+        let hasSubscription = channel?.has_subscription || false;
+        let subscriptionTier = channel?.subscription_tier || null;
+        try {
+            const subStatus = await checkTwitchSubscription(access_token, twitchUserId);
+            hasSubscription = subStatus.isPremium;
+            subscriptionTier = subStatus.tier;
+            if (channel) {
+                await channel.update({
+                    has_subscription: hasSubscription,
+                    subscription_tier: subscriptionTier,
+                });
+            }
+        } catch (subError) {
+            logger.error(`[Auth] Subscription check failed for ${twitchUsername}:`, subError);
+        }
+
         // Regenerate session to prevent session fixation and then store minimal user info
         if (req.session) {
             await new Promise((resolve, reject) => {
@@ -245,9 +266,9 @@ router.get("/callback", async (req: any, res: any) => {
                     req.session.isAdmin = userRole === 'admin'; // Backward compatibility or convenience
                     req.session.hasSubscriptionScope = true; // Mark that user has new scopes
 
-                    // Store subscription status from DB
-                    req.session.hasSubscription = channel?.has_subscription || false;
-                    req.session.subscriptionTier = channel?.subscription_tier || null;
+                    // Store freshly-checked subscription status
+                    req.session.hasSubscription = hasSubscription;
+                    req.session.subscriptionTier = subscriptionTier;
 
                     // If they have a dashboard-capable role, set the primary username for logs/admin
                     if (userRole === 'admin' || userRole === 'Staff') {

@@ -1,8 +1,30 @@
 import { Channel } from "../db";
-import { getRSPrediction } from "../util/rsPredictor";
+import { getRSPrediction, type PredictionResult } from "../util/rsPredictor";
 import logger from "../util/logger";
 import fs from "fs/promises";
 import path from "path";
+
+/**
+ * Builds the chat line for a prediction result.
+ *
+ * Shows the live blended `safeRS` (which is anchored to the cross-season
+ * historical floor but tracks the current-season trend) plus a per-day trend
+ * suffix. NOTE: do not pin this to `historicalPrediction` — that value is
+ * computed only from completed seasons and is static all season, which froze
+ * the command at a single number.
+ */
+export function buildPredictResponse(prediction: PredictionResult): string {
+  const target = prediction.safeRS.toLocaleString();
+  const rush = prediction.isSeasonEndRush ? ` | Rush: ${prediction.rushMultiplier}x` : "";
+
+  let trendPart = "";
+  if (prediction.model !== "historical" && prediction.dailyChange !== 0) {
+    const sign = prediction.dailyChange > 0 ? "+" : "";
+    trendPart = ` | ${sign}${prediction.dailyChange.toLocaleString()}/day`;
+  }
+
+  return `T500 Cutoff (${prediction.remainingDays}d): ~${target} RS${trendPart}${rush}`;
+}
 
 async function isRubyUnlocked(season: number): Promise<boolean> {
   try {
@@ -73,20 +95,7 @@ export const execute = async (
       return;
     }
 
-    const targetValue = prediction.historicalPrediction ?? prediction.safeRS;
-    const target = targetValue.toLocaleString();
-    const rush = prediction.isSeasonEndRush ? ` | Rush: ${prediction.rushMultiplier}x` : "";
-
-    let trendPart = "";
-    if (prediction.historicalPrediction === null && prediction.model !== "historical" && prediction.dailyChange !== 0) {
-      const sign = prediction.dailyChange > 0 ? "+" : "";
-      trendPart = ` | ${sign}${prediction.dailyChange.toLocaleString()}/day`;
-    }
-
-    await ctx.say(
-      `T500 Cutoff (${prediction.remainingDays}d): ~${target} RS${trendPart}${rush}`,
-      messageId
-    );
+    await ctx.say(buildPredictResponse(prediction), messageId);
   } catch (error) {
     logger.error("[predict] Error in predict command:", error);
     await ctx.say(`Something went wrong fetching the prediction.`, messageId);

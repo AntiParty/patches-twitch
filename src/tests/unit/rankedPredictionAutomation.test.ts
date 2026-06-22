@@ -11,6 +11,8 @@ function harness(options: {
   config?: Partial<typeof DEFAULT_PREDICTION_AUTOMATION_CONFIG>;
   currentPrediction?: any;
   predictionById?: any;
+  getById?: () => Promise<any>;
+  random?: () => number;
   validateContent?: () => Promise<void>;
   hasAccess?: boolean;
 } = {}) {
@@ -37,6 +39,10 @@ function harness(options: {
 
   const service = createRankedPredictionAutomationService({
     now: () => now,
+    random: options.random || (() => 0),
+    countEmptyRetries: async (_channelId, streamId) => runs.filter(
+      (run) => run.twitch_stream_id === streamId && run.failure_reason === 'no_votes',
+    ).length,
     loadChannel: async () => channel,
     loadConfig: async () => config,
     saveConfig: async (_channelId, saved) => saved,
@@ -68,7 +74,7 @@ function harness(options: {
     predictions: {
       getAuthorizationStatus: async () => ({ state: 'ready' as const }),
       getCurrent: async () => options.currentPrediction || null,
-      getById: async () => options.predictionById || null,
+      getById: options.getById || (async () => options.predictionById || null),
       start: async (_channelId, preset) => {
         started.push(preset);
         const predictionNumber = started.length;
@@ -398,5 +404,111 @@ describe('Ranked prediction automation service', () => {
 
     assert.equal(state.started.length, 1);
     assert.equal(first.id, second.id);
+  });
+
+  function lockedPrediction(votes: number) {
+    return {
+      id: 'prediction-1',
+      status: 'LOCKED',
+      title: '',
+      outcomes: [
+        { id: 'o1', title: 'a', users: votes, channel_points: votes * 10 },
+        { id: 'o2', title: 'b', users: 0, channel_points: 0 },
+      ],
+    };
+  }
+
+  it('cancels an empty prediction at lock and re-opens after the cooldown', async () => {
+    const state = harness({ predictionById: lockedPrediction(0) });
+
+    const voting = await state.service.evaluateStream(7, liveStream);
+    assert.equal(voting.status, 'voting');
+    assert.equal(state.started.length, 1);
+
+    // After the 10-minute voting window, the prediction locks with no votes.
+    state.setNow(Date.parse('2026-06-11T12:21:01Z'));
+    const empty = await state.service.evaluateStream(7, liveStream);
+    assert.equal(empty.status, 'canceled');
+    assert.equal(empty.failure_reason, 'no_votes');
+    assert.deepEqual(state.canceled, ['prediction-1']);
+    assert.equal(state.started.length, 1);
+
+    // Still within the cooldown — no new prediction yet.
+    state.setNow(Date.parse('2026-06-11T12:25:00Z'));
+    const cooling = await state.service.evaluateStream(7, liveStream);
+    assert.equal(cooling.status, 'canceled');
+    assert.equal(state.started.length, 1);
+
+    // Cooldown elapsed (10 min with random()=0) — a fresh cycle opens.
+    state.setNow(Date.parse('2026-06-11T12:31:02Z'));
+    const retry = await state.service.evaluateStream(7, liveStream);
+    assert.equal(retry.status, 'voting');
+    assert.equal(retry.cycle_index, 2);
+    assert.equal(state.started.length, 2);
+  });
+
+  it('locks in to tracking when the prediction has votes', async () => {
+    const state = harness({ predictionById: lockedPrediction(7) });
+
+    await state.service.evaluateStream(7, liveStream);
+    state.setNow(Date.parse('2026-06-11T12:21:01Z'));
+    const tracking = await state.service.evaluateStream(7, liveStream);
+
+    assert.equal(tracking.status, 'tracking');
+    assert.deepEqual(state.canceled, []);
+  });
+
+  it('does not cancel when the lock check cannot read the prediction', async () => {
+    const state = harness({
+      getById: async () => { throw new Error('twitch unavailable'); },
+    });
+
+    await state.service.evaluateStream(7, liveStream);
+    state.setNow(Date.parse('2026-06-11T12:21:01Z'));
+    const stillVoting = await state.service.evaluateStream(7, liveStream);
+
+    assert.equal(stillVoting.status, 'voting');
+    assert.deepEqual(state.canceled, []);
+  });
+
+  it('waits while the prediction is still active on Twitch', async () => {
+    const state = harness({
+      predictionById: { id: 'prediction-1', status: 'ACTIVE', title: '', outcomes: [] },
+    });
+
+    await state.service.evaluateStream(7, liveStream);
+    state.setNow(Date.parse('2026-06-11T12:21:01Z'));
+    const stillVoting = await state.service.evaluateStream(7, liveStream);
+
+    assert.equal(stillVoting.status, 'voting');
+    assert.deepEqual(state.canceled, []);
+  });
+
+  it('stops re-opening empty predictions after three attempts', async () => {
+    const state = harness({ predictionById: lockedPrediction(0) });
+    const base = Date.parse('2026-06-11T12:11:00Z');
+    const minute = 60 * 1000;
+
+    let cursor = base;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      state.setNow(cursor);
+      const voting = await state.service.evaluateStream(7, liveStream);
+      assert.equal(voting.status, 'voting', `attempt ${attempt} should open`);
+      assert.equal(state.started.length, attempt);
+
+      // Lock with no votes 10 minutes later → cancel + 10 minute cooldown.
+      cursor += 10 * minute + minute;
+      state.setNow(cursor);
+      const canceled = await state.service.evaluateStream(7, liveStream);
+      assert.equal(canceled.failure_reason, 'no_votes', `attempt ${attempt} should cancel`);
+
+      cursor += 10 * minute + minute; // past the retry cooldown
+    }
+
+    // Cap reached: the fourth attempt must not open another prediction.
+    state.setNow(cursor);
+    const parked = await state.service.evaluateStream(7, liveStream);
+    assert.equal(parked.status, 'canceled');
+    assert.equal(state.started.length, 3);
   });
 });

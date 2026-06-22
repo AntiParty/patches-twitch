@@ -17,6 +17,9 @@ export type PredictionAuthorizationStatus =
 export interface TwitchPredictionOutcome {
   id: string;
   title: string;
+  // Present on Twitch GET /predictions responses; used to detect whether anyone voted.
+  users?: number;
+  channel_points?: number;
 }
 
 export interface TwitchPrediction {
@@ -24,6 +27,17 @@ export interface TwitchPrediction {
   title: string;
   status: TwitchPredictionStatus;
   outcomes: TwitchPredictionOutcome[];
+}
+
+/**
+ * True if at least one outcome received a vote (a participating user or any channel points).
+ * Used to cancel and re-open predictions that locked with no participation.
+ */
+export function predictionHasVotes(prediction: TwitchPrediction | null | undefined): boolean {
+  if (!prediction || !Array.isArray(prediction.outcomes)) return false;
+  return prediction.outcomes.some(
+    (outcome) => Number(outcome?.users) > 0 || Number(outcome?.channel_points) > 0,
+  );
 }
 
 interface ChannelLike {

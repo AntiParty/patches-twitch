@@ -2,6 +2,7 @@ import { Channel, getCustomResponse, RankGoal } from "../db";
 import fs from "fs/promises";
 import path from "path";
 import logger from "../util/logger";
+import { searchPlayer } from "../util/leaderboardSearch";
 
 interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -38,37 +39,6 @@ function validatePlayerId(input: string): string | null {
 
   // Return sanitized version
   return `${name}#${tag}`;
-}
-
-/**
- * Searches a leaderboard array by name (with or without #tag).
- * Priority: exact full match → exact name-part match → startsWith name-part match.
- * When multiple candidates exist, the best-ranked (lowest rank number) is returned.
- */
-function searchPlayer(data: any[] | null, query: string): any | null {
-  if (!data) return null;
-  const q = query.toLowerCase().trim();
-
-  // 1. Exact full match — "lamp#5944"
-  const exact = data.find(p => p.name.toLowerCase() === q);
-  if (exact) return exact;
-
-  if (q.includes('#')) {
-    // Has a tag but no exact match — match on name-part prefix as fallback
-    const base = q.split('#')[0];
-    return data.find(p => p.name.toLowerCase().startsWith(base + '#')) ?? null;
-  }
-
-  // No tag — search by name portion only
-  // 2. Exact name-part match — "lamp" matches "lamp#5944" and "lamp#1111"; pick best rank
-  const exactName = data.filter(p => p.name.toLowerCase().split('#')[0] === q);
-  if (exactName.length > 0) return exactName.sort((a, b) => a.rank - b.rank)[0];
-
-  // 3. StartsWith match — "lam" matches "lamp#5944"; pick best rank
-  const starts = data.filter(p => p.name.toLowerCase().split('#')[0].startsWith(q));
-  if (starts.length > 0) return starts.sort((a, b) => a.rank - b.rank)[0];
-
-  return null;
 }
 
 const processedMessages = new Set<string>();

@@ -9,6 +9,7 @@ import {
   PredictionUnavailableError,
   TwitchPrediction,
   createTwitchPredictionsService,
+  predictionHasVotes,
 } from '@/services/twitchPredictions.service';
 import { decryptChannelAccessToken } from '@/util/twitchUtils';
 
@@ -72,6 +73,38 @@ function createHarness(options: {
 
   return { service, requests, validations };
 }
+
+describe('predictionHasVotes', () => {
+  it('is false when no outcome has users or channel points', () => {
+    assert.equal(predictionHasVotes(prediction({
+      outcomes: [
+        { id: 'a', title: 'A', users: 0, channel_points: 0 },
+        { id: 'b', title: 'B' },
+      ],
+    })), false);
+  });
+
+  it('is true when any outcome has a participating user', () => {
+    assert.equal(predictionHasVotes(prediction({
+      outcomes: [
+        { id: 'a', title: 'A', users: 0, channel_points: 0 },
+        { id: 'b', title: 'B', users: 3, channel_points: 0 },
+      ],
+    })), true);
+  });
+
+  it('is true when any outcome has channel points without a user count', () => {
+    assert.equal(predictionHasVotes(prediction({
+      outcomes: [{ id: 'a', title: 'A', channel_points: 250 }],
+    })), true);
+  });
+
+  it('is false for null or malformed predictions', () => {
+    assert.equal(predictionHasVotes(null), false);
+    assert.equal(predictionHasVotes(undefined), false);
+    assert.equal(predictionHasVotes({} as any), false);
+  });
+});
 
 describe('Twitch predictions service', () => {
   it('can load and decrypt a legacy plain broadcaster token without node-fetch', () => {

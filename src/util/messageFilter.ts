@@ -15,7 +15,13 @@ function escapeForRegex(s: string) {
 
 // FUNCTION THAT CONTAINS A LIST OF LINKS THAT ARE ALLOWED TO BE SENT
 function allowedLinks(text: string): boolean {
-  const allowedLinksList = ['https://discord.gg/2UKzvzSEqA', 'https://finalsRS.com', 'https://finalsrs.com/'];
+  const allowedLinksList = [
+    'https://discord.gg/2UKzvzSEqA',
+    'https://finalsRS.com',
+    'https://finalsrs.com/',
+    // !tracker links to the davg25 leaderboard tracker profile
+    'https://www.davg25.com/app/the-finals-leaderboard-tracker/',
+  ];
   return allowedLinksList.some(link => text.includes(link));
 }
 

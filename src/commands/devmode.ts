@@ -1,4 +1,4 @@
-import { devModeChannels } from "@/util/ircBot";
+import { devModeChannels } from "@/util/devModeState";
 import logger from "@/util/logger";
 
 interface CommandContext {
@@ -10,11 +10,6 @@ interface CommandContext {
   tags?: Record<string, any>;
 }
 
-// Second-step confirmation state. Map of channel -> expiry timestamp (ms).
-// Requires `!devmode confirm` within 30s of the initial `!devmode`.
-const pendingToggle: Map<string, number> = new Map();
-const CONFIRM_WINDOW_MS = 30_000;
-
 export const execute = async (
     ctx: CommandContext,
     _channel: string,
@@ -23,7 +18,7 @@ export const execute = async (
     args: string[]
 ) => {
     try {
-        // Gate kept to antiparty; minRole isn't granular enough for this.
+        // Owner-only. minRole isn't granular enough for a single account.
         if (ctx.user.toLowerCase() !== "antiparty") {
             return;
         }
@@ -32,7 +27,7 @@ export const execute = async (
         const messageId = ctx.tags?.["id"];
         const sub = (args?.[0] || "").toLowerCase();
 
-        // `!devmode status` always works without confirmation.
+        // `!devmode status` reports state without changing it.
         if (sub === "status") {
             const on = devModeChannels.has(channelName);
             await ctx.say(
@@ -42,24 +37,8 @@ export const execute = async (
             return;
         }
 
-        // Confirmation step for the toggle to prevent accidental silencing.
-        // Fix for issue #3 / #15: no more one-keystroke muting of the whole bot.
-        const pendingExpiry = pendingToggle.get(channelName) || 0;
-        const pendingValid = pendingExpiry > Date.now();
-
-        if (sub !== "confirm" && !pendingValid) {
-            const nextState = devModeChannels.has(channelName) ? "OFF (bot will talk again)" : "ON (bot goes silent)";
-            pendingToggle.set(channelName, Date.now() + CONFIRM_WINDOW_MS);
-            await ctx.say(
-                `[Admin] About to toggle dev mode ${nextState} in #${channelName}. Reply !devmode confirm within 30s to apply, or ignore to cancel.`,
-                messageId
-            );
-            return;
-        }
-
-        // We have a valid pending toggle (or `confirm` sub-arg). Apply it.
-        pendingToggle.delete(channelName);
-
+        // One-step toggle. Owner-gated, so there's no accidental-mute risk that
+        // would warrant a confirmation step.
         if (devModeChannels.has(channelName)) {
             devModeChannels.delete(channelName);
             logger.warn(`[devmode] Dev mode DISABLED for #${channelName} by ${ctx.user}`);
@@ -71,7 +50,7 @@ export const execute = async (
             devModeChannels.add(channelName);
             logger.warn(`[devmode] Dev mode ENABLED for #${channelName} by ${ctx.user}`);
             await ctx.say(
-                `🔇 [Admin] Dev mode ENABLED. Production bot will stay SILENT in #${channelName} until a matching dev bot handles commands. Run !devmode again to undo.`,
+                `🔇 [Admin] Dev mode ENABLED — bot is now SILENT in #${channelName} (all commands suppressed). Run !devmode again to unmute.`,
                 messageId
             );
         }

@@ -8,6 +8,7 @@ import { refreshToken as getAppAccessToken } from "./twitchUtils";
 import { sendWarningToDiscord } from "../handlers/discordHandler";
 import { getChatDropResolution } from "./chatDropResolution";
 import { recordOperationalEvent } from "../services/operationalEvents.service";
+import { devModeChannels, isCommandSilenced } from "./devModeState";
 
 interface IRCClient {
   socket: net.Socket;
@@ -30,7 +31,8 @@ const clients: { [username: string]: IRCClient } = {};
 // rescue scan, manual reconnect + auto-reconnect, etc.) from racing on the
 // same channel and producing spurious "Login authentication failed" events.
 const connectingChannels = new Set<string>();
-export const devModeChannels = new Set<string>();
+// Re-exported for backward compatibility; the Set itself lives in devModeState.
+export { devModeChannels };
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 5000; // 5 seconds
 const MAX_RECONNECT_DELAY = 300000; // 5 minutes
@@ -729,15 +731,13 @@ export const startChatBot = async (
       }
 
       // -----------------------------------------------------------------------
-      // Check for Development Mode Silencing
-      // If channel is in devModeChannels AND we are NOT in development environment,
-      // we silence the bot (except for !devmode toggle command).
+      // Development Mode Silencing
+      // When a channel is in devModeChannels, suppress every command except the
+      // !devmode/!dev toggle so a locally-run dev bot can answer instead.
       // -----------------------------------------------------------------------
-      if (devModeChannels.has(channelName) && process.env.NODE_ENV !== 'development') {
-        if (commandKey !== '!devmode' && commandKey !== '!dev') {
-           logger.info(`[DevMode] Silencing command ${commandKey} in #${channelName}`);
-           continue; 
-        }
+      if (isCommandSilenced(channelName, commandKey)) {
+        logger.info(`[DevMode] Silencing command ${commandKey} in #${channelName}`);
+        continue;
       }
 
       if (commandEntry && typeof commandEntry === "function") {

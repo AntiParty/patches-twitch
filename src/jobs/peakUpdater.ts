@@ -3,36 +3,39 @@ import path from 'path';
 import logger from '@/util/logger';
 import { Channel, PeakRank } from '@/db';
 import { Op } from 'sequelize';
+import { searchPlayer } from '@/util/leaderboardSearch';
 
 const CACHE_DIR = path.resolve(__dirname, '../../cache');
 
-function normalizeName(name: string): string {
-  return name?.toLowerCase().trim() || '';
+/**
+ * First season whose RS values are on the current, comparable scale.
+ * S1–S2 were league-only (no RS) and S3 used a different RS scale, so their
+ * scores must not be compared against modern seasons. Mirrors the predictor's
+ * CROSS_SEASON_MIN_FIRST in rsPredictor.ts.
+ */
+export const RS_COMPARABLE_MIN_SEASON = 4;
+
+export interface SeasonRSEntry {
+  season: number;          // numeric season, e.g. 9
+  file: string;            // cache file id, e.g. "regular_s9"
+  rank: number;
+  rankScore: number;
+  league: string | null;
 }
 
-function findPlayer(data: any[], target: string): any | null {
-  const normalized = normalizeName(target);
-  const fields = ['name', 'steamName', 'psnName', 'xboxName'];
-  const normalize = (v: any) => (v ? v.toLowerCase().trim() : '');
-
-  // Exact match
-  for (const player of data) {
-    for (const f of fields) {
-      if (normalize(player[f]) === normalized) return player;
-    }
+/**
+ * Picks a player's peak as the season with their HIGHEST RS, considering only
+ * seasons with comparable RS (S4+). Returns null if no comparable season has a
+ * numeric RS. Rank/league/season come from that same highest-RS season.
+ */
+export function selectPeakByRS(entries: SeasonRSEntry[]): SeasonRSEntry | null {
+  let best: SeasonRSEntry | null = null;
+  for (const e of entries) {
+    if (e.season < RS_COMPARABLE_MIN_SEASON) continue;
+    if (typeof e.rankScore !== 'number' || !Number.isFinite(e.rankScore)) continue;
+    if (!best || e.rankScore > best.rankScore) best = e;
   }
-
-  // Fallback: base name match (before #)
-  if (normalized.includes('#')) {
-    const base = normalized.split('#')[0];
-    for (const player of data) {
-      for (const f of fields) {
-        if (normalize(player[f]).startsWith(base)) return player;
-      }
-    }
-  }
-
-  return null;
+  return best;
 }
 
 async function loadAllCacheFiles(): Promise<{ file: string; data: any[] }[]> {
@@ -72,26 +75,26 @@ export async function updatePeakRanks(): Promise<void> {
     const playerId = (channel as any).player_id;
     if (!playerId) continue;
 
-    let bestRegular: { rank: number; rs: number; league: string; season: string } | null = null;
+    // Gather this player's standing in every cached season, then pick their
+    // highest-RS season as the peak (rank position varies with how stacked a
+    // season was; RS is the truer personal best).
+    const entries: SeasonRSEntry[] = [];
     for (const { file, data } of leaderboards) {
-      const player = findPlayer(data, playerId);
+      const player = searchPlayer(data, playerId);
       if (!player) continue;
-
-      if (file.startsWith('regular')) {
-        if (!bestRegular || player.rank < bestRegular.rank) {
-          bestRegular = {
-            rank: player.rank,
-            rs: player.rankScore,
-            league: player.league || null,
-            season: file,
-          };
-        }
-      }
+      entries.push({
+        season: parseInt(file.match(/\d+/)?.[0] ?? '0', 10),
+        file,
+        rank: player.rank,
+        rankScore: player.rankScore,
+        league: player.league || null,
+      });
     }
 
+    const bestRegular = selectPeakByRS(entries);
     if (!bestRegular) continue;
 
-    // Only update if we found a better peak than what's stored
+    // Only update when we've found a higher RS than what's stored (peak is monotonic by RS).
     const existing = await PeakRank.findOne({ where: { channel: (channel as any).username } });
 
     const updateData: any = {
@@ -100,13 +103,11 @@ export async function updatePeakRanks(): Promise<void> {
       updated_at: new Date(),
     };
 
-    if (bestRegular) {
-      if (!existing || !(existing as any).regular_rank || bestRegular.rank < (existing as any).regular_rank) {
-        updateData.regular_rank = bestRegular.rank;
-        updateData.regular_rs = bestRegular.rs;
-        updateData.regular_league = bestRegular.league;
-        updateData.regular_season = bestRegular.season;
-      }
+    if (!existing || (existing as any).regular_rs == null || bestRegular.rankScore > (existing as any).regular_rs) {
+      updateData.regular_rank = bestRegular.rank;
+      updateData.regular_rs = bestRegular.rankScore;
+      updateData.regular_league = bestRegular.league;
+      updateData.regular_season = bestRegular.file;
     }
 
     await PeakRank.upsert(updateData);

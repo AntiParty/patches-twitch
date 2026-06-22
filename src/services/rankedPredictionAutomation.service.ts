@@ -12,7 +12,7 @@ import {
   validatePredictionAutomationInput,
 } from '@/models/predictionAutomation';
 import { getCurrentRankedScore } from './rankedScore.service';
-import { twitchPredictionsService } from './twitchPredictions.service';
+import { predictionHasVotes, twitchPredictionsService } from './twitchPredictions.service';
 import { predictionPresetService } from './predictionPreset.service';
 import { hasPredictionAutomationAccess } from './predictionAutomationAccess.service';
 import logger from '@/util/logger';
@@ -58,6 +58,8 @@ interface StoredOutcome extends RankedPredictionOutcomeConfig {
 
 interface AutomationDependencies {
   now: () => number;
+  random: () => number;
+  countEmptyRetries: (channelId: number, streamId: string) => Promise<number>;
   loadChannel: (channelId: number) => Promise<ChannelRecord | null>;
   loadConfig: (channelId: number) => Promise<PredictionAutomationConfigData>;
   saveConfig: (
@@ -111,6 +113,14 @@ function serializeConfig(row: any): PredictionAutomationConfigData {
 function productionDependencies(): AutomationDependencies {
   return {
     now: Date.now,
+    random: Math.random,
+    countEmptyRetries: async (channelId, streamId) => PredictionAutomationRun.count({
+      where: {
+        broadcaster_id: channelId,
+        twitch_stream_id: streamId,
+        failure_reason: 'no_votes',
+      },
+    }),
     loadChannel: async (channelId) => Channel.findByPk(channelId) as any,
     loadConfig: async (channelId) => serializeConfig(
       await PredictionAutomationConfig.findOne({ where: { broadcaster_id: channelId } }),
@@ -176,13 +186,21 @@ function productionDependencies(): AutomationDependencies {
       durationSeconds: config.votingWindowSeconds,
     }, { channel: channel.username }),
     announce: async (channel, message) => {
-      const response = await fetch('http://localhost:4000/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, message }),
-      });
-      if (!response.ok) {
-        throw new Error(`Bot control API returned ${response.status}.`);
+      // Bound the Control API call so a hung bot process can't stall the poll cycle.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5_000);
+      try {
+        const response = await fetch('http://localhost:4000/send-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channel, message }),
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`Bot control API returned ${response.status}.`);
+        }
+      } finally {
+        clearTimeout(timeout);
       }
     },
     predictions: twitchPredictionsService,
@@ -195,6 +213,44 @@ export function createRankedPredictionAutomationService(
   const deps = { ...productionDependencies(), ...overrides };
   const repeatCooldownMs = 2 * 60 * 1000;
   const scoreChangeTimeoutMs = 30 * 60 * 1000;
+  const maxEmptyRetries = 3;
+  const emptyRetryMinMs = 10 * 60 * 1000;
+  const emptyRetrySpanMs = 5 * 60 * 1000; // cooldown lands in [10, 15) minutes
+
+  function emptyRetryCooldownMs(): number {
+    return emptyRetryMinMs + Math.floor(deps.random() * emptyRetrySpanMs);
+  }
+
+  // Called when a 'voting' prediction's window has elapsed. Locks in to 'tracking' when
+  // anyone voted, but if the prediction locked with zero participation it cancels and
+  // schedules a retry after a cooldown. Never cancels on uncertainty (Twitch still ACTIVE,
+  // missing prediction, or a transient getById failure).
+  async function maybeLockOrRetry(
+    run: RunRecord,
+    trackingValues: Record<string, unknown> = {},
+  ): Promise<RunRecord> {
+    if (!run.twitch_prediction_id) {
+      return setStatus(run, 'tracking', trackingValues);
+    }
+    let prediction;
+    try {
+      prediction = await deps.predictions.getById(run.broadcaster_id, run.twitch_prediction_id);
+    } catch {
+      return run; // transient — leave as 'voting' and retry on the next poll
+    }
+    if (prediction?.status === 'ACTIVE') {
+      return run; // Twitch hasn't locked it yet; wait for the lock before judging votes
+    }
+    if (prediction && !predictionHasVotes(prediction)) {
+      await deps.predictions.cancelById(run.broadcaster_id, run.twitch_prediction_id);
+      return setStatus(run, 'canceled', {
+        failure_reason: 'no_votes',
+        resolved_at: new Date(deps.now()),
+        cooldown_until: new Date(deps.now() + emptyRetryCooldownMs()),
+      });
+    }
+    return setStatus(run, 'tracking', trackingValues);
+  }
 
   async function setStatus(
     run: RunRecord,
@@ -320,7 +376,7 @@ export function createRankedPredictionAutomationService(
         : new Date(run.prediction_created_at).getTime()
           + config.votingWindowSeconds * 1000;
       if (deps.now() < votingEndsAt) return run;
-      run = await setStatus(run, 'tracking', {
+      run = await maybeLockOrRetry(run, {
         resolution_deadline_at: new Date(votingEndsAt + scoreChangeTimeoutMs),
       });
     }
@@ -350,11 +406,11 @@ export function createRankedPredictionAutomationService(
       };
     }
     let run = existing || await ensureRun(channelId, stream.id, config.mode);
-    const runMode = run.mode || config.mode;
+    const runMode = (run.mode || config.mode) as PredictionAutomationConfigData['mode'];
     if (runMode === 'stream_total' && run.status === 'voting' && run.prediction_created_at) {
       const votingEndsAt = new Date(run.prediction_created_at).getTime()
         + config.votingWindowSeconds * 1000;
-      if (deps.now() >= votingEndsAt) run = await setStatus(run, 'tracking');
+      if (deps.now() >= votingEndsAt) run = await maybeLockOrRetry(run);
     }
     if (runMode === 'stream_total' && activeStatuses.includes(run.status)) {
       return run;
@@ -378,6 +434,29 @@ export function createRankedPredictionAutomationService(
     }
     if (!Number.isFinite(channel.session_start_rs)) {
       return setStatus(run, 'waiting_for_start_rs', { failure_reason: 'starting_rs_unavailable' });
+    }
+
+    // Empty-prediction retry: a cycle canceled for zero votes re-opens after a cooldown,
+    // up to a per-stream cap, for both modes. After spawning the next cycle the status is
+    // 'scheduled', so it flows through normal creation below.
+    if (run.status === 'canceled' && run.failure_reason === 'no_votes') {
+      const cooldownUntil = run.cooldown_until
+        ? new Date(run.cooldown_until).getTime()
+        : 0;
+      if (deps.now() < cooldownUntil) return run;
+      if (await deps.countEmptyRetries(channelId, stream.id) >= maxEmptyRetries) return run;
+      try {
+        run = await createCycle(
+          channelId,
+          stream.id,
+          runMode,
+          Number(run.cycle_index || 1) + 1,
+        );
+      } catch (error) {
+        const duplicate = await deps.findRun(channelId, stream.id);
+        if (duplicate) run = duplicate;
+        else throw error;
+      }
     }
 
     if (config.mode === 'next_result') {
@@ -508,7 +587,7 @@ export function createRankedPredictionAutomationService(
     }
 
     const channel = await deps.loadChannel(channelId);
-    if (!channel?.player_id || !Number.isFinite(channel.session_start_rs)) {
+    if (!channel?.player_id) {
       return cancelRun(run, 'ranked_score_unavailable');
     }
     const finalScore = await deps.getCurrentScore(channel.player_id);
@@ -517,11 +596,18 @@ export function createRankedPredictionAutomationService(
     }
 
     if (run.mode === 'next_result') {
+      // next_result settles against the per-cycle baseline, not the stream's starting RS.
+      if (!Number.isFinite(run.baseline_rs)) {
+        return cancelRun(run, 'ranked_score_unavailable');
+      }
       return Number(finalScore) !== Number(run.baseline_rs)
         ? settleNextResult(run, finalScore)
         : cancelRun(run, 'stream_ended_before_score_change');
     }
 
+    if (!Number.isFinite(channel.session_start_rs)) {
+      return cancelRun(run, 'ranked_score_unavailable');
+    }
     const delta = Number(finalScore) - Number(channel.session_start_rs);
     const outcomes = parseOutcomes(run.twitch_outcome_ids_json);
     const matching = findMatchingOutcome(outcomes, delta) as StoredOutcome | null;
@@ -576,7 +662,9 @@ export function createRankedPredictionAutomationService(
       if (run?.status === 'voting' && run.prediction_created_at) {
         const votingEndsAt = new Date(run.prediction_created_at).getTime()
           + config.votingWindowSeconds * 1000;
-        if (deps.now() >= votingEndsAt) run = await setStatus(run, 'tracking');
+        // Same lock decision as the poller, so a dashboard refresh can't flip an empty
+        // prediction to 'tracking' and bypass the no-votes cancel/retry.
+        if (deps.now() >= votingEndsAt) run = await maybeLockOrRetry(run);
       }
       const latestRs = channel?.player_id
         ? await deps.getCurrentScore(channel.player_id)

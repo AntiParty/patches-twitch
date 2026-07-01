@@ -1,0 +1,227 @@
+/* Predictions tab — ported/adapted from the legacy prediction styles. */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.025);
+  margin-bottom: 18px;
+}
+.statusCopy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.statusIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+}
+.statusReady .statusIcon {
+  color: var(--success);
+  background: rgba(66, 212, 131, 0.12);
+}
+.statusWarning .statusIcon {
+  color: var(--warning);
+  background: rgba(243, 194, 71, 0.12);
+}
+.statusTitle {
+  font-weight: 700;
+}
+.statusDetail {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+}
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.copy {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.presetList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.preset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.presetSelected {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+.presetTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.presetTitle {
+  font-weight: 700;
+}
+.alias {
+  display: inline-block;
+  margin-top: 3px;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--primary);
+}
+.presetActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.outcomeSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.chip {
+  font-size: 12px;
+  background: var(--bg-hover);
+  border-radius: 999px;
+  padding: 3px 9px;
+  color: var(--text-muted);
+}
+.presetMeta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+/* Form */
+.form {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.outcomes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+.outcomeRow {
+  display: grid;
+  grid-template-columns: 28px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+}
+.outcomeRowAuto {
+  grid-template-columns: minmax(120px, 1fr) 90px 90px 40px;
+}
+.outcomeNumber {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* Live */
+.live {
+  display: flex;
+  flex-direction: column;
+}
+.liveState {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  min-height: 90px;
+}
+.liveEmpty {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+.liveTitle {
+  font-weight: 700;
+  font-size: 15px;
+}
+.liveBadge {
+  display: inline-block;
+  margin: 8px 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+}
+.liveOutcomes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.resolveBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+  .outcomeRowAuto {
+    grid-template-columns: 1fr 1fr 1fr 40px;
+  }
+}

@@ -1,0 +1,235 @@
+/* Leaderboard page — ported/adapted from leaderboard.html. */
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 6px;
+}
+.updated {
+  color: var(--text-subtle);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Stats strip */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 22px 0;
+}
+.stat {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 16px 18px;
+}
+.statLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.statValue {
+  font-family: var(--font-display, inherit);
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.statSub {
+  font-size: 12px;
+  color: var(--text-subtle);
+  margin-top: 2px;
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filter {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+.filter:hover {
+  color: var(--text-main);
+}
+.filterActive {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+.search {
+  min-width: 220px;
+}
+.perPage {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Table */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.table tr:last-child td {
+  border-bottom: none;
+}
+.sortIcon {
+  margin-left: 4px;
+  color: var(--text-subtle);
+}
+.rankNum {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rank1 {
+  color: #ffd166;
+}
+.rank2 {
+  color: #c0c0c0;
+}
+.rank3 {
+  color: #cd7f32;
+}
+.playerTag {
+  color: var(--text-subtle);
+}
+.score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.change {
+  font-size: 13px;
+  font-weight: 700;
+}
+.up {
+  color: var(--success);
+}
+.down {
+  color: var(--danger);
+}
+.same {
+  color: var(--text-subtle);
+}
+.clubTag {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.platforms {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.platformIcon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.leagueBadge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bg-hover);
+  white-space: nowrap;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.pageInfo {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.pageBtns {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.pageBtn {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.pageBtn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+.pageBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pageCurrent {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+@media (max-width: 680px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}

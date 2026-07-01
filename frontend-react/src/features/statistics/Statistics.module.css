@@ -1,0 +1,79 @@
+/* Statistics dashboard. */
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 32px 80px;
+}
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.chartGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.chartCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  padding: 20px;
+}
+.chartTitle {
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+.chartBox {
+  width: 100%;
+  height: 280px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.table tr:last-child td {
+  border-bottom: none;
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.access {
+  max-width: 460px;
+  margin: 80px auto;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-card);
+  padding: 40px 28px;
+}
+.accessIcon {
+  font-size: 32px;
+  color: var(--warning);
+  margin-bottom: 14px;
+}
+
+@media (max-width: 860px) {
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
+}

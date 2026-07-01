@@ -1,0 +1,8 @@
+/* Global entry stylesheet. Order matters: tokens first, then base components. */
+@import "./styles/theme.css";
+@import "./styles/global.css";
+@import "./styles/dashboard-theme.css";
+
+#root {
+  min-height: 100vh;
+}

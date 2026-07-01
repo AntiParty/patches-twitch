@@ -1,0 +1,83 @@
+/* Ported from the legacy `.toast` styles. */
+.container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 99999;
+}
+
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 14px 20px;
+  min-width: 280px;
+  max-width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  animation: slideIn 0.3s ease;
+  color: var(--text-main);
+}
+
+.message {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.toast i {
+  font-size: 18px;
+}
+
+.close {
+  background: none;
+  border: none;
+  color: var(--text-subtle);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+}
+.close:hover {
+  color: var(--text-main);
+}
+
+.success {
+  border-left: 4px solid var(--success);
+}
+.success > i:first-child {
+  color: var(--success);
+}
+.danger {
+  border-left: 4px solid var(--danger);
+}
+.danger > i:first-child {
+  color: var(--danger);
+}
+.warning {
+  border-left: 4px solid var(--warning);
+}
+.warning > i:first-child {
+  color: var(--warning);
+}
+.info {
+  border-left: 4px solid var(--info);
+}
+.info > i:first-child {
+  color: var(--info);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

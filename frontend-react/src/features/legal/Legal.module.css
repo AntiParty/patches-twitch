@@ -1,0 +1,108 @@
+/* Legal page — adapted from the legacy legal/markdown styles. */
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.header h1 {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+.header p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+}
+
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.tab {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  font: 700 0.95rem var(--font, inherit);
+  padding: 0 18px;
+  transition: background 140ms ease, color 140ms ease;
+}
+.tab:hover {
+  color: var(--text-main);
+}
+.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+.content {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-card);
+  padding: clamp(22px, 5vw, 44px);
+}
+.error {
+  color: var(--text-muted);
+}
+
+/* Markdown */
+.markdown {
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+.markdown :global(h1),
+.markdown :global(h2),
+.markdown :global(h3) {
+  color: var(--text-main);
+  font-family: var(--font-display, inherit);
+  margin: 1.8em 0 0.65em;
+}
+.markdown :global(h1) {
+  font-size: 2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.markdown :global(h2) {
+  font-size: 1.5rem;
+}
+.markdown :global(h3) {
+  font-size: 1.25rem;
+}
+.markdown :global(p),
+.markdown :global(ul),
+.markdown :global(ol) {
+  margin-bottom: 1.2rem;
+}
+.markdown :global(ul),
+.markdown :global(ol) {
+  padding-left: 1.4rem;
+}
+.markdown :global(li) {
+  margin-bottom: 0.45rem;
+}
+.markdown :global(strong) {
+  color: var(--text-main);
+}
+.markdown :global(a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.markdown :global(code) {
+  font-family: var(--font-mono, monospace);
+  background: var(--bg-hover);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}

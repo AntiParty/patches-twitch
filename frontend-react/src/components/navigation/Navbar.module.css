@@ -1,0 +1,59 @@
+/* Ported from `.topnav` in _theme.ejs. */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  backdrop-filter: blur(14px);
+  background: rgba(11, 11, 16, 0.72);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-main);
+}
+.brand img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.brandName {
+  background: var(--brand-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.links {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.navLink {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.navLink:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+@media (max-width: 720px) {
+  .topnav {
+    padding: 14px 18px;
+  }
+  .hideSm {
+    display: none;
+  }
+}

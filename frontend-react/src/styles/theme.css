@@ -1,0 +1,62 @@
+/*
+ * FinalsRS design tokens — ported 1:1 from frontend/views/partials/_theme.ejs.
+ * Single source of truth for colors, typography, shape and motion.
+ * Do not change values here without matching the legacy theme; this keeps the
+ * React UI visually identical to the existing EJS pages during migration.
+ */
+:root {
+  /* Surfaces */
+  --bg-app: #0b0b10;
+  --bg-sidebar: #0f0f15;
+  --bg-card: #15151c;
+  --bg-card-2: #1a1a22;
+  --bg-hover: #20202a;
+  --bg-input: #0f0f15;
+  --bg-overlay: rgba(8, 8, 12, 0.72);
+
+  /* Borders */
+  --border: #23232c;
+  --border-strong: #33333f;
+
+  /* Brand */
+  --primary: #a37bff;
+  --primary-hover: #8e62ff;
+  --primary-soft: rgba(163, 123, 255, 0.14);
+  --primary-ring: rgba(163, 123, 255, 0.28);
+  --brand-grad: linear-gradient(135deg, #b48bff 0%, #7c5cff 100%);
+
+  /* Text */
+  --text-main: #f2f2f5;
+  --text-muted: #a2a2ad;
+  --text-subtle: #70707a;
+
+  /* Status */
+  --success: #3dd598;
+  --success-soft: rgba(61, 213, 152, 0.12);
+  --danger: #ff5a57;
+  --danger-soft: rgba(255, 90, 87, 0.12);
+  --warning: #f5a524;
+  --warning-soft: rgba(245, 165, 36, 0.14);
+  --info: #5aa7ff;
+  --info-soft: rgba(90, 167, 255, 0.14);
+
+  /* Twitch-ish purple for chat bubbles */
+  --twitch: #9147ff;
+
+  /* Shape + motion */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.45);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --font: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Dashboard uses a separate stack in the legacy app (Archivo / IBM Plex Sans).
+     Exposed here so dashboard components can opt in without changing the base. */
+  --font-dashboard: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Archivo", system-ui, -apple-system, sans-serif;
+}

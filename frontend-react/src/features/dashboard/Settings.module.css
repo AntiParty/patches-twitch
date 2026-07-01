@@ -1,0 +1,39 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.danger {
+  border-color: rgba(233, 25, 22, 0.3) !important;
+}
+.dangerTitle {
+  color: var(--danger);
+}
+.inlineForm {
+  display: flex;
+  gap: 10px;
+}
+.why {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.why h3 {
+  font-size: 13px;
+  margin: 0;
+  color: var(--primary);
+}
+.why p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

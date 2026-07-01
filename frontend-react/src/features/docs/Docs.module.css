@@ -1,0 +1,213 @@
+/* Docs page — adapted from docs.html. */
+.layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+  height: fit-content;
+}
+.navGroup {
+  margin-bottom: 22px;
+}
+.navGroup h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-subtle);
+  margin: 0 0 8px;
+}
+.navGroup ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.navLink {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.navLink:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+.header h1 {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  margin: 0;
+}
+.subtitle {
+  color: var(--text-muted);
+  margin: 10px 0 0;
+  font-size: 16px;
+}
+.breadcrumbs {
+  display: flex;
+  gap: 8px;
+  color: var(--text-subtle);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.section {
+  padding: 32px 0;
+  border-top: 1px solid var(--border);
+}
+.section:first-of-type {
+  border-top: none;
+}
+.section h2 {
+  font-family: var(--font-display, inherit);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 8px 0 12px;
+}
+.section h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 22px 0 8px;
+}
+.section p {
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin: 0 0 12px;
+}
+.section code {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  background: var(--bg-hover);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-main);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  background: var(--primary-soft, rgba(230, 32, 56, 0.13));
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.tagPremium {
+  color: var(--warning);
+  background: var(--warning-soft, rgba(245, 165, 36, 0.14));
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 8px;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.varGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.varCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 14px;
+}
+.varCode {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 6px;
+}
+.varDesc {
+  display: block;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.codeExample {
+  background: #0b0c0e;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0;
+  overflow-x: auto;
+}
+.comment {
+  color: var(--text-subtle);
+}
+.cmd {
+  color: var(--success);
+}
+
+.footerCta {
+  margin-top: 40px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  padding: 40px 24px;
+  background: var(--bg-card);
+}
+.footerCta h2 {
+  font-family: var(--font-display, inherit);
+  font-weight: 800;
+}
+.footerCta p {
+  color: var(--text-muted);
+  margin: 8px 0 20px;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+  }
+}

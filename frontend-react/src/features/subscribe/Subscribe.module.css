@@ -1,0 +1,115 @@
+/* Subscribe page — adapted from subscribe.ejs. */
+.page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+  text-align: center;
+}
+.title {
+  font-family: var(--font-display, inherit);
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.lede {
+  color: var(--text-muted);
+  margin: 12px auto 0;
+  max-width: 540px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.statusCard {
+  margin: 32px auto;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--bg-card);
+  padding: 28px;
+}
+.statusCardActive {
+  border-color: rgba(66, 212, 131, 0.4);
+  box-shadow: 0 0 0 1px rgba(66, 212, 131, 0.2), 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+.statusIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  font-size: 24px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+.statusIconActive {
+  background: rgba(66, 212, 131, 0.14);
+  color: var(--success);
+}
+.statusTitle {
+  font-size: 20px;
+  font-weight: 700;
+}
+.statusTier {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft, rgba(230, 32, 56, 0.13));
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 13px;
+}
+.statusSub {
+  color: var(--text-muted);
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin: 32px 0;
+  text-align: left;
+}
+.featureCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  padding: 20px;
+}
+.featureIcon {
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+.featureTitle {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.featureDesc {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.btnTwitch {
+  background: #9146ff;
+  color: #fff;
+  box-shadow: 0 10px 26px rgba(145, 70, 255, 0.28);
+}
+.btnTwitch:hover {
+  background: #7d2ff5;
+  color: #fff;
+}
+.help {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 8px;
+}

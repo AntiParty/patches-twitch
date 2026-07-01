@@ -1,0 +1,158 @@
+/* Commands tab — ported from the legacy commands view. */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 18px;
+}
+
+.cmdList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cmdRow {
+  background: var(--bg-hover);
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.cmdRowHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.cmdName {
+  font-weight: 600;
+  color: var(--primary);
+}
+.cmdRowActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stateTag {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.stateCustom {
+  color: var(--success);
+  background: rgba(66, 212, 131, 0.12);
+}
+.stateDefault {
+  color: var(--text-muted);
+}
+.cmdInputRow {
+  display: flex;
+  gap: 10px;
+}
+
+/* Variables panel */
+.varsPanel {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.varsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+.varsHint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.varsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.varChip {
+  font-size: 12px;
+  background: var(--bg-app);
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color 0.15s;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+}
+.varChip:hover {
+  border-color: var(--primary);
+}
+.varChip code {
+  color: var(--primary);
+  font-weight: 700;
+}
+.varChip div {
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.varsEmpty {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* Live preview */
+.preview {
+  background: #18181b;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.previewHeader {
+  background: #efeff1;
+  color: #000;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.previewBody {
+  flex: 1;
+  padding: 14px;
+  overflow-y: auto;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.msg {
+  line-height: 1.4;
+}
+.msgUser {
+  font-weight: 700;
+}
+.msgBot {
+  font-weight: 700;
+  color: var(--primary);
+}
+.previewNote {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}

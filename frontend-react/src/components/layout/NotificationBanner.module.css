@@ -1,0 +1,77 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid;
+}
+
+.icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.title {
+  color: var(--text-main);
+}
+
+.action {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Variants */
+.info {
+  background: var(--info-soft);
+  border-color: rgba(90, 167, 255, 0.4);
+  color: var(--info);
+}
+.info .action {
+  background: var(--info);
+}
+
+.success {
+  background: var(--success-soft);
+  border-color: rgba(61, 213, 152, 0.4);
+  color: var(--success);
+}
+.success .action {
+  background: var(--success);
+}
+
+.warning {
+  background: var(--warning-soft);
+  border-color: rgba(245, 165, 36, 0.4);
+  color: var(--warning);
+}
+.warning .action {
+  background: var(--warning);
+  color: #1a1a22;
+}
+
+.danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+.danger .icon {
+  color: #ef4444;
+}
+.danger .action {
+  background: #ef4444;
+}

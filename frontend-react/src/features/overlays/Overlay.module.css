@@ -1,0 +1,112 @@
+/* OBS overlay — transparent, lightweight, theme variants via data-theme.
+ * Accent color is driven by the --accent CSS variable set from config. */
+.root {
+  --accent: #e62038;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  color: #fff;
+  padding: 12px;
+  display: inline-flex;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(12, 13, 16, 0.82);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+.wide {
+  gap: 28px;
+  padding: 16px 26px;
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 700;
+}
+.value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-family: "Archivo", "IBM Plex Sans", sans-serif;
+}
+.name {
+  font-size: 16px;
+  font-weight: 800;
+}
+.league {
+  color: var(--accent);
+}
+.divider {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255, 255, 255, 0.12);
+}
+.session.up {
+  color: #42d483;
+}
+.session.down {
+  color: #ff5a57;
+}
+
+.accentBar {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+/* --- Theme variants --- */
+.dark .card {
+  background: rgba(8, 9, 11, 0.92);
+  border-radius: 8px;
+}
+.darkSlim .card {
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+.darkSlim .value {
+  font-size: 16px;
+}
+.neon .card {
+  background: rgba(10, 10, 16, 0.85);
+  box-shadow: 0 0 24px var(--accent);
+  border-color: var(--accent);
+}
+.glass .card {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.terminal .card {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  background: #0b0f0b;
+  border: 1px solid #1f3b1f;
+  border-radius: 4px;
+  color: #6ee36e;
+}
+.terminal .value,
+.terminal .name {
+  font-family: inherit;
+}
+.terminal .league {
+  color: #6ee36e;
+}
+.card .rankFocusScore {
+  font-size: 30px;
+}
+.minimal .card {
+  background: rgba(12, 13, 16, 0.6);
+}

@@ -25,7 +25,7 @@ const ADMIN_ITEMS: SidebarItem[] = [
 export function AdminLayout() {
   const { user } = useAuth()
   return (
-    <div className={`dashboard-scope ${styles.container}`}>
+    <div className={styles.container}>
       <Sidebar
         items={ADMIN_ITEMS}
         logo={<Logo to="/admin" />}

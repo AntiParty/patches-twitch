@@ -27,7 +27,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div className="fx-bg" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
         <div className="card" style={{ maxWidth: 460, padding: 32, textAlign: 'center' }}>
           <i className="fas fa-triangle-exclamation" style={{ fontSize: 32, color: 'var(--danger)' }} />
           <h1 className="section-title" style={{ fontSize: 24, margin: '14px 0 8px' }}>Something went wrong</h1>

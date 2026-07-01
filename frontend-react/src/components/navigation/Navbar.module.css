@@ -26,10 +26,7 @@
   border-radius: 8px;
 }
 .brandName {
-  background: var(--brand-grad);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--text-main);
 }
 
 .links {

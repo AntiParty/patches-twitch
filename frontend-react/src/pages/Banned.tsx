@@ -10,7 +10,7 @@ export function Banned() {
     params.get('reason') || (location.state as { reason?: string } | null)?.reason || 'No reason provided.'
 
   return (
-    <div className={`fx-bg ${styles.shell}`}>
+    <div className={styles.shell}>
       <div className={styles.card}>
         <h1 className={styles.danger}>Account Suspended</h1>
         <p>Your account has been suspended from accessing this service.</p>

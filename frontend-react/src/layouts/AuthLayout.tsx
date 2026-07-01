@@ -4,7 +4,7 @@ import styles from './AuthLayout.module.css'
 
 export function AuthLayout() {
   return (
-    <div className={`fx-bg ${styles.shell}`}>
+    <div className={styles.shell}>
       <div className={styles.center}>
         <Outlet />
       </div>

@@ -37,7 +37,7 @@ export function DashboardLayout() {
   }, [role])
 
   return (
-    <div className={`dashboard-scope ${styles.container}`}>
+    <div className={styles.container}>
       <Sidebar
         items={items}
         logo={<Logo />}

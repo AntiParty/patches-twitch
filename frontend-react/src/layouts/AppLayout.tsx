@@ -6,7 +6,7 @@ import styles from './AppLayout.module.css'
 
 export function AppLayout() {
   return (
-    <div className={`fx-bg ${styles.shell}`}>
+    <div className={styles.shell}>
       <Navbar />
       <main className={styles.content}>
         <Outlet />

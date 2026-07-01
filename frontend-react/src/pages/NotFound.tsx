@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 export function NotFound() {
   return (
-    <main className="fx-bg" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
+    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
       <div style={{ textAlign: 'center' }}>
         <h1 className="section-title">404</h1>
         <p className="section-lede" style={{ margin: '0 auto 20px' }}>

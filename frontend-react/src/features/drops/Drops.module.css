@@ -15,10 +15,7 @@
   margin: 12px 0 10px;
 }
 .gradient {
-  background: var(--brand-grad, linear-gradient(135deg, #b48bff, #7c5cff));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--primary);
 }
 .subtitle {
   color: var(--text-muted);

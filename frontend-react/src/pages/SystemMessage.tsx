@@ -21,7 +21,7 @@ export function SystemMessage() {
   const actionHref = state.actionHref ?? params.get('actionHref') ?? '/'
 
   return (
-    <div className={`fx-bg ${styles.shell}`}>
+    <div className={styles.shell}>
       <div className={styles.card}>
         <h1 className={state.variant === 'danger' ? styles.danger : undefined}>{title}</h1>
         {message && <p>{message}</p>}

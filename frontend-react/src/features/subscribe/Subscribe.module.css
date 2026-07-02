@@ -6,9 +6,8 @@
   text-align: center;
 }
 .title {
-  font-family: var(--font-display, inherit);
-  font-size: clamp(32px, 5vw, 48px);
-  font-weight: 800;
+  font-size: clamp(28px, 4.4vw, 40px);
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 .lede {
@@ -28,8 +27,7 @@
   padding: 28px;
 }
 .statusCardActive {
-  border-color: rgba(66, 212, 131, 0.4);
-  box-shadow: 0 0 0 1px rgba(66, 212, 131, 0.2), 0 18px 44px rgba(0, 0, 0, 0.22);
+  border-color: rgba(61, 213, 152, 0.4);
 }
 .statusIcon {
   width: 56px;
@@ -53,12 +51,12 @@
 .statusTier {
   display: inline-block;
   margin-top: 8px;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--primary-soft, rgba(230, 32, 56, 0.13));
+  background: var(--primary-soft);
   color: var(--primary);
-  font-weight: 700;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 12px;
 }
 .statusSub {
   color: var(--text-muted);
@@ -100,9 +98,8 @@
   gap: 14px;
 }
 .btnTwitch {
-  background: #9146ff;
+  background: var(--twitch);
   color: #fff;
-  box-shadow: 0 10px 26px rgba(145, 70, 255, 0.28);
 }
 .btnTwitch:hover {
   background: #7d2ff5;

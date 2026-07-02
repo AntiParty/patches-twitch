@@ -9,9 +9,8 @@
   margin-bottom: 36px;
 }
 .hero h1 {
-  font-family: var(--font-display, inherit);
   font-size: clamp(2.4rem, 6vw, 4rem);
-  font-weight: 800;
+  font-weight: 700;
   margin: 12px 0 10px;
 }
 .gradient {
@@ -35,14 +34,13 @@
   margin-bottom: 16px;
 }
 .sectionHead h2 {
-  font-family: var(--font-display, inherit);
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0;
 }
 .liveBadge {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--danger);
   background: var(--danger-soft, rgba(255, 90, 87, 0.12));
@@ -165,7 +163,7 @@
   color: var(--primary);
   display: grid;
   place-items: center;
-  font-weight: 800;
+  font-weight: 700;
   margin-bottom: 10px;
 }
 .step h3 {

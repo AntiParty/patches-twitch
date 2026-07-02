@@ -9,9 +9,8 @@
   margin-bottom: 32px;
 }
 .header h1 {
-  font-family: var(--font-display, inherit);
   font-size: clamp(2.2rem, 5vw, 3.2rem);
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 10px;
 }
 .header p {
@@ -65,7 +64,6 @@
 .markdown :global(h2),
 .markdown :global(h3) {
   color: var(--text-main);
-  font-family: var(--font-display, inherit);
   margin: 1.8em 0 0.65em;
 }
 .markdown :global(h1) {

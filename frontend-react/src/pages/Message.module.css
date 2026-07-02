@@ -8,9 +8,8 @@
 .card {
   text-align: center;
   background: var(--bg-card);
-  padding: 3rem;
-  border-radius: var(--radius-lg, 16px);
-  box-shadow: var(--shadow-lg, 0 24px 60px rgba(0, 0, 0, 0.45));
+  padding: 2rem;
+  border-radius: var(--radius-lg);
   max-width: 500px;
   width: 100%;
   border: 1px solid var(--border);
@@ -18,7 +17,6 @@
 .card h1 {
   font-size: 2rem;
   margin: 0 0 1rem;
-  font-family: var(--font-display, inherit);
 }
 .danger {
   color: var(--danger);
@@ -31,10 +29,10 @@
 }
 .reasonBox {
   background: var(--bg-hover);
-  padding: 1.5rem;
-  border-radius: 8px;
+  padding: 1.25rem;
+  border-radius: var(--radius);
   margin: 1.5rem 0;
-  border-left: 4px solid var(--danger);
+  border-left: 3px solid var(--danger);
   text-align: left;
 }
 .reasonLabel {

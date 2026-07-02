@@ -46,9 +46,8 @@
 }
 
 .header h1 {
-  font-family: var(--font-display, inherit);
   font-size: clamp(28px, 4vw, 40px);
-  font-weight: 800;
+  font-weight: 700;
   margin: 0;
 }
 .subtitle {
@@ -72,9 +71,8 @@
   border-top: none;
 }
 .section h2 {
-  font-family: var(--font-display, inherit);
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 8px 0 12px;
 }
 .section h3 {
@@ -195,8 +193,7 @@
   background: var(--bg-card);
 }
 .footerCta h2 {
-  font-family: var(--font-display, inherit);
-  font-weight: 800;
+  font-weight: 700;
 }
 .footerCta p {
   color: var(--text-muted);

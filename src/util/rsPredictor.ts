@@ -273,6 +273,25 @@ function calculateWeightedRegression(points: HistoryEntry[]): {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+/**
+ * Projects the mean rank-500 RS at season end from the current-season trend.
+ *
+ * The season-end rush multiplier models FUTURE acceleration, so it scales the
+ * slope only over the remaining span (xNow → xTarget). Applying it across the
+ * whole regression span would retroactively inflate already-observed history
+ * and overpredict by ~1.5k RS late in a season.
+ */
+export function projectCutoffMean(
+  intercept: number,
+  slopeMs: number,
+  xNow: number,
+  xTarget: number,
+  multiplier: number,
+): number {
+  const fitNow = intercept + slopeMs * xNow;
+  return fitNow + slopeMs * multiplier * (xTarget - xNow);
+}
+
 export function getRemainingDays(): number {
   const endDate = getSeasonEndDate();
   if (!endDate) return 30;
@@ -460,8 +479,9 @@ export async function getRSPrediction(
     const x0            = relevant[0].timestamp;
     const targetDate    = now + remainingDays * oneDayMs;
     const x_target      = targetDate - x0;
+    const x_now         = now - x0;
 
-    const predictedMean = intercept + (slopeMs * multiplier) * x_target;
+    const predictedMean = projectCutoffMean(intercept, slopeMs, x_now, x_target, multiplier);
 
     const term1 = 1;
     const term2 = sumW > 0 ? 1 / sumW : 1;

@@ -32,6 +32,7 @@
         "node_modules",
         "dist",
         "frontend-react",
-        "frontend"
+        "frontend",
+        "backups"
     ]
 }

@@ -9,19 +9,18 @@
 
 .title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(24px, 2.6vw, 34px);
-  line-height: 1.05;
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: clamp(20px, 2.2vw, 26px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   text-wrap: balance;
   color: var(--text-main);
 }
 
 .subtitle {
   color: var(--text-muted);
-  margin-top: 8px;
-  font-size: 14px;
+  margin-top: 6px;
+  font-size: 13px;
   line-height: 1.5;
 }
 

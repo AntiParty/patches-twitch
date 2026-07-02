@@ -1,15 +1,18 @@
-/* Mirrors the legacy `.app-container` / `.main-content` dashboard layout. */
 .container {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 232px 1fr;
   height: 100vh;
   overflow: hidden;
 }
 
 .main {
   overflow-y: auto;
-  padding: 28px 32px;
+  padding: 20px 24px;
   position: relative;
+}
+
+.main > * {
+  max-width: 1200px;
 }
 
 @media (max-width: 860px) {

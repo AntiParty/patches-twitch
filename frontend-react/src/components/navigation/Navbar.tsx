@@ -17,7 +17,7 @@ interface NavLinkDef {
 const DEFAULT_LINKS: NavLinkDef[] = [
   { label: 'Leaderboard', to: '/leaderboard', hideOnMobile: true },
   { label: 'Docs', href: '/docs', hideOnMobile: true },
-  { label: 'Developer', href: '/developer', hideOnMobile: true },
+  { label: 'Drops', to: '/twitch-drops', hideOnMobile: true },
 ]
 
 export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
@@ -57,7 +57,7 @@ export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
           </Link>
         ) : (
           <button type="button" className="btn btn-primary btn-sm" onClick={login}>
-            <i className="fa-brands fa-twitch" /> Log in
+            <i className="fa-brands fa-twitch" /> Log in with Twitch
           </button>
         )}
       </div>

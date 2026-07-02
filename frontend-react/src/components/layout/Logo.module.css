@@ -6,15 +6,14 @@
   color: var(--text-main);
 }
 .logo img {
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
 }
 .logo h1 {
   margin: 0;
-  font-size: 20px;
-  font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--text-main);
 }

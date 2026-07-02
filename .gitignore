@@ -51,3 +51,6 @@ scripts/backup-config.sh
 scripts/seed-output/
 .worktrees/
 /docs/superpowers
+
+# Brainstorm companion sessions
+.superpowers/

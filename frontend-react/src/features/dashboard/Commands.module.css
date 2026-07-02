@@ -2,18 +2,18 @@
 .split {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 18px;
+  gap: 10px;
 }
 
 .cmdList {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 .cmdRow {
-  background: var(--bg-hover);
-  padding: 16px;
+  background: var(--bg-card);
+  padding: 12px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }
@@ -24,7 +24,9 @@
   margin-bottom: 8px;
 }
 .cmdName {
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
   color: var(--primary);
 }
 .cmdRowActions {
@@ -62,7 +64,7 @@
   margin-bottom: 12px;
   font-size: 14px;
   color: var(--text-muted);
-  font-weight: 800;
+  font-weight: 650;
 }
 .varsHint {
   font-size: 11px;

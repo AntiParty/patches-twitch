@@ -8,7 +8,7 @@
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-card);
   flex-wrap: wrap;
 }
 .stripMain {
@@ -36,9 +36,9 @@
 }
 .stripTitle {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 .stripCopy {
@@ -58,14 +58,14 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 36px;
+  min-height: 30px;
   padding: 0 10px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .pill strong {
   color: var(--text-main);
@@ -82,13 +82,13 @@
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  margin-bottom: 30px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 .split {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  gap: 18px;
+  gap: 10px;
 }
 
 .metricValue {
@@ -106,7 +106,6 @@
 }
 .indicatorOn {
   background: var(--success);
-  box-shadow: 0 0 8px var(--success);
 }
 .indicatorOff {
   background: var(--danger);
@@ -114,7 +113,7 @@
 
 .updateItem {
   padding: 12px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--bg-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }

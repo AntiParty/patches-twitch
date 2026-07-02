@@ -7,7 +7,7 @@
   padding: 14px 16px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--bg-card);
   margin-bottom: 18px;
 }
 .statusCopy {
@@ -24,7 +24,7 @@
   justify-content: center;
   flex: 0 0 auto;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-hover);
 }
 .statusReady .statusIcon {
   color: var(--success);
@@ -79,7 +79,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-card);
 }
 .presetSelected {
   border-color: var(--primary);
@@ -177,7 +177,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-card);
   min-height: 90px;
 }
 .liveEmpty {

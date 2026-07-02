@@ -16,7 +16,7 @@
 .why {
   margin-top: 20px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--bg-card);
   border-radius: var(--radius);
   border: 1px solid var(--border);
 }

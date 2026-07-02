@@ -29,7 +29,9 @@
 .botAvatar {
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  background: var(--primary-soft);
+  color: var(--primary);
+  border: 1px solid var(--border);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -55,7 +57,6 @@
 }
 .dotActive {
   background: var(--success);
-  box-shadow: 0 0 8px var(--success);
 }
 .dotInactive {
   background: var(--text-muted);
@@ -93,12 +94,12 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--primary-soft, rgba(230, 32, 56, 0.13));
+  background: var(--primary-soft);
   color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
+  font-weight: 650;
 }
 .steps strong {
   display: block;

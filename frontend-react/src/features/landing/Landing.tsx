@@ -1,275 +1,207 @@
 /*
- * Landing / marketing page. Ported from frontend/views/index.html.
- * Self-contained (own nav + footer) because it has a distinct visual identity.
- * Auth-aware: the login CTA becomes "Go to Dashboard" when signed in.
+ * Landing / marketing page — "Flat & Neutral" redesign.
+ * Stats-forward hero + chat demo + feature grid + how-it-works + CTA.
+ * Rendered under AppLayout (shared Navbar/Footer). Auth-aware CTAs.
  */
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import { Reveal } from '@/components/Reveal'
+import { publicApi } from '@/api/public'
 import styles from './Landing.module.css'
 
 const LOGO = '/assets/logo.png'
 
+/** 1234 -> "1,234"; 2400000 -> "2.4M". */
+function formatStat(n: number): string {
+  if (n >= 10_000) {
+    return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
+  }
+  return new Intl.NumberFormat('en').format(n)
+}
+
 export function Landing() {
   const { isAuthenticated } = useAuth()
-  const [menuOpen, setMenuOpen] = useState(false)
+
+  const { data: stats } = useQuery({
+    queryKey: ['public-stats'],
+    queryFn: publicApi.getStats,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  })
 
   const primaryCtaHref = isAuthenticated ? '/dashboard' : '/login'
-  const primaryCtaLabel = isAuthenticated ? 'Go to Dashboard' : 'Add to Twitch'
+  const primaryCtaLabel = isAuthenticated ? 'Go to Dashboard' : 'Add to my channel'
+
+  // Show real usage numbers only once they're worth bragging about;
+  // otherwise fall back to honest qualitative facts.
+  const impressive = !!stats && stats.userCount >= 500 && stats.commandsProcessed >= 100_000
+  const statCards = impressive
+    ? [
+        { value: formatStat(stats.userCount), label: 'Channels' },
+        { value: formatStat(stats.commandsProcessed), label: 'Commands served' },
+        { value: '10,000+', label: 'Players tracked' },
+      ]
+    : [
+        { value: '30 sec', label: 'Typical setup' },
+        { value: 'Live', label: 'Rank lookups' },
+        { value: 'Free', label: 'For channels' },
+      ]
 
   return (
     <div className={styles.page}>
-      {/* Nav */}
-      <nav className={styles.navbar}>
-        <div className={styles.navContainer}>
-          <a className={styles.logo} href="/" aria-label="FinalsRS home">
-            <span className={styles.logoIcon}>
-              <img src={LOGO} alt="" />
-            </span>
-            FinalsRS
+      {/* Hero */}
+      <section className={styles.hero}>
+        <p className="section-eyebrow">Unofficial ranked utility for THE FINALS</p>
+        <h1 className={styles.headline}>
+          The FINALS rank bot
+          <br />
+          for your Twitch chat
+        </h1>
+        <p className={styles.lede}>
+          Live rank, RS tracking, predictions and overlays for THE FINALS streamers. Free.
+        </p>
+        <div className={styles.ctaGroup}>
+          <a href={primaryCtaHref} className="btn btn-primary btn-lg">
+            {!isAuthenticated && <i className="fa-brands fa-twitch" />} {primaryCtaLabel}
           </a>
-          <div className={`${styles.navLinks} ${menuOpen ? styles.isOpen : ''}`}>
-            <Link to="/leaderboard">Leaderboard</Link>
-            <a href="/twitch-drops">Drops</a>
-            <a href="/docs">Docs</a>
-            {isAuthenticated ? (
-              <a href="/dashboard" className={styles.btnLogin}>
-                Dashboard
-              </a>
-            ) : (
-              <a href="/login" className={styles.btnLogin}>
-                Log in
-              </a>
-            )}
-          </div>
-          <button
-            className={styles.mobileMenuBtn}
-            type="button"
-            aria-label="Open navigation"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
+          <a href="/docs" className="btn btn-ghost btn-lg">
+            View docs
+          </a>
         </div>
-      </nav>
 
-      <main>
-        {/* Hero */}
-        <section className={`${styles.hero} ${styles.landingHero}`}>
-          <div className={`${styles.container} ${styles.heroLayout}`}>
-            <div className={styles.heroCopy}>
-              <p className={styles.eyebrow}>Unofficial ranked utility for THE FINALS</p>
-              <h1>A quiet bot for loud ranked nights.</h1>
-              <p className={styles.subtitle}>
-                FinalsRS lets Twitch chat check RS, peak rank, session changes, and T500
-                predictions while you stay in the match.
-              </p>
-              <div className={styles.ctaGroup}>
-                <a href={primaryCtaHref} className={styles.btnPrimary}>
-                  {primaryCtaLabel}
-                </a>
-                <a href="/docs" className={styles.btnSecondary}>
-                  View commands
-                </a>
-              </div>
-              <div className={styles.heroFacts} aria-label="FinalsRS highlights">
-                <div>
-                  <span className={styles.factValue}>30 sec</span>
-                  <span className={styles.factLabel}>typical setup</span>
-                </div>
-                <div>
-                  <span className={styles.factValue}>Live</span>
-                  <span className={styles.factLabel}>rank lookups</span>
-                </div>
-                <div>
-                  <span className={styles.factValue}>Free</span>
-                  <span className={styles.factLabel}>for channels</span>
-                </div>
-              </div>
+        <div className={styles.statRow} aria-label="Usage stats">
+          {statCards.map((s) => (
+            <div className={styles.statCard} key={s.label}>
+              <span className={styles.statValue}>{s.value}</span>
+              <span className={styles.statLabel}>{s.label}</span>
             </div>
+          ))}
+        </div>
+      </section>
 
-            <Reveal className={styles.consolePanel} aria-label="Example Twitch command output">
-              <div className={styles.consoleTopbar}>
-                <span>Stream chat</span>
-                <span className={styles.statusPill}>Connected</span>
-              </div>
-              <div className={styles.consoleBody}>
-                <div className={styles.chatLine}>
-                  <span className={styles.timestamp}>12:01</span>
-                  <span className={`${styles.username} ${styles.user1}`}>Viewer77:</span>
-                  <span className={styles.message}>!rank</span>
-                </div>
-                <div className={styles.chatLine}>
-                  <span className={styles.timestamp}>12:01</span>
-                  <img src={LOGO} className={styles.botBadge} alt="" />
-                  <span className={`${styles.username} ${styles.botName}`}>FinalsRS:</span>
-                  <span className={styles.message}>
-                    <span className={styles.mention}>@Viewer77</span> Diamond 3, 43,331 RS
-                  </span>
-                </div>
-                <div className={styles.statsGrid} aria-label="Sample ranked stats">
-                  <div className={styles.statTile}>
-                    <span>RS</span>
-                    <strong>43,331</strong>
-                  </div>
-                  <div className={`${styles.statTile} ${styles.positive}`}>
-                    <span>Session</span>
-                    <strong>+145</strong>
-                  </div>
-                </div>
-                <div className={styles.chatLine}>
-                  <span className={styles.timestamp}>12:08</span>
-                  <span className={`${styles.username} ${styles.user2}`}>ModCheck:</span>
-                  <span className={styles.message}>!predict</span>
-                </div>
-                <div className={styles.chatLine}>
-                  <span className={styles.timestamp}>12:08</span>
-                  <img src={LOGO} className={styles.botBadge} alt="" />
-                  <span className={`${styles.username} ${styles.botName}`}>FinalsRS:</span>
-                  <span className={styles.message}>
-                    Current T500 pace: 43.7k RS. You are inside the line.
-                  </span>
-                </div>
-              </div>
-            </Reveal>
+      {/* Chat demo */}
+      <section className={styles.section} aria-label="Example Twitch command output">
+        <div className={styles.chatPanel}>
+          <div className={styles.chatTopbar}>
+            <span className={styles.chatTitle}>Stream chat</span>
+            <span className={styles.statusPill}>Connected</span>
           </div>
-        </section>
-
-        {/* Setup steps */}
-        <section className={styles.setupStrip} aria-label="Setup steps">
-          <div className={`${styles.container} ${styles.setupGrid}`}>
-            <Reveal className={styles.setupStep}>
-              <span>01</span>
-              <h2>Connect Twitch</h2>
-              <p>Sign in once and add FinalsRS to your channel.</p>
-            </Reveal>
-            <Reveal className={styles.setupStep}>
-              <span>02</span>
-              <h2>Link your IGN</h2>
-              <p>
-                Use <code>!link Name#1234</code> so the bot knows who to track.
-              </p>
-            </Reveal>
-            <Reveal className={styles.setupStep}>
-              <span>03</span>
-              <h2>Let chat ask</h2>
-              <p>Viewers use ranked commands without interrupting your queue.</p>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Commands */}
-        <section id="features" className={styles.commandsSection}>
-          <div className={`${styles.container} ${styles.sectionGrid}`}>
-            <Reveal className={styles.sectionIntro}>
-              <p className={styles.eyebrow}>Commands that answer real stream questions</p>
-              <h2>Less dashboard theater. More useful chat output.</h2>
-              <p>
-                The bot is built around the moments viewers already ask about: current rank, peak
-                rank, session movement, and whether the next game matters.
-              </p>
-            </Reveal>
-            <Reveal className={styles.commandList}>
-              {COMMANDS.map((c) => (
-                <div className={styles.commandItem} key={c.cmd}>
-                  <code>{c.cmd}</code>
-                  <div>
-                    <h3>{c.title}</h3>
-                    <p>{c.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </Reveal>
-          </div>
-        </section>
-
-        {/* Proof */}
-        <section id="community" className={styles.proofSection}>
-          <div className={`${styles.container} ${styles.proofLayout}`}>
-            <Reveal className={styles.proofCard}>
-              <p className={styles.quote}>
-                "Finally a Twitch bot that is not bloated. It does exactly what it needs to do."
-              </p>
-              <div className={styles.proofAuthor}>
-                <img
-                  src="https://static-cdn.jtvnw.net/jtv_user_pictures/51a63b23-bb89-41be-ba7b-5a145a1a7bf6-profile_image-70x70.png"
-                  alt="Antiparty"
-                />
-                <div>
-                  <strong>Antiparty</strong>
-                  <span>THE FINALS creator</span>
-                </div>
-              </div>
-            </Reveal>
-            <Reveal className={styles.proofCopy}>
-              <p className={styles.eyebrow}>Built for the pace of ranked</p>
-              <h2>Quiet when you do not need it. Fast when chat does.</h2>
-              <p>
-                FinalsRS stays out of the stream until someone asks. Then it gives a clean answer
-                your viewers can read before the next fight starts.
-              </p>
-              <Link to="/leaderboard" className={styles.textLink}>
-                Check the leaderboard
-              </Link>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className={styles.ctaSection}>
-          <Reveal className={`${styles.container} ${styles.ctaBox}`}>
-            <div>
-              <p className={styles.eyebrow}>Ready when your next queue pops</p>
-              <h2>Add FinalsRS to your Twitch channel.</h2>
+          <div className={styles.chatBody}>
+            <div className={styles.chatLine}>
+              <span className={styles.timestamp}>12:01</span>
+              <span className={`${styles.username} ${styles.user1}`}>Viewer77:</span>
+              <span className={styles.message}>
+                <code>!rank</code>
+              </span>
             </div>
-            <a href={primaryCtaHref} className={`${styles.btnPrimary} ${styles.large}`}>
-              {isAuthenticated ? 'Go to Dashboard' : 'Get started free'}
-            </a>
-          </Reveal>
-        </section>
-      </main>
+            <div className={styles.chatLine}>
+              <span className={styles.timestamp}>12:01</span>
+              <img src={LOGO} className={styles.botBadge} alt="" />
+              <span className={`${styles.username} ${styles.botName}`}>FinalsRS:</span>
+              <span className={styles.message}>
+                <span className={styles.mention}>@Viewer77</span> Diamond 3, 43,331 RS (+145 this
+                stream)
+              </span>
+            </div>
+            <div className={styles.chatLine}>
+              <span className={styles.timestamp}>12:08</span>
+              <span className={`${styles.username} ${styles.user2}`}>ModCheck:</span>
+              <span className={styles.message}>
+                <code>!predict</code>
+              </span>
+            </div>
+            <div className={styles.chatLine}>
+              <span className={styles.timestamp}>12:08</span>
+              <img src={LOGO} className={styles.botBadge} alt="" />
+              <span className={`${styles.username} ${styles.botName}`}>FinalsRS:</span>
+              <span className={styles.message}>Current T500 pace: 43.7k RS. You are inside the line.</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Footer */}
-      <footer className={styles.footer}>
-        <div className={`${styles.container} ${styles.footerGrid}`}>
-          <div className={styles.footerCol}>
-            <h3>FinalsRS</h3>
-            <p>The unofficial Twitch companion bot for THE FINALS ranked stats.</p>
+      {/* Features */}
+      <section className={styles.section} id="features">
+        <p className="section-eyebrow">Features</p>
+        <h2 className={styles.sectionTitle}>Everything the stream actually asks for</h2>
+        <div className={styles.featureGrid}>
+          {FEATURES.map((f) => (
+            <div className={styles.featureCard} key={f.title}>
+              <i className={`${f.icon} ${styles.featureIcon}`} />
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className={styles.section} id="how-it-works">
+        <p className="section-eyebrow">Setup</p>
+        <h2 className={styles.sectionTitle}>Live in under a minute</h2>
+        <div className={styles.stepGrid}>
+          <div className={styles.step}>
+            <span className={styles.stepNum}>01</span>
+            <h3>Log in with Twitch</h3>
+            <p>One click. The bot joins your channel automatically.</p>
           </div>
-          <div className={styles.footerCol}>
-            <h4>Product</h4>
-            <a href="/docs">Commands</a>
-            <Link to="/leaderboard">Leaderboard</Link>
-            <a href="/twitch-drops">Drops</a>
+          <div className={styles.step}>
+            <span className={styles.stepNum}>02</span>
+            <h3>Link your embark ID</h3>
+            <p>
+              Use <code>!link Name#1234</code> or the dashboard so the bot knows who to track.
+            </p>
           </div>
-          <div className={styles.footerCol}>
-            <h4>Resources</h4>
-            <a href="/docs">Documentation</a>
-            <a href="https://discord.com/invite/2UKzvzSEqA" target="_blank" rel="noreferrer">
-              Support
-            </a>
-          </div>
-          <div className={styles.footerCol}>
-            <h4>Legal</h4>
-            <a href="/legal">Privacy</a>
-            <a href="/legal#terms">Terms</a>
+          <div className={styles.step}>
+            <span className={styles.stepNum}>03</span>
+            <h3>Let chat ask</h3>
+            <p>Viewers use ranked commands while you stay in the match.</p>
           </div>
         </div>
-        <div className={`${styles.container} ${styles.footerBottom}`}>
-          <p>&copy; {new Date().getFullYear()} FinalsRS. Not affiliated with Embark Studios.</p>
+      </section>
+
+      {/* Final CTA */}
+      <section className={styles.ctaStrip}>
+        <div>
+          <h2 className={styles.ctaTitle}>Add FinalsRS to your Twitch channel</h2>
+          <p className={styles.ctaSub}>Free for every channel. Ready before your next queue pops.</p>
         </div>
-      </footer>
+        <a href={primaryCtaHref} className="btn btn-primary btn-lg">
+          {isAuthenticated ? 'Go to Dashboard' : 'Get started free'}
+        </a>
+      </section>
     </div>
   )
 }
 
-const COMMANDS = [
-  { cmd: '!rank', title: 'Current ranked state', desc: 'RS and league in one compact response.' },
-  { cmd: '!record', title: 'Stream session movement', desc: 'Track RS gained or lost since the stream started.' },
-  { cmd: '!peak', title: 'Best season result', desc: 'Show peak rank and RS without opening another tab.' },
-  { cmd: '!predict', title: 'T500 pressure check', desc: 'Estimate the cutoff and give chat a reason to care.' },
+const FEATURES = [
+  {
+    icon: 'fas fa-ranking-star',
+    title: 'Live rank command',
+    desc: 'Chat types !rank and gets league, RS and session movement in one line.',
+  },
+  {
+    icon: 'fas fa-terminal',
+    title: 'Custom commands',
+    desc: 'Edit every response, add variables, and keep your channel voice.',
+  },
+  {
+    icon: 'fas fa-chart-line',
+    title: 'Predictions',
+    desc: 'Start Twitch predictions on rank outcomes — automated for premium channels.',
+  },
+  {
+    icon: 'fas fa-display',
+    title: 'OBS overlays',
+    desc: 'Themeable rank overlay for your stream, updated live, token-secured.',
+  },
+  {
+    icon: 'fas fa-trophy',
+    title: 'Leaderboard',
+    desc: 'Season leaderboard with league filters, search, and Ruby cutoff tracking.',
+  },
+  {
+    icon: 'fas fa-robot',
+    title: 'Custom bot identity',
+    desc: 'Premium channels can send responses from their own bot account.',
+  },
 ]

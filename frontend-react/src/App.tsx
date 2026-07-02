@@ -55,9 +55,6 @@ export default function App() {
         }
       >
       <Routes>
-        {/* Landing — self-contained marketing page (own nav/footer) */}
-        <Route path="/" element={<Landing />} />
-
         {/* Internal analyst dashboard (own 403 access handling) */}
         <Route path="/statistics" element={<Statistics />} />
 
@@ -68,8 +65,9 @@ export default function App() {
         <Route path="/banned" element={<Banned />} />
         <Route path="/system-message" element={<SystemMessage />} />
 
-        {/* Other public / marketing pages share the AppLayout shell */}
+        {/* Public / marketing pages share the AppLayout shell */}
         <Route element={<AppLayout />}>
+          <Route path="/" element={<Landing />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/developer" element={<Developer />} />

@@ -92,6 +92,36 @@ function exportStatsToJson() {
   });
 }
 
+// --- React SPA serving (production) ---
+// When SERVE_REACT=true the Express server serves the built frontend-react SPA
+// for page navigations, while all API/auth/overlay/data endpoints keep being
+// handled by the routers. These prefixes stay backend-owned (everything else is
+// treated as a client-side route and falls back to the SPA's index.html).
+const REACT_BACKEND_PREFIXES = [
+  '/api', '/admin/api', '/admin/login', '/admin/logout',
+  '/login', '/reauth', '/callback', '/logout',
+  '/health', '/metrics', '/internal', '/overlays',
+  '/drops.json', '/privacy.md', '/terms.md', '/sitemap.xml', '/robots.txt',
+  '/stats.json', '/force-stats', '/users', '/uploads', '/docs-markdown',
+  '/statistics/login', '/botmetrics', '/analytics-dashboard', '/test-api', '/analyst',
+];
+
+function isReactBackendPath(p: string): boolean {
+  return REACT_BACKEND_PREFIXES.some((prefix) => p === prefix || p.startsWith(prefix + '/'));
+}
+
+function reactSpaFallback(distDir: string) {
+  const indexHtml = path.join(distDir, 'index.html');
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    if (isReactBackendPath(req.path)) return next();
+    // Requests for real files (e.g. *.js, *.css, *.png) fall through to static/404.
+    const lastSegment = req.path.split('/').pop() || '';
+    if (lastSegment.includes('.') && !lastSegment.endsWith('.html')) return next();
+    res.sendFile(indexHtml);
+  };
+}
+
 // --- Express Server Setup ---
 export const setupServer = () => {
   // Path to frontend assets and templates
@@ -147,6 +177,27 @@ export const setupServer = () => {
 
   // Serve static files from frontend directory
   app.use(express.static(publicPath));
+
+  // --- React SPA (production) ---
+  // Serve the built SPA's hashed assets + fall back to index.html for client
+  // routes. Placed before session/CSRF so static page serving stays cheap; all
+  // backend endpoints below are untouched. Toggle with SERVE_REACT=true.
+  const serveReact = process.env.SERVE_REACT === 'true';
+  if (serveReact) {
+    const reactDist = path.join(process.cwd(), 'frontend-react', 'dist');
+    logger.info('Serving React SPA from:', reactDist);
+    app.use(
+      express.static(reactDist, {
+        index: false,
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('index.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+          }
+        },
+      }),
+    );
+    app.use(reactSpaFallback(reactDist));
+  }
 
   // Session middleware
   app.use(session(sessionConfig));

@@ -11,6 +11,8 @@
     "start:bot": "NODE_ENV=production bun run dist/bot.js",
     "start:all": "concurrently -n server,bot -c green,blue \"bun run start:server\" \"bun run start:bot\"",
     "build": "tsc",
+    "build:web": "npm --prefix frontend-react install && npm --prefix frontend-react run build",
+    "build:all": "npm run build && npm run build:web",
     "test": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/**/*.test.ts\" --timeout 10000",
     "test:unit": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/unit/**/*.test.ts\" --timeout 5000",
     "test:integration": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/integration/**/*.test.ts\" --timeout 15000",

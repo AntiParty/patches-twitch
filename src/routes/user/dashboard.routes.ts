@@ -97,6 +97,32 @@ router.get("/dashboard", requireUser, csrfProtection, async (req: any, res: any)
 });
 
 /**
+ * GET /api/me
+ * Channel profile for the React dashboard shell. The legacy EJS dashboard
+ * injected these fields server-side; the SPA needs a read-only endpoint for the
+ * same data (bot state, linked player id, token health). Premium/subscription
+ * status is served separately by /api/subscription/status.
+ */
+router.get('/api/me', requireUserAPI, async (req: any, res: any) => {
+    try {
+        const channel: any = await Channel.findOne({ where: { username: req.session.twitchUsername } });
+        if (!channel) {
+            return res.status(404).json({ error: 'Channel not found.' });
+        }
+        res.json({
+            username: channel.get('username'),
+            twitchUserId: channel.get('twitch_user_id'),
+            playerId: channel.get('player_id') || null,
+            botEnabled: Boolean(channel.get('bot_enabled')),
+            authRevoked: Boolean(channel.auth_revoked),
+        });
+    } catch (err) {
+        logger.error('Error fetching /api/me:', err);
+        res.status(500).json({ error: 'Failed to fetch profile.' });
+    }
+});
+
+/**
  * POST /api/link-account
  * Link THE FINALS player ID to Twitch account
  */

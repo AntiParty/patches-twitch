@@ -7,7 +7,6 @@
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  backdrop-filter: blur(4px);
   padding: 24px;
   animation: overlayIn 160ms ease;
 }
@@ -17,7 +16,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, var(--radius));
   width: 100%;
-  padding: 24px;
+  padding: 20px;
   box-shadow: var(--shadow-lg, 0 24px 60px rgba(0, 0, 0, 0.45));
   animation: modalIn 200ms ease;
 }
@@ -31,8 +30,9 @@
 }
 .title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--text-main);
 }
 .close {

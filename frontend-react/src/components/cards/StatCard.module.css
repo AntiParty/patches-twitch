@@ -1,13 +1,11 @@
 .stat {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
-    var(--bg-card);
+  background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, var(--radius));
-  padding: 18px 20px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
 .top {
@@ -16,9 +14,11 @@
   justify-content: space-between;
 }
 .label {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 10.5px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 .icon {
   color: var(--primary);
@@ -26,9 +26,9 @@
 }
 
 .value {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text-main);
   line-height: 1;
   font-variant-numeric: tabular-nums;

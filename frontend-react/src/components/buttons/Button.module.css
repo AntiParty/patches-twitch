@@ -1,7 +1,6 @@
 .danger {
   background: var(--danger);
   color: #fff;
-  box-shadow: 0 6px 20px rgba(255, 90, 87, 0.24);
 }
 .danger:hover {
   background: #ff6f6c;

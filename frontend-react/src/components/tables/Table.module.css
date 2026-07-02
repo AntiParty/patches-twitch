@@ -10,21 +10,21 @@
 
 .table th {
   text-align: left;
-  padding: 14px;
+  padding: 8px 12px;
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
   border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
   white-space: nowrap;
 }
 
 .table td {
-  padding: 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .table tr:last-child td {

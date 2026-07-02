@@ -10,13 +10,13 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 9px 14px;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -28,6 +28,6 @@
   color: var(--text-main);
 }
 .tab.active {
-  color: var(--primary);
+  color: var(--text-main);
   border-bottom-color: var(--primary);
 }

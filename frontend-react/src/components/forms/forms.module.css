@@ -5,7 +5,7 @@
   gap: 6px;
 }
 .label {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-main);
 }
@@ -23,17 +23,17 @@
 }
 
 .input {
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-main);
-  min-height: 42px;
-  padding: 0 14px;
-  border-radius: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
   width: 100%;
-  font-size: 14px;
+  font-size: 13px;
   font-family: inherit;
   transition-property: border-color, box-shadow, background-color;
-  transition-duration: 180ms;
+  transition-duration: 140ms;
 }
 .input::placeholder {
   color: var(--text-subtle);
@@ -41,7 +41,7 @@
 .input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-ring, rgba(230, 32, 56, 0.16));
+  box-shadow: 0 0 0 3px var(--primary-ring);
 }
 .invalid {
   border-color: var(--danger);
@@ -51,8 +51,8 @@
 }
 
 .textarea {
-  min-height: 96px;
-  padding: 12px 14px;
+  min-height: 88px;
+  padding: 10px 12px;
   line-height: 1.5;
   resize: vertical;
 }

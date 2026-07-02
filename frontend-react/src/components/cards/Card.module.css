@@ -1,14 +1,8 @@
-/* Ported from the legacy dashboard `.card`. */
 .card {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
-    var(--bg-card);
+  background: var(--bg-card);
   border-radius: var(--radius-lg, var(--radius));
-  padding: 24px;
+  padding: 16px;
   border: 1px solid var(--border);
-  box-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
   display: flex;
   flex-direction: column;
 }
@@ -23,11 +17,10 @@
 
 .title {
   margin: 0;
-  font-size: 15px;
-  font-family: var(--font-display);
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 650;
   color: var(--text-main);
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .subtitle {

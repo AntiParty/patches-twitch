@@ -10,9 +10,11 @@
   align-items: baseline;
 }
 .label {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 10.5px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 .value {
   font-size: 12px;
@@ -21,7 +23,7 @@
 }
 
 .track {
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: var(--bg-hover);
   overflow: hidden;

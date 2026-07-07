@@ -6,6 +6,8 @@ export function getBroadcasterOAuthScopes(): string[] {
     'channel:bot',
     'user:read:subscriptions',
     'channel:manage:predictions',
+    'channel:manage:redemptions',
+    'channel:read:redemptions',
   ];
 }
 

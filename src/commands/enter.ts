@@ -28,6 +28,8 @@ export async function execute(
     if (!result.ok) {
       if (result.reason === 'at_cap') {
         await ctx.say(`@${username}, you already have the max ${result.cap} tickets. 🎟️`, messageId);
+      } else if (result.reason === 'paused') {
+        await ctx.say(`@${username}, entries are paused right now — hang tight! ⏸️`, messageId);
       } else {
         await ctx.say(`@${username}, no giveaway is running right now.`, messageId);
       }

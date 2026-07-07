@@ -969,7 +969,7 @@ class Giveaway extends Model {
   declare id: number;
   declare channel: string;
   declare type: 'ticket' | 'redeem';
-  declare status: 'open' | 'drawn' | 'closed';
+  declare status: 'open' | 'paused' | 'drawn' | 'closed';
   declare prize: string | null;
   declare max_tickets_per_user: number;
   declare reward_id: string | null;

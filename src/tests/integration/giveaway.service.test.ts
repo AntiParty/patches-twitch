@@ -9,7 +9,10 @@ import {
   drawWinner,
   getActiveGiveaway,
   listEntries,
+  pauseGiveaway,
   redraw,
+  resetEntries,
+  resumeGiveaway,
 } from '@/services/giveaway.service';
 
 describe('giveaway.service', function () {
@@ -147,5 +150,36 @@ describe('giveaway.service', function () {
     await closeGiveaway(active!.id);
     const after = await getActiveGiveaway(channel);
     assert.equal(after, null);
+  });
+
+  it('pause blocks ticket entries and resume allows them again', async () => {
+    await createGiveaway({ channel, type: 'ticket', prize: 'A', maxTicketsPerUser: 5 });
+    const active = await getActiveGiveaway(channel);
+
+    assert.equal(await pauseGiveaway(active!.id), true);
+    const paused = await addTicketEntry({ channel, userId: 'u1', username: 'User1' });
+    assert.equal(paused.ok, false);
+    if (!paused.ok) assert.equal(paused.reason, 'paused');
+
+    assert.equal(await resumeGiveaway(active!.id), true);
+    const resumed = await addTicketEntry({ channel, userId: 'u1', username: 'User1' });
+    assert.equal(resumed.ok, true);
+  });
+
+  it('resetEntries wipes entries and reopens the giveaway for another round', async () => {
+    const created = await createGiveaway({ channel, type: 'redeem', prize: 'A', rewardCost: 100 });
+    if (!created.ok) throw new Error('expected create ok');
+    await created.giveaway.update({ reward_id: 'reward-xyz' });
+    await addRedeemEntry({ rewardId: 'reward-xyz', channel, userId: 'u1', username: 'User1', redemptionId: 'r-1' });
+
+    const active = await getActiveGiveaway(channel);
+    await drawWinner(active!.id, () => 0);
+
+    assert.equal(await resetEntries(active!.id), true);
+    const after = await getActiveGiveaway(channel);
+    assert.equal(after!.status, 'open');
+    assert.equal(after!.winner_username, null);
+    const entries = await listEntries(after!.id);
+    assert.equal(entries.total, 0);
   });
 });

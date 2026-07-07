@@ -63,13 +63,15 @@ export interface AddTicketInput {
 
 export type AddTicketResult =
   | { ok: true; ticketCount: number; cap: number }
-  | { ok: false; reason: 'no_giveaway' | 'wrong_type' | 'at_cap'; ticketCount?: number; cap?: number };
+  | { ok: false; reason: 'no_giveaway' | 'wrong_type' | 'at_cap' | 'paused'; ticketCount?: number; cap?: number };
 
 export async function addTicketEntry(input: AddTicketInput): Promise<AddTicketResult> {
   const channel = normalizeChannel(input.channel);
   const giveaway = await getActiveGiveaway(channel);
-  if (!giveaway || giveaway.status !== 'open') return { ok: false, reason: 'no_giveaway' };
+  if (!giveaway) return { ok: false, reason: 'no_giveaway' };
   if (giveaway.type !== 'ticket') return { ok: false, reason: 'wrong_type' };
+  if (giveaway.status === 'paused') return { ok: false, reason: 'paused' };
+  if (giveaway.status !== 'open') return { ok: false, reason: 'no_giveaway' };
 
   const cap = giveaway.max_tickets_per_user;
   const current = await GiveawayEntry.count({
@@ -207,4 +209,38 @@ export async function closeGiveaway(giveawayId: number): Promise<void> {
     return;
   }
   await giveaway.update({ status: 'closed', closed_at: new Date() });
+}
+
+/** Pause a running giveaway so new entries/redeems are refused. No-op if already drawn/closed. */
+export async function pauseGiveaway(giveawayId: number): Promise<boolean> {
+  const giveaway = await Giveaway.findByPk(giveawayId);
+  if (!giveaway || giveaway.status !== 'open') return false;
+  await giveaway.update({ status: 'paused' });
+  return true;
+}
+
+/** Resume a paused giveaway so entries/redeems are accepted again. */
+export async function resumeGiveaway(giveawayId: number): Promise<boolean> {
+  const giveaway = await Giveaway.findByPk(giveawayId);
+  if (!giveaway || giveaway.status !== 'paused') return false;
+  await giveaway.update({ status: 'open' });
+  return true;
+}
+
+/**
+ * Wipe every entry and reopen the giveaway for another round, keeping the same
+ * reward. Used after a channel-point winner accepts, so the raffle continues.
+ */
+export async function resetEntries(giveawayId: number): Promise<boolean> {
+  const giveaway = await Giveaway.findByPk(giveawayId);
+  if (!giveaway) return false;
+  await GiveawayEntry.destroy({ where: { giveaway_id: giveawayId } });
+  await giveaway.update({
+    status: 'open',
+    winner_user_id: null,
+    winner_username: null,
+    winner_slot: null,
+    drawn_at: null,
+  });
+  return true;
 }

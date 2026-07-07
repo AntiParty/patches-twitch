@@ -4,7 +4,7 @@ const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
-import { createReward, setRewardEnabled, setRewardPaused, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
+import { createReward, deleteReward, setRewardPaused, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway } from "./services/giveaway.service";
 import { decryptChannelAccessToken } from "./util/twitchUtils";
 import logger from "./util/logger";
@@ -411,7 +411,8 @@ dbReady.then(async () => {
         const giveaway = await getActiveGiveaway(channelName);
         if (giveaway?.reward_id && channel?.twitch_user_id) {
           await removeRedemptionSubscription(channel.twitch_user_id, giveaway.reward_id);
-          await setRewardEnabled(channel.id, giveaway.reward_id, false);
+          // Remove the reward from the channel entirely when the giveaway ends.
+          await deleteReward(channel.id, giveaway.reward_id);
         }
         return res.json({ success: true });
       } catch (err) {

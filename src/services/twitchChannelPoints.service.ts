@@ -137,6 +137,25 @@ export async function setRewardPaused(
   return patchReward(channelId, rewardId, { is_paused: paused }, 'setRewardPaused');
 }
 
+/** Delete the custom reward from the channel entirely (used when a giveaway ends). */
+export async function deleteReward(channelId: number, rewardId: string): Promise<boolean> {
+  try {
+    await requestWithRefresh(channelId, async (channel, token) => {
+      return axios.delete(REWARDS_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID!,
+        },
+        params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+      });
+    });
+    return true;
+  } catch (err: any) {
+    logger.error('[ChannelPoints] deleteReward failed', err?.response?.data || err?.message);
+    return false;
+  }
+}
+
 async function patchReward(
   channelId: number,
   rewardId: string,

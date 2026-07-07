@@ -188,7 +188,15 @@ export function Giveaways() {
   }
 
   const handleClose = async () => {
-    const ok = await confirm({ title: 'Close giveaway', body: 'Close this giveaway? Viewers can no longer enter.', confirmLabel: 'Close', danger: true })
+    const isRedeem = giveaway?.type === 'redeem'
+    const ok = await confirm({
+      title: 'End giveaway',
+      body: isRedeem
+        ? 'This ends the giveaway and removes the channel-point reward from your channel. Winners you already drew are kept.'
+        : 'This ends the giveaway for good. Viewers can no longer enter.',
+      confirmLabel: 'End giveaway',
+      danger: true,
+    })
     if (!ok) return
     try {
       if (giveaway?.type === 'redeem') {
@@ -327,7 +335,7 @@ export function Giveaways() {
               )}
               {giveaway.type === 'ticket' && (giveaway.status === 'open' || giveaway.status === 'paused') && (
                 <Button icon="fas fa-lock" loading={lock.isPending} onClick={handleLock} disabled={perUser.length === 0}>
-                  Close Giveaway
+                  Close Entries
                 </Button>
               )}
               {canSpin && (
@@ -345,7 +353,9 @@ export function Giveaways() {
               {giveaway.type === 'redeem' && winners.length > 0 && (
                 <Button icon="fas fa-check" loading={reset.isPending} onClick={handleConfirmClear}>Confirm & clear</Button>
               )}
-              <Button variant="danger" icon="fas fa-xmark" loading={close.isPending || redeemClose.isPending} onClick={handleClose}>Close</Button>
+              <Button variant="danger" icon="fas fa-xmark" loading={close.isPending || redeemClose.isPending} onClick={handleClose}>
+                {giveaway.type === 'redeem' ? 'End & remove reward' : 'End Giveaway'}
+              </Button>
             </div>
           </div>
 

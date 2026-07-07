@@ -4,7 +4,7 @@ const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
-import { createReward, setRewardEnabled, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
+import { createReward, setRewardEnabled, setRewardPaused, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway } from "./services/giveaway.service";
 import { decryptChannelAccessToken } from "./util/twitchUtils";
 import logger from "./util/logger";
@@ -407,6 +407,24 @@ dbReady.then(async () => {
         return res.json({ success: true });
       } catch (err) {
         logger.error("[ControlAPI] Failed to stop redeem giveaway:", err);
+        return res.status(500).json({ error: "Internal error" });
+      }
+    });
+
+    controlApp.post("/giveaway/redeem/pause", async (req: any, res: any) => {
+      const channelName = String(req.body?.channel || "").trim().toLowerCase();
+      const paused = Boolean(req.body?.paused);
+      if (!channelName) return res.status(400).json({ error: "channel is required" });
+
+      try {
+        const channel = await Channel.findOne({ where: { username: channelName } });
+        const giveaway = await getActiveGiveaway(channelName);
+        if (giveaway?.reward_id && channel?.twitch_user_id) {
+          await setRewardPaused(channel.id, giveaway.reward_id, paused);
+        }
+        return res.json({ success: true });
+      } catch (err) {
+        logger.error("[ControlAPI] Failed to pause/resume redeem reward:", err);
         return res.status(500).json({ error: "Internal error" });
       }
     });

@@ -9,7 +9,10 @@ import {
   drawWinner,
   getActiveGiveaway,
   listEntries,
+  pauseGiveaway,
   redraw,
+  resetEntries,
+  resumeGiveaway,
 } from '@/services/giveaway.service';
 import { hasRedemptionsScope } from '@/services/twitchChannelPoints.service';
 import logger from '@/util/logger';
@@ -146,6 +149,48 @@ router.post('/api/user/giveaways/close', requireUserAPI, csrfProtection, (req, r
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
     await closeGiveaway(giveaway.id);
+    return res.json({ success: true });
+  })
+);
+
+async function setRewardPausedViaControl(channel: string, paused: boolean) {
+  try {
+    await axios.post(`${BOT_CONTROL_URL}/giveaway/redeem/pause`, { channel, paused }, { timeout: 8000 });
+  } catch (err: any) {
+    logger.error('[GiveawayDashboard] reward pause proxy failed', err?.response?.data || err?.message);
+  }
+}
+
+router.post('/api/user/giveaways/pause', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'pause', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    const ok = await pauseGiveaway(giveaway.id);
+    if (giveaway.type === 'redeem' && giveaway.reward_id) {
+      await setRewardPausedViaControl(channel.username, true);
+    }
+    return res.json({ success: ok });
+  })
+);
+
+router.post('/api/user/giveaways/resume', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'resume', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    const ok = await resumeGiveaway(giveaway.id);
+    if (giveaway.type === 'redeem' && giveaway.reward_id) {
+      await setRewardPausedViaControl(channel.username, false);
+    }
+    return res.json({ success: ok });
+  })
+);
+
+// Channel-point "confirm winner accepted": wipe entries and reopen for another round.
+router.post('/api/user/giveaways/reset', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'reset', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    await resetEntries(giveaway.id);
     return res.json({ success: true });
   })
 );

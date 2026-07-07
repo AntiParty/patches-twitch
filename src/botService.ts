@@ -348,6 +348,14 @@ dbReady.then(async () => {
       const prompt = typeof req.body?.prompt === "string" ? req.body.prompt : undefined;
       const backgroundColor = typeof req.body?.backgroundColor === "string" ? req.body.backgroundColor : undefined;
       const winnerCount = Math.max(1, Math.min(50, Math.floor(Number(req.body?.winnerCount) || 1)));
+      // Optional Twitch-enforced limits; anything below 1 or non-numeric means "no limit".
+      const parseLimit = (v: any): number | undefined => {
+        const n = Math.floor(Number(v));
+        return Number.isFinite(n) && n >= 1 ? n : undefined;
+      };
+      const maxPerUserPerStream = parseLimit(req.body?.maxPerUserPerStream);
+      const maxPerStream = parseLimit(req.body?.maxPerStream);
+      const cooldownSeconds = parseLimit(req.body?.cooldownSeconds);
       if (!channelName || !cost) {
         return res.status(400).json({ error: "channel and cost are required" });
       }
@@ -367,6 +375,9 @@ dbReady.then(async () => {
           prize: prize || null,
           rewardCost: cost,
           targetWinnerCount: winnerCount,
+          maxPerUserPerStream,
+          maxPerStream,
+          cooldownSeconds,
         });
         if (!created.ok) {
           return res.status(409).json({ error: "A giveaway is already active. Close it first." });
@@ -377,6 +388,9 @@ dbReady.then(async () => {
           cost,
           prompt,
           backgroundColor,
+          maxPerUserPerStream,
+          maxPerStream,
+          cooldownSeconds,
         });
         if (!reward.ok) {
           // Roll back the giveaway row we just created so state stays consistent.

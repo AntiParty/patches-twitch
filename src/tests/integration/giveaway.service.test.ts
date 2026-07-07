@@ -47,6 +47,23 @@ describe('giveaway.service', function () {
     if (!second.ok) assert.equal(second.reason, 'already_active');
   });
 
+  it('persists reward limit settings on redeem giveaways', async () => {
+    const created = await createGiveaway({
+      channel,
+      type: 'redeem',
+      prize: 'Key',
+      rewardCost: 500,
+      maxPerUserPerStream: 1,
+      cooldownSeconds: 60,
+    });
+    assert.equal(created.ok, true);
+
+    const giveaway = await getActiveGiveaway(channel);
+    assert.equal(giveaway!.max_per_user_per_stream, 1);
+    assert.equal(giveaway!.max_per_stream, null);
+    assert.equal(giveaway!.cooldown_seconds, 60);
+  });
+
   it('allows one entry per person and refuses a second', async () => {
     await createGiveaway({ channel, type: 'ticket', prize: 'A' });
 

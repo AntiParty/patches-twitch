@@ -12,6 +12,9 @@ export interface RedeemStartInput {
   winnerCount: number
   prompt?: string
   backgroundColor?: string
+  maxPerUserPerStream?: number
+  maxPerStream?: number
+  cooldownSeconds?: number
 }
 
 export interface UpdateGiveawayInput {
@@ -20,6 +23,10 @@ export interface UpdateGiveawayInput {
   winnerCount?: number
   prompt?: string
   backgroundColor?: string
+  // 0 turns a limit off; omit to keep the reward's current setting.
+  maxPerUserPerStream?: number
+  maxPerStream?: number
+  cooldownSeconds?: number
 }
 
 export const giveawaysApi = {

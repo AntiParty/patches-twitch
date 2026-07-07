@@ -991,6 +991,9 @@ class Giveaway extends Model {
   declare winners_json: string;
   declare reward_id: string | null;
   declare reward_cost: number | null;
+  declare max_per_user_per_stream: number | null;
+  declare max_per_stream: number | null;
+  declare cooldown_seconds: number | null;
   declare winner_user_id: string | null;
   declare winner_username: string | null;
   declare winner_slot: number | null;
@@ -1011,6 +1014,9 @@ Giveaway.init(
     winners_json: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
     reward_id: { type: DataTypes.STRING, allowNull: true },
     reward_cost: { type: DataTypes.INTEGER, allowNull: true },
+    max_per_user_per_stream: { type: DataTypes.INTEGER, allowNull: true },
+    max_per_stream: { type: DataTypes.INTEGER, allowNull: true },
+    cooldown_seconds: { type: DataTypes.INTEGER, allowNull: true },
     winner_user_id: { type: DataTypes.STRING, allowNull: true },
     winner_username: { type: DataTypes.STRING, allowNull: true },
     winner_slot: { type: DataTypes.INTEGER, allowNull: true },

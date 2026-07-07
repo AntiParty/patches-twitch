@@ -74,9 +74,44 @@ async function requestWithRefresh(
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 
+export interface RewardLimitInput {
+  maxPerUserPerStream?: number | null;
+  maxPerStream?: number | null;
+  cooldownSeconds?: number | null;
+}
+
+/**
+ * Map optional limit settings to Twitch's paired enable/value fields.
+ * Positive number = enable; null/invalid = disable (emitted only when
+ * includeDisables, i.e. PATCH); undefined = omit the pair entirely.
+ */
+export function buildRewardLimitFields(
+  input: RewardLimitInput,
+  opts: { includeDisables: boolean }
+): Record<string, unknown> {
+  const pairs: [keyof RewardLimitInput, string, string][] = [
+    ['maxPerUserPerStream', 'is_max_per_user_per_stream_enabled', 'max_per_user_per_stream'],
+    ['maxPerStream', 'is_max_per_stream_enabled', 'max_per_stream'],
+    ['cooldownSeconds', 'is_global_cooldown_enabled', 'global_cooldown_seconds'],
+  ];
+  const out: Record<string, unknown> = {};
+  for (const [key, enabledField, valueField] of pairs) {
+    const raw = input[key];
+    if (raw === undefined) continue;
+    const value = typeof raw === 'number' && Number.isFinite(raw) ? Math.floor(raw) : 0;
+    if (value >= 1) {
+      out[enabledField] = true;
+      out[valueField] = value;
+    } else if (opts.includeDisables) {
+      out[enabledField] = false;
+    }
+  }
+  return out;
+}
+
 export async function createReward(
   channelId: number,
-  input: { title: string; cost: number; prompt?: string; backgroundColor?: string }
+  input: { title: string; cost: number; prompt?: string; backgroundColor?: string } & RewardLimitInput
 ): Promise<CreateRewardResult> {
   if (!(await hasRedemptionsScope(channelId))) {
     return { ok: false, reason: 'no_scope' };
@@ -97,6 +132,7 @@ export async function createReward(
           should_redemptions_skip_request_queue: true,
           ...(prompt ? { prompt, is_user_input_required: false } : {}),
           ...(backgroundColor ? { background_color: backgroundColor } : {}),
+          ...buildRewardLimitFields(input, { includeDisables: false }),
         },
         {
           headers: {
@@ -144,7 +180,7 @@ export async function setRewardPaused(
 export async function updateReward(
   channelId: number,
   rewardId: string,
-  input: { title?: string; cost?: number; prompt?: string; backgroundColor?: string }
+  input: { title?: string; cost?: number; prompt?: string; backgroundColor?: string } & RewardLimitInput
 ): Promise<boolean> {
   const body: Record<string, unknown> = {};
   if (typeof input.title === 'string' && input.title.trim()) {
@@ -159,6 +195,7 @@ export async function updateReward(
   if (input.backgroundColor && HEX_COLOR.test(input.backgroundColor)) {
     body.background_color = input.backgroundColor.toUpperCase();
   }
+  Object.assign(body, buildRewardLimitFields(input, { includeDisables: true }));
   if (Object.keys(body).length === 0) return true;
   return patchReward(channelId, rewardId, body, 'updateReward');
 }

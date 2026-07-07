@@ -688,8 +688,23 @@ async function runMigrations() {
   }
 }
 
+// Enable WAL + a busy timeout so the web and bot processes can share
+// accounts.sqlite without blocking each other on boot (mirrors dbMetrics.ts).
+// WAL is persisted in the file header (applies to every connection/process);
+// busy_timeout makes a contending writer wait instead of erroring/hanging.
+async function enableSqliteConcurrency() {
+  try {
+    await sequelize.query('PRAGMA journal_mode=WAL;');
+    await sequelize.query('PRAGMA busy_timeout=5000;');
+    logger.info('[db] accounts.sqlite WAL mode enabled');
+  } catch (err) {
+    logger.warn('[db] Could not enable WAL mode on accounts.sqlite:', err);
+  }
+}
+
 // Sync the database and export a promise for sync completion
-const dbReady = migratePredictionAutomation(sequelize.getQueryInterface())
+const dbReady = enableSqliteConcurrency()
+  .then(() => migratePredictionAutomation(sequelize.getQueryInterface()))
   .then(() => sequelize.sync())
   .then(async () => {
     await runMigrations();

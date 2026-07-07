@@ -36,6 +36,8 @@ export function Giveaways() {
   const [prize, setPrize] = useState('')
   const [maxTickets, setMaxTickets] = useState(1)
   const [cost, setCost] = useState(500)
+  const [rewardColor, setRewardColor] = useState('#9147ff')
+  const [rewardPrompt, setRewardPrompt] = useState('')
 
   // Optional on-stream roll animation (streamer shows the dashboard). Persisted.
   const [showRoll, setShowRoll] = useState(() => localStorage.getItem('giveawayShowRoll') !== 'off')
@@ -50,6 +52,7 @@ export function Giveaways() {
   const redeemStart = useMutation({ mutationFn: giveawaysApi.redeemStart, onSuccess: invalidate })
   const draw = useMutation({ mutationFn: giveawaysApi.draw, onSuccess: invalidate })
   const redraw = useMutation({ mutationFn: giveawaysApi.redraw, onSuccess: invalidate })
+  const announce = useMutation({ mutationFn: giveawaysApi.announce })
   const close = useMutation({ mutationFn: giveawaysApi.close, onSuccess: invalidate })
   const redeemClose = useMutation({ mutationFn: giveawaysApi.redeemClose, onSuccess: invalidate })
   const pause = useMutation({ mutationFn: giveawaysApi.pause, onSuccess: invalidate })
@@ -62,7 +65,12 @@ export function Giveaways() {
     e.preventDefault()
     try {
       if (type === 'redeem') {
-        await redeemStart.mutateAsync({ prize: prize.trim(), cost })
+        await redeemStart.mutateAsync({
+          prize: prize.trim(),
+          cost,
+          prompt: rewardPrompt.trim(),
+          backgroundColor: rewardColor,
+        })
         toast.success('Channel-point giveaway started! The reward is now live.')
       } else {
         await create.mutateAsync({ prize: prize.trim(), maxTicketsPerUser: maxTickets })
@@ -71,16 +79,28 @@ export function Giveaways() {
       setPrize('')
       setMaxTickets(1)
       setCost(500)
+      setRewardPrompt('')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to start giveaway.')
     }
   }
 
-  const revealWinner = (winner: { username: string; slot: number; total: number }) => {
+  // Post the winner to chat. Fired only after the roll animation finishes (or
+  // immediately when the roll is off) so chat never spoils the reveal.
+  const finishReveal = async (winner: { username: string; slot: number; total: number }) => {
+    try {
+      await announce.mutateAsync()
+    } catch {
+      /* announcement is best-effort; the winner is already recorded */
+    }
+    toast.success(`Winner: @${winner.username} (slot #${winner.slot} of ${winner.total})`)
+  }
+
+  const revealWinner = async (winner: { username: string; slot: number; total: number }) => {
     if (showRoll && namePool.length > 0) {
       setRoll({ names: namePool, winner: winner.username, slot: winner.slot, total: winner.total })
     } else {
-      toast.success(`Winner: @${winner.username} (slot #${winner.slot} of ${winner.total})`)
+      await finishReveal(winner)
     }
   }
 
@@ -186,7 +206,7 @@ export function Giveaways() {
                   ]}
                 />
               </Field>
-              <Field label="Prize">
+              <Field label={type === 'redeem' ? 'Reward name / prize' : 'Prize'} hint={type === 'redeem' ? 'Shown on the channel-point button.' : undefined}>
                 <Input value={prize} maxLength={type === 'redeem' ? 45 : 120} placeholder="e.g. Steam key" required onChange={(e) => setPrize(e.target.value)} />
               </Field>
               {type === 'ticket' ? (
@@ -199,6 +219,26 @@ export function Giveaways() {
                 </Field>
               )}
             </div>
+
+            {type === 'redeem' && (
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginTop: 12 }}>
+                <Field label="Button color" hint="The reward's color on Twitch.">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="color"
+                      value={rewardColor}
+                      onChange={(e) => setRewardColor(e.target.value)}
+                      style={{ width: 44, height: 38, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                      aria-label="Reward button color"
+                    />
+                    <span style={{ color: 'var(--text-muted, #888)', fontFamily: 'monospace' }}>{rewardColor}</span>
+                  </div>
+                </Field>
+                <Field label="Prompt (optional)" hint="Description viewers see under the reward.">
+                  <Input value={rewardPrompt} maxLength={200} placeholder="Redeem to enter the giveaway!" onChange={(e) => setRewardPrompt(e.target.value)} />
+                </Field>
+              </div>
+            )}
 
             {type === 'redeem' && !redeemScope ? (
               <div
@@ -299,6 +339,7 @@ export function Giveaways() {
           winner={roll.winner}
           slot={roll.slot}
           total={roll.total}
+          onRevealed={() => finishReveal({ username: roll.winner, slot: roll.slot, total: roll.total })}
           onClose={() => setRoll(null)}
         />
       )}
@@ -315,17 +356,20 @@ function RollModal({
   winner,
   slot,
   total,
+  onRevealed,
   onClose,
 }: {
   names: string[]
   winner: string
   slot: number
   total: number
+  onRevealed: () => void
   onClose: () => void
 }) {
   const [current, setCurrent] = useState(names[0] ?? winner)
   const [done, setDone] = useState(false)
   const timer = useRef<number | null>(null)
+  const revealedRef = useRef(false)
 
   useEffect(() => {
     const pool = names.length > 1 ? names : [winner]
@@ -339,6 +383,11 @@ function RollModal({
       if (elapsed >= totalMs) {
         setCurrent(winner)
         setDone(true)
+        // Fire the chat announcement exactly once, when the reveal lands.
+        if (!revealedRef.current) {
+          revealedRef.current = true
+          onRevealed()
+        }
         return
       }
       i = (i + 1) % pool.length
@@ -351,6 +400,7 @@ function RollModal({
     return () => {
       if (timer.current) window.clearTimeout(timer.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [names, winner])
 
   return (

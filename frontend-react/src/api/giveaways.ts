@@ -10,6 +10,8 @@ export interface CreateTicketInput {
 export interface RedeemStartInput {
   prize: string
   cost: number
+  prompt?: string
+  backgroundColor?: string
 }
 
 export const giveawaysApi = {
@@ -18,6 +20,7 @@ export const giveawaysApi = {
   draw: () => api.post<{ winner: GiveawayWinner }>('/api/user/giveaways/draw', {}),
   redraw: (excludePrevWinner: boolean) =>
     api.post<{ winner: GiveawayWinner }>('/api/user/giveaways/redraw', { excludePrevWinner }),
+  announce: () => api.post('/api/user/giveaways/announce', {}),
   close: () => api.post('/api/user/giveaways/close', {}),
   pause: () => api.post('/api/user/giveaways/pause', {}),
   resume: () => api.post('/api/user/giveaways/resume', {}),

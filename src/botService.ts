@@ -345,6 +345,8 @@ dbReady.then(async () => {
       const channelName = String(req.body?.channel || "").trim().toLowerCase();
       const prize = typeof req.body?.prize === "string" ? req.body.prize.trim().slice(0, 45) : "";
       const cost = Math.max(1, Math.floor(Number(req.body?.cost) || 0));
+      const prompt = typeof req.body?.prompt === "string" ? req.body.prompt : undefined;
+      const backgroundColor = typeof req.body?.backgroundColor === "string" ? req.body.backgroundColor : undefined;
       if (!channelName || !cost) {
         return res.status(400).json({ error: "channel and cost are required" });
       }
@@ -368,7 +370,12 @@ dbReady.then(async () => {
           return res.status(409).json({ error: "A giveaway is already active. Close it first." });
         }
 
-        const reward = await createReward(channel.id, { title: prize || "Giveaway Entry", cost });
+        const reward = await createReward(channel.id, {
+          title: prize || "Giveaway Entry",
+          cost,
+          prompt,
+          backgroundColor,
+        });
         if (!reward.ok) {
           // Roll back the giveaway row we just created so state stays consistent.
           await created.giveaway.update({ status: "closed", closed_at: new Date() });

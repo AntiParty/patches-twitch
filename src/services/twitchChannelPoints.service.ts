@@ -72,13 +72,20 @@ async function requestWithRefresh(
   }
 }
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export async function createReward(
   channelId: number,
-  input: { title: string; cost: number }
+  input: { title: string; cost: number; prompt?: string; backgroundColor?: string }
 ): Promise<CreateRewardResult> {
   if (!(await hasRedemptionsScope(channelId))) {
     return { ok: false, reason: 'no_scope' };
   }
+  const prompt = input.prompt?.trim().slice(0, 200);
+  const backgroundColor =
+    input.backgroundColor && HEX_COLOR.test(input.backgroundColor)
+      ? input.backgroundColor.toUpperCase()
+      : undefined;
   try {
     const data = await requestWithRefresh(channelId, async (channel, token) => {
       const res = await axios.post(
@@ -88,6 +95,8 @@ export async function createReward(
           cost: Math.max(1, Math.floor(input.cost)),
           // Auto-fulfill entries so they don't pile up in the streamer's redemption queue.
           should_redemptions_skip_request_queue: true,
+          ...(prompt ? { prompt, is_user_input_required: false } : {}),
+          ...(backgroundColor ? { background_color: backgroundColor } : {}),
         },
         {
           headers: {

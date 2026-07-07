@@ -111,6 +111,9 @@ router.post('/api/user/giveaways', requireUserAPI, csrfProtection, (req, res) =>
   })
 );
 
+// Draw/redraw only pick the winner and return it. The chat announcement is a
+// separate call the dashboard fires once the on-stream roll animation finishes,
+// so chat doesn't see the winner before the reveal.
 router.post('/api/user/giveaways/draw', requireUserAPI, csrfProtection, (req, res) =>
   withChannel(req, res, 'draw', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
@@ -119,10 +122,6 @@ router.post('/api/user/giveaways/draw', requireUserAPI, csrfProtection, (req, re
     if (!result.ok) {
       return res.status(409).json({ error: 'No entries to draw from yet.' });
     }
-    await announce(
-      channel.username,
-      `🎉 Giveaway winner: @${result.username} (slot #${result.slot} of ${result.total})! 🎁`
-    );
     return res.json({ winner: { username: result.username, slot: result.slot, total: result.total } });
   })
 );
@@ -136,11 +135,24 @@ router.post('/api/user/giveaways/redraw', requireUserAPI, csrfProtection, (req, 
     if (!result.ok) {
       return res.status(409).json({ error: 'No eligible entries to redraw.' });
     }
+    return res.json({ winner: { username: result.username, slot: result.slot, total: result.total } });
+  })
+);
+
+// Announce the giveaway's current winner in chat. Reads the persisted winner so
+// the client can't inject arbitrary chat content.
+router.post('/api/user/giveaways/announce', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'announce', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway || !giveaway.winner_username) {
+      return res.status(409).json({ error: 'No winner to announce.' });
+    }
+    const { total } = await listEntries(giveaway.id);
     await announce(
       channel.username,
-      `🎉 New giveaway winner: @${result.username} (slot #${result.slot} of ${result.total})! 🎁`
+      `🎉 Giveaway winner: @${giveaway.winner_username} (slot #${giveaway.winner_slot} of ${total})! 🎁`
     );
-    return res.json({ winner: { username: result.username, slot: result.slot, total: result.total } });
+    return res.json({ success: true });
   })
 );
 
@@ -201,11 +213,13 @@ router.post('/api/user/giveaways/redeem/start', requireUserAPI, csrfProtection, 
   withChannel(req, res, 'redeemStart', async (channel) => {
     const prize = typeof req.body?.prize === 'string' ? req.body.prize.trim().slice(0, 45) : '';
     const cost = Math.max(1, Math.floor(Number(req.body?.cost) || 0));
+    const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim().slice(0, 200) : '';
+    const backgroundColor = typeof req.body?.backgroundColor === 'string' ? req.body.backgroundColor : '';
     if (!cost) return res.status(400).json({ error: 'A point cost is required.' });
     try {
       const response = await axios.post(
         `${BOT_CONTROL_URL}/giveaway/redeem/start`,
-        { channel: channel.username, prize, cost },
+        { channel: channel.username, prize, cost, prompt, backgroundColor },
         { timeout: 10000 }
       );
       return res.json(response.data);

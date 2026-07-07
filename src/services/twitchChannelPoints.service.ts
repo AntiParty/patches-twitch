@@ -137,6 +137,32 @@ export async function setRewardPaused(
   return patchReward(channelId, rewardId, { is_paused: paused }, 'setRewardPaused');
 }
 
+/**
+ * Update a live reward. Only the provided fields are sent to Twitch, so
+ * omitted ones (e.g. color) keep their current value on the reward.
+ */
+export async function updateReward(
+  channelId: number,
+  rewardId: string,
+  input: { title?: string; cost?: number; prompt?: string; backgroundColor?: string }
+): Promise<boolean> {
+  const body: Record<string, unknown> = {};
+  if (typeof input.title === 'string' && input.title.trim()) {
+    body.title = input.title.trim().slice(0, 45);
+  }
+  if (Number.isFinite(input.cost)) {
+    body.cost = Math.max(1, Math.floor(input.cost!));
+  }
+  if (typeof input.prompt === 'string' && input.prompt.trim()) {
+    body.prompt = input.prompt.trim().slice(0, 200);
+  }
+  if (input.backgroundColor && HEX_COLOR.test(input.backgroundColor)) {
+    body.background_color = input.backgroundColor.toUpperCase();
+  }
+  if (Object.keys(body).length === 0) return true;
+  return patchReward(channelId, rewardId, body, 'updateReward');
+}
+
 /** Delete the custom reward from the channel entirely (used when a giveaway ends). */
 export async function deleteReward(channelId: number, rewardId: string): Promise<boolean> {
   try {

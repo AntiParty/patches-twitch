@@ -14,9 +14,17 @@ export interface RedeemStartInput {
   backgroundColor?: string
 }
 
+export interface UpdateGiveawayInput {
+  prize?: string
+  cost?: number
+  prompt?: string
+  backgroundColor?: string
+}
+
 export const giveawaysApi = {
   getCurrent: () => api.get<GiveawayCurrentResponse>('/api/user/giveaways/current'),
   create: (input: CreateTicketInput) => api.post('/api/user/giveaways', input),
+  update: (input: UpdateGiveawayInput) => api.post('/api/user/giveaways/update', input),
   draw: () => api.post<{ winner: GiveawayWinner }>('/api/user/giveaways/draw', {}),
   redraw: () => api.post<{ winner: GiveawayWinner }>('/api/user/giveaways/redraw', {}),
   announce: () => api.post('/api/user/giveaways/announce', {}),

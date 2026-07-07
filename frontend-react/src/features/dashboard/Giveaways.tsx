@@ -38,6 +38,14 @@ export function Giveaways() {
   const [rewardColor, setRewardColor] = useState('#9147ff')
   const [rewardPrompt, setRewardPrompt] = useState('')
 
+  // Inline edit of the live giveaway (prize; plus cost/prompt/color for redeem).
+  const [editing, setEditing] = useState(false)
+  const [editPrize, setEditPrize] = useState('')
+  const [editCost, setEditCost] = useState(500)
+  const [editPrompt, setEditPrompt] = useState('')
+  const [editColor, setEditColor] = useState('#9147ff')
+  const [editColorTouched, setEditColorTouched] = useState(false)
+
   // Optional on-stream roll animation (streamer shows the dashboard). Persisted.
   const [showRoll, setShowRoll] = useState(() => localStorage.getItem('giveawayShowRoll') !== 'off')
   const [roll, setRoll] = useState<{ names: string[]; winner: string; slot: number; total: number } | null>(null)
@@ -58,6 +66,7 @@ export function Giveaways() {
   const resume = useMutation({ mutationFn: giveawaysApi.resume, onSuccess: invalidate })
   const reset = useMutation({ mutationFn: giveawaysApi.reset, onSuccess: invalidate })
   const lock = useMutation({ mutationFn: giveawaysApi.lock, onSuccess: invalidate })
+  const update = useMutation({ mutationFn: giveawaysApi.update, onSuccess: invalidate })
 
   // Winners already drawn this round, and the pool still eligible to win.
   const winners = giveaway?.winners ?? []
@@ -97,6 +106,37 @@ export function Giveaways() {
       setRewardPrompt('')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to start giveaway.')
+    }
+  }
+
+  const openEdit = () => {
+    if (!giveaway) return
+    setEditPrize(giveaway.prize ?? '')
+    setEditCost(giveaway.rewardCost ?? 500)
+    setEditPrompt('')
+    setEditColorTouched(false)
+    setEditing(true)
+  }
+
+  const handleSaveEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!giveaway) return
+    try {
+      await update.mutateAsync({
+        prize: editPrize.trim(),
+        ...(giveaway.type === 'redeem'
+          ? {
+              cost: editCost,
+              // Blank prompt / untouched color mean "keep what the reward has".
+              ...(editPrompt.trim() ? { prompt: editPrompt.trim() } : {}),
+              ...(editColorTouched ? { backgroundColor: editColor } : {}),
+            }
+          : {}),
+      })
+      toast.success(giveaway.type === 'redeem' ? 'Reward updated on Twitch.' : 'Giveaway updated.')
+      setEditing(false)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update the giveaway.')
     }
   }
 
@@ -323,6 +363,9 @@ export function Giveaways() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Button variant="ghost" icon="fas fa-pen" onClick={() => (editing ? setEditing(false) : openEdit())}>
+                {editing ? 'Cancel edit' : 'Edit'}
+              </Button>
               {(giveaway.status === 'open' || giveaway.status === 'paused') && (
                 <Button
                   variant="ghost"
@@ -358,6 +401,55 @@ export function Giveaways() {
               </Button>
             </div>
           </div>
+
+          {editing && (
+            <form
+              onSubmit={handleSaveEdit}
+              style={{
+                marginTop: 16,
+                padding: 16,
+                borderRadius: 10,
+                border: '1px solid var(--border, #33302f)',
+              }}
+            >
+              <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+                <Field label={giveaway.type === 'redeem' ? 'Reward name / prize' : 'Prize'}>
+                  <Input value={editPrize} maxLength={giveaway.type === 'redeem' ? 45 : 120} required onChange={(e) => setEditPrize(e.target.value)} />
+                </Field>
+                {giveaway.type === 'redeem' && (
+                  <>
+                    <Field label="Point cost per entry">
+                      <Input type="number" min={1} max={1000000} value={editCost} required onChange={(e) => setEditCost(Number(e.target.value))} />
+                    </Field>
+                    <Field label="Button color" hint="Leave untouched to keep the current color.">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input
+                          type="color"
+                          value={editColor}
+                          onChange={(e) => {
+                            setEditColor(e.target.value)
+                            setEditColorTouched(true)
+                          }}
+                          style={{ width: 44, height: 38, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                          aria-label="Reward button color"
+                        />
+                        <span style={{ color: 'var(--text-muted, #888)', fontFamily: 'monospace' }}>
+                          {editColorTouched ? editColor : 'unchanged'}
+                        </span>
+                      </div>
+                    </Field>
+                    <Field label="Prompt" hint="Leave blank to keep the current prompt.">
+                      <Input value={editPrompt} maxLength={200} onChange={(e) => setEditPrompt(e.target.value)} />
+                    </Field>
+                  </>
+                )}
+              </div>
+              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                <Button type="submit" icon="fas fa-save" loading={update.isPending}>Save changes</Button>
+                <Button type="button" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+              </div>
+            </form>
+          )}
 
           {winners.length > 0 && (
             <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>

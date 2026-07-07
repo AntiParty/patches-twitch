@@ -83,7 +83,12 @@ export async function createReward(
     const data = await requestWithRefresh(channelId, async (channel, token) => {
       const res = await axios.post(
         REWARDS_URL,
-        { title: input.title, cost: Math.max(1, Math.floor(input.cost)) },
+        {
+          title: input.title,
+          cost: Math.max(1, Math.floor(input.cost)),
+          // Auto-fulfill entries so they don't pile up in the streamer's redemption queue.
+          should_redemptions_skip_request_queue: true,
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -111,24 +116,38 @@ export async function setRewardEnabled(
   rewardId: string,
   enabled: boolean
 ): Promise<boolean> {
+  return patchReward(channelId, rewardId, { is_enabled: enabled }, 'setRewardEnabled');
+}
+
+/** Toggle Twitch's native paused state so viewers temporarily can't redeem. */
+export async function setRewardPaused(
+  channelId: number,
+  rewardId: string,
+  paused: boolean
+): Promise<boolean> {
+  return patchReward(channelId, rewardId, { is_paused: paused }, 'setRewardPaused');
+}
+
+async function patchReward(
+  channelId: number,
+  rewardId: string,
+  body: Record<string, unknown>,
+  label: string
+): Promise<boolean> {
   try {
     await requestWithRefresh(channelId, async (channel, token) => {
-      return axios.patch(
-        REWARDS_URL,
-        { is_enabled: enabled },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Client-Id': process.env.TWITCH_CLIENT_ID!,
-            'Content-Type': 'application/json',
-          },
-          params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
-        }
-      );
+      return axios.patch(REWARDS_URL, body, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID!,
+          'Content-Type': 'application/json',
+        },
+        params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+      });
     });
     return true;
   } catch (err: any) {
-    logger.error('[ChannelPoints] setRewardEnabled failed', err?.response?.data || err?.message);
+    logger.error(`[ChannelPoints] ${label} failed`, err?.response?.data || err?.message);
     return false;
   }
 }

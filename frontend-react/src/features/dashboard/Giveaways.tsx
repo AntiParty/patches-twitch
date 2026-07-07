@@ -3,7 +3,7 @@
  * channel-point redeem added in Phase 2), watches entrants come in, and draws
  * a winner — announced in chat by the backend. Viewers enter with !enter.
  */
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/cards/Card'
@@ -37,6 +37,13 @@ export function Giveaways() {
   const [maxTickets, setMaxTickets] = useState(1)
   const [cost, setCost] = useState(500)
 
+  // Optional on-stream roll animation (streamer shows the dashboard). Persisted.
+  const [showRoll, setShowRoll] = useState(() => localStorage.getItem('giveawayShowRoll') !== 'off')
+  const [roll, setRoll] = useState<{ names: string[]; winner: string; slot: number; total: number } | null>(null)
+  useEffect(() => {
+    localStorage.setItem('giveawayShowRoll', showRoll ? 'on' : 'off')
+  }, [showRoll])
+
   const invalidate = () => qc.invalidateQueries({ queryKey: CURRENT_KEY })
 
   const create = useMutation({ mutationFn: giveawaysApi.create, onSuccess: invalidate })
@@ -45,6 +52,11 @@ export function Giveaways() {
   const redraw = useMutation({ mutationFn: giveawaysApi.redraw, onSuccess: invalidate })
   const close = useMutation({ mutationFn: giveawaysApi.close, onSuccess: invalidate })
   const redeemClose = useMutation({ mutationFn: giveawaysApi.redeemClose, onSuccess: invalidate })
+  const pause = useMutation({ mutationFn: giveawaysApi.pause, onSuccess: invalidate })
+  const resume = useMutation({ mutationFn: giveawaysApi.resume, onSuccess: invalidate })
+  const reset = useMutation({ mutationFn: giveawaysApi.reset, onSuccess: invalidate })
+
+  const namePool = perUser.map((p) => p.username)
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -64,12 +76,20 @@ export function Giveaways() {
     }
   }
 
+  const revealWinner = (winner: { username: string; slot: number; total: number }) => {
+    if (showRoll && namePool.length > 0) {
+      setRoll({ names: namePool, winner: winner.username, slot: winner.slot, total: winner.total })
+    } else {
+      toast.success(`Winner: @${winner.username} (slot #${winner.slot} of ${winner.total})`)
+    }
+  }
+
   const handleDraw = async () => {
     const ok = await confirm({ title: 'Draw a winner', body: 'Pick a random winner now? This announces in chat.', confirmLabel: 'Draw' })
     if (!ok) return
     try {
       const res = await draw.mutateAsync()
-      toast.success(`Winner: @${res.winner.username} (slot #${res.winner.slot} of ${res.winner.total})`)
+      revealWinner(res.winner)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to draw a winner.')
     }
@@ -80,9 +100,39 @@ export function Giveaways() {
     if (!ok) return
     try {
       const res = await redraw.mutateAsync(true)
-      toast.success(`New winner: @${res.winner.username} (slot #${res.winner.slot} of ${res.winner.total})`)
+      revealWinner(res.winner)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to redraw.')
+    }
+  }
+
+  const handlePauseToggle = async () => {
+    try {
+      if (giveaway?.status === 'paused') {
+        await resume.mutateAsync()
+        toast.success('Giveaway resumed — entries are open again.')
+      } else {
+        await pause.mutateAsync()
+        toast.success('Giveaway paused — new entries are blocked.')
+      }
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update the giveaway.')
+    }
+  }
+
+  const handleConfirmClear = async () => {
+    const ok = await confirm({
+      title: 'Confirm winner accepted',
+      body: 'Clear all entries and start a fresh round? Do this once the winner has accepted their prize.',
+      confirmLabel: 'Confirm & clear',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await reset.mutateAsync()
+      toast.success('Entries cleared — the giveaway is open for another round.')
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to clear entries.')
     }
   }
 
@@ -183,6 +233,7 @@ export function Giveaways() {
                 {giveaway.prize ? `🎁 ${giveaway.prize}` : 'Giveaway'}
               </div>
               <div style={{ color: 'var(--text-muted, #888)', marginTop: 4 }}>
+                {giveaway.status === 'paused' && <strong style={{ color: 'var(--warning, #eab308)' }}>⏸️ Paused · </strong>}
                 {giveaway.type === 'ticket'
                   ? `Viewers type !enter (up to ${giveaway.maxTicketsPerUser} ticket${giveaway.maxTicketsPerUser === 1 ? '' : 's'} each).`
                   : 'Viewers redeem the channel-point reward to enter.'}
@@ -190,13 +241,31 @@ export function Giveaways() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(giveaway.status === 'open' || giveaway.status === 'paused') && (
+                <Button
+                  variant="ghost"
+                  icon={giveaway.status === 'paused' ? 'fas fa-play' : 'fas fa-pause'}
+                  loading={pause.isPending || resume.isPending}
+                  onClick={handlePauseToggle}
+                >
+                  {giveaway.status === 'paused' ? 'Resume' : 'Pause'}
+                </Button>
+              )}
               <Button icon="fas fa-dice" loading={draw.isPending} onClick={handleDraw} disabled={total === 0}>Draw winner</Button>
               {giveaway.status === 'drawn' && (
                 <Button variant="ghost" icon="fas fa-rotate" loading={redraw.isPending} onClick={handleRedraw}>Redraw</Button>
               )}
+              {giveaway.type === 'redeem' && giveaway.status === 'drawn' && (
+                <Button icon="fas fa-check" loading={reset.isPending} onClick={handleConfirmClear}>Confirm & clear</Button>
+              )}
               <Button variant="danger" icon="fas fa-xmark" loading={close.isPending || redeemClose.isPending} onClick={handleClose}>Close</Button>
             </div>
           </div>
+
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer', color: 'var(--text-muted, #888)', fontSize: 14 }}>
+            <input type="checkbox" checked={showRoll} onChange={(e) => setShowRoll(e.target.checked)} />
+            Show roll animation when drawing (for on-stream reveals)
+          </label>
 
           {giveaway.status === 'drawn' && giveaway.winnerUsername && (
             <div
@@ -223,6 +292,113 @@ export function Giveaways() {
           </div>
         </Card>
       )}
+
+      {roll && (
+        <RollModal
+          names={roll.names}
+          winner={roll.winner}
+          slot={roll.slot}
+          total={roll.total}
+          onClose={() => setRoll(null)}
+        />
+      )}
     </>
+  )
+}
+
+/**
+ * Full-screen slot-machine reveal. Cycles entrant names with easing deceleration,
+ * then locks onto the winner. Meant to be shown on stream (streamer shares the tab).
+ */
+function RollModal({
+  names,
+  winner,
+  slot,
+  total,
+  onClose,
+}: {
+  names: string[]
+  winner: string
+  slot: number
+  total: number
+  onClose: () => void
+}) {
+  const [current, setCurrent] = useState(names[0] ?? winner)
+  const [done, setDone] = useState(false)
+  const timer = useRef<number | null>(null)
+
+  useEffect(() => {
+    const pool = names.length > 1 ? names : [winner]
+    let i = 0
+    let delay = 60
+    const totalMs = 3200
+    const start = Date.now()
+
+    const tick = () => {
+      const elapsed = Date.now() - start
+      if (elapsed >= totalMs) {
+        setCurrent(winner)
+        setDone(true)
+        return
+      }
+      i = (i + 1) % pool.length
+      setCurrent(pool[i])
+      // Ease-out: slow the cycling as we approach the end.
+      delay = 60 + Math.pow(elapsed / totalMs, 3) * 320
+      timer.current = window.setTimeout(tick, delay)
+    }
+    timer.current = window.setTimeout(tick, delay)
+    return () => {
+      if (timer.current) window.clearTimeout(timer.current)
+    }
+  }, [names, winner])
+
+  return (
+    <div
+      onClick={done ? onClose : undefined}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'grid',
+        placeItems: 'center',
+        background: 'rgba(0,0,0,0.72)',
+        cursor: done ? 'pointer' : 'default',
+      }}
+    >
+      <div
+        style={{
+          textAlign: 'center',
+          padding: '48px 64px',
+          borderRadius: 20,
+          background: 'var(--surface, #14100f)',
+          border: `2px solid ${done ? 'var(--success-border, rgba(34,197,94,0.6))' : 'var(--border, #33302f)'}`,
+          minWidth: 420,
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+        }}
+      >
+        <div style={{ textTransform: 'uppercase', letterSpacing: 2, fontSize: 13, color: 'var(--text-muted, #888)', marginBottom: 16 }}>
+          {done ? '🎉 Winner' : 'Drawing…'}
+        </div>
+        <div
+          style={{
+            fontSize: 44,
+            fontWeight: 900,
+            lineHeight: 1.1,
+            color: done ? 'var(--success, #22c55e)' : 'var(--text, #fff)',
+            transform: done ? 'scale(1.06)' : 'none',
+            transition: 'transform 0.3s ease, color 0.3s ease',
+            wordBreak: 'break-word',
+          }}
+        >
+          @{current}
+        </div>
+        {done && (
+          <div style={{ marginTop: 16, color: 'var(--text-muted, #888)' }}>
+            slot #{slot} of {total} · click anywhere to close
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

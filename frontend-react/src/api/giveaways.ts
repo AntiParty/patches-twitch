@@ -19,6 +19,9 @@ export const giveawaysApi = {
   redraw: (excludePrevWinner: boolean) =>
     api.post<{ winner: GiveawayWinner }>('/api/user/giveaways/redraw', { excludePrevWinner }),
   close: () => api.post('/api/user/giveaways/close', {}),
+  pause: () => api.post('/api/user/giveaways/pause', {}),
+  resume: () => api.post('/api/user/giveaways/resume', {}),
+  reset: () => api.post('/api/user/giveaways/reset', {}),
   redeemStart: (input: RedeemStartInput) => api.post('/api/user/giveaways/redeem/start', input),
   redeemClose: () => api.post('/api/user/giveaways/redeem/close', {}),
 }

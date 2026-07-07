@@ -1,5 +1,5 @@
 export type GiveawayType = 'ticket' | 'redeem'
-export type GiveawayStatus = 'open' | 'drawn' | 'closed'
+export type GiveawayStatus = 'open' | 'paused' | 'drawn' | 'closed'
 
 export interface Giveaway {
   id: number

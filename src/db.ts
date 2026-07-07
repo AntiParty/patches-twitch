@@ -8,6 +8,7 @@ import logger from "@/util/logger"; // Logging utility
 import { Op } from 'sequelize';
 import { migratePredictionPresets } from './scripts/migrate_prediction_presets';
 import { migratePredictionAutomation } from './scripts/migrate_prediction_automation';
+import { migrateGiveaways } from './scripts/migrate_giveaways';
 
 dotenv.config();
 
@@ -681,13 +682,29 @@ async function runMigrations() {
 
     await migratePredictionPresets(queryInterface);
     await migratePredictionAutomation(queryInterface);
+    await migrateGiveaways(queryInterface);
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
   }
 }
 
+// Enable WAL + a busy timeout so the web and bot processes can share
+// accounts.sqlite without blocking each other on boot (mirrors dbMetrics.ts).
+// WAL is persisted in the file header (applies to every connection/process);
+// busy_timeout makes a contending writer wait instead of erroring/hanging.
+async function enableSqliteConcurrency() {
+  try {
+    await sequelize.query('PRAGMA journal_mode=WAL;');
+    await sequelize.query('PRAGMA busy_timeout=5000;');
+    logger.info('[db] accounts.sqlite WAL mode enabled');
+  } catch (err) {
+    logger.warn('[db] Could not enable WAL mode on accounts.sqlite:', err);
+  }
+}
+
 // Sync the database and export a promise for sync completion
-const dbReady = migratePredictionAutomation(sequelize.getQueryInterface())
+const dbReady = enableSqliteConcurrency()
+  .then(() => migratePredictionAutomation(sequelize.getQueryInterface()))
   .then(() => sequelize.sync())
   .then(async () => {
     await runMigrations();
@@ -961,6 +978,88 @@ PeakRank.init(
   }
 );
 
+// Giveaway models
+// A giveaway is one row per channel with a status lifecycle; entries are the draw "slots".
+class Giveaway extends Model {
+  declare id: number;
+  declare channel: string;
+  declare type: 'ticket' | 'redeem';
+  declare status: 'open' | 'paused' | 'locked' | 'drawn' | 'closed';
+  declare prize: string | null;
+  declare max_tickets_per_user: number;
+  declare target_winner_count: number;
+  declare winners_json: string;
+  declare reward_id: string | null;
+  declare reward_cost: number | null;
+  declare winner_user_id: string | null;
+  declare winner_username: string | null;
+  declare winner_slot: number | null;
+  declare created_at: Date;
+  declare drawn_at: Date | null;
+  declare closed_at: Date | null;
+}
+
+Giveaway.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    channel: { type: DataTypes.STRING, allowNull: false },
+    type: { type: DataTypes.STRING, allowNull: false },
+    status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'open' },
+    prize: { type: DataTypes.STRING, allowNull: true },
+    max_tickets_per_user: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    target_winner_count: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    winners_json: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
+    reward_id: { type: DataTypes.STRING, allowNull: true },
+    reward_cost: { type: DataTypes.INTEGER, allowNull: true },
+    winner_user_id: { type: DataTypes.STRING, allowNull: true },
+    winner_username: { type: DataTypes.STRING, allowNull: true },
+    winner_slot: { type: DataTypes.INTEGER, allowNull: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    drawn_at: { type: DataTypes.DATE, allowNull: true },
+    closed_at: { type: DataTypes.DATE, allowNull: true },
+  },
+  {
+    sequelize,
+    modelName: 'Giveaway',
+    tableName: 'Giveaways',
+    timestamps: false,
+    indexes: [{ fields: ['channel'] }],
+  }
+);
+
+class GiveawayEntry extends Model {
+  declare id: number;
+  declare giveaway_id: number;
+  declare user_id: string;
+  declare username: string;
+  declare redemption_id: string | null;
+  declare created_at: Date;
+}
+
+GiveawayEntry.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    giveaway_id: { type: DataTypes.INTEGER, allowNull: false },
+    user_id: { type: DataTypes.STRING, allowNull: false },
+    username: { type: DataTypes.STRING, allowNull: false },
+    redemption_id: { type: DataTypes.STRING, allowNull: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize,
+    modelName: 'GiveawayEntry',
+    tableName: 'GiveawayEntries',
+    timestamps: false,
+    indexes: [
+      { fields: ['giveaway_id'] },
+      { unique: true, fields: ['giveaway_id', 'redemption_id'] },
+    ],
+  }
+);
+
+Giveaway.hasMany(GiveawayEntry, { foreignKey: 'giveaway_id' });
+GiveawayEntry.belongsTo(Giveaway, { foreignKey: 'giveaway_id' });
+
 export async function getActiveSessions() {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   return await StreamSession.findAll({
@@ -972,4 +1071,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse };

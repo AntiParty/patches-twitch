@@ -1,5 +1,11 @@
 export type GiveawayType = 'ticket' | 'redeem'
-export type GiveawayStatus = 'open' | 'paused' | 'drawn' | 'closed'
+export type GiveawayStatus = 'open' | 'paused' | 'locked' | 'drawn' | 'closed'
+
+export interface GiveawayWinnerRecord {
+  userId: string
+  username: string
+  slot: number
+}
 
 export interface Giveaway {
   id: number
@@ -7,6 +13,8 @@ export interface Giveaway {
   status: GiveawayStatus
   prize: string | null
   maxTicketsPerUser: number
+  targetWinnerCount: number
+  winners: GiveawayWinnerRecord[]
   rewardCost: number | null
   winnerUsername: string | null
   winnerSlot: number | null

@@ -134,6 +134,12 @@ router.post('/api/user/giveaways/update', requireUserAPI, csrfProtection, (req, 
     const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim().slice(0, 200) : '';
     const backgroundColor =
       typeof req.body?.backgroundColor === 'string' ? req.body.backgroundColor : '';
+    // New winner target; can't drop below the number already drawn this round.
+    const rawWinnerCount = Number(req.body?.winnerCount);
+    const winnerCount =
+      Number.isFinite(rawWinnerCount) && rawWinnerCount >= 1
+        ? Math.max(parseWinners(giveaway).length, Math.min(50, Math.floor(rawWinnerCount)))
+        : null;
 
     if (giveaway.type === 'redeem' && giveaway.reward_id) {
       const patched = await updateReward(channel.id, giveaway.reward_id, {
@@ -150,6 +156,7 @@ router.post('/api/user/giveaways/update', requireUserAPI, csrfProtection, (req, 
     await giveaway.update({
       ...(prize ? { prize } : {}),
       ...(giveaway.type === 'redeem' && cost ? { reward_cost: cost } : {}),
+      ...(giveaway.type === 'redeem' && winnerCount ? { target_winner_count: winnerCount } : {}),
     });
     return res.json({ giveaway: serialize(giveaway) });
   })

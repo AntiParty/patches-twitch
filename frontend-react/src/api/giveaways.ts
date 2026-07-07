@@ -17,6 +17,7 @@ export interface RedeemStartInput {
 export interface UpdateGiveawayInput {
   prize?: string
   cost?: number
+  winnerCount?: number
   prompt?: string
   backgroundColor?: string
 }

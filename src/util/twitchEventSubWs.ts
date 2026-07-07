@@ -6,11 +6,18 @@ import { getLatestLeaderboardData } from '@/commands/record';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
 import { rankedPredictionAutomationService } from '@/services/rankedPredictionAutomation.service';
+import { addRedeemEntry } from '@/services/giveaway.service';
 
 export interface UserSubscription {
   userId: string;
   accessToken: string;
   broadcasterId: string;
+  /** 'stream' (default) subscribes to stream.online/offline; 'redemption' to channel-point redeems. */
+  kind?: 'stream' | 'redemption';
+  /** For redemption subs: the custom reward id to scope the subscription to. */
+  rewardId?: string;
+  /** Twitch's subscription id, captured on create so we can delete it later. */
+  twitchSubId?: string;
 }
 
 const userWebSockets: Record<
@@ -34,7 +41,7 @@ export function isEventSubAlreadyExistsError(err: any): boolean {
   return status === 409 || /subscription already exists/i.test(message);
 }
 
-export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
+function ensureUserSocket(userId: string, accessToken: string) {
   if (!userWebSockets[userId]) {
     userWebSockets[userId] = {
       ws: null as unknown as WebSocket,
@@ -47,19 +54,74 @@ export function addUserSubscription(userId: string, accessToken: string, broadca
       userWebSockets[userId].ws = await createUserWebSocket(userId, accessToken);
     })();
   }
+}
 
-  if (isDuplicateEventSubSubscription(userWebSockets[userId].subscriptions, broadcasterId)) {
-    userWebSockets[userId].subscriptions = userWebSockets[userId].subscriptions.map(sub =>
-      sub.broadcasterId === broadcasterId ? { ...sub, accessToken } : sub
-    );
-    logger.debug?.(`[EventSubWs] Subscription for ${userId}/${broadcasterId} already tracked; updated token only.`);
+export function addUserSubscription(userId: string, accessToken: string, broadcasterId: string) {
+  ensureUserSocket(userId, accessToken);
+
+  const existing = userWebSockets[userId].subscriptions.find(
+    sub => (sub.kind ?? 'stream') === 'stream' && sub.broadcasterId === broadcasterId
+  );
+  if (existing) {
+    existing.accessToken = accessToken;
+    logger.debug?.(`[EventSubWs] Stream subscription for ${userId}/${broadcasterId} already tracked; updated token only.`);
     return;
   }
 
-  userWebSockets[userId].subscriptions.push({ userId, accessToken, broadcasterId });
+  const sub: UserSubscription = { userId, accessToken, broadcasterId, kind: 'stream' };
+  userWebSockets[userId].subscriptions.push(sub);
 
   if (userWebSockets[userId].sessionId) {
-    subscribeUserToEvents(userId, accessToken, broadcasterId, userWebSockets[userId].sessionId!);
+    subscribeUserToEvents(sub, accessToken, userWebSockets[userId].sessionId!);
+  }
+}
+
+/** Subscribe to channel-point redemptions for a specific reward. Idempotent per (userId, rewardId). */
+export function addRedemptionSubscription(
+  userId: string,
+  accessToken: string,
+  broadcasterId: string,
+  rewardId: string
+) {
+  ensureUserSocket(userId, accessToken);
+
+  const existing = userWebSockets[userId].subscriptions.find(
+    sub => sub.kind === 'redemption' && sub.rewardId === rewardId
+  );
+  if (existing) {
+    existing.accessToken = accessToken;
+    logger.debug?.(`[EventSubWs] Redemption sub for ${userId}/${rewardId} already tracked; updated token only.`);
+    return;
+  }
+
+  const sub: UserSubscription = { userId, accessToken, broadcasterId, kind: 'redemption', rewardId };
+  userWebSockets[userId].subscriptions.push(sub);
+
+  if (userWebSockets[userId].sessionId) {
+    subscribeUserToEvents(sub, accessToken, userWebSockets[userId].sessionId!);
+  }
+}
+
+/** Stop tracking a redemption sub and best-effort delete it from Twitch. */
+export async function removeRedemptionSubscription(userId: string, rewardId: string) {
+  const wsObj = userWebSockets[userId];
+  if (!wsObj) return;
+  const sub = wsObj.subscriptions.find(s => s.kind === 'redemption' && s.rewardId === rewardId);
+  wsObj.subscriptions = wsObj.subscriptions.filter(
+    s => !(s.kind === 'redemption' && s.rewardId === rewardId)
+  );
+  if (!sub?.twitchSubId) return;
+  try {
+    await axios.delete('https://api.twitch.tv/helix/eventsub/subscriptions', {
+      params: { id: sub.twitchSubId },
+      headers: {
+        Authorization: `Bearer ${sub.accessToken}`,
+        'Client-Id': process.env.TWITCH_CLIENT_ID!
+      }
+    });
+    logger.info(`[EventSubWs] Deleted redemption subscription ${sub.twitchSubId} for ${userId}/${rewardId}`);
+  } catch (err: any) {
+    logger.warn(`[EventSubWs] Failed to delete redemption subscription for ${userId}/${rewardId}: ${err?.response?.data?.message || err?.message}`);
   }
 }
 
@@ -139,6 +201,26 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
   }
 }
 
+async function handleRedemptionAdd(event: any) {
+  try {
+    const channel = String(event?.broadcaster_user_login || '').toLowerCase();
+    const rewardId = String(event?.reward?.id || '');
+    const userId = String(event?.user_id || '');
+    const username = String(event?.user_name || event?.user_login || '');
+    const redemptionId = String(event?.id || '');
+    if (!channel || !rewardId || !userId || !redemptionId) {
+      logger.warn('[EventSubWs] Redemption event missing required fields; skipping.');
+      return;
+    }
+    const result = await addRedeemEntry({ rewardId, channel, userId, username, redemptionId });
+    if (result.ok && !result.duplicate) {
+      logger.info(`[EventSubWs] Giveaway redeem entry added for ${username} in ${channel}`);
+    }
+  } catch (err) {
+    logger.error('[EventSubWs] Failed to handle redemption add:', err);
+  }
+}
+
 async function createUserWebSocket(userId: string, accessToken: string, reconnectUrl?: string): Promise<WebSocket> {
   const wsUrl = reconnectUrl || 'wss://eventsub.wss.twitch.tv/ws';
   const ws = new WebSocket(wsUrl);
@@ -177,7 +259,7 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
           }
 
           userWebSockets[userId].subscriptions.forEach(sub =>
-            subscribeUserToEvents(sub.userId, freshToken, sub.broadcasterId, sessionId)
+            subscribeUserToEvents(sub, freshToken, sessionId)
           );
         } else {
           logger.info(`[EventSubWs] Reconnect for ${userId}: existing subscriptions preserved by Twitch`);
@@ -196,6 +278,9 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
         }
         if (eventType === 'stream.offline') {
           await handleStreamOffline(broadcasterName, broadcasterId);
+        }
+        if (eventType === 'channel.channel_points_custom_reward_redemption.add') {
+          await handleRedemptionAdd(event);
         }
 
       } else if (type === 'session_keepalive') {
@@ -288,8 +373,29 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
   return ws;
 }
 
-async function subscribeUserToEvents(userId: string, accessToken: string, broadcasterId: string, sessionId: string) {
-  const eventTypes = ['stream.online', 'stream.offline'];
+interface EventSubSpec {
+  type: string;
+  version: string;
+  condition: Record<string, string>;
+}
+
+async function subscribeUserToEvents(sub: UserSubscription, accessToken: string, sessionId: string) {
+  const userId = sub.userId;
+  const broadcasterId = sub.broadcasterId;
+
+  const specs: EventSubSpec[] =
+    sub.kind === 'redemption'
+      ? [
+          {
+            type: 'channel.channel_points_custom_reward_redemption.add',
+            version: '1',
+            condition: { broadcaster_user_id: broadcasterId, reward_id: sub.rewardId! },
+          },
+        ]
+      : [
+          { type: 'stream.online', version: '1', condition: { broadcaster_user_id: broadcasterId } },
+          { type: 'stream.offline', version: '1', condition: { broadcaster_user_id: broadcasterId } },
+        ];
 
   let validToken = accessToken;
 
@@ -379,13 +485,13 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
   }
 
   // Now subscribe to events with the valid token
-  for (let i = 0; i < eventTypes.length; i++) {
-    const type = eventTypes[i];
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i];
     try {
-      await axios.post('https://api.twitch.tv/helix/eventsub/subscriptions', {
-        type,
-        version: '1',
-        condition: { broadcaster_user_id: broadcasterId },
+      const res = await axios.post('https://api.twitch.tv/helix/eventsub/subscriptions', {
+        type: spec.type,
+        version: spec.version,
+        condition: spec.condition,
         transport: { method: 'websocket', session_id: sessionId }
       }, {
         headers: {
@@ -394,17 +500,21 @@ async function subscribeUserToEvents(userId: string, accessToken: string, broadc
           'Content-Type': 'application/json'
         }
       });
-      logger.info(`[EventSubWs] Subscribed ${userId} to ${type} via WebSocket`);
+      const createdId = res.data?.data?.[0]?.id;
+      if (sub.kind === 'redemption' && createdId) {
+        sub.twitchSubId = String(createdId);
+      }
+      logger.info(`[EventSubWs] Subscribed ${userId} to ${spec.type} via WebSocket`);
 
       // Add a small delay between subscriptions to avoid rate limiting
-      if (i < eventTypes.length - 1) {
+      if (i < specs.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     } catch (err: any) {
       if (isEventSubAlreadyExistsError(err)) {
-        logger.info(`[EventSubWs] ${userId} already subscribed to ${type}; keeping existing Twitch subscription.`);
+        logger.info(`[EventSubWs] ${userId} already subscribed to ${spec.type}; keeping existing Twitch subscription.`);
       } else {
-        logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${type}:`, err.response?.data || err.message);
+        logger.error(`[EventSubWs] Failed to subscribe ${userId} to ${spec.type}:`, err.response?.data || err.message);
       }
     }
   }

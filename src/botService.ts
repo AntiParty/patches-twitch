@@ -1,9 +1,12 @@
-import { dbReady, Channel, StreamSession } from "./db";
+import { dbReady, Channel, StreamSession, Giveaway } from "./db";
 // In-memory map to track active stream sessions
 const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
-import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubWs";
+import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
+import { createReward, setRewardEnabled, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
+import { createGiveaway, getActiveGiveaway } from "./services/giveaway.service";
+import { decryptChannelAccessToken } from "./util/twitchUtils";
 import logger from "./util/logger";
 import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
@@ -39,6 +42,29 @@ dbReady.then(async () => {
         `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}`
       );
     });
+
+    // Restore redemption EventSub subscriptions for any open redeem giveaways
+    try {
+      const openRedeemGiveaways = await Giveaway.findAll({
+        where: { status: "open", type: "redeem" },
+      });
+      for (const giveaway of openRedeemGiveaways) {
+        if (!giveaway.reward_id) continue;
+        const channel = await Channel.findOne({ where: { username: giveaway.channel } });
+        if (!channel?.twitch_user_id) continue;
+        const token = decryptChannelAccessToken(channel);
+        if (!token) continue;
+        addRedemptionSubscription(
+          channel.twitch_user_id,
+          token,
+          channel.twitch_user_id,
+          giveaway.reward_id
+        );
+        logger.info(`[Startup] Restored redemption sub for giveaway in ${giveaway.channel}`);
+      }
+    } catch (err) {
+      logger.error("[Startup] Failed to restore redeem giveaway subscriptions:", err);
+    }
 
     // --- Control API ---
     const controlApp = express();
@@ -313,6 +339,78 @@ dbReady.then(async () => {
         reconnectingChannels: entries.filter((client) => !client.connected && !client.intentionalDisconnect).length,
       });
     });
+
+    // --- Giveaways: channel-point redeem lifecycle (reward + EventSub live here) ---
+    controlApp.post("/giveaway/redeem/start", async (req: any, res: any) => {
+      const channelName = String(req.body?.channel || "").trim().toLowerCase();
+      const prize = typeof req.body?.prize === "string" ? req.body.prize.trim().slice(0, 45) : "";
+      const cost = Math.max(1, Math.floor(Number(req.body?.cost) || 0));
+      if (!channelName || !cost) {
+        return res.status(400).json({ error: "channel and cost are required" });
+      }
+
+      try {
+        const channel = await Channel.findOne({ where: { username: channelName } });
+        if (!channel?.twitch_user_id) {
+          return res.status(404).json({ error: "Channel not found" });
+        }
+        if (!(await hasRedemptionsScope(channel.id))) {
+          return res.status(403).json({ reason: "no_scope", error: "Reauthorization required." });
+        }
+
+        const created = await createGiveaway({
+          channel: channelName,
+          type: "redeem",
+          prize: prize || null,
+          rewardCost: cost,
+        });
+        if (!created.ok) {
+          return res.status(409).json({ error: "A giveaway is already active. Close it first." });
+        }
+
+        const reward = await createReward(channel.id, { title: prize || "Giveaway Entry", cost });
+        if (!reward.ok) {
+          // Roll back the giveaway row we just created so state stays consistent.
+          await created.giveaway.update({ status: "closed", closed_at: new Date() });
+          if (reward.reason === "no_scope") {
+            return res.status(403).json({ reason: "no_scope", error: "Reauthorization required." });
+          }
+          return res.status(502).json({ error: reward.message || "Failed to create reward." });
+        }
+
+        await created.giveaway.update({ reward_id: reward.rewardId });
+
+        const token = decryptChannelAccessToken(channel);
+        if (token) {
+          addRedemptionSubscription(channel.twitch_user_id, token, channel.twitch_user_id, reward.rewardId);
+        }
+
+        logger.info(`[ControlAPI] Started redeem giveaway for ${channelName} (reward ${reward.rewardId})`);
+        return res.json({ success: true, rewardId: reward.rewardId });
+      } catch (err) {
+        logger.error("[ControlAPI] Failed to start redeem giveaway:", err);
+        return res.status(500).json({ error: "Internal error" });
+      }
+    });
+
+    controlApp.post("/giveaway/redeem/stop", async (req: any, res: any) => {
+      const channelName = String(req.body?.channel || "").trim().toLowerCase();
+      if (!channelName) return res.status(400).json({ error: "channel is required" });
+
+      try {
+        const channel = await Channel.findOne({ where: { username: channelName } });
+        const giveaway = await getActiveGiveaway(channelName);
+        if (giveaway?.reward_id && channel?.twitch_user_id) {
+          await removeRedemptionSubscription(channel.twitch_user_id, giveaway.reward_id);
+          await setRewardEnabled(channel.id, giveaway.reward_id, false);
+        }
+        return res.json({ success: true });
+      } catch (err) {
+        logger.error("[ControlAPI] Failed to stop redeem giveaway:", err);
+        return res.status(500).json({ error: "Internal error" });
+      }
+    });
+    // --- end Giveaways ---
 
     controlApp.listen(4000, () => {
       logger.info("Bot control API running on http://localhost:4000");

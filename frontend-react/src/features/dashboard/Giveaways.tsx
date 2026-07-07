@@ -42,6 +42,7 @@ export function Giveaways() {
   const [editing, setEditing] = useState(false)
   const [editPrize, setEditPrize] = useState('')
   const [editCost, setEditCost] = useState(500)
+  const [editWinnerCount, setEditWinnerCount] = useState(1)
   const [editPrompt, setEditPrompt] = useState('')
   const [editColor, setEditColor] = useState('#9147ff')
   const [editColorTouched, setEditColorTouched] = useState(false)
@@ -113,6 +114,7 @@ export function Giveaways() {
     if (!giveaway) return
     setEditPrize(giveaway.prize ?? '')
     setEditCost(giveaway.rewardCost ?? 500)
+    setEditWinnerCount(giveaway.targetWinnerCount || 1)
     setEditPrompt('')
     setEditColorTouched(false)
     setEditing(true)
@@ -127,6 +129,7 @@ export function Giveaways() {
         ...(giveaway.type === 'redeem'
           ? {
               cost: editCost,
+              winnerCount: editWinnerCount,
               // Blank prompt / untouched color mean "keep what the reward has".
               ...(editPrompt.trim() ? { prompt: editPrompt.trim() } : {}),
               ...(editColorTouched ? { backgroundColor: editColor } : {}),
@@ -420,6 +423,19 @@ export function Giveaways() {
                   <>
                     <Field label="Point cost per entry">
                       <Input type="number" min={1} max={1000000} value={editCost} required onChange={(e) => setEditCost(Number(e.target.value))} />
+                    </Field>
+                    <Field
+                      label="Number of winners"
+                      hint={winners.length > 0 ? `Can't go below the ${winners.length} already drawn.` : 'Spin this many winners from the pool.'}
+                    >
+                      <Input
+                        type="number"
+                        min={Math.max(1, winners.length)}
+                        max={50}
+                        value={editWinnerCount}
+                        required
+                        onChange={(e) => setEditWinnerCount(Number(e.target.value))}
+                      />
                     </Field>
                     <Field label="Button color" hint="Leave untouched to keep the current color.">
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

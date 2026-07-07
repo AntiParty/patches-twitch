@@ -16,6 +16,9 @@ export interface Giveaway {
   targetWinnerCount: number
   winners: GiveawayWinnerRecord[]
   rewardCost: number | null
+  maxPerUserPerStream: number | null
+  maxPerStream: number | null
+  cooldownSeconds: number | null
   winnerUsername: string | null
   winnerSlot: number | null
   createdAt: string

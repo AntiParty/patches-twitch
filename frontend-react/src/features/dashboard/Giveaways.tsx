@@ -21,6 +21,13 @@ import type { GiveawayEntrant } from '@/types/giveaway'
 
 const CURRENT_KEY = ['giveaways', 'current'] as const
 
+// Optional limit fields use string state; blank or <1 means "no limit".
+const parseLimitInput = (s: string): number | undefined => {
+  if (!s.trim()) return undefined
+  const n = Math.floor(Number(s))
+  return Number.isFinite(n) && n >= 1 ? n : undefined
+}
+
 export function Giveaways() {
   const qc = useQueryClient()
   const toast = useToast()
@@ -37,6 +44,9 @@ export function Giveaways() {
   const [winnerCount, setWinnerCount] = useState(1)
   const [rewardColor, setRewardColor] = useState('#9147ff')
   const [rewardPrompt, setRewardPrompt] = useState('')
+  const [maxPerUser, setMaxPerUser] = useState('')
+  const [maxPerStreamTotal, setMaxPerStreamTotal] = useState('')
+  const [cooldown, setCooldown] = useState('')
 
   // Inline edit of the live giveaway (prize; plus cost/prompt/color for redeem).
   const [editing, setEditing] = useState(false)
@@ -46,6 +56,9 @@ export function Giveaways() {
   const [editPrompt, setEditPrompt] = useState('')
   const [editColor, setEditColor] = useState('#9147ff')
   const [editColorTouched, setEditColorTouched] = useState(false)
+  const [editMaxPerUser, setEditMaxPerUser] = useState('')
+  const [editMaxPerStream, setEditMaxPerStream] = useState('')
+  const [editCooldown, setEditCooldown] = useState('')
 
   // Optional on-stream roll animation (streamer shows the dashboard). Persisted.
   const [showRoll, setShowRoll] = useState(() => localStorage.getItem('giveawayShowRoll') !== 'off')
@@ -95,6 +108,9 @@ export function Giveaways() {
           winnerCount,
           prompt: rewardPrompt.trim(),
           backgroundColor: rewardColor,
+          maxPerUserPerStream: parseLimitInput(maxPerUser),
+          maxPerStream: parseLimitInput(maxPerStreamTotal),
+          cooldownSeconds: parseLimitInput(cooldown),
         })
         toast.success('Channel-point giveaway started! The reward is now live.')
       } else {
@@ -105,6 +121,9 @@ export function Giveaways() {
       setCost(500)
       setWinnerCount(1)
       setRewardPrompt('')
+      setMaxPerUser('')
+      setMaxPerStreamTotal('')
+      setCooldown('')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to start giveaway.')
     }
@@ -117,6 +136,9 @@ export function Giveaways() {
     setEditWinnerCount(giveaway.targetWinnerCount || 1)
     setEditPrompt('')
     setEditColorTouched(false)
+    setEditMaxPerUser(giveaway.maxPerUserPerStream != null ? String(giveaway.maxPerUserPerStream) : '')
+    setEditMaxPerStream(giveaway.maxPerStream != null ? String(giveaway.maxPerStream) : '')
+    setEditCooldown(giveaway.cooldownSeconds != null ? String(giveaway.cooldownSeconds) : '')
     setEditing(true)
   }
 
@@ -133,6 +155,10 @@ export function Giveaways() {
               // Blank prompt / untouched color mean "keep what the reward has".
               ...(editPrompt.trim() ? { prompt: editPrompt.trim() } : {}),
               ...(editColorTouched ? { backgroundColor: editColor } : {}),
+              // Limits are always sent: blank clears the limit (0 = off server-side).
+              maxPerUserPerStream: parseLimitInput(editMaxPerUser) ?? 0,
+              maxPerStream: parseLimitInput(editMaxPerStream) ?? 0,
+              cooldownSeconds: parseLimitInput(editCooldown) ?? 0,
             }
           : {}),
       })
@@ -295,7 +321,14 @@ export function Giveaways() {
                 <Input value={prize} maxLength={type === 'redeem' ? 45 : 120} placeholder="e.g. Steam key" required onChange={(e) => setPrize(e.target.value)} />
               </Field>
               {type === 'redeem' && (
-                <Field label="Point cost per entry" hint="Viewers can redeem repeatedly to stack entries.">
+                <Field
+                  label="Point cost per entry"
+                  hint={
+                    parseLimitInput(maxPerUser) === 1
+                      ? 'One redemption per viewer per stream.'
+                      : 'Viewers can redeem repeatedly to stack entries.'
+                  }
+                >
                   <Input type="number" min={1} max={1000000} value={cost} required onChange={(e) => setCost(Number(e.target.value))} />
                 </Field>
               )}
@@ -320,6 +353,15 @@ export function Giveaways() {
                 </Field>
                 <Field label="Prompt (optional)" hint="Description viewers see under the reward.">
                   <Input value={rewardPrompt} maxLength={200} placeholder="Redeem to enter the giveaway!" onChange={(e) => setRewardPrompt(e.target.value)} />
+                </Field>
+                <Field label="Max entries per viewer per stream" hint="Set 1 so each viewer can enter once per stream. Blank = unlimited.">
+                  <Input type="number" min={1} value={maxPerUser} placeholder="No limit" onChange={(e) => setMaxPerUser(e.target.value)} />
+                </Field>
+                <Field label="Max total entries per stream" hint="Cap on all redemptions per stream. Blank = unlimited.">
+                  <Input type="number" min={1} value={maxPerStreamTotal} placeholder="No limit" onChange={(e) => setMaxPerStreamTotal(e.target.value)} />
+                </Field>
+                <Field label="Cooldown between entries (seconds)" hint="Wait time between redemptions. Blank = none.">
+                  <Input type="number" min={1} value={cooldown} placeholder="None" onChange={(e) => setCooldown(e.target.value)} />
                 </Field>
               </div>
             )}
@@ -456,6 +498,15 @@ export function Giveaways() {
                     </Field>
                     <Field label="Prompt" hint="Leave blank to keep the current prompt.">
                       <Input value={editPrompt} maxLength={200} onChange={(e) => setEditPrompt(e.target.value)} />
+                    </Field>
+                    <Field label="Max entries per viewer per stream" hint="Blank = unlimited.">
+                      <Input type="number" min={1} value={editMaxPerUser} placeholder="No limit" onChange={(e) => setEditMaxPerUser(e.target.value)} />
+                    </Field>
+                    <Field label="Max total entries per stream" hint="Blank = unlimited.">
+                      <Input type="number" min={1} value={editMaxPerStream} placeholder="No limit" onChange={(e) => setEditMaxPerStream(e.target.value)} />
+                    </Field>
+                    <Field label="Cooldown between entries (seconds)" hint="Blank = none.">
+                      <Input type="number" min={1} value={editCooldown} placeholder="None" onChange={(e) => setEditCooldown(e.target.value)} />
                     </Field>
                   </>
                 )}

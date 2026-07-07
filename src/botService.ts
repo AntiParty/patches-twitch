@@ -347,6 +347,7 @@ dbReady.then(async () => {
       const cost = Math.max(1, Math.floor(Number(req.body?.cost) || 0));
       const prompt = typeof req.body?.prompt === "string" ? req.body.prompt : undefined;
       const backgroundColor = typeof req.body?.backgroundColor === "string" ? req.body.backgroundColor : undefined;
+      const winnerCount = Math.max(1, Math.min(50, Math.floor(Number(req.body?.winnerCount) || 1)));
       if (!channelName || !cost) {
         return res.status(400).json({ error: "channel and cost are required" });
       }
@@ -365,6 +366,7 @@ dbReady.then(async () => {
           type: "redeem",
           prize: prize || null,
           rewardCost: cost,
+          targetWinnerCount: winnerCount,
         });
         if (!created.ok) {
           return res.status(409).json({ error: "A giveaway is already active. Close it first." });

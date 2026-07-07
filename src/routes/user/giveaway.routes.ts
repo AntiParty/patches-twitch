@@ -9,6 +9,8 @@ import {
   drawWinner,
   getActiveGiveaway,
   listEntries,
+  lockGiveaway,
+  parseWinners,
   pauseGiveaway,
   redraw,
   resetEntries,
@@ -54,6 +56,8 @@ function serialize(giveaway: Giveaway | null) {
     status: giveaway.status,
     prize: giveaway.prize,
     maxTicketsPerUser: giveaway.max_tickets_per_user,
+    targetWinnerCount: giveaway.target_winner_count,
+    winners: parseWinners(giveaway),
     rewardCost: giveaway.reward_cost,
     winnerUsername: giveaway.winner_username,
     winnerSlot: giveaway.winner_slot,
@@ -97,17 +101,30 @@ router.get('/api/user/giveaways/current', requireUserAPI, (req, res) =>
 router.post('/api/user/giveaways', requireUserAPI, csrfProtection, (req, res) =>
   withChannel(req, res, 'create', async (channel) => {
     const prize = typeof req.body?.prize === 'string' ? req.body.prize.trim().slice(0, 120) : null;
-    const maxTicketsPerUser = Math.max(1, Math.min(1000, Number(req.body?.maxTicketsPerUser) || 1));
     const result = await createGiveaway({
       channel: channel.username,
       type: 'ticket',
       prize,
-      maxTicketsPerUser,
+      // One entry per person; 0 = spin as many winners as you want.
+      targetWinnerCount: 0,
     });
     if (!result.ok) {
       return res.status(409).json({ error: 'A giveaway is already active. Close it first.' });
     }
     return res.json({ giveaway: serialize(result.giveaway) });
+  })
+);
+
+// "Close Giveaway": stop new entries, keep it drawable from whoever entered.
+router.post('/api/user/giveaways/lock', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'lock', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    const ok = await lockGiveaway(giveaway.id);
+    if (giveaway.type === 'redeem' && giveaway.reward_id) {
+      await setRewardPausedViaControl(channel.username, true);
+    }
+    return res.json({ success: ok });
   })
 );
 
@@ -130,8 +147,7 @@ router.post('/api/user/giveaways/redraw', requireUserAPI, csrfProtection, (req, 
   withChannel(req, res, 'redraw', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
-    const excludePrevWinner = Boolean(req.body?.excludePrevWinner);
-    const result = await redraw(giveaway.id, { excludePrevWinner });
+    const result = await redraw(giveaway.id);
     if (!result.ok) {
       return res.status(409).json({ error: 'No eligible entries to redraw.' });
     }
@@ -147,11 +163,12 @@ router.post('/api/user/giveaways/announce', requireUserAPI, csrfProtection, (req
     if (!giveaway || !giveaway.winner_username) {
       return res.status(409).json({ error: 'No winner to announce.' });
     }
-    const { total } = await listEntries(giveaway.id);
-    await announce(
-      channel.username,
-      `🎉 Giveaway winner: @${giveaway.winner_username} (slot #${giveaway.winner_slot} of ${total})! 🎁`
-    );
+    const winners = parseWinners(giveaway);
+    const target = giveaway.target_winner_count;
+    // "Winner #2 of 3" when the streamer is drawing multiple; plain otherwise.
+    const label =
+      target > 1 ? `Giveaway winner #${winners.length} of ${target}` : 'Giveaway winner';
+    await announce(channel.username, `🎉 ${label}: @${giveaway.winner_username}! 🎁`);
     return res.json({ success: true });
   })
 );
@@ -215,11 +232,12 @@ router.post('/api/user/giveaways/redeem/start', requireUserAPI, csrfProtection, 
     const cost = Math.max(1, Math.floor(Number(req.body?.cost) || 0));
     const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim().slice(0, 200) : '';
     const backgroundColor = typeof req.body?.backgroundColor === 'string' ? req.body.backgroundColor : '';
+    const winnerCount = Math.max(1, Math.min(50, Math.floor(Number(req.body?.winnerCount) || 1)));
     if (!cost) return res.status(400).json({ error: 'A point cost is required.' });
     try {
       const response = await axios.post(
         `${BOT_CONTROL_URL}/giveaway/redeem/start`,
-        { channel: channel.username, prize, cost, prompt, backgroundColor },
+        { channel: channel.username, prize, cost, prompt, backgroundColor, winnerCount },
         { timeout: 10000 }
       );
       return res.json(response.data);

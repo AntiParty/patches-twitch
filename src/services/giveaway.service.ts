@@ -25,6 +25,9 @@ export interface CreateGiveawayInput {
   maxTicketsPerUser?: number;
   targetWinnerCount?: number;
   rewardCost?: number | null;
+  maxPerUserPerStream?: number | null;
+  maxPerStream?: number | null;
+  cooldownSeconds?: number | null;
 }
 
 export interface GiveawayWinnerRecord {
@@ -60,6 +63,9 @@ export async function createGiveaway(input: CreateGiveawayInput): Promise<Create
     target_winner_count: Math.max(0, Math.floor(input.targetWinnerCount ?? 1)),
     winners_json: '[]',
     reward_cost: input.rewardCost ?? null,
+    max_per_user_per_stream: input.maxPerUserPerStream ?? null,
+    max_per_stream: input.maxPerStream ?? null,
+    cooldown_seconds: input.cooldownSeconds ?? null,
     created_at: new Date(),
   });
   return { ok: true, giveaway };

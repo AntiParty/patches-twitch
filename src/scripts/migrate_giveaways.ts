@@ -43,6 +43,13 @@ export async function migrateGiveaways(queryInterface: QueryInterface): Promise<
     });
   }
 
+  if (giveawaysCols && !giveawaysCols.max_per_user_per_stream) {
+    logger.info('[Migration] Adding reward limit columns to Giveaways...');
+    await queryInterface.addColumn('Giveaways', 'max_per_user_per_stream', { type: DataTypes.INTEGER, allowNull: true });
+    await queryInterface.addColumn('Giveaways', 'max_per_stream', { type: DataTypes.INTEGER, allowNull: true });
+    await queryInterface.addColumn('Giveaways', 'cooldown_seconds', { type: DataTypes.INTEGER, allowNull: true });
+  }
+
   const entries = await queryInterface.describeTable('GiveawayEntries').catch(() => null);
   if (!entries) {
     logger.info('[Migration] Creating GiveawayEntries table...');

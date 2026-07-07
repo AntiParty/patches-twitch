@@ -2,7 +2,7 @@ import { strict as assert } from 'assert';
 import { getBroadcasterOAuthScopes, getCustomBotOAuthScopes } from '../../util/twitchScopes';
 
 describe('Twitch OAuth scopes', () => {
-  it('requests prediction management for broadcaster login and reauthorization', () => {
+  it('requests prediction + redemption management for broadcaster login and reauthorization', () => {
     assert.deepEqual(getBroadcasterOAuthScopes(), [
       'channel:moderate',
       'user:read:chat',
@@ -10,6 +10,8 @@ describe('Twitch OAuth scopes', () => {
       'channel:bot',
       'user:read:subscriptions',
       'channel:manage:predictions',
+      'channel:manage:redemptions',
+      'channel:read:redemptions',
     ]);
   });
 

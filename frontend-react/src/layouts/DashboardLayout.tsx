@@ -19,6 +19,7 @@ export function DashboardLayout() {
       { label: 'Overview', icon: 'fas fa-home', to: '/dashboard', end: true },
       { label: 'My Commands', icon: 'fas fa-terminal', to: '/dashboard/commands' },
       { label: 'Predictions', icon: 'fas fa-square-poll-horizontal', to: '/dashboard/predictions' },
+      { label: 'Giveaways', icon: 'fas fa-gift', to: '/dashboard/giveaways' },
       { label: 'Rank Tracker', icon: 'fas fa-chart-line', to: '/dashboard/rank-tracker' },
       { label: 'Stream Overlays', icon: 'fas fa-tv', to: '/dashboard/overlays' },
       { label: 'Settings', icon: 'fas fa-cog', to: '/dashboard/settings' },

@@ -17,6 +17,7 @@ import { Settings } from '@/features/dashboard/Settings'
 import { RankTracker } from '@/features/dashboard/RankTracker'
 import { Overlays } from '@/features/dashboard/Overlays'
 import { Predictions } from '@/features/dashboard/Predictions'
+import { Giveaways } from '@/features/dashboard/Giveaways'
 import { CustomBot } from '@/features/dashboard/CustomBot'
 import { Leaderboard } from '@/features/leaderboard/Leaderboard'
 import { Subscribe } from '@/features/subscribe/Subscribe'
@@ -99,6 +100,7 @@ export default function App() {
           <Route index element={<Overview />} />
           <Route path="commands" element={<Commands />} />
           <Route path="predictions" element={<Predictions />} />
+          <Route path="giveaways" element={<Giveaways />} />
           <Route path="rank-tracker" element={<RankTracker />} />
           <Route path="overlays" element={<Overlays />} />
           <Route path="settings" element={<Settings />} />

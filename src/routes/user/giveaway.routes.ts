@@ -59,6 +59,9 @@ function serialize(giveaway: Giveaway | null) {
     targetWinnerCount: giveaway.target_winner_count,
     winners: parseWinners(giveaway),
     rewardCost: giveaway.reward_cost,
+    maxPerUserPerStream: giveaway.max_per_user_per_stream,
+    maxPerStream: giveaway.max_per_stream,
+    cooldownSeconds: giveaway.cooldown_seconds,
     winnerUsername: giveaway.winner_username,
     winnerSlot: giveaway.winner_slot,
     createdAt: giveaway.created_at,
@@ -140,6 +143,15 @@ router.post('/api/user/giveaways/update', requireUserAPI, csrfProtection, (req, 
       Number.isFinite(rawWinnerCount) && rawWinnerCount >= 1
         ? Math.max(parseWinners(giveaway).length, Math.min(50, Math.floor(rawWinnerCount)))
         : null;
+    // Reward limits: undefined = not sent (keep current); <1 or non-numeric = explicitly turn off.
+    const parseLimitPatch = (v: unknown): number | null | undefined => {
+      if (v === undefined) return undefined;
+      const n = Math.floor(Number(v));
+      return Number.isFinite(n) && n >= 1 ? n : null;
+    };
+    const maxPerUserPerStream = parseLimitPatch(req.body?.maxPerUserPerStream);
+    const maxPerStream = parseLimitPatch(req.body?.maxPerStream);
+    const cooldownSeconds = parseLimitPatch(req.body?.cooldownSeconds);
 
     if (giveaway.type === 'redeem' && giveaway.reward_id) {
       const patched = await updateReward(channel.id, giveaway.reward_id, {
@@ -147,16 +159,23 @@ router.post('/api/user/giveaways/update', requireUserAPI, csrfProtection, (req, 
         cost: cost ?? undefined,
         prompt: prompt || undefined,
         backgroundColor: backgroundColor || undefined,
+        maxPerUserPerStream,
+        maxPerStream,
+        cooldownSeconds,
       });
       if (!patched) {
         return res.status(502).json({ error: 'Twitch rejected the reward update.' });
       }
     }
 
+    const isRedeem = giveaway.type === 'redeem';
     await giveaway.update({
       ...(prize ? { prize } : {}),
-      ...(giveaway.type === 'redeem' && cost ? { reward_cost: cost } : {}),
-      ...(giveaway.type === 'redeem' && winnerCount ? { target_winner_count: winnerCount } : {}),
+      ...(isRedeem && cost ? { reward_cost: cost } : {}),
+      ...(isRedeem && winnerCount ? { target_winner_count: winnerCount } : {}),
+      ...(isRedeem && maxPerUserPerStream !== undefined ? { max_per_user_per_stream: maxPerUserPerStream } : {}),
+      ...(isRedeem && maxPerStream !== undefined ? { max_per_stream: maxPerStream } : {}),
+      ...(isRedeem && cooldownSeconds !== undefined ? { cooldown_seconds: cooldownSeconds } : {}),
     });
     return res.json({ giveaway: serialize(giveaway) });
   })
@@ -280,11 +299,24 @@ router.post('/api/user/giveaways/redeem/start', requireUserAPI, csrfProtection, 
     const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim().slice(0, 200) : '';
     const backgroundColor = typeof req.body?.backgroundColor === 'string' ? req.body.backgroundColor : '';
     const winnerCount = Math.max(1, Math.min(50, Math.floor(Number(req.body?.winnerCount) || 1)));
+    const maxPerUserPerStream = req.body?.maxPerUserPerStream;
+    const maxPerStream = req.body?.maxPerStream;
+    const cooldownSeconds = req.body?.cooldownSeconds;
     if (!cost) return res.status(400).json({ error: 'A point cost is required.' });
     try {
       const response = await axios.post(
         `${BOT_CONTROL_URL}/giveaway/redeem/start`,
-        { channel: channel.username, prize, cost, prompt, backgroundColor, winnerCount },
+        {
+          channel: channel.username,
+          prize,
+          cost,
+          prompt,
+          backgroundColor,
+          winnerCount,
+          maxPerUserPerStream,
+          maxPerStream,
+          cooldownSeconds,
+        },
         { timeout: 10000 }
       );
       return res.json(response.data);

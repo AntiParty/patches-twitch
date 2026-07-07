@@ -3,7 +3,7 @@ import logger from '../util/logger';
 import { addTicketEntry, getActiveGiveaway } from '../services/giveaway.service';
 
 export const name = 'enter';
-export const description = 'Enter the current giveaway for a ticket';
+export const description = 'Enter the current giveaway (one entry per person)';
 
 export async function execute(
   ctx: any,
@@ -26,10 +26,12 @@ export async function execute(
     const result = await addTicketEntry({ channel: sanitizedChannel, userId, username });
 
     if (!result.ok) {
-      if (result.reason === 'at_cap') {
-        await ctx.say(`@${username}, you already have the max ${result.cap} tickets. 🎟️`, messageId);
+      if (result.reason === 'already_entered') {
+        await ctx.say(`@${username}, you're already entered! 🎟️`, messageId);
       } else if (result.reason === 'paused') {
         await ctx.say(`@${username}, entries are paused right now — hang tight! ⏸️`, messageId);
+      } else if (result.reason === 'locked') {
+        await ctx.say(`@${username}, entries are closed for this giveaway.`, messageId);
       } else {
         await ctx.say(`@${username}, no giveaway is running right now.`, messageId);
       }
@@ -41,8 +43,6 @@ export async function execute(
     if (resp) {
       const vars: Record<string, any> = {
         user: username,
-        count: result.ticketCount,
-        cap: result.cap,
         prize: giveaway?.prize ?? '',
       };
       const formatted = resp.replace(/\{(\w+)\}/g, (_, v) => vars[v] ?? '');
@@ -50,10 +50,7 @@ export async function execute(
       return;
     }
 
-    await ctx.say(
-      `@${username}, you're entered! (${result.ticketCount}/${result.cap} tickets) 🎟️`,
-      messageId
-    );
+    await ctx.say(`@${username}, you're in the giveaway! Good luck! 🎟️`, messageId);
   } catch (err) {
     logger.error('[enter] Error:', err);
     await ctx.say(`@${username}, something went wrong entering the giveaway.`, messageId);

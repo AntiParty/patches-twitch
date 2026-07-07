@@ -18,26 +18,27 @@ export async function execute(
 
   try {
     const giveaway = await getActiveGiveaway(sanitizedChannel);
-    if (!giveaway || giveaway.status !== 'open') {
+    if (!giveaway || (giveaway.status !== 'open' && giveaway.status !== 'paused')) {
       await ctx.say(`@${username}, no giveaway is running right now.`, messageId);
       return;
     }
 
-    const { perUser, total } = await listEntries(giveaway.id);
-    const mine = perUser.find((p) => p.userId === userId)?.count ?? 0;
+    const { perUser } = await listEntries(giveaway.id);
+    const entered = perUser.some((p) => p.userId === userId);
     const prizePart = giveaway.prize ? `🎁 ${giveaway.prize} | ` : '';
     const entrants = perUser.length;
+    const pausedNote = giveaway.status === 'paused' ? ' (entries paused)' : '';
 
     if (giveaway.type === 'redeem') {
       await ctx.say(
-        `${prizePart}${total} entries from ${entrants} people — redeem the channel-point reward to enter! You have ${mine}.`,
+        `${prizePart}${entrants} entered${pausedNote} — redeem the channel-point reward to enter! ${entered ? "You're in." : "You're not in yet."}`,
         messageId
       );
       return;
     }
 
     await ctx.say(
-      `${prizePart}${total} tickets from ${entrants} people. You have ${mine}. Type !enter to join! 🎟️`,
+      `${prizePart}${entrants} entered${pausedNote}. ${entered ? "You're in — good luck!" : 'Type !enter to join!'} 🎟️`,
       messageId
     );
   } catch (err) {

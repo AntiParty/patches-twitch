@@ -12,6 +12,8 @@ export async function migrateGiveaways(queryInterface: QueryInterface): Promise<
       status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'open' },
       prize: { type: DataTypes.STRING, allowNull: true },
       max_tickets_per_user: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+      target_winner_count: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+      winners_json: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
       reward_id: { type: DataTypes.STRING, allowNull: true },
       reward_cost: { type: DataTypes.INTEGER, allowNull: true },
       winner_user_id: { type: DataTypes.STRING, allowNull: true },
@@ -23,6 +25,22 @@ export async function migrateGiveaways(queryInterface: QueryInterface): Promise<
     });
     await queryInterface.addIndex('Giveaways', ['channel'], { name: 'giveaways_channel' });
     logger.info('[Migration] Giveaways table created.');
+  }
+
+  // Backfill columns added after the table's first release.
+  const giveawaysCols = giveaways || (await queryInterface.describeTable('Giveaways').catch(() => null));
+  if (giveawaysCols && !giveawaysCols.target_winner_count) {
+    logger.info('[Migration] Adding target_winner_count + winners_json to Giveaways...');
+    await queryInterface.addColumn('Giveaways', 'target_winner_count', {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    });
+    await queryInterface.addColumn('Giveaways', 'winners_json', {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: '[]',
+    });
   }
 
   const entries = await queryInterface.describeTable('GiveawayEntries').catch(() => null);

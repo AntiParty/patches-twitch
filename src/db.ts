@@ -984,9 +984,11 @@ class Giveaway extends Model {
   declare id: number;
   declare channel: string;
   declare type: 'ticket' | 'redeem';
-  declare status: 'open' | 'paused' | 'drawn' | 'closed';
+  declare status: 'open' | 'paused' | 'locked' | 'drawn' | 'closed';
   declare prize: string | null;
   declare max_tickets_per_user: number;
+  declare target_winner_count: number;
+  declare winners_json: string;
   declare reward_id: string | null;
   declare reward_cost: number | null;
   declare winner_user_id: string | null;
@@ -1005,6 +1007,8 @@ Giveaway.init(
     status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'open' },
     prize: { type: DataTypes.STRING, allowNull: true },
     max_tickets_per_user: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    target_winner_count: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    winners_json: { type: DataTypes.TEXT, allowNull: false, defaultValue: '[]' },
     reward_id: { type: DataTypes.STRING, allowNull: true },
     reward_cost: { type: DataTypes.INTEGER, allowNull: true },
     winner_user_id: { type: DataTypes.STRING, allowNull: true },

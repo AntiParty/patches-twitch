@@ -151,7 +151,7 @@ export function Giveaways() {
     if (!ok) return
     try {
       await lock.mutateAsync()
-      toast.success('Entries closed — spin whenever you’re ready.')
+      toast.success('Entries closed. Spin whenever you are ready.')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to close entries.')
     }
@@ -311,11 +311,11 @@ export function Giveaways() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
             <div>
               <div className="card-title" style={{ fontWeight: 800 }}>
-                {giveaway.prize ? `🎁 ${giveaway.prize}` : 'Giveaway'}
+                {giveaway.prize || 'Giveaway'}
               </div>
               <div style={{ color: 'var(--text-muted, #888)', marginTop: 4 }}>
-                {giveaway.status === 'paused' && <strong style={{ color: 'var(--warning, #eab308)' }}>⏸️ Paused · </strong>}
-                {giveaway.status === 'locked' && <strong style={{ color: 'var(--text, #ddd)' }}>🔒 Entries closed · </strong>}
+                {giveaway.status === 'paused' && <strong style={{ color: 'var(--warning, #eab308)' }}>Paused. </strong>}
+                {giveaway.status === 'locked' && <strong style={{ color: 'var(--text, #ddd)' }}>Entries closed. </strong>}
                 {giveaway.type === 'ticket'
                   ? 'Viewers type !enter (one entry per person).'
                   : `Viewers redeem the channel-point reward.${target > 1 ? ` ${target} winners.` : ''}`}
@@ -375,7 +375,7 @@ export function Giveaways() {
                     border: '1px solid var(--success-border, rgba(34,197,94,0.4))',
                   }}
                 >
-                  🏆 @{w.username}
+                  @{w.username}
                 </span>
               ))}
               {target > 0 && !canDrawMore && eligiblePool.length === 0 && winners.length < target && (
@@ -505,7 +505,7 @@ function RollModal({
     >
       <div style={{ textAlign: 'center' }}>
         <div style={{ textTransform: 'uppercase', letterSpacing: 2, fontSize: 13, color: '#cfcfcf', marginBottom: 14 }}>
-          {done ? '🎉 Winner' : 'Spinning…'}
+          {done ? 'Winner' : 'Spinning'}
         </div>
 
         <div style={{ position: 'relative', width: 340, height: 340, margin: '0 auto' }}>
@@ -562,7 +562,7 @@ function RollModal({
                         transform={`rotate(${mid} ${label.x} ${label.y})`}
                         style={{ pointerEvents: 'none' }}
                       >
-                        {name.length > 12 ? name.slice(0, 11) + '…' : name}
+                        {name.length > 12 ? name.slice(0, 11) + '...' : name}
                       </text>
                     )}
                   </g>
@@ -586,7 +586,7 @@ function RollModal({
         </div>
         {done && (
           <div style={{ marginTop: 8, color: '#cfcfcf' }}>
-            slot #{slot} of {total} · click anywhere to close
+            slot #{slot} of {total} — click anywhere to close
           </div>
         )}
       </div>

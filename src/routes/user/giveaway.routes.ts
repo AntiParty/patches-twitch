@@ -168,7 +168,7 @@ router.post('/api/user/giveaways/announce', requireUserAPI, csrfProtection, (req
     // "Winner #2 of 3" when the streamer is drawing multiple; plain otherwise.
     const label =
       target > 1 ? `Giveaway winner #${winners.length} of ${target}` : 'Giveaway winner';
-    await announce(channel.username, `🎉 ${label}: @${giveaway.winner_username}! 🎁`);
+    await announce(channel.username, `${label}: @${giveaway.winner_username}!`);
     return res.json({ success: true });
   })
 );

@@ -25,7 +25,7 @@ export async function execute(
 
     const { perUser } = await listEntries(giveaway.id);
     const entered = perUser.some((p) => p.userId === userId);
-    const prizePart = giveaway.prize ? `🎁 ${giveaway.prize} | ` : '';
+    const prizePart = giveaway.prize ? `${giveaway.prize} | ` : '';
     const entrants = perUser.length;
     const pausedNote = giveaway.status === 'paused' ? ' (entries paused)' : '';
 
@@ -38,7 +38,7 @@ export async function execute(
     }
 
     await ctx.say(
-      `${prizePart}${entrants} entered${pausedNote}. ${entered ? "You're in — good luck!" : 'Type !enter to join!'} 🎟️`,
+      `${prizePart}${entrants} entered${pausedNote}. ${entered ? "You're in, good luck!" : 'Type !enter to join!'}`,
       messageId
     );
   } catch (err) {

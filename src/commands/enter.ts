@@ -27,9 +27,9 @@ export async function execute(
 
     if (!result.ok) {
       if (result.reason === 'already_entered') {
-        await ctx.say(`@${username}, you're already entered! 🎟️`, messageId);
+        await ctx.say(`@${username}, you're already entered.`, messageId);
       } else if (result.reason === 'paused') {
-        await ctx.say(`@${username}, entries are paused right now — hang tight! ⏸️`, messageId);
+        await ctx.say(`@${username}, entries are paused right now, hang tight.`, messageId);
       } else if (result.reason === 'locked') {
         await ctx.say(`@${username}, entries are closed for this giveaway.`, messageId);
       } else {
@@ -50,7 +50,7 @@ export async function execute(
       return;
     }
 
-    await ctx.say(`@${username}, you're in the giveaway! Good luck! 🎟️`, messageId);
+    await ctx.say(`@${username}, you're in the giveaway. Good luck!`, messageId);
   } catch (err) {
     logger.error('[enter] Error:', err);
     await ctx.say(`@${username}, something went wrong entering the giveaway.`, messageId);

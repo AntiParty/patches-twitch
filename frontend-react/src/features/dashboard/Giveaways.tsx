@@ -30,25 +30,35 @@ export function Giveaways() {
   const giveaway = currentQuery.data?.giveaway ?? null
   const perUser = currentQuery.data?.perUser ?? []
   const total = currentQuery.data?.total ?? 0
+  const redeemScope = currentQuery.data?.redeemScope ?? false
 
   const [type, setType] = useState<'ticket' | 'redeem'>('ticket')
   const [prize, setPrize] = useState('')
   const [maxTickets, setMaxTickets] = useState(1)
+  const [cost, setCost] = useState(500)
 
   const invalidate = () => qc.invalidateQueries({ queryKey: CURRENT_KEY })
 
   const create = useMutation({ mutationFn: giveawaysApi.create, onSuccess: invalidate })
+  const redeemStart = useMutation({ mutationFn: giveawaysApi.redeemStart, onSuccess: invalidate })
   const draw = useMutation({ mutationFn: giveawaysApi.draw, onSuccess: invalidate })
   const redraw = useMutation({ mutationFn: giveawaysApi.redraw, onSuccess: invalidate })
   const close = useMutation({ mutationFn: giveawaysApi.close, onSuccess: invalidate })
+  const redeemClose = useMutation({ mutationFn: giveawaysApi.redeemClose, onSuccess: invalidate })
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
     try {
-      await create.mutateAsync({ prize: prize.trim(), maxTicketsPerUser: maxTickets })
-      toast.success('Giveaway started! Viewers can now type !enter.')
+      if (type === 'redeem') {
+        await redeemStart.mutateAsync({ prize: prize.trim(), cost })
+        toast.success('Channel-point giveaway started! The reward is now live.')
+      } else {
+        await create.mutateAsync({ prize: prize.trim(), maxTicketsPerUser: maxTickets })
+        toast.success('Giveaway started! Viewers can now type !enter.')
+      }
       setPrize('')
       setMaxTickets(1)
+      setCost(500)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to start giveaway.')
     }
@@ -80,7 +90,11 @@ export function Giveaways() {
     const ok = await confirm({ title: 'Close giveaway', body: 'Close this giveaway? Viewers can no longer enter.', confirmLabel: 'Close', danger: true })
     if (!ok) return
     try {
-      await close.mutateAsync()
+      if (giveaway?.type === 'redeem') {
+        await redeemClose.mutateAsync()
+      } else {
+        await close.mutateAsync()
+      }
       toast.success('Giveaway closed.')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to close giveaway.')
@@ -118,20 +132,47 @@ export function Giveaways() {
                   onChange={(e) => setType(e.target.value as 'ticket' | 'redeem')}
                   options={[
                     { label: 'Chat — viewers type !enter', value: 'ticket' },
-                    { label: 'Channel points (coming soon)', value: 'redeem', disabled: true },
+                    { label: 'Channel points — viewers redeem', value: 'redeem' },
                   ]}
                 />
               </Field>
               <Field label="Prize">
-                <Input value={prize} maxLength={120} placeholder="e.g. Steam key" required onChange={(e) => setPrize(e.target.value)} />
+                <Input value={prize} maxLength={type === 'redeem' ? 45 : 120} placeholder="e.g. Steam key" required onChange={(e) => setPrize(e.target.value)} />
               </Field>
-              <Field label="Max tickets per viewer" hint="How many times each viewer can !enter.">
-                <Input type="number" min={1} max={1000} value={maxTickets} required onChange={(e) => setMaxTickets(Number(e.target.value))} />
-              </Field>
+              {type === 'ticket' ? (
+                <Field label="Max tickets per viewer" hint="How many times each viewer can !enter.">
+                  <Input type="number" min={1} max={1000} value={maxTickets} required onChange={(e) => setMaxTickets(Number(e.target.value))} />
+                </Field>
+              ) : (
+                <Field label="Point cost per entry" hint="Viewers can redeem repeatedly to stack entries.">
+                  <Input type="number" min={1} max={1000000} value={cost} required onChange={(e) => setCost(Number(e.target.value))} />
+                </Field>
+              )}
             </div>
-            <div style={{ marginTop: 16 }}>
-              <Button type="submit" icon="fas fa-gift" loading={create.isPending}>Start giveaway</Button>
-            </div>
+
+            {type === 'redeem' && !redeemScope ? (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: '14px 16px',
+                  borderRadius: 10,
+                  background: 'var(--warning-bg, rgba(234,179,8,0.12))',
+                  border: '1px solid var(--warning-border, rgba(234,179,8,0.4))',
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: 4 }}>Reauthorization required</div>
+                <div style={{ color: 'var(--text-muted, #888)', marginBottom: 10 }}>
+                  Channel-point giveaways need permission to create and manage your reward. Approve it once to enable them.
+                </div>
+                <a className="btn btn-primary" href="/reauth">Reauthorize with Twitch</a>
+              </div>
+            ) : (
+              <div style={{ marginTop: 16 }}>
+                <Button type="submit" icon="fas fa-gift" loading={create.isPending || redeemStart.isPending}>
+                  Start giveaway
+                </Button>
+              </div>
+            )}
           </form>
         </Card>
       ) : (
@@ -153,7 +194,7 @@ export function Giveaways() {
               {giveaway.status === 'drawn' && (
                 <Button variant="ghost" icon="fas fa-rotate" loading={redraw.isPending} onClick={handleRedraw}>Redraw</Button>
               )}
-              <Button variant="danger" icon="fas fa-xmark" loading={close.isPending} onClick={handleClose}>Close</Button>
+              <Button variant="danger" icon="fas fa-xmark" loading={close.isPending || redeemClose.isPending} onClick={handleClose}>Close</Button>
             </div>
           </div>
 

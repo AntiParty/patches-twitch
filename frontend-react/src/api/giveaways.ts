@@ -7,6 +7,11 @@ export interface CreateTicketInput {
   maxTicketsPerUser: number
 }
 
+export interface RedeemStartInput {
+  prize: string
+  cost: number
+}
+
 export const giveawaysApi = {
   getCurrent: () => api.get<GiveawayCurrentResponse>('/api/user/giveaways/current'),
   create: (input: CreateTicketInput) => api.post('/api/user/giveaways', input),
@@ -14,4 +19,6 @@ export const giveawaysApi = {
   redraw: (excludePrevWinner: boolean) =>
     api.post<{ winner: GiveawayWinner }>('/api/user/giveaways/redraw', { excludePrevWinner }),
   close: () => api.post('/api/user/giveaways/close', {}),
+  redeemStart: (input: RedeemStartInput) => api.post('/api/user/giveaways/redeem/start', input),
+  redeemClose: () => api.post('/api/user/giveaways/redeem/close', {}),
 }

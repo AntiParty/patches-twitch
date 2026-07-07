@@ -11,7 +11,10 @@ import {
   listEntries,
   redraw,
 } from '@/services/giveaway.service';
+import { hasRedemptionsScope } from '@/services/twitchChannelPoints.service';
 import logger from '@/util/logger';
+
+const BOT_CONTROL_URL = 'http://127.0.0.1:4000';
 
 interface ChannelIdentity {
   id: number;
@@ -78,12 +81,12 @@ router.get('/api/user/giveaways/current', requireUserAPI, (req, res) =>
   withChannel(req, res, 'current', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     const summary = giveaway ? await listEntries(giveaway.id) : { perUser: [], total: 0 };
+    const redeemScope = await hasRedemptionsScope(channel.id);
     return res.json({
       giveaway: serialize(giveaway),
       perUser: summary.perUser,
       total: summary.total,
-      // Wired to a real scope check in Task 8.
-      redeemScope: false,
+      redeemScope,
     });
   })
 );
@@ -142,6 +145,52 @@ router.post('/api/user/giveaways/close', requireUserAPI, csrfProtection, (req, r
   withChannel(req, res, 'close', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    await closeGiveaway(giveaway.id);
+    return res.json({ success: true });
+  })
+);
+
+// --- Channel-point redeem giveaway: reward + EventSub lifecycle lives in the bot process ---
+
+router.post('/api/user/giveaways/redeem/start', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'redeemStart', async (channel) => {
+    const prize = typeof req.body?.prize === 'string' ? req.body.prize.trim().slice(0, 45) : '';
+    const cost = Math.max(1, Math.floor(Number(req.body?.cost) || 0));
+    if (!cost) return res.status(400).json({ error: 'A point cost is required.' });
+    try {
+      const response = await axios.post(
+        `${BOT_CONTROL_URL}/giveaway/redeem/start`,
+        { channel: channel.username, prize, cost },
+        { timeout: 10000 }
+      );
+      return res.json(response.data);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      if (status === 403 && data?.reason === 'no_scope') {
+        return res.status(403).json({ error: 'Reauthorization required.', state: 'reauth_required', reauthUrl: '/reauth' });
+      }
+      if (status === 409) return res.status(409).json({ error: data?.error || 'A giveaway is already active.' });
+      logger.error('[GiveawayDashboard] redeemStart proxy failed', data || err?.message);
+      return res.status(502).json({ error: 'Could not start the channel-point giveaway.' });
+    }
+  })
+);
+
+router.post('/api/user/giveaways/redeem/close', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'redeemClose', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    try {
+      await axios.post(
+        `${BOT_CONTROL_URL}/giveaway/redeem/stop`,
+        { channel: channel.username },
+        { timeout: 10000 }
+      );
+    } catch (err: any) {
+      logger.error('[GiveawayDashboard] redeemClose proxy failed', err?.response?.data || err?.message);
+      // Still close the DB record so the streamer isn't stuck; reward may remain enabled.
+    }
     await closeGiveaway(giveaway.id);
     return res.json({ success: true });
   })

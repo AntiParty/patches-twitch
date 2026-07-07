@@ -16,7 +16,7 @@ import {
   resetEntries,
   resumeGiveaway,
 } from '@/services/giveaway.service';
-import { hasRedemptionsScope } from '@/services/twitchChannelPoints.service';
+import { hasRedemptionsScope, updateReward } from '@/services/twitchChannelPoints.service';
 import logger from '@/util/logger';
 
 const BOT_CONTROL_URL = 'http://127.0.0.1:4000';
@@ -112,6 +112,46 @@ router.post('/api/user/giveaways', requireUserAPI, csrfProtection, (req, res) =>
       return res.status(409).json({ error: 'A giveaway is already active. Close it first.' });
     }
     return res.json({ giveaway: serialize(result.giveaway) });
+  })
+);
+
+// Edit the live giveaway. Prize applies to both types; cost/prompt/color also
+// patch the Twitch reward (the redemption subscription is keyed by reward id,
+// so entries keep flowing while the reward changes).
+router.post('/api/user/giveaways/update', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'update', async (channel) => {
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+
+    const maxPrizeLen = giveaway.type === 'redeem' ? 45 : 120;
+    const prize =
+      typeof req.body?.prize === 'string' && req.body.prize.trim()
+        ? req.body.prize.trim().slice(0, maxPrizeLen)
+        : null;
+    const cost = Number.isFinite(Number(req.body?.cost)) && Number(req.body?.cost) > 0
+      ? Math.floor(Number(req.body.cost))
+      : null;
+    const prompt = typeof req.body?.prompt === 'string' ? req.body.prompt.trim().slice(0, 200) : '';
+    const backgroundColor =
+      typeof req.body?.backgroundColor === 'string' ? req.body.backgroundColor : '';
+
+    if (giveaway.type === 'redeem' && giveaway.reward_id) {
+      const patched = await updateReward(channel.id, giveaway.reward_id, {
+        title: prize ?? undefined,
+        cost: cost ?? undefined,
+        prompt: prompt || undefined,
+        backgroundColor: backgroundColor || undefined,
+      });
+      if (!patched) {
+        return res.status(502).json({ error: 'Twitch rejected the reward update.' });
+      }
+    }
+
+    await giveaway.update({
+      ...(prize ? { prize } : {}),
+      ...(giveaway.type === 'redeem' && cost ? { reward_cost: cost } : {}),
+    });
+    return res.json({ giveaway: serialize(giveaway) });
   })
 );
 

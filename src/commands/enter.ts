@@ -32,9 +32,8 @@ export async function execute(
         await ctx.say(`@${username}, entries are paused right now, hang tight.`, messageId);
       } else if (result.reason === 'locked') {
         await ctx.say(`@${username}, entries are closed for this giveaway.`, messageId);
-      } else {
-        await ctx.say(`@${username}, no giveaway is running right now.`, messageId);
       }
+      // no_giveaway / wrong_type: stay silent so !enter doesn't spam chat when nothing is running
       return;
     }
 

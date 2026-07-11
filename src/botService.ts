@@ -1,4 +1,4 @@
-import { dbReady, Channel, StreamSession, Giveaway } from "./db";
+import { dbReady, Channel, StreamSession, Giveaway, CustomBotAccount } from "./db";
 // In-memory map to track active stream sessions
 const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
@@ -6,7 +6,7 @@ import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
 import { createReward, deleteReward, setRewardPaused, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway } from "./services/giveaway.service";
-import { decryptChannelAccessToken } from "./util/twitchUtils";
+import { decryptChannelAccessToken, clearCustomBotPermanentFailed } from "./util/twitchUtils";
 import logger from "./util/logger";
 import express from "express";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
@@ -119,6 +119,17 @@ dbReady.then(async () => {
         }
 
         const uname = user.username;
+
+        // A re-link reuses the same CustomBotAccount row (bot_twitch_user_id is
+        // unique), but a prior revocation may have left that row id in this
+        // process's permanent-failed set — which would block every future
+        // refresh of the new tokens until a restart. Clear it before starting.
+        const customBot = await CustomBotAccount.findOne({
+          where: { channel_id: user.id, is_active: true },
+        });
+        if (customBot) {
+          clearCustomBotPermanentFailed(customBot.id);
+        }
 
         // Stop the existing bot connection
         await botManager.stopBotForUser(uname);

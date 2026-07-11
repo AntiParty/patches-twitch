@@ -369,6 +369,13 @@ export async function sendChatMessage(
     message: outMessage,
   };
 
+  // Shared chat (Stream Together): app tokens default to source-channel-only,
+  // so opt in to broadcasting across the session. Only valid on app tokens —
+  // custom bot user tokens already send to all channels and reject the field.
+  if (!customCredentials) {
+    body.for_source_only = false;
+  }
+
   if (replyParentId) {
     body.reply_parent_message_id = replyParentId; // 👈 important
   }

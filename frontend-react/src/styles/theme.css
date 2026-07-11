@@ -1,32 +1,37 @@
 /*
- * FinalsRS design tokens — "Flat & Neutral" redesign (2026-07).
- * One unified dark theme. Purple is an accent, not a paint bucket:
- * primary buttons, links, active nav, focus rings, key data only.
+ * FinalsRS design tokens — "Cinematic" theme (2026-07), aligned with the
+ * landing page: near-black canvas, hairline white borders, cream primary
+ * actions. Purple remains an accent for links, focus, and key data.
  */
 :root {
-  /* Surfaces — flat, separated by borders, not shadows */
-  --bg-app: #0d0d10;
-  --bg-sidebar: #0d0d10;
-  --bg-card: #131318;
-  --bg-card-2: #17171d;
-  --bg-hover: #1a1a20;
-  --bg-input: #0f0f13;
-  --bg-overlay: rgba(8, 8, 12, 0.72);
+  /* Surfaces — flat, separated by hairline borders, not shadows */
+  --bg-app: #050505;
+  --bg-sidebar: #050505;
+  --bg-card: #0e0e12;
+  --bg-card-2: #121217;
+  --bg-hover: #17171c;
+  --bg-input: #0a0a0e;
+  --bg-overlay: rgba(5, 5, 8, 0.72);
 
-  /* Borders */
-  --border: #222228;
-  --border-strong: #2c2c36;
+  /* Borders — translucent white hairlines (landing style) */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
 
-  /* Brand */
+  /* Primary action — cream pill (landing CTA) */
+  --cream: #efe8dc;
+  --cream-hover: #f7f2ea;
+  --on-cream: #141414;
+
+  /* Brand accent — links, active nav, focus rings, key data */
   --primary: #a37bff;
   --primary-hover: #8e62ff;
   --primary-soft: rgba(163, 123, 255, 0.12);
   --primary-ring: rgba(163, 123, 255, 0.35);
 
   /* Text */
-  --text-main: #e8e8ec;
-  --text-muted: #8b8b95;
-  --text-subtle: #5f5f68;
+  --text-main: #f4f4f5;
+  --text-muted: rgba(244, 244, 245, 0.58);
+  --text-subtle: rgba(244, 244, 245, 0.32);
 
   /* Status */
   --success: #3dd598;
@@ -41,11 +46,12 @@
   /* Twitch purple (chat demo bubbles) */
   --twitch: #9147ff;
 
-  /* Shape + motion — tight radii, near-zero elevation */
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
+  /* Shape + motion — soft radii, pill actions, near-zero elevation */
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
   --shadow-sm: none;
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);

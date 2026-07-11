@@ -1,7 +1,7 @@
 .card {
   background: var(--bg-card);
   border-radius: var(--radius-lg, var(--radius));
-  padding: 16px;
+  padding: 20px;
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -17,15 +17,15 @@
 
 .title {
   margin: 0;
-  font-size: 14px;
-  font-weight: 650;
+  font-size: 15.5px;
+  font-weight: 600;
   color: var(--text-main);
   letter-spacing: -0.01em;
 }
 
 .subtitle {
   margin: 3px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 

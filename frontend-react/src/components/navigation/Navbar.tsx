@@ -1,9 +1,8 @@
 /*
- * Top navigation bar for public/marketing pages (landing, docs, legal, ...).
- * Mirrors the legacy `.topnav` from _theme.ejs. Auth-aware: swaps the login
- * button for a dashboard link when signed in.
+ * Top navigation. On the landing page: floating centered pill cluster
+ * over the cinematic hero. Elsewhere: standard sticky bar.
  */
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import styles from './Navbar.module.css'
 
@@ -22,44 +21,55 @@ const DEFAULT_LINKS: NavLinkDef[] = [
 
 export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
   const { isAuthenticated, login } = useAuth()
+  const { pathname } = useLocation()
+  const isLanding = pathname === '/'
 
   return (
-    <nav className={styles.topnav}>
-      <Link to="/" className={styles.brand}>
-        <img src="/assets/logo.png" alt="FinalsRS" />
-        <span className={styles.brandName}>FinalsRS</span>
-      </Link>
+    <nav className={`${styles.topnav} ${isLanding ? styles.landing : ''}`}>
+      <div className={styles.inner}>
+        <Link to="/" className={styles.brand}>
+          <img src="/assets/logo.png" alt="" />
+          <span className={styles.brandName}>FinalsRS</span>
+        </Link>
 
-      <div className={styles.links}>
-        {links.map((l) =>
-          l.to ? (
+        <div className={styles.links}>
+          {links.map((l) =>
+            l.to ? (
+              <Link
+                key={l.label}
+                to={l.to}
+                className={`${styles.navLink} ${l.hideOnMobile ? styles.hideSm : ''}`}
+              >
+                {l.label}
+              </Link>
+            ) : (
+              <a
+                key={l.label}
+                href={l.href}
+                className={`${styles.navLink} ${l.hideOnMobile ? styles.hideSm : ''}`}
+              >
+                {l.label}
+              </a>
+            ),
+          )}
+
+          {isAuthenticated ? (
             <Link
-              key={l.label}
-              to={l.to}
-              className={`${styles.navLink} ${l.hideOnMobile ? styles.hideSm : ''}`}
+              to="/dashboard"
+              className={isLanding ? styles.pillCta : 'btn btn-primary btn-sm'}
             >
-              {l.label}
+              Dashboard
             </Link>
+          ) : isLanding ? (
+            <button type="button" className={styles.pillCta} onClick={login}>
+              Log in
+            </button>
           ) : (
-            <a
-              key={l.label}
-              href={l.href}
-              className={`${styles.navLink} ${l.hideOnMobile ? styles.hideSm : ''}`}
-            >
-              {l.label}
-            </a>
-          ),
-        )}
-
-        {isAuthenticated ? (
-          <Link to="/dashboard" className="btn btn-primary btn-sm">
-            Dashboard
-          </Link>
-        ) : (
-          <button type="button" className="btn btn-primary btn-sm" onClick={login}>
-            <i className="fa-brands fa-twitch" /> Log in with Twitch
-          </button>
-        )}
+            <button type="button" className="btn btn-primary btn-sm" onClick={login}>
+              <i className="fa-brands fa-twitch" /> Log in with Twitch
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   )

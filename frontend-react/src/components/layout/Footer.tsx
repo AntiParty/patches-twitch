@@ -2,9 +2,9 @@
 import { Link } from 'react-router-dom'
 import styles from './Footer.module.css'
 
-export function Footer() {
+export function Footer({ variant = 'default' }: { variant?: 'default' | 'cinematic' }) {
   return (
-    <footer className={styles.footer}>
+    <footer className={`${styles.footer} ${variant === 'cinematic' ? styles.cinematic : ''}`}>
       <div className={styles.row}>
         <p className={styles.copy}>
           &copy; {new Date().getFullYear()} FinalsRS. Not affiliated with Embark Studios.

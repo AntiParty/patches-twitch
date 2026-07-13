@@ -51,6 +51,7 @@ class Channel extends Model {
   declare subscription_tier: string | null;
   declare notify_chat_reminders: boolean;
   declare auth_revoked: boolean;
+  declare onboarding_completed_at: Date | null;
 }
 
 
@@ -246,6 +247,11 @@ Channel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    onboarding_completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -678,6 +684,17 @@ async function runMigrations() {
         defaultValue: false,
       });
       logger.info('[Migration] auth_revoked column added successfully.');
+    }
+
+    // Add onboarding_completed_at if missing
+    if (!tableInfo.onboarding_completed_at) {
+      logger.info('[Migration] Adding onboarding_completed_at column to Channels table...');
+      await queryInterface.addColumn('Channels', 'onboarding_completed_at', {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+      });
+      logger.info('[Migration] onboarding_completed_at column added successfully.');
     }
 
     await migratePredictionPresets(queryInterface);

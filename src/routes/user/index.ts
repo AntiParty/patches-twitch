@@ -4,6 +4,7 @@
  */
 import { Router } from 'express';
 import dashboardRoutes from './dashboard.routes';
+import onboardingRoutes from './onboarding.routes';
 import commandsRoutes from './commands.routes';
 import rankGoalRoutes from './rankgoal.routes';
 import analyticsRoutes from './analytics.routes';
@@ -15,6 +16,7 @@ const router = Router();
 
 // Mount user routes
 router.use(dashboardRoutes);
+router.use(onboardingRoutes);
 router.use(commandsRoutes);
 router.use(rankGoalRoutes);
 router.use(analyticsRoutes);

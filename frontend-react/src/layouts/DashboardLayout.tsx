@@ -9,6 +9,8 @@ import { Sidebar, type SidebarItem } from '@/components/navigation/Sidebar'
 import { Logo } from '@/components/layout/Logo'
 import { UserProfile } from '@/components/layout/UserAvatar'
 import { useAuth } from '@/hooks/useAuth'
+import { OnboardingWizard } from '@/features/dashboard/OnboardingWizard'
+import { LinkReminder } from '@/features/dashboard/LinkReminder'
 import styles from './DashboardLayout.module.css'
 
 export function DashboardLayout() {
@@ -45,6 +47,8 @@ export function DashboardLayout() {
         footer={user && <UserProfile name={user.username} role={user.role} />}
       />
       <main className={styles.main}>
+        <OnboardingWizard />
+        <LinkReminder />
         <Outlet />
       </main>
     </div>

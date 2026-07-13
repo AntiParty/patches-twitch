@@ -1,0 +1,19 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--warning, #e2b340);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warning, #e2b340) 12%, transparent);
+  font-size: 14px;
+}
+.spacer { margin-left: auto; }
+.close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 15px;
+}

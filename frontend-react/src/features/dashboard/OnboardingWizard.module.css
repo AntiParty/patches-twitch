@@ -1,0 +1,14 @@
+.intro {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0 0 16px;
+}
+.result {
+  margin-top: 10px;
+  font-size: 13px;
+  min-height: 18px;
+}
+.found { color: var(--success, #00b35f); font-weight: 600; }
+.missing { color: var(--warning, #e2b340); }
+.footerRow { display: flex; gap: 10px; justify-content: flex-end; width: 100%; }
+.skip { margin-right: auto; }

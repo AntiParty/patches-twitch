@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { dashboardApi } from '@/api/dashboard'
 import { commandsApi } from '@/api/commands'
+import { onboardingApi } from '@/api/onboarding'
 import type { ChannelProfile } from '@/types/dashboard'
 
 export const PROFILE_KEY = ['dashboard', 'profile'] as const
@@ -28,4 +29,13 @@ export function useToggleBot() {
 /** Custom command responses. */
 export function useCommands() {
   return useQuery({ queryKey: COMMANDS_KEY, queryFn: commandsApi.list })
+}
+
+/** Mark onboarding complete and refresh the profile so the wizard closes. */
+export function useCompleteOnboarding() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: onboardingApi.complete,
+    onSuccess: () => qc.invalidateQueries({ queryKey: PROFILE_KEY }),
+  })
 }

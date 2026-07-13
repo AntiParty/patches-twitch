@@ -7,6 +7,7 @@ export interface ChannelProfile {
   playerId: string | null
   botEnabled: boolean
   authRevoked: boolean
+  onboardingCompleted: boolean
 }
 
 /** A customizable chat command. */

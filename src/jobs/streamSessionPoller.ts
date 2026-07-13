@@ -35,6 +35,11 @@ export async function getTrackedUsernames(): Promise<string[]> {
   return channels.map((c: any) => c.username);
 }
 
+/** In-chat notice shown to a live streamer whose linked Embark ID isn't on the leaderboard. */
+export function buildIgnNotFoundNotice(ign: string): string {
+  return `I couldn't find ${ign} on the ranked leaderboard yet — if that's not your exact Embark ID, update it at finalsrs.com/dashboard.`;
+}
+
 async function ensureAppTokenValid(): Promise<string> {
   const now = Date.now();
   // Refresh token proactively every 30 minutes
@@ -275,6 +280,22 @@ export async function runPollCycle(): Promise<void> {
               description: `User ${user.username} is live on Twitch, but no session has started in the bot and not found in the ranked leaderboard cache.`,
             });
             alertedMissingSession.set(userLower, now);
+
+            // Also tell the streamer directly (not just Discord), cooldown-gated.
+            const notifyEnabled = channel?.get('notify_chat_reminders') !== false;
+            if (notifyEnabled) {
+              try {
+                const { notifyChannel } = await import('../util/botAlerts');
+                await notifyChannel(
+                  user.username,
+                  'ign-not-found',
+                  buildIgnNotFoundNotice(channel.player_id),
+                  { cooldownMs: 30 * 60 * 1000, alsoDiscord: false },
+                );
+              } catch (e) {
+                logger.error(`[Poller] Failed to send ign-not-found notice to ${user.username}:`, e);
+              }
+            }
           }
           continue; // retry every 60s — no 6-hour lock
         }

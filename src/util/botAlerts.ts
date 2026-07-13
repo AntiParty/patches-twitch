@@ -21,6 +21,7 @@ type AlertKey =
   | "token-refresh"
   | "token-refresh-ok"
   | "filter-suppressed"
+  | "ign-not-found"
   | "devmode-on"
   | "devmode-off";
 

@@ -281,17 +281,23 @@ export async function runPollCycle(): Promise<void> {
             });
             alertedMissingSession.set(userLower, now);
 
-            // Also tell the streamer directly (not just Discord), cooldown-gated.
+            // Also tell the streamer directly (not just Discord) — one time only.
+            // The persisted flag survives restarts and streams; it's cleared when
+            // the player id is re-linked so a corrected IGN gets one fresh notice.
             const notifyEnabled = channel?.get('notify_chat_reminders') !== false;
-            if (notifyEnabled) {
+            const alreadyNotified = channel.get('ign_not_found_notified_at') != null;
+            if (notifyEnabled && !alreadyNotified) {
               try {
                 const { notifyChannel } = await import('../util/botAlerts');
-                await notifyChannel(
+                const sent = await notifyChannel(
                   user.username,
                   'ign-not-found',
                   buildIgnNotFoundNotice(channel.player_id),
                   { cooldownMs: 30 * 60 * 1000, alsoDiscord: false },
                 );
+                if (sent) {
+                  await channel.update({ ign_not_found_notified_at: new Date() });
+                }
               } catch (e) {
                 logger.error(`[Poller] Failed to send ign-not-found notice to ${user.username}:`, e);
               }

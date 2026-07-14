@@ -76,7 +76,8 @@ export const execute = async (
         }
       }
     } else {
-      await channelInstance.update({ player_id: playerId });
+      // Re-linking resets the one-time "IGN not on leaderboard" notice.
+      await channelInstance.update({ player_id: playerId, ign_not_found_notified_at: null });
       await sendReply(ctx, `your account has been successfully linked with player ID: ${playerId}`);
     }
   } catch (error) {

@@ -52,6 +52,7 @@ class Channel extends Model {
   declare notify_chat_reminders: boolean;
   declare auth_revoked: boolean;
   declare onboarding_completed_at: Date | null;
+  declare ign_not_found_notified_at: Date | null;
 }
 
 
@@ -249,6 +250,13 @@ Channel.init(
       defaultValue: false,
     },
     onboarding_completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+    // One-time "IGN not on leaderboard" chat notice — set when sent, cleared
+    // when the player id is re-linked so a corrected IGN gets one fresh notice.
+    ign_not_found_notified_at: {
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
@@ -695,6 +703,17 @@ async function runMigrations() {
         defaultValue: null,
       });
       logger.info('[Migration] onboarding_completed_at column added successfully.');
+    }
+
+    // Add ign_not_found_notified_at if missing
+    if (!tableInfo.ign_not_found_notified_at) {
+      logger.info('[Migration] Adding ign_not_found_notified_at column to Channels table...');
+      await queryInterface.addColumn('Channels', 'ign_not_found_notified_at', {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+      });
+      logger.info('[Migration] ign_not_found_notified_at column added successfully.');
     }
 
     await migratePredictionPresets(queryInterface);

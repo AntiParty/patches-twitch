@@ -141,7 +141,8 @@ router.post('/api/link-account', requireUserAPI, csrfProtection, async (req: any
         if (!channelInstance) {
             await Channel.create({ username, player_id: playerId });
         } else {
-            await channelInstance.update({ player_id: playerId });
+            // Re-linking resets the one-time "IGN not on leaderboard" notice.
+            await channelInstance.update({ player_id: playerId, ign_not_found_notified_at: null });
         }
 
         res.json({ success: true });

@@ -1,13 +1,11 @@
 /* Two-tier site footer for public pages: brand + product links over a
- * hairline legal strip, with the dither wash rising from the bottom edge. */
+ * hairline legal strip. */
 import { Link } from 'react-router-dom'
-import { DitherGradient } from '@/components/dither-kit/gradient'
 import styles from './Footer.module.css'
 
 export function Footer({ variant = 'default' }: { variant?: 'default' | 'cinematic' }) {
   return (
     <footer className={`${styles.footer} ${variant === 'cinematic' ? styles.cinematic : ''}`}>
-      <DitherGradient from="red" direction="up" opacity={0.28} />
       <div className={styles.inner}>
         <div className={styles.top}>
           <div className={styles.brand}>

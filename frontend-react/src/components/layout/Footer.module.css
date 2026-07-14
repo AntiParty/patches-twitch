@@ -1,15 +1,10 @@
 .footer {
-  /* Positioning context for the dither gradient wash; .inner is positioned so
-   * content paints above the absolutely-positioned canvas. */
-  position: relative;
-  overflow: hidden;
   border-top: 1px solid var(--border);
   background: var(--bg-app);
   padding: 36px 24px 0;
 }
 
 .inner {
-  position: relative;
   max-width: 1120px;
   margin: 0 auto;
 }

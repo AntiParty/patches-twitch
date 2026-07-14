@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { publicApi } from '@/api/public'
 import { HeroAtmosphere } from './HeroAtmosphere'
+import { DitherAtmosphere } from './DitherAtmosphere'
 import { StreamerMarquee } from './StreamerMarquee'
 import styles from './Landing.module.css'
 
@@ -46,11 +47,13 @@ export function Landing() {
     <div className={styles.root}>
       <section className={styles.hero} aria-labelledby="landing-h1">
         <div className={styles.atmosphere} aria-hidden="true">
+          <DitherAtmosphere color="red" />
           <HeroAtmosphere />
           <div className={styles.heroFade} />
         </div>
 
         <div className={styles.heroInner}>
+          <p className={styles.eyebrow}>Twitch bot for THE FINALS</p>
           <h1 id="landing-h1" className={styles.headline}>
             Ranked stats
             <br />
@@ -97,7 +100,10 @@ export function Landing() {
           <div className={styles.featureRow}>
             {FEATURES.map((f) => (
               <div key={f.title} className={styles.feature}>
-                <h3>{f.title}</h3>
+                <h3>
+                  {f.title}
+                  {f.premium && <span className={styles.premiumTag}>Premium</span>}
+                </h3>
                 <p>{f.desc}</p>
               </div>
             ))}
@@ -161,6 +167,6 @@ const COMMANDS = [
 const FEATURES = [
   { title: 'OBS overlays', desc: 'Token-secured rank panels for your scene.' },
   { title: 'Custom responses', desc: 'Edit every command to match your channel.' },
-  { title: 'Predictions', desc: 'Presets and automated ranked runs.' },
-  { title: 'Custom bot', desc: 'Reply from your own bot account.' },
+  { title: 'Predictions', desc: 'Free presets, plus automated ranked runs.', premium: true },
+  { title: 'Custom bot', desc: 'Reply from your own bot account.', premium: true },
 ]

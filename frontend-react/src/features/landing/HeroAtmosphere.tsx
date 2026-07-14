@@ -128,19 +128,11 @@ export function HeroAtmosphere() {
       const cy = h * 0.38 + driftY
       const pulse = reduced ? 1 : 0.92 + Math.sin(time * 0.0004) * 0.08
 
-      // Outer cool haze
-      let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.55)
+      // Outer cool haze — subtle depth, no bright white core behind the headline.
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.55)
       g.addColorStop(0, `rgba(170, 185, 210, ${0.07 * pulse})`)
       g.addColorStop(0.35, `rgba(140, 155, 180, ${0.035 * pulse})`)
       g.addColorStop(1, 'rgba(0, 0, 0, 0)')
-      ctx.fillStyle = g
-      ctx.fillRect(0, 0, w, h)
-
-      // Core soft white
-      g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.38)
-      g.addColorStop(0, `rgba(255, 255, 255, ${0.16 * pulse})`)
-      g.addColorStop(0.4, `rgba(255, 255, 255, ${0.06 * pulse})`)
-      g.addColorStop(1, 'rgba(255, 255, 255, 0)')
       ctx.fillStyle = g
       ctx.fillRect(0, 0, w, h)
     }

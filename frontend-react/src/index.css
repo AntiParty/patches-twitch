@@ -1,4 +1,7 @@
-/* Global entry stylesheet. Order matters: tokens first, then base components. */
+/* Global entry stylesheet. Order matters: tokens first, then base components.
+ * tailwind.css is layered (theme/base/utilities) so the unlayered app styles
+ * below always take cascade priority over it. */
+@import "./styles/tailwind.css";
 @import "./styles/theme.css";
 @import "./styles/global.css";
 

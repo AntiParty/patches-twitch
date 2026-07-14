@@ -4,7 +4,13 @@
  */
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { LineChart } from '@/components/dither-kit/area-chart'
+import { Line } from '@/components/dither-kit/area'
+import { Grid } from '@/components/dither-kit/grid'
+import { XAxis } from '@/components/dither-kit/x-axis'
+import { YAxis } from '@/components/dither-kit/y-axis'
+import { Tooltip } from '@/components/dither-kit/tooltip'
+import type { DitherColor } from '@/components/dither-kit/palette'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/cards/Card'
 import { Select } from '@/components/forms/Select'
@@ -15,18 +21,17 @@ import { adminApi } from '@/api/admin'
 import type { PerformancePoint } from '@/types/admin'
 import styles from './admin.module.css'
 
-const tooltipStyle = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }
 const RANGES = [
   { value: '24h', label: '24 hours' },
   { value: '7d', label: '7 days' },
   { value: '30d', label: '30 days' },
 ]
 
-const CHARTS: { key: keyof PerformancePoint; label: string; color: string; transform?: (n: number) => number }[] = [
-  { key: 'cpuUsage', label: 'CPU usage (%)', color: 'var(--primary)' },
-  { key: 'memoryUsed', label: 'Memory used (MB)', color: 'var(--info)', transform: (n) => Math.round(n / 1024 / 1024) },
-  { key: 'botLatencyMs', label: 'Bot latency (ms)', color: 'var(--warning)' },
-  { key: 'connectedChannels', label: 'Connected channels', color: 'var(--success)' },
+const CHARTS: { key: keyof PerformancePoint; label: string; color: DitherColor; transform?: (n: number) => number }[] = [
+  { key: 'cpuUsage', label: 'CPU usage (%)', color: 'purple' },
+  { key: 'memoryUsed', label: 'Memory used (MB)', color: 'blue', transform: (n) => Math.round(n / 1024 / 1024) },
+  { key: 'botLatencyMs', label: 'Bot latency (ms)', color: 'orange' },
+  { key: 'connectedChannels', label: 'Connected channels', color: 'green' },
 ]
 
 export function Health() {
@@ -57,22 +62,28 @@ export function Health() {
       ) : (
         <div className={styles.chartGrid}>
           {CHARTS.map((c) => {
-            const series = data.performanceHistory.map((p) => ({
-              t: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              v: p[c.key] == null ? null : c.transform ? c.transform(Number(p[c.key])) : Number(p[c.key]),
-            }))
+            // Dither-kit has no connectNulls — drop gap points instead.
+            const series = data.performanceHistory.flatMap((p) => {
+              if (p[c.key] == null) return []
+              return [{
+                t: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                v: c.transform ? c.transform(Number(p[c.key])) : Number(p[c.key]),
+              }]
+            })
             return (
               <Card key={String(c.key)} title={c.label}>
                 <div style={{ height: 200 }}>
-                  <ResponsiveContainer>
-                    <LineChart data={series}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                      <XAxis dataKey="t" tick={{ fontSize: 11, fill: 'var(--text-subtle)' }} minTickGap={40} />
-                      <YAxis tick={{ fontSize: 11, fill: 'var(--text-subtle)' }} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Line type="monotone" dataKey="v" stroke={c.color} strokeWidth={2} dot={false} connectNulls />
+                  {series.length === 0 ? (
+                    <EmptyState icon="fas fa-heart-pulse" title="No data for this metric" />
+                  ) : (
+                    <LineChart data={series} config={{ v: { label: c.label, color: c.color } }} bloom="low">
+                      <Grid />
+                      <XAxis dataKey="t" maxTicks={5} />
+                      <YAxis />
+                      <Tooltip labelKey="t" />
+                      <Line dataKey="v" />
                     </LineChart>
-                  </ResponsiveContainer>
+                  )}
                 </div>
               </Card>
             )

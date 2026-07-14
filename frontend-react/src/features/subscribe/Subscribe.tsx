@@ -10,10 +10,10 @@ import { subscriptionApi } from '@/api/subscription'
 import styles from './Subscribe.module.css'
 
 const FEATURES = [
-  { icon: '🔮', title: 'Custom Bot Account', desc: 'Use your own Twitch account as the bot for personalized branding.' },
-  { icon: '📈', title: '!predict Command', desc: 'Forecast future T500 cutoffs using historical trend analysis.' },
-  { icon: '🎨', title: 'Priority Support', desc: 'Get help faster with priority Discord support.' },
-  { icon: '💡', title: 'Early Access', desc: "Try new features before they're released to everyone." },
+  { icon: 'fas fa-robot', title: 'Custom Bot Account', desc: 'Use your own Twitch account as the bot for personalized branding.' },
+  { icon: 'fas fa-chart-line', title: '!predict Command', desc: 'Forecast future T500 cutoffs using historical trend analysis.' },
+  { icon: 'fas fa-headset', title: 'Priority Support', desc: 'Get help faster with priority Discord support.' },
+  { icon: 'fas fa-flask', title: 'Early Access', desc: "Try new features before they're released to everyone." },
 ]
 
 export function Subscribe() {
@@ -67,7 +67,7 @@ export function Subscribe() {
       <div className={styles.featuresGrid}>
         {FEATURES.map((f) => (
           <div className={styles.featureCard} key={f.title}>
-            <div className={styles.featureIcon}>{f.icon}</div>
+            <div className={styles.featureIcon}><i className={f.icon} /></div>
             <div className={styles.featureTitle}>{f.title}</div>
             <div className={styles.featureDesc}>{f.desc}</div>
           </div>

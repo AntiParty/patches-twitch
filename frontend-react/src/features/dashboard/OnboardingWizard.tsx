@@ -23,6 +23,7 @@ export function OnboardingWizard() {
 
   const [ign, setIgn] = useState('')
   const [lookup, setLookup] = useState<IgnLookup | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -31,14 +32,18 @@ export function OnboardingWizard() {
   useEffect(() => {
     const q = ign.trim()
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (q.length < 3) { setLookup(null); setChecking(false); return }
+    if (q.length < 3) { setLookup(null); setLookupError(null); setChecking(false); return }
     setChecking(true)
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await onboardingApi.lookup(q)
         setLookup(res)
-      } catch {
+        setLookupError(null)
+      } catch (err) {
+        // Surface a 400 (bad ID format) inline; treat anything else as a
+        // transient lookup failure that shouldn't block linking.
         setLookup(null)
+        setLookupError(err instanceof ApiError && err.status === 400 ? err.message : null)
       } finally {
         setChecking(false)
       }
@@ -102,6 +107,7 @@ export function OnboardingWizard() {
       </Field>
       <div className={styles.result}>
         {checking && 'Checking…'}
+        {!checking && lookupError && <span className={styles.missing}>{lookupError}</span>}
         {!checking && lookup?.found && (
           <span className={styles.found}>
             ✓ Found you — #{lookup.rank?.toLocaleString()} · {lookup.rankScore?.toLocaleString()} RS

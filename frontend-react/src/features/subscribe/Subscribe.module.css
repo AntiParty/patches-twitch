@@ -78,7 +78,8 @@
   padding: 20px;
 }
 .featureIcon {
-  font-size: 26px;
+  font-size: 22px;
+  color: var(--primary);
   margin-bottom: 12px;
 }
 .featureTitle {

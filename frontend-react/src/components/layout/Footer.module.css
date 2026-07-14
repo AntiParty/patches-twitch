@@ -1,23 +1,58 @@
 .footer {
+  /* Positioning context for the dither gradient wash; .inner is positioned so
+   * content paints above the absolutely-positioned canvas. */
+  position: relative;
+  overflow: hidden;
   border-top: 1px solid var(--border);
   background: var(--bg-app);
-  padding: 18px 24px;
+  padding: 36px 24px 0;
 }
 
-.row {
+.inner {
+  position: relative;
   max-width: 1120px;
   margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
 }
 
-.copy {
+/* Tier 1 — brand + product links */
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px 40px;
+  flex-wrap: wrap;
+  padding-bottom: 28px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Mirrors the navbar lockup so the brand reads the same at both ends. */
+.lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 650;
+  font-size: 15px;
+  color: var(--text-main);
+  text-decoration: none;
+  width: fit-content;
+}
+.lockup img {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+}
+
+.tagline {
   margin: 0;
-  color: var(--text-subtle);
-  font-size: 12.5px;
+  max-width: 340px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .links {
@@ -28,12 +63,44 @@
 }
 .links a {
   color: var(--text-muted);
-  font-size: 12.5px;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
   text-decoration: none;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
 }
 .links a:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
+/* Tier 2 — hairline legal strip */
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding: 14px 0 18px;
+}
+
+.copy {
+  margin: 0;
+  color: var(--text-subtle);
+  font-size: 12px;
+}
+
+.legal {
+  display: flex;
+  gap: 16px;
+}
+.legal a {
+  color: var(--text-subtle);
+  font-size: 12px;
+  text-decoration: none;
+}
+.legal a:hover {
   color: var(--text-main);
 }
 
@@ -42,15 +109,22 @@
   border-top-color: rgba(255, 255, 255, 0.08);
   background: #050505;
 }
+.cinematic .tagline {
+  color: rgba(242, 239, 232, 0.45);
+}
 .cinematic .copy {
   color: rgba(242, 239, 232, 0.35);
 }
 .cinematic .links a {
   color: rgba(242, 239, 232, 0.5);
-  border-radius: 999px;
-  padding: 4px 10px;
 }
 .cinematic .links a:hover {
   color: rgba(242, 239, 232, 0.9);
   background: rgba(255, 255, 255, 0.05);
+}
+.cinematic .legal a {
+  color: rgba(242, 239, 232, 0.35);
+}
+.cinematic .legal a:hover {
+  color: rgba(242, 239, 232, 0.8);
 }

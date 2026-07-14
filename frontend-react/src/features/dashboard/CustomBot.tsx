@@ -129,7 +129,7 @@ export function CustomBot() {
           {customBot ? (
             <>
               <div className={styles.botInfo}>
-                <div className={styles.botAvatar}>🤖</div>
+                <div className={styles.botAvatar}><i className="fas fa-robot" /></div>
                 <div className={styles.botDetails}>
                   <h3>{customBot.username}</h3>
                   <p className={styles.botStatus}>

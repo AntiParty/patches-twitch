@@ -5,7 +5,14 @@
  */
 import type { ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { AreaChart } from '@/components/dither-kit/area-chart'
+import { Area } from '@/components/dither-kit/area'
+import { Grid } from '@/components/dither-kit/grid'
+import { XAxis } from '@/components/dither-kit/x-axis'
+import { YAxis } from '@/components/dither-kit/y-axis'
+import { Legend } from '@/components/dither-kit/legend'
+import { Tooltip } from '@/components/dither-kit/tooltip'
+import type { ChartConfig } from '@/components/dither-kit/chart-context'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/cards/Card'
 import { StatCard } from '@/components/cards/StatCard'
@@ -16,11 +23,9 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { adminApi } from '@/api/admin'
 import styles from './admin.module.css'
 
-const tooltipStyle = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  fontSize: 13,
+const throughputConfig: ChartConfig = {
+  in: { label: 'Messages in', color: 'blue' },
+  out: { label: 'Messages out', color: 'purple' },
 }
 
 const fmt = (n: number) => Number(n).toLocaleString()
@@ -97,27 +102,15 @@ export function Overview() {
         <Card title="Chat throughput" subtitle="Messages in / out (6h)">
           <div style={{ height: 220 }}>
             {hasThroughput ? (
-              <ResponsiveContainer>
-                <AreaChart data={throughput} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="thIn" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--info)" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="var(--info)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="thOut" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid vertical={false} stroke="var(--border)" strokeOpacity={0.5} />
-                  <XAxis dataKey="t" tick={{ fontSize: 11, fill: 'var(--text-subtle)' }} tickLine={false} axisLine={false} minTickGap={48} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-subtle)' }} tickLine={false} axisLine={false} width={36} allowDecimals={false} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend iconType="plainline" wrapperStyle={{ fontSize: 12 }} />
-                  <Area type="monotone" dataKey="in" stroke="var(--info)" strokeWidth={2} fill="url(#thIn)" dot={false} activeDot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="out" stroke="var(--primary)" strokeWidth={2} fill="url(#thOut)" dot={false} activeDot={{ r: 3 }} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <AreaChart data={throughput} config={throughputConfig} bloom="aura">
+                <Grid />
+                <XAxis dataKey="t" />
+                <YAxis />
+                <Legend isClickable />
+                <Tooltip labelKey="t" />
+                <Area dataKey="in" />
+                <Area dataKey="out" />
+              </AreaChart>
             ) : (
               <EmptyState icon="fas fa-chart-line" title="Waiting for chat activity" description="Throughput appears once the bot starts processing messages." />
             )}

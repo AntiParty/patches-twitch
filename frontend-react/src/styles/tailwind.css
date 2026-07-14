@@ -1,0 +1,44 @@
+/*
+ * Scoped Tailwind v4 — theme + utilities layers only, deliberately NO
+ * preflight, so all existing CSS-module / global styling is untouched.
+ * Added for the vendored dither-kit components (src/components/dither-kit),
+ * which are written against Tailwind utilities + shadcn-style color tokens.
+ * Utilities are generated on demand, so this stays tiny.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* shadcn-style tokens dither-kit's chrome (grid/axes/legend/tooltip) uses,
+ * mapped onto the FinalsRS design tokens from theme.css. `inline` so the
+ * utilities reference the live var() values. */
+@theme inline {
+  --color-border: var(--border);
+  --color-foreground: var(--text-main);
+  --color-muted-foreground: var(--text-muted);
+  --color-popover: var(--bg-card);
+  --color-popover-foreground: var(--text-main);
+}
+
+/* shadcn-style default: bare `border` utilities pick up the border token
+ * instead of currentColor. Lives in @layer base, so any unlayered app CSS
+ * always wins over it. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  /* Preflight-lite (full preflight is deliberately skipped): dither-kit
+   * renders bare <button> chrome (legend entries) that preflight would
+   * normally strip of UA styling. Every app button carries unlayered
+   * CSS-module styles, which always beat this layer. */
+  button {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+  }
+}

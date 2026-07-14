@@ -4,12 +4,13 @@
  */
 
 /**
- * Validate player ID format for THE FINALS
+ * Validate player ID format for THE FINALS.
+ * Embark IDs run to 21 chars total: up to a 16-char name + '#' + 4 digits.
  */
 export function isValidPlayerId(playerId: any): boolean {
     return (
         typeof playerId === "string" &&
-        /^[a-zA-Z0-9_.#-]{3,20}$/.test(playerId)
+        /^[a-zA-Z0-9_.#-]{3,21}$/.test(playerId)
     );
 }
 

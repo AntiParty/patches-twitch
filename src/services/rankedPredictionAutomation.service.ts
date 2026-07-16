@@ -16,6 +16,7 @@ import { predictionHasVotes, twitchPredictionsService } from './twitchPrediction
 import { predictionPresetService } from './predictionPreset.service';
 import { hasPredictionAutomationAccess } from './predictionAutomationAccess.service';
 import logger from '@/util/logger';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 
 export interface LiveStreamIdentity {
   id: string;
@@ -190,9 +191,9 @@ function productionDependencies(): AutomationDependencies {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5_000);
       try {
-        const response = await fetch('http://localhost:4000/send-message', {
+        const response = await fetch(`${botControlUrl}/send-message`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...botControlHeaders() },
           body: JSON.stringify({ channel, message }),
           signal: controller.signal,
         });

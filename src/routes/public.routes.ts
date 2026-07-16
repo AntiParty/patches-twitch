@@ -14,6 +14,7 @@ import { sendMessageToDiscord } from '@/handlers/discordHandler';
 import { requireApiKey } from '@/middleware/auth.middleware';
 import { rateLimitFeedback } from '@/middleware/security';
 import { getAnalytics } from '@/util/webAnalytics';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { log } from 'console';
 
 const router = Router();
@@ -179,7 +180,7 @@ router.get("/health", async (req: Request, res: Response) => {
     if (botCheckEnabled) {
         try {
             const botStart = Date.now();
-            await axios.get("http://localhost:4000/health", { timeout: 1500 });
+            await axios.get(`${botControlUrl}/health`, { timeout: 1500, headers: botControlHeaders() });
             botLatency = Date.now() - botStart;
             botHealthy = true;
 
@@ -994,8 +995,8 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
         let chatGraph: { minute: string; in: number; out: number }[] = [];
         try {
             const chatRes = await axios.get(
-                `http://localhost:4000/metrics/chat?window=${windowMs}&bucket=${bucketMs}`,
-                { timeout: 1500 }
+                `${botControlUrl}/metrics/chat?window=${windowMs}&bucket=${bucketMs}`,
+                { timeout: 1500, headers: botControlHeaders() }
             );
             if (Array.isArray(chatRes.data)) chatGraph = chatRes.data;
         } catch {

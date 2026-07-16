@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import axios from 'axios';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { Channel } from '@/db';
 import { requireAdminAPI } from '@/middleware/auth.middleware';
 import { logAdminAction } from '@/util/adminLogger';
@@ -50,7 +51,7 @@ router.post('/api/message', requireAdminAPI, async (req: any, res: any) => {
     sendWindows.set(actor, Date.now());
     const results = await Promise.all(channels.map(async (channel) => {
         try {
-            await axios.post('http://127.0.0.1:4000/send-message', { channel, message }, { timeout: 5000 });
+            await axios.post(`${botControlUrl}/send-message`, { channel, message }, { timeout: 5000, headers: botControlHeaders() });
             return { channel, success: true };
         } catch {
             return { channel, success: false };

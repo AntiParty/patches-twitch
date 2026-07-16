@@ -18,8 +18,9 @@ import {
 } from '@/services/giveaway.service';
 import { hasRedemptionsScope, updateReward } from '@/services/twitchChannelPoints.service';
 import logger from '@/util/logger';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 
-const BOT_CONTROL_URL = 'http://127.0.0.1:4000';
+const BOT_CONTROL_URL = botControlUrl;
 
 interface ChannelIdentity {
   id: number;
@@ -42,7 +43,7 @@ async function resolveChannel(req: any): Promise<ChannelIdentity | null> {
 
 async function announce(channel: string, message: string): Promise<void> {
   try {
-    await axios.post('http://127.0.0.1:4000/send-message', { channel, message }, { timeout: 5000 });
+    await axios.post(`${BOT_CONTROL_URL}/send-message`, { channel, message }, { timeout: 5000, headers: botControlHeaders() });
   } catch (err) {
     logger.error('[GiveawayDashboard] Chat announcement failed', err);
   }
@@ -250,7 +251,7 @@ router.post('/api/user/giveaways/close', requireUserAPI, csrfProtection, (req, r
 
 async function setRewardPausedViaControl(channel: string, paused: boolean) {
   try {
-    await axios.post(`${BOT_CONTROL_URL}/giveaway/redeem/pause`, { channel, paused }, { timeout: 8000 });
+    await axios.post(`${BOT_CONTROL_URL}/giveaway/redeem/pause`, { channel, paused }, { timeout: 8000, headers: botControlHeaders() });
   } catch (err: any) {
     logger.error('[GiveawayDashboard] reward pause proxy failed', err?.response?.data || err?.message);
   }
@@ -317,7 +318,7 @@ router.post('/api/user/giveaways/redeem/start', requireUserAPI, csrfProtection, 
           maxPerStream,
           cooldownSeconds,
         },
-        { timeout: 10000 }
+        { timeout: 10000, headers: botControlHeaders() }
       );
       return res.json(response.data);
     } catch (err: any) {
@@ -341,7 +342,7 @@ router.post('/api/user/giveaways/redeem/close', requireUserAPI, csrfProtection, 
       await axios.post(
         `${BOT_CONTROL_URL}/giveaway/redeem/stop`,
         { channel: channel.username },
-        { timeout: 10000 }
+        { timeout: 10000, headers: botControlHeaders() }
       );
     } catch (err: any) {
       logger.error('[GiveawayDashboard] redeemClose proxy failed', err?.response?.data || err?.message);

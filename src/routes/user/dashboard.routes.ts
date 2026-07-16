@@ -4,6 +4,7 @@
  */
 import { Router } from 'express';
 import axios from 'axios';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
@@ -169,10 +170,10 @@ router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: a
         try {
             const twitchUserId = (user as any)?.twitch_user_id;
             if (twitchUserId) {
-                await axios.post('http://localhost:4000/remove-channel', {
+                await axios.post(`${botControlUrl}/remove-channel`, {
                     twitch_user_id: twitchUserId,
                     username,
-                });
+                }, { headers: botControlHeaders() });
                 logger.info(`[dashboard] Bot notified to remove channel: ${username} (${twitchUserId})`);
             } else {
                 logger.warn(`[dashboard] No twitch_user_id found for ${username}, skipping bot removal.`);
@@ -275,15 +276,15 @@ router.post('/api/toggle-bot', requireUserAPI, csrfProtection, async (req: any, 
         // Notify bot process for immediate effect
         try {
             if (newState) {
-                await axios.post('http://localhost:4000/add-channel', {
+                await axios.post(`${botControlUrl}/add-channel`, {
                     twitch_user_id: channelInstance.get('twitch_user_id'),
                     username,
-                });
+                }, { headers: botControlHeaders() });
             } else {
-                await axios.post('http://localhost:4000/remove-channel', {
+                await axios.post(`${botControlUrl}/remove-channel`, {
                     twitch_user_id: channelInstance.get('twitch_user_id'),
                     username,
-                });
+                }, { headers: botControlHeaders() });
             }
         } catch (botErr) {
             logger.error(`[dashboard] Error notifying bot process of status change for ${username}:`, botErr);

@@ -9,10 +9,23 @@ import { createGiveaway, getActiveGiveaway } from "./services/giveaway.service";
 import { decryptChannelAccessToken, clearCustomBotPermanentFailed } from "./util/twitchUtils";
 import logger from "./util/logger";
 import express from "express";
+import crypto from "crypto";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 import { startCustomBotTokenRefresher } from "./jobs/customBotTokenRefresher";
 import { clients } from "./util/ircBot";
+
+const botControlSecret = process.env.BOT_CONTROL_SECRET ?? '';
+if (!botControlSecret) {
+  throw new Error('BOT_CONTROL_SECRET is required to start the bot control API');
+}
+
+function hasValidBotControlSecret(provided: string | undefined): boolean {
+  if (!provided) return false;
+  const expectedHash = crypto.createHash('sha256').update(botControlSecret).digest();
+  const providedHash = crypto.createHash('sha256').update(provided).digest();
+  return crypto.timingSafeEqual(expectedHash, providedHash);
+}
 
 dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
@@ -69,6 +82,14 @@ dbReady.then(async () => {
     // --- Control API ---
     const controlApp = express();
     controlApp.use(express.json());
+    controlApp.use((req, res, next): void => {
+      if (!hasValidBotControlSecret(req.header('x-bot-control-secret'))) {
+        logger.warn(`[ControlAPI] Unauthorized request from ${req.ip}`);
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      next();
+    });
 
     // Add channel after auth
     controlApp.post("/add-channel", async (req: any, res: any) => {
@@ -465,8 +486,8 @@ dbReady.then(async () => {
     });
     // --- end Giveaways ---
 
-    controlApp.listen(4000, () => {
-      logger.info("Bot control API running on http://localhost:4000");
+    controlApp.listen(4000, '127.0.0.1', () => {
+      logger.info("Bot control API running on http://127.0.0.1:4000");
     });
     // --- end Control API ---
 

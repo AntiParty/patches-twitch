@@ -4,9 +4,11 @@
  */
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
+import crypto from 'crypto';
 import { Channel, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
-import { verifyOAuthState } from '@/util/crypto';
+import { signOAuthState, verifyOAuthState } from '@/util/crypto';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
 import { clearRefreshPermanentFailed } from '@/util/twitchUtils';
 import { getBroadcasterOAuthScopes } from '@/util/twitchScopes';
@@ -32,11 +34,21 @@ const getRedirectUri = () => {
 /**
  * Generate Twitch OAuth URL for user login
  */
-const getAuthUrl = () => {
+const getAuthUrl = (state: string) => {
     const scope = encodeURIComponent(getBroadcasterOAuthScopes().join(' '));
     const redirectUri = encodeURIComponent(getRedirectUri());
-    return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true`;
+    return `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&force_verify=true&state=${encodeURIComponent(state)}`;
 };
+
+function beginLoginOAuth(req: any): string {
+    const state = signOAuthState({
+        type: 'login',
+        nonce: crypto.randomBytes(32).toString('hex'),
+        timestamp: Date.now(),
+    });
+    req.session.oauthLoginState = state;
+    return state;
+}
 
 /**
  * GET /login
@@ -47,7 +59,7 @@ router.get("/login", (req: any, res: any) => {
     if (req.session && req.session.isUser && req.session.twitchUsername) {
         return res.redirect('/dashboard');
     }
-    const authUrl = getAuthUrl();
+    const authUrl = getAuthUrl(beginLoginOAuth(req));
     logger.info(`Generated auth URL: ${authUrl}`);
     res.redirect(authUrl);
 });
@@ -58,7 +70,7 @@ router.get("/login", (req: any, res: any) => {
  * Users with old sessions need to re-auth to use subscription features
  */
 router.get("/reauth", (req: any, res: any) => {
-    const authUrl = getAuthUrl();
+    const authUrl = getAuthUrl(beginLoginOAuth(req));
     logger.info(`[Auth] User ${req.session?.twitchUsername || 'unknown'} re-authorizing for new scopes`);
     res.redirect(authUrl);
 });
@@ -74,28 +86,20 @@ router.get("/callback", async (req: any, res: any) => {
     }
 
     try {
-        let stateData: any = {};
-        let isSignedState = false;
-        if (state) {
-            // Try to verify as signed state first (for custom_bot flows)
-            const verified = verifyOAuthState(state as string, 15 * 60 * 1000); // 15 min max age
-            if (verified) {
-                stateData = verified;
-                isSignedState = true;
-                logger.info('[Auth] Verified signed OAuth state');
-            } else {
-                // Fall back to legacy unsigned state (for backward compatibility during transition)
-                try {
-                    stateData = JSON.parse(Buffer.from(state as string, 'base64').toString());
-                    // If it looks like a custom_bot state but wasn't signed, reject it
-                    if (stateData.type === 'custom_bot') {
-                        logger.warn('[Auth] Received unsigned custom_bot state - rejecting for security');
-                        return res.status(400).send('Invalid OAuth state. Please try again.');
-                    }
-                } catch (ignored) {
-                    // Ignore if not json or invalid base64
-                }
+        if (!state || typeof state !== 'string') {
+            return res.status(400).send('Missing OAuth state. Please try again.');
+        }
+        const stateData: any = verifyOAuthState(state, 15 * 60 * 1000);
+        if (!stateData) {
+            return res.status(400).send('Invalid OAuth state. Please try again.');
+        }
+        if (stateData.type === 'login') {
+            if (!req.session?.oauthLoginState || req.session.oauthLoginState !== state) {
+                return res.status(400).send('OAuth state did not match this browser session. Please try again.');
             }
+            delete req.session.oauthLoginState;
+        } else if (stateData.type !== 'custom_bot') {
+            return res.status(400).send('Invalid OAuth state. Please try again.');
         }
 
         // Exchange code for tokens
@@ -180,10 +184,10 @@ router.get("/callback", async (req: any, res: any) => {
             // Notify bot service to reconnect with the new custom bot
             let swapSuccess = false;
             try {
-                await axios.post("http://localhost:4000/reconnect-custom-bot", {
+                await axios.post(`${botControlUrl}/reconnect-custom-bot`, {
                     twitch_user_id: targetChannel.twitch_user_id,
                     username: targetUsername,
-                });
+                }, { headers: botControlHeaders() });
                 swapSuccess = true;
                 logger.info(`[Custom Bot] Bot swapped instantly for ${targetUsername}`);
             } catch (swapError) {
@@ -288,10 +292,10 @@ router.get("/callback", async (req: any, res: any) => {
 
         // Notify bot process to start this user
         try {
-            await axios.post("http://localhost:4000/add-channel", {
+            await axios.post(`${botControlUrl}/add-channel`, {
                 twitch_user_id: twitchUserId,
                 username: twitchUsername,
-            });
+            }, { headers: botControlHeaders() });
             logger.info(`[Callback] Bot notified to add channel: ${twitchUsername} (${twitchUserId})`);
         } catch (notifyError) {
             logger.error(`[Callback] Failed to notify bot for ${twitchUsername}:`, notifyError);

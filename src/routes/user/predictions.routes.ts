@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import axios from 'axios';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { Channel } from '@/db';
 import { requireUserAPI } from '@/middleware/auth.middleware';
 import { csrfProtection } from '@/middleware/csrf.middleware';
@@ -89,9 +90,9 @@ const productionDependencies: PredictionRouteDependencies = {
   getLiveStreams: getLiveStreamsForUsers,
   announce: async (channel, message) => {
     await axios.post(
-      'http://127.0.0.1:4000/send-message',
+      `${botControlUrl}/send-message`,
       { channel, message },
-      { timeout: 5000 },
+      { timeout: 5000, headers: botControlHeaders() },
     );
   },
   logger,

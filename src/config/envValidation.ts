@@ -52,6 +52,14 @@ const ENV_REQUIREMENTS: EnvRequirement[] = [
   // Twitch OAuth
   { name: 'TWITCH_CLIENT_ID', required: true, message: 'Twitch application client ID' },
   { name: 'TWITCH_CLIENT_SECRET', required: true, minLength: 20, message: 'Twitch application client secret' },
+  {
+    name: 'BOT_CONTROL_SECRET',
+    required: false,
+    production: true,
+    minLength: 32,
+    validate: (v) => !WEAK_SECRETS.includes(v.toLowerCase()),
+    message: 'Shared secret used to authenticate web-server calls to the local bot control API'
+  },
 
   // Deployment
   {

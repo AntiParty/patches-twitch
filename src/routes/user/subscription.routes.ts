@@ -10,6 +10,7 @@ import { signOAuthState } from '@/util/crypto';
 import { checkAndUpdatePremiumStatus, getTierName } from '@/services/twitchSubscription.service';
 import { getTwitchRedirectUri } from '@/util/envUtils';
 import { getCustomBotOAuthScopes } from '@/util/twitchScopes';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 
 const router = Router();
 
@@ -140,9 +141,9 @@ router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, requ
     try {
       const channel = await Channel.findByPk(channelId);
       if (channel) {
-        const restart = await axios.post("http://localhost:4000/restart-channel-bot", {
+        const restart = await axios.post(`${botControlUrl}/restart-channel-bot`, {
           username,
-        });
+        }, { headers: botControlHeaders() });
         swapSuccess = restart.data?.success === true;
         logger.info(`[Custom Bot] Swapped back to default bot for ${username}`);
       }

@@ -5,6 +5,7 @@ import { Op, QueryTypes } from 'sequelize';
 import { Channel, CommandUsage, sequelize } from '@/db';
 import { PerformanceMetric, metricsDbReady } from '@/dbMetrics';
 import { listOperationalEvents } from './operationalEvents.service';
+import { botControlHeaders, botControlUrl } from '@/util/botControl';
 
 export type OperationsRange = '24h' | '7d' | '30d' | 'all';
 
@@ -60,7 +61,7 @@ async function getActiveCommandNames(): Promise<Set<string>> {
 async function readBotApi(pathname: string) {
     try {
         const startedAt = Date.now();
-        const response = await axios.get(`http://127.0.0.1:4000${pathname}`, { timeout: 1500 });
+        const response = await axios.get(`${botControlUrl}${pathname}`, { timeout: 1500, headers: botControlHeaders() });
         return { reachable: true, latencyMs: Date.now() - startedAt, data: response.data };
     } catch {
         return { reachable: false, latencyMs: null, data: null };

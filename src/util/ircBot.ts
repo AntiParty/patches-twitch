@@ -369,11 +369,11 @@ export async function sendChatMessage(
     message: outMessage,
   };
 
-  // Shared chat (Stream Together): app tokens default to source-channel-only,
-  // so opt in to broadcasting across the session. Only valid on app tokens —
-  // custom bot user tokens already send to all channels and reject the field.
+  // Keep default-bot replies inside the source channel during Shared Chat.
+  // This field is valid only for app tokens; custom-bot user tokens follow
+  // Twitch's Shared Chat behavior and reject this field.
   if (!customCredentials) {
-    body.for_source_only = false;
+    body.for_source_only = true;
   }
 
   if (replyParentId) {

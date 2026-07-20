@@ -45,6 +45,27 @@ describe('searchPlayer (shared leaderboard matcher)', () => {
     assert.equal(searchPlayer(board, 'whoisthis#4242'), null);
   });
 
+  it('returns the closest name when fuzzy matching is enabled', () => {
+    const fuzzyBoard = [
+      ...board,
+      { name: 'twitch-ant#4242', rank: 99, rankScore: 55000, league: 'Diamond' },
+    ];
+    const p = searchPlayer(fuzzyBoard, 'antiparty', { fuzzy: true });
+    assert.equal(p?.name, 'twitch-ant#4242');
+  });
+
+  it('uses the best rank to break fuzzy similarity ties', () => {
+    const tied = [
+      { name: 'cat#1111', rank: 20 },
+      { name: 'bat#2222', rank: 5 },
+    ];
+    assert.equal(searchPlayer(tied, 'hat', { fuzzy: true })?.name, 'bat#2222');
+  });
+
+  it('keeps strict callers from receiving an unrelated fuzzy match', () => {
+    assert.equal(searchPlayer(board, 'totally-different'), null);
+  });
+
   it('returns null for null data', () => {
     assert.equal(searchPlayer(null, 'lamp#5944'), null);
   });

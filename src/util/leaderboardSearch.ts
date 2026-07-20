@@ -14,7 +14,47 @@
  * Only the Embark `name` field is consulted (never steam/psn/xbox names), which
  * keeps fuzzy fallbacks from latching onto an unrelated account.
  */
-export function searchPlayer(data: any[] | null, query: string): any | null {
+type SearchPlayerOptions = {
+  fuzzy?: boolean;
+};
+
+function editDistance(left: string, right: string): number {
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= left.length; i += 1) {
+    const current = [i];
+    for (let j = 1; j <= right.length; j += 1) {
+      current[j] = Math.min(
+        current[j - 1] + 1,
+        previous[j] + 1,
+        previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1)
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length];
+}
+
+function commonPrefixLength(left: string, right: string): number {
+  let length = 0;
+  while (length < left.length && length < right.length && left[length] === right[length]) length += 1;
+  return length;
+}
+
+function fuzzyScore(query: string, candidate: string): number {
+  const normalizedQuery = query.replace(/[^a-z0-9]+/g, '');
+  const normalizedCandidate = candidate.replace(/[^a-z0-9]+/g, '');
+  const tokens = candidate.split(/[^a-z0-9]+/).filter(Boolean);
+  const tokenAffinity = tokens.reduce((best, token) => {
+    const shorterLength = Math.min(normalizedQuery.length, token.length);
+    if (!shorterLength) return best;
+    return Math.max(best, commonPrefixLength(normalizedQuery, token) / shorterLength);
+  }, 0);
+  const longestLength = Math.max(normalizedQuery.length, normalizedCandidate.length, 1);
+  const editSimilarity = 1 - editDistance(normalizedQuery, normalizedCandidate) / longestLength;
+  return tokenAffinity * 2 + editSimilarity;
+}
+
+export function searchPlayer(data: any[] | null, query: string, options: SearchPlayerOptions = {}): any | null {
   if (!data) return null;
   const q = query.toLowerCase().trim();
   if (!q) return null;
@@ -38,6 +78,19 @@ export function searchPlayer(data: any[] | null, query: string): any | null {
   // 3. StartsWith match — "lam" matches "lamp#5944"; pick best rank.
   const starts = data.filter(p => typeof p?.name === 'string' && p.name.toLowerCase().split('#')[0].startsWith(q));
   if (starts.length > 0) return starts.sort((a, b) => a.rank - b.rank)[0];
+
+  if (options.fuzzy) {
+    const candidates = data
+      .filter(p => typeof p?.name === 'string')
+      .map(player => ({
+        player,
+        score: fuzzyScore(q, player.name.toLowerCase().split('#')[0]),
+      }))
+      .sort((left, right) =>
+        right.score - left.score || Number(left.player.rank ?? Infinity) - Number(right.player.rank ?? Infinity)
+      );
+    return candidates[0]?.player ?? null;
+  }
 
   return null;
 }

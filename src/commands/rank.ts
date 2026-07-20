@@ -119,9 +119,11 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
     let isLookup = false;
     let lookupTarget: string | null = null;
 
-    if (args && args.length > 0) {
+    const playerArgs = args?.filter(arg => !/^@[a-z0-9_]{1,25}[,.!?]?$/i.test(arg));
+
+    if (playerArgs && playerArgs.length > 0) {
       // Join args in case player name has spaces (e.g., "Some Name#1234")
-      const inputRaw = args.join(' ').trim().slice(0, 50);
+      const inputRaw = playerArgs.join(' ').trim().slice(0, 50);
 
       if (inputRaw.includes('#')) {
         // Full ID provided — validate strictly
@@ -173,7 +175,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       return;
     }
 
-    const player = searchPlayer(regularData, finalsName!);
+    const player = searchPlayer(regularData, finalsName!, { fuzzy: isLookup });
 
     // Use the actual found name for display (so "lamp" → "lamp#5944")
     if (isLookup && player) {

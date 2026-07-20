@@ -9,6 +9,12 @@ import { sendWarningToDiscord } from "../handlers/discordHandler";
 import { getChatDropResolution } from "./chatDropResolution";
 import { recordOperationalEvent } from "../services/operationalEvents.service";
 import { devModeChannels, isCommandSilenced } from "./devModeState";
+import {
+  chooseReplyTarget,
+  extractMentionedUsername,
+  RecentChatMessages,
+  retargetLeadingMention,
+} from "./chatReplyTargets";
 
 interface IRCClient {
   socket: net.Socket;
@@ -25,6 +31,7 @@ interface IRCClient {
 }
 
 const clients: { [username: string]: IRCClient } = {};
+const recentChatMessages = new RecentChatMessages();
 // Per-channel guard: a username is in this set from the moment we begin a
 // startChatBot/reconnect for it until the IRC handshake either completes or
 // fails. Prevents two concurrent paths (token-refresher reconnect loop +
@@ -714,6 +721,10 @@ export const startChatBot = async (
       // Count every incoming message for the metrics dashboard
       trackMessageIn();
 
+      const mentionedReplyTarget = recentChatMessages.replyTarget(channelName, message);
+      const mentionedUsername = extractMentionedUsername(message);
+      recentChatMessages.remember(channelName, user, tags["id"]);
+
       // Only process messages that start with '!'
       if (!message.trim().startsWith("!")) {
         continue;
@@ -778,8 +789,19 @@ export const startChatBot = async (
                     accessToken: client.customBotToken,
                   };
                 }
-                logger.info(`[DEBUG] Sending message from bot to ${channelName}: ${msg}`);
-                await sendChatMessage(broadcasterId, msg, replyToId || undefined, bypassFilter, customCreds);
+                const outgoingMessage = retargetLeadingMention(
+                  msg,
+                  tags["display-name"] || user,
+                  mentionedUsername
+                );
+                logger.info(`[DEBUG] Sending message from bot to ${channelName}: ${outgoingMessage}`);
+                await sendChatMessage(
+                  broadcasterId,
+                  outgoingMessage,
+                  chooseReplyTarget(mentionedReplyTarget, replyToId),
+                  bypassFilter,
+                  customCreds
+                );
               },
               raw: (line: string) =>
                 socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),

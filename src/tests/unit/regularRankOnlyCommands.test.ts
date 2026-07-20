@@ -96,6 +96,15 @@ describe('regular-ranked-only command output', () => {
     assert.doesNotMatch(messages[0], /WT rank|World Tour|#13/);
   });
 
+  it('treats a Twitch mention as a reply target rather than a player lookup', async () => {
+    const { ctx, messages } = createCtx(channel);
+
+    await rankExecute(ctx, undefined, '!rank @SomeViewer', undefined, ['@SomeViewer']);
+
+    assert.equal(messages.length, 1);
+    assert.match(messages[0], /current rank is #42 \(Diamond 1\) - 50,123 RS/);
+  });
+
   it('does not include World Tour rank in session records', async () => {
     await StreamSession.create({
       channel,

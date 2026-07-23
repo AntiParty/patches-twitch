@@ -3,7 +3,8 @@
  * channel-point redeem added in Phase 2), watches entrants come in, and draws
  * a winner — announced in chat by the backend. Viewers enter with !enter.
  */
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { AnimatePresence } from 'motion/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card } from '@/components/cards/Card'
@@ -13,11 +14,16 @@ import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
 import { Table, type Column } from '@/components/tables/Table'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { ErrorState } from '@/components/feedback/ErrorState'
+import { Skeleton } from '@/components/feedback/Skeleton'
 import { useToast } from '@/hooks/useToast'
 import { useConfirm } from '@/hooks/useConfirm'
 import { ApiError } from '@/api/errors'
 import { giveawaysApi } from '@/api/giveaways'
 import type { GiveawayEntrant } from '@/types/giveaway'
+import { GiveawayReveal } from './GiveawayReveal'
+import { filterGiveawayEntrants } from './giveawayDisplay'
+import styles from './Giveaways.module.css'
 
 const CURRENT_KEY = ['giveaways', 'current'] as const
 
@@ -33,9 +39,15 @@ export function Giveaways() {
   const toast = useToast()
   const confirm = useConfirm()
 
-  const currentQuery = useQuery({ queryKey: CURRENT_KEY, queryFn: giveawaysApi.getCurrent })
+  const currentQuery = useQuery({
+    queryKey: CURRENT_KEY,
+    queryFn: giveawaysApi.getCurrent,
+    refetchInterval: (query) => (query.state.data?.giveaway ? 3000 : false),
+    refetchIntervalInBackground: false,
+  })
   const giveaway = currentQuery.data?.giveaway ?? null
   const perUser = currentQuery.data?.perUser ?? []
+  const totalEntries = currentQuery.data?.total ?? 0
   const redeemScope = currentQuery.data?.redeemScope ?? false
 
   const [type, setType] = useState<'ticket' | 'redeem'>('ticket')
@@ -62,7 +74,16 @@ export function Giveaways() {
 
   // Optional on-stream roll animation (streamer shows the dashboard). Persisted.
   const [showRoll, setShowRoll] = useState(() => localStorage.getItem('giveawayShowRoll') !== 'off')
-  const [roll, setRoll] = useState<{ names: string[]; winner: string; slot: number; total: number } | null>(null)
+  const [entrantSearch, setEntrantSearch] = useState('')
+  useEffect(() => {
+    setEntrantSearch('')
+  }, [giveaway?.id])
+  const [roll, setRoll] = useState<{
+    entrants: GiveawayEntrant[]
+    winner: string
+    slot: number
+    total: number
+  } | null>(null)
   useEffect(() => {
     localStorage.setItem('giveawayShowRoll', showRoll ? 'on' : 'off')
   }, [showRoll])
@@ -87,7 +108,7 @@ export function Giveaways() {
   const wonUserIds = new Set(winners.map((w) => w.userId))
   const target = giveaway?.targetWinnerCount ?? 0
   const eligiblePool = perUser.filter((p) => !wonUserIds.has(p.userId))
-  const eligibleNames = eligiblePool.map((p) => p.username)
+  const visibleEntrants = filterGiveawayEntrants(perUser, entrantSearch)
   // 0 = unlimited (chat); N>0 = fixed target (channel points).
   const canDrawMore = eligiblePool.length > 0 && (target === 0 || winners.length < target)
   // Chat giveaways must close entries before spinning; channel points can spin from the live pool.
@@ -174,25 +195,28 @@ export function Giveaways() {
   const finishReveal = async (winner: { username: string; slot: number; total: number }) => {
     try {
       await announce.mutateAsync()
+      toast.success(`Winner: @${winner.username} (entry #${winner.slot} of ${winner.total})`)
     } catch {
-      /* announcement is best-effort; the winner is already recorded */
+      toast.error(`@${winner.username} won, but the chat announcement failed. Use “Announce winner” to retry.`)
     }
-    toast.success(`Winner: @${winner.username} (slot #${winner.slot} of ${winner.total})`)
   }
 
   // Spin the wheel over the still-eligible pool (prior winners excluded), then
   // announce once it lands. `pool` is captured before the draw so the wheel
   // matches the entrants who could still win.
-  const revealWinner = async (winner: { username: string; slot: number; total: number }, pool: string[]) => {
+  const revealWinner = async (
+    winner: { username: string; slot: number; total: number },
+    pool: GiveawayEntrant[],
+  ) => {
     if (showRoll && pool.length > 0) {
-      setRoll({ names: pool, winner: winner.username, slot: winner.slot, total: winner.total })
+      setRoll({ entrants: pool, winner: winner.username, slot: winner.slot, total: winner.total })
     } else {
       await finishReveal(winner)
     }
   }
 
   const handleDraw = async () => {
-    const pool = eligibleNames
+    const pool = eligiblePool
     try {
       const res = await draw.mutateAsync()
       await revealWinner(res.winner, pool)
@@ -206,12 +230,21 @@ export function Giveaways() {
     if (!ok) return
     // The eligible pool already excludes every current winner (including the one
     // being replaced), which is exactly who the redraw can land on.
-    const pool = eligibleNames
+    const pool = eligiblePool
     try {
       const res = await redraw.mutateAsync()
       await revealWinner(res.winner, pool)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to redraw.')
+    }
+  }
+
+  const handleAnnounceWinner = async () => {
+    try {
+      await announce.mutateAsync()
+      toast.success('Winner announced in chat.')
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Winner is saved, but the chat announcement failed.')
     }
   }
 
@@ -243,13 +276,14 @@ export function Giveaways() {
   const handleConfirmClear = async () => {
     const ok = await confirm({
       title: 'Confirm winner accepted',
-      body: 'Clear all entries and start a fresh round? Do this once the winner has accepted their prize.',
-      confirmLabel: 'Confirm & clear',
+      body: 'Clear all entries and reopen the Twitch reward for a fresh round? Do this once the winner has accepted their prize.',
+      confirmLabel: 'Start next round',
       danger: true,
     })
     if (!ok) return
     try {
       await reset.mutateAsync()
+      setEntrantSearch('')
       toast.success('Entries cleared — the giveaway is open for another round.')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to clear entries.')
@@ -284,19 +318,54 @@ export function Giveaways() {
     { key: 'count', header: 'Entries', align: 'right', accessor: (r) => r.count },
   ]
 
+  const statusLabel = giveaway
+    ? {
+        open: 'Live',
+        paused: 'Paused',
+        locked: 'Entries closed',
+        drawn: 'Drawing',
+        closed: 'Closed',
+      }[giveaway.status]
+    : ''
+  const lastUpdated = currentQuery.dataUpdatedAt
+    ? new Date(currentQuery.dataUpdatedAt).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : ''
+
   return (
-    <>
+    <div className={styles.page}>
       <PageHeader
         title="Giveaways"
-        subtitle="Run a chat or channel-point giveaway and draw a random winner without leaving the dashboard."
+        subtitle={
+          giveaway
+            ? `${statusLabel} · Live entry counts${lastUpdated ? ` · Synced ${lastUpdated}` : ''}`
+            : 'Run a chat or channel-point giveaway and draw a random winner without leaving the dashboard.'
+        }
         actions={
-          <Button variant="ghost" icon="fas fa-sync" onClick={invalidate}>
+          <Button variant="ghost" icon="fas fa-sync" loading={currentQuery.isFetching} onClick={invalidate}>
             Refresh
           </Button>
         }
       />
 
-      {!giveaway ? (
+      {currentQuery.isLoading ? (
+        <Card>
+          <div className={styles.loadingCard}>
+            <Skeleton height={28} width="38%" />
+            <Skeleton height={72} />
+            <Skeleton height={240} />
+          </div>
+        </Card>
+      ) : currentQuery.isError ? (
+        <ErrorState
+          title="Giveaway status unavailable"
+          message="We couldn't load the current giveaway. Your active giveaway has not been changed."
+          onRetry={() => currentQuery.refetch()}
+        />
+      ) : !giveaway ? (
         <Card>
           <div className="card-title" style={{ fontWeight: 800, marginBottom: 4 }}>Start a giveaway</div>
           <div style={{ color: 'var(--text-muted, #888)', marginBottom: 16 }}>
@@ -354,7 +423,7 @@ export function Giveaways() {
                 <Field label="Prompt (optional)" hint="Description viewers see under the reward.">
                   <Input value={rewardPrompt} maxLength={200} placeholder="Redeem to enter the giveaway!" onChange={(e) => setRewardPrompt(e.target.value)} />
                 </Field>
-                <Field label="Max entries per viewer per stream" hint="Set 1 so each viewer can enter once per stream. Blank = unlimited.">
+                <Field label="Max entries per viewer each round" hint="Set 1 for one entry each round. Starting the next round gives everyone a fresh entry. Blank = unlimited.">
                   <Input type="number" min={1} value={maxPerUser} placeholder="No limit" onChange={(e) => setMaxPerUser(e.target.value)} />
                 </Field>
                 <Field label="Max total entries per stream" hint="Cap on all redemptions per stream. Blank = unlimited.">
@@ -429,21 +498,46 @@ export function Giveaways() {
               {canSpin && (
                 <Button icon="fas fa-circle-notch" loading={draw.isPending} onClick={handleDraw}>
                   {winners.length === 0
-                    ? 'Spin winner'
+                    ? 'Draw winner'
                     : target > 0
                       ? `Draw next (${winners.length + 1} of ${target})`
-                      : 'Spin again'}
+                      : 'Draw again'}
                 </Button>
               )}
               {winners.length > 0 && (
                 <Button variant="ghost" icon="fas fa-rotate" loading={redraw.isPending} onClick={handleRedraw}>Redraw last</Button>
               )}
+              {winners.length > 0 && (
+                <Button variant="ghost" icon="fas fa-bullhorn" loading={announce.isPending} onClick={handleAnnounceWinner}>
+                  Announce winner
+                </Button>
+              )}
               {giveaway.type === 'redeem' && winners.length > 0 && (
-                <Button icon="fas fa-check" loading={reset.isPending} onClick={handleConfirmClear}>Confirm & clear</Button>
+                <Button icon="fas fa-check" loading={reset.isPending} onClick={handleConfirmClear}>
+                  Confirm winner & start next round
+                </Button>
               )}
               <Button variant="danger" icon="fas fa-xmark" loading={close.isPending || redeemClose.isPending} onClick={handleClose}>
                 {giveaway.type === 'redeem' ? 'End & remove reward' : 'End Giveaway'}
               </Button>
+            </div>
+          </div>
+
+          <div className={styles.stats}>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Viewers</span>
+              <strong className={styles.statValue}>{perUser.length.toLocaleString()}</strong>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Entries</span>
+              <strong className={styles.statValue}>{totalEntries.toLocaleString()}</strong>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Winners</span>
+              <strong className={styles.statValue}>
+                {winners.length.toLocaleString()}
+                {target > 0 ? ` / ${target.toLocaleString()}` : ''}
+              </strong>
             </div>
           </div>
 
@@ -499,7 +593,7 @@ export function Giveaways() {
                     <Field label="Prompt" hint="Leave blank to keep the current prompt.">
                       <Input value={editPrompt} maxLength={200} onChange={(e) => setEditPrompt(e.target.value)} />
                     </Field>
-                    <Field label="Max entries per viewer per stream" hint="Blank = unlimited.">
+                    <Field label="Max entries per viewer each round" hint="Starting the next round resets this limit. Blank = unlimited.">
                       <Input type="number" min={1} value={editMaxPerUser} placeholder="No limit" onChange={(e) => setEditMaxPerUser(e.target.value)} />
                     </Field>
                     <Field label="Max total entries per stream" hint="Blank = unlimited.">
@@ -543,212 +637,66 @@ export function Giveaways() {
             </div>
           )}
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, cursor: 'pointer', color: 'var(--text-muted, #888)', fontSize: 14 }}>
+          <label className={styles.toggle}>
             <input type="checkbox" checked={showRoll} onChange={(e) => setShowRoll(e.target.checked)} />
-            Show spinning wheel when drawing (for on-stream reveals)
+            <span>
+              <strong>Show on-stream reveal</strong>
+              <br />
+              The secure draw happens first; the reel only reveals the saved winner.
+            </span>
           </label>
 
           <div style={{ marginTop: 20 }}>
             {perUser.length === 0 ? (
               <EmptyState icon="fas fa-ticket" title="No entries yet" description="Entries appear here as viewers join." />
             ) : (
-              <Table columns={entrantColumns} data={perUser} rowKey={(r) => r.userId} emptyMessage="No entries yet" />
+              <>
+                <div className={styles.entryToolbar}>
+                  <div className={styles.searchField}>
+                    <i className="fas fa-search" aria-hidden="true" />
+                    <Input
+                      type="search"
+                      value={entrantSearch}
+                      onChange={(event) => setEntrantSearch(event.target.value)}
+                      placeholder="Search viewers"
+                      aria-label="Search giveaway viewers"
+                    />
+                  </div>
+                  <span className={styles.searchCount} aria-live="polite">
+                    {entrantSearch.trim()
+                      ? `${visibleEntrants.length.toLocaleString()} of ${perUser.length.toLocaleString()} viewers`
+                      : `${perUser.length.toLocaleString()} viewers`}
+                  </span>
+                </div>
+                {visibleEntrants.length === 0 ? (
+                  <EmptyState
+                    icon="fas fa-search"
+                    title="No matching viewers"
+                    description={`No giveaway entrants match “${entrantSearch.trim()}”.`}
+                  />
+                ) : (
+                  <div className={styles.tableViewport}>
+                    <Table columns={entrantColumns} data={visibleEntrants} rowKey={(r) => r.userId} emptyMessage="No entries yet" />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </Card>
       )}
 
-      {roll && (
-        <RollModal
-          names={roll.names}
-          winner={roll.winner}
-          slot={roll.slot}
-          total={roll.total}
-          onRevealed={() => finishReveal({ username: roll.winner, slot: roll.slot, total: roll.total })}
-          onClose={() => setRoll(null)}
-        />
-      )}
-    </>
-  )
-}
-
-const WHEEL_MAX_SEGMENTS = 16
-
-function polar(cx: number, cy: number, r: number, deg: number) {
-  const a = ((deg - 90) * Math.PI) / 180 // 0° points up (12 o'clock)
-  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
-}
-
-function slicePath(cx: number, cy: number, r: number, startDeg: number, endDeg: number) {
-  const s = polar(cx, cy, r, startDeg)
-  const e = polar(cx, cy, r, endDeg)
-  const large = endDeg - startDeg > 180 ? 1 : 0
-  return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y} Z`
-}
-
-/**
- * Full-screen spinning prize wheel. Builds a segment per entrant (a representative
- * sample when there are many), spins with an ease-out deceleration, and lands the
- * pointer on the winner. Fires the chat announcement when the wheel stops.
- */
-function RollModal({
-  names,
-  winner,
-  slot,
-  total,
-  onRevealed,
-  onClose,
-}: {
-  names: string[]
-  winner: string
-  slot: number
-  total: number
-  onRevealed: () => void
-  onClose: () => void
-}) {
-  // Build the wheel's segments once. With many entrants, show a sample that still
-  // includes the winner so the pointer lands on a real name.
-  const { segments, winnerIndex } = useRef(
-    (() => {
-      const unique = Array.from(new Set(names.length ? names : [winner]))
-      if (!unique.includes(winner)) unique.unshift(winner)
-      if (unique.length <= WHEEL_MAX_SEGMENTS) {
-        return { segments: unique, winnerIndex: unique.indexOf(winner) }
-      }
-      const others = unique.filter((n) => n !== winner).sort(() => Math.random() - 0.5).slice(0, WHEEL_MAX_SEGMENTS - 1)
-      const insertAt = Math.floor(Math.random() * WHEEL_MAX_SEGMENTS)
-      const sample = [...others]
-      sample.splice(insertAt, 0, winner)
-      return { segments: sample, winnerIndex: insertAt }
-    })()
-  ).current
-
-  const n = segments.length
-  const seg = 360 / n
-  const [rotation, setRotation] = useState(0)
-  const [done, setDone] = useState(false)
-  const revealedRef = useRef(false)
-
-  useEffect(() => {
-    // Land the winner's segment center under the top pointer, after several turns.
-    const spins = 6
-    const target = 360 * spins - (winnerIndex + 0.5) * seg
-    const raf = requestAnimationFrame(() => setRotation(target))
-    return () => cancelAnimationFrame(raf)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleSpinEnd = () => {
-    setDone(true)
-    if (!revealedRef.current) {
-      revealedRef.current = true
-      onRevealed()
-    }
-  }
-
-  const R = 150
-  const showLabels = n <= 20
-
-  return (
-    <div
-      onClick={done ? onClose : undefined}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1000,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'rgba(0,0,0,0.72)',
-        cursor: done ? 'pointer' : 'default',
-      }}
-    >
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ textTransform: 'uppercase', letterSpacing: 2, fontSize: 13, color: '#cfcfcf', marginBottom: 14 }}>
-          {done ? 'Winner' : 'Spinning'}
-        </div>
-
-        <div style={{ position: 'relative', width: 340, height: 340, margin: '0 auto' }}>
-          {/* Fixed pointer at the top */}
-          <div
-            style={{
-              position: 'absolute',
-              top: -6,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 0,
-              height: 0,
-              borderLeft: '14px solid transparent',
-              borderRight: '14px solid transparent',
-              borderTop: '22px solid #fff',
-              zIndex: 2,
-              filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))',
-            }}
+      <AnimatePresence>
+        {roll && (
+          <GiveawayReveal
+            entrants={roll.entrants}
+            winner={roll.winner}
+            slot={roll.slot}
+            total={roll.total}
+            onRevealed={() => finishReveal({ username: roll.winner, slot: roll.slot, total: roll.total })}
+            onClose={() => setRoll(null)}
           />
-          <svg viewBox="0 0 300 300" width={340} height={340}>
-            <g
-              style={{
-                transform: `rotate(${rotation}deg)`,
-                transformBox: 'fill-box',
-                transformOrigin: 'center',
-                transition: 'transform 4.6s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}
-              onTransitionEnd={handleSpinEnd}
-            >
-              {segments.map((name, i) => {
-                const start = i * seg
-                const end = (i + 1) * seg
-                const mid = start + seg / 2
-                const hue = Math.round((i * 360) / n)
-                const isWinner = done && i === winnerIndex
-                const label = polar(150, 150, R * 0.62, mid)
-                return (
-                  <g key={i}>
-                    <path
-                      d={slicePath(150, 150, R, start, end)}
-                      fill={`hsl(${hue}, 62%, ${isWinner ? 62 : 48}%)`}
-                      stroke={isWinner ? '#fff' : 'rgba(0,0,0,0.25)'}
-                      strokeWidth={isWinner ? 3 : 1}
-                    />
-                    {showLabels && (
-                      <text
-                        x={label.x}
-                        y={label.y}
-                        fill="#fff"
-                        fontSize={n > 12 ? 8 : 10}
-                        fontWeight={700}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        transform={`rotate(${mid} ${label.x} ${label.y})`}
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        {name.length > 12 ? name.slice(0, 11) + '...' : name}
-                      </text>
-                    )}
-                  </g>
-                )
-              })}
-              <circle cx={150} cy={150} r={20} fill="var(--surface, #14100f)" stroke="#fff" strokeWidth={2} />
-            </g>
-          </svg>
-        </div>
-
-        <div
-          style={{
-            marginTop: 18,
-            fontSize: 30,
-            fontWeight: 900,
-            color: done ? 'var(--success, #22c55e)' : '#fff',
-            transition: 'color 0.3s ease',
-          }}
-        >
-          {done ? `@${winner}` : ' '}
-        </div>
-        {done && (
-          <div style={{ marginTop: 8, color: '#cfcfcf' }}>
-            slot #{slot} of {total} — click anywhere to close
-          </div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }

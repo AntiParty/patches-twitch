@@ -41,11 +41,13 @@ async function resolveChannel(req: any): Promise<ChannelIdentity | null> {
   return null;
 }
 
-async function announce(channel: string, message: string): Promise<void> {
+async function announce(channel: string, message: string): Promise<boolean> {
   try {
     await axios.post(`${BOT_CONTROL_URL}/send-message`, { channel, message }, { timeout: 5000, headers: botControlHeaders() });
+    return true;
   } catch (err) {
     logger.error('[GiveawayDashboard] Chat announcement failed', err);
+    return false;
   }
 }
 
@@ -92,7 +94,9 @@ router.get('/api/user/giveaways/current', requireUserAPI, (req, res) =>
   withChannel(req, res, 'current', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     const summary = giveaway ? await listEntries(giveaway.id) : { perUser: [], total: 0 };
-    const redeemScope = await hasRedemptionsScope(channel.id);
+    // The dashboard polls this route while a giveaway is live. Scope validation
+    // talks to Twitch, so only do it while the creation form actually needs it.
+    const redeemScope = giveaway ? giveaway.type === 'redeem' : await hasRedemptionsScope(channel.id);
     return res.json({
       giveaway: serialize(giveaway),
       perUser: summary.perUser,
@@ -235,7 +239,12 @@ router.post('/api/user/giveaways/announce', requireUserAPI, csrfProtection, (req
     // "Winner #2 of 3" when the streamer is drawing multiple; plain otherwise.
     const label =
       target > 1 ? `Giveaway winner #${winners.length} of ${target}` : 'Giveaway winner';
-    await announce(channel.username, `${label}: @${giveaway.winner_username}!`);
+    const announced = await announce(channel.username, `${label}: @${giveaway.winner_username}!`);
+    if (!announced) {
+      return res.status(502).json({
+        error: 'The winner is saved, but the chat announcement failed. Try announcing again.',
+      });
+    }
     return res.json({ success: true });
   })
 );
@@ -254,6 +263,7 @@ async function setRewardPausedViaControl(channel: string, paused: boolean) {
     await axios.post(`${BOT_CONTROL_URL}/giveaway/redeem/pause`, { channel, paused }, { timeout: 8000, headers: botControlHeaders() });
   } catch (err: any) {
     logger.error('[GiveawayDashboard] reward pause proxy failed', err?.response?.data || err?.message);
+    throw err;
   }
 }
 
@@ -261,10 +271,14 @@ router.post('/api/user/giveaways/pause', requireUserAPI, csrfProtection, (req, r
   withChannel(req, res, 'pause', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
-    const ok = await pauseGiveaway(giveaway.id);
     if (giveaway.type === 'redeem' && giveaway.reward_id) {
-      await setRewardPausedViaControl(channel.username, true);
+      try {
+        await setRewardPausedViaControl(channel.username, true);
+      } catch {
+        return res.status(502).json({ error: 'Twitch could not pause the reward. The giveaway is still live.' });
+      }
     }
+    const ok = await pauseGiveaway(giveaway.id);
     return res.json({ success: ok });
   })
 );
@@ -273,10 +287,14 @@ router.post('/api/user/giveaways/resume', requireUserAPI, csrfProtection, (req, 
   withChannel(req, res, 'resume', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
-    const ok = await resumeGiveaway(giveaway.id);
     if (giveaway.type === 'redeem' && giveaway.reward_id) {
-      await setRewardPausedViaControl(channel.username, false);
+      try {
+        await setRewardPausedViaControl(channel.username, false);
+      } catch {
+        return res.status(502).json({ error: 'Twitch could not resume the reward. The giveaway is still paused.' });
+      }
     }
+    const ok = await resumeGiveaway(giveaway.id);
     return res.json({ success: ok });
   })
 );
@@ -286,6 +304,21 @@ router.post('/api/user/giveaways/reset', requireUserAPI, csrfProtection, (req, r
   withChannel(req, res, 'reset', async (channel) => {
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+    if (giveaway.type === 'redeem' && giveaway.reward_id) {
+      try {
+        await axios.post(
+          `${BOT_CONTROL_URL}/giveaway/redeem/reset`,
+          { channel: channel.username },
+          { timeout: 15000, headers: botControlHeaders() },
+        );
+        return res.json({ success: true });
+      } catch (err: any) {
+        logger.error('[GiveawayDashboard] reward reset proxy failed', err?.response?.data || err?.message);
+        return res.status(502).json({
+          error: 'Twitch could not open the next reward round. The current round was not cleared.',
+        });
+      }
+    }
     await resetEntries(giveaway.id);
     return res.json({ success: true });
   })
@@ -346,7 +379,9 @@ router.post('/api/user/giveaways/redeem/close', requireUserAPI, csrfProtection, 
       );
     } catch (err: any) {
       logger.error('[GiveawayDashboard] redeemClose proxy failed', err?.response?.data || err?.message);
-      // Still close the DB record so the streamer isn't stuck; reward may remain enabled.
+      return res.status(502).json({
+        error: 'Twitch could not remove the reward. The giveaway was left active so you can retry.',
+      });
     }
     await closeGiveaway(giveaway.id);
     return res.json({ success: true });

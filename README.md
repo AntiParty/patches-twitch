@@ -38,18 +38,22 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 ## Development
 
-Run the web server and bot process separately:
+Run the backend, bot, and React development server separately:
 
 ```bash
 bun run dev:server
 bun run dev:bot
+bun run dev:web
 ```
 
-Or run both:
+Or run all three together:
 
 ```bash
 bun run dev:all
 ```
+
+The React app is available at `http://localhost:5173` and proxies backend-owned
+routes to Express on port `3000`.
 
 ## Production
 

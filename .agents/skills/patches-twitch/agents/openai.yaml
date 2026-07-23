@@ -1,0 +1,4 @@
+interface:
+  display_name: "patches-twitch Repository Guide"
+  short_description: "Navigate the bot, web app, data, and tests"
+  default_prompt: "Use $patches-twitch to locate the correct subsystem, invariants, and tests for this repository change."

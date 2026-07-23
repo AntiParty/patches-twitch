@@ -18,6 +18,45 @@ export type CreateRewardResult =
   | { ok: true; rewardId: string }
   | { ok: false; reason: 'no_scope' | 'no_token' | 'error'; message?: string };
 
+export interface RewardSnapshot extends RewardLimitInput {
+  title: string;
+  cost: number;
+  prompt?: string;
+  backgroundColor?: string;
+}
+
+export function parseRewardSnapshot(reward: any): RewardSnapshot | null {
+  const title = typeof reward?.title === 'string' ? reward.title.trim().slice(0, 45) : '';
+  const cost = Math.floor(Number(reward?.cost));
+  if (!title || !Number.isFinite(cost) || cost < 1) return null;
+
+  const enabledLimit = (setting: any, valueKey: string): number | null => {
+    if (!setting?.is_enabled) return null;
+    const value = Math.floor(Number(setting?.[valueKey]));
+    return Number.isFinite(value) && value >= 1 ? value : null;
+  };
+
+  return {
+    title,
+    cost,
+    ...(typeof reward?.prompt === 'string' && reward.prompt
+      ? { prompt: reward.prompt.slice(0, 200) }
+      : {}),
+    ...(typeof reward?.background_color === 'string' && HEX_COLOR.test(reward.background_color)
+      ? { backgroundColor: reward.background_color.toUpperCase() }
+      : {}),
+    maxPerUserPerStream: enabledLimit(
+      reward?.max_per_user_per_stream_setting,
+      'max_per_user_per_stream',
+    ),
+    maxPerStream: enabledLimit(reward?.max_per_stream_setting, 'max_per_stream'),
+    cooldownSeconds: enabledLimit(
+      reward?.global_cooldown_setting,
+      'global_cooldown_seconds',
+    ),
+  };
+}
+
 async function loadChannel(channelId: number): Promise<any | null> {
   return Channel.findByPk(channelId);
 }
@@ -107,6 +146,29 @@ export function buildRewardLimitFields(
     }
   }
   return out;
+}
+
+/** Read the live reward fields required to recreate it for a clean giveaway round. */
+export async function getRewardSnapshot(
+  channelId: number,
+  rewardId: string,
+): Promise<RewardSnapshot | null> {
+  try {
+    const data = await requestWithRefresh(channelId, async (channel, token) => {
+      const res = await axios.get(REWARDS_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID!,
+        },
+        params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+      });
+      return res.data;
+    });
+    return parseRewardSnapshot(data?.data?.[0]);
+  } catch (err: any) {
+    logger.error('[ChannelPoints] getRewardSnapshot failed', err?.response?.data || err?.message);
+    return null;
+  }
 }
 
 export async function createReward(

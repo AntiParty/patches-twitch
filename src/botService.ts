@@ -4,8 +4,9 @@ const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
-import { createReward, deleteReward, setRewardPaused, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
-import { createGiveaway, getActiveGiveaway } from "./services/giveaway.service";
+import { createReward, deleteReward, getRewardSnapshot, setRewardPaused, updateReward, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
+import { createGiveaway, getActiveGiveaway, resetEntries } from "./services/giveaway.service";
+import { replaceRewardForNextRound } from "./services/giveawayRoundReward.service";
 import { decryptChannelAccessToken, clearCustomBotPermanentFailed } from "./util/twitchUtils";
 import logger from "./util/logger";
 import express from "express";
@@ -482,6 +483,50 @@ dbReady.then(async () => {
       } catch (err) {
         logger.error("[ControlAPI] Failed to pause/resume redeem reward:", err);
         return res.status(500).json({ error: "Internal error" });
+      }
+    });
+
+    controlApp.post("/giveaway/redeem/reset", async (req: any, res: any) => {
+      const channelName = String(req.body?.channel || "").trim().toLowerCase();
+      if (!channelName) return res.status(400).json({ error: "channel is required" });
+
+      try {
+        const channel = await Channel.findOne({ where: { username: channelName } });
+        const giveaway = await getActiveGiveaway(channelName);
+        const accessToken = channel ? decryptChannelAccessToken(channel) : null;
+        if (!channel?.twitch_user_id || !giveaway?.reward_id || !accessToken) {
+          return res.status(409).json({ error: "Active channel-point giveaway not found" });
+        }
+
+        const rewardId = await replaceRewardForNextRound(
+          {
+            channelId: channel.id,
+            broadcasterId: channel.twitch_user_id,
+            accessToken,
+            rewardId: giveaway.reward_id,
+          },
+          {
+            snapshotReward: getRewardSnapshot,
+            removeSubscription: removeRedemptionSubscription,
+            deleteReward,
+            createReward,
+            updateReward,
+            storeRewardId: async (nextRewardId) => {
+              await giveaway.update({ reward_id: nextRewardId });
+            },
+            addSubscription: (broadcasterId, token, nextRewardId) => {
+              addRedemptionSubscription(broadcasterId, token, broadcasterId, nextRewardId);
+            },
+            setRewardPaused,
+            resetEntries: () => resetEntries(giveaway.id),
+          },
+        );
+
+        logger.info(`[ControlAPI] Opened next giveaway round for ${channelName} (reward ${rewardId})`);
+        return res.json({ success: true, rewardId });
+      } catch (err) {
+        logger.error("[ControlAPI] Failed to reset redeem giveaway:", err);
+        return res.status(502).json({ error: "Could not open the next giveaway round" });
       }
     });
     // --- end Giveaways ---

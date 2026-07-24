@@ -14,15 +14,16 @@ Developer Portal. Configure these user-data fields:
 | Widget top | Player | `player_name` | Text |
 | Widget top | Subtitle | `owner_label` | Text |
 | Widget top | Image | `rank_icon` | Image |
-| Widget bottom | Current rank | `current_rank` | Number |
+| Widget bottom | Current rank | `current_rank` | Text |
 | Widget bottom | League | `current_league` | Text |
-| Widget bottom | Rank Score | `current_rs` | Number |
+| Widget bottom | Rank Score | `current_rs` | Text |
 | Widget bottom | Session | `session_change` | Text |
-| Widget bottom | Peak rank | `peak_rank` | Number |
-| Widget bottom | Peak record | `peak_record` | Text |
+| Widget bottom | Personal Best | `peak_rank` | Text |
+| Widget bottom | Best Season | `peak_record` | Text |
 
-The peak record is formatted as `64,110 RS · Ruby · Season 9`. When no stream
-session is active, the session field displays `No active session`.
+Current rank and RS are formatted as `#109` and `50,123 RS`. Personal Best is
+the highest recorded RS, while Best Season is formatted as `Ruby · S10`. When
+no stream session is active, the session field displays `No active session`.
 
 Set the Widget Top image's value type to **User Data** and its data field to
 `rank_icon`. The updater sends the same current-league PNG used by the stream

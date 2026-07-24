@@ -13,7 +13,6 @@ export interface OwnerWidgetStats {
   currentLeague: string;
   currentRS: number;
   sessionChange: number | null;
-  peakRank: number;
   peakLeague: string;
   peakRS: number;
   peakSeason: string;
@@ -48,23 +47,33 @@ function signedRS(value: number | null): string {
   return `${value >= 0 ? '+' : ''}${value.toLocaleString('en-US')} RS`;
 }
 
-function peakRecord(stats: OwnerWidgetStats): string {
-  return `${stats.peakRS.toLocaleString('en-US')} RS · ${stats.peakLeague} · ${stats.peakSeason}`;
+function displayPlayerName(value: string): string {
+  const withoutTwitchPrefix = value.replace(/^twitch[-_\s]*/i, '');
+  return withoutTwitchPrefix.split('#')[0].trim() || value;
+}
+
+function shortSeason(value: string): string {
+  return value.replace(/^Season\s+/i, 'S');
 }
 
 export function buildOwnerWidgetPayload(stats: OwnerWidgetStats) {
+  const displayName = displayPlayerName(stats.playerName);
   return {
-    username: stats.playerName,
+    username: displayName,
     data: {
       dynamic: [
-        { type: 1, name: 'player_name', value: stats.playerName },
+        { type: 1, name: 'player_name', value: displayName },
         { type: 3, name: 'rank_icon', value: { url: stats.rankIconUrl } },
         { type: 1, name: 'current_league', value: stats.currentLeague },
-        { type: 2, name: 'current_rank', value: stats.currentRank },
-        { type: 2, name: 'current_rs', value: stats.currentRS },
+        { type: 1, name: 'current_rank', value: `#${stats.currentRank.toLocaleString('en-US')}` },
+        { type: 1, name: 'current_rs', value: `${stats.currentRS.toLocaleString('en-US')} RS` },
         { type: 1, name: 'session_change', value: signedRS(stats.sessionChange) },
-        { type: 2, name: 'peak_rank', value: stats.peakRank },
-        { type: 1, name: 'peak_record', value: peakRecord(stats) },
+        { type: 1, name: 'peak_rank', value: `${stats.peakRS.toLocaleString('en-US')} RS` },
+        {
+          type: 1,
+          name: 'peak_record',
+          value: `${stats.peakLeague} · ${shortSeason(stats.peakSeason)}`,
+        },
         { type: 1, name: 'owner_label', value: stats.ownerLabel },
       ],
     },
@@ -97,9 +106,6 @@ export async function loadOwnerWidgetStats(
     StreamSession.findOne({ where: { channel } }) as Promise<any | null>,
   ]);
 
-  const peakRank = peak?.regular_rank != null && Number.isFinite(Number(peak.regular_rank))
-    ? Math.max(1, Math.floor(Number(peak.regular_rank)))
-    : currentRank;
   const peakRS = peak?.regular_rs != null && Number.isFinite(Number(peak.regular_rs))
     ? Math.max(0, Math.floor(Number(peak.regular_rs)))
     : currentRS;
@@ -112,7 +118,6 @@ export async function loadOwnerWidgetStats(
     sessionChange: Number.isFinite(Number(session?.start_score))
       ? currentRS - Math.floor(Number(session.start_score))
       : null,
-    peakRank,
     peakLeague: String(peak?.regular_league || player.league || 'Unranked'),
     peakRS,
     peakSeason: seasonLabel(peak?.regular_season),

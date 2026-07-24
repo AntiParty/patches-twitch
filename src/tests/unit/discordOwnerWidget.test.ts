@@ -7,12 +7,11 @@ import {
 import { getRankIconUrl } from '@/util/rankIcons';
 
 const stats: OwnerWidgetStats = {
-  playerName: 'Antiparty#1234',
+  playerName: 'twitch-Antiparty#8470',
   currentRank: 42,
   currentLeague: 'Ruby',
   currentRS: 61234,
   sessionChange: 418,
-  peakRank: 17,
   peakLeague: 'Ruby',
   peakRS: 64110,
   peakSeason: 'Season 9',
@@ -23,21 +22,21 @@ const stats: OwnerWidgetStats = {
 describe('Discord owner profile widget', () => {
   it('maps rank, session, record, and website ownership into Discord dynamic fields', () => {
     assert.deepEqual(buildOwnerWidgetPayload(stats), {
-      username: 'Antiparty#1234',
+      username: 'Antiparty',
       data: {
         dynamic: [
-          { type: 1, name: 'player_name', value: 'Antiparty#1234' },
+          { type: 1, name: 'player_name', value: 'Antiparty' },
           {
             type: 3,
             name: 'rank_icon',
             value: { url: 'https://www.thefinals.wiki/w/images/8/81/League_Ruby.png' },
           },
           { type: 1, name: 'current_league', value: 'Ruby' },
-          { type: 2, name: 'current_rank', value: 42 },
-          { type: 2, name: 'current_rs', value: 61234 },
+          { type: 1, name: 'current_rank', value: '#42' },
+          { type: 1, name: 'current_rs', value: '61,234 RS' },
           { type: 1, name: 'session_change', value: '+418 RS' },
-          { type: 2, name: 'peak_rank', value: 17 },
-          { type: 1, name: 'peak_record', value: '64,110 RS · Ruby · Season 9' },
+          { type: 1, name: 'peak_rank', value: '64,110 RS' },
+          { type: 1, name: 'peak_record', value: 'Ruby · S9' },
           { type: 1, name: 'owner_label', value: 'Founder · FinalsRS.com' },
         ],
       },

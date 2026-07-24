@@ -8,6 +8,7 @@ import logger from '@/util/logger';
 import { updateRSHistory } from '@/util/rsPredictor';
 import { updatePeakRanks } from '@/jobs/peakUpdater';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
+import { syncConfiguredOwnerWidget } from '@/services/discordOwnerWidget.service';
 
 // ── New API ──────────────────────────────────────────────────────────────────
 const NEW_REGULAR_API_URL  = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/leaderboard/';
@@ -111,6 +112,17 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
     // Post-update hooks
     try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }
     try { await updatePeakRanks();  } catch (e) { logger.error('[CacheUpdater] updatePeakRanks error:', e); }
+    void syncConfiguredOwnerWidget(normalized)
+      .then((result) => {
+        if (result.ok) {
+          logger.info('[CacheUpdater] Discord owner widget synced.');
+        } else if (result.reason !== 'not_configured' && result.reason !== 'already_syncing') {
+          logger.warn(`[CacheUpdater] Discord owner widget skipped: ${result.reason}.`);
+        }
+      })
+      .catch((error) => {
+        logger.error('[CacheUpdater] Discord owner widget sync error:', error);
+      });
 
     void recordOperationalEvent({
       type: 'cache_refresh_succeeded',

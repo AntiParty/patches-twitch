@@ -79,6 +79,7 @@ bun run test:integration
 - [Developer API](docs/DEVELOPER.md)
 - [Custom command editing](docs/custom-command-editing.md)
 - [Development guide](docs/development-guide.md)
+- [Owner Discord profile widget](docs/discord-owner-widget.md)
 - [VPS failover](docs/vps-failover.md)
 
 ## Security

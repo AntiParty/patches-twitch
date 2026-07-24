@@ -25,6 +25,61 @@ export interface RewardSnapshot extends RewardLimitInput {
   backgroundColor?: string;
 }
 
+export interface RewardDiagnostics {
+  id: string;
+  title: string;
+  cost: number;
+  isEnabled: boolean;
+  isPaused: boolean;
+  isInStock: boolean;
+  redemptionsRedeemedCurrentStream: number | null;
+  maxPerUserPerStream: { enabled: boolean; value: number };
+  maxPerStream: { enabled: boolean; value: number };
+  globalCooldown: { enabled: boolean; seconds: number; expiresAt: string | null };
+}
+
+export function parseRewardDiagnostics(reward: any): RewardDiagnostics | null {
+  const id = typeof reward?.id === 'string' ? reward.id : '';
+  const title = typeof reward?.title === 'string' ? reward.title : '';
+  const cost = Math.floor(Number(reward?.cost));
+  if (!id || !title || !Number.isFinite(cost)) return null;
+
+  const numericValue = (value: unknown): number => {
+    const parsed = Math.floor(Number(value));
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  };
+  const currentStream = Number(reward?.redemptions_redeemed_current_stream);
+
+  return {
+    id,
+    title,
+    cost,
+    isEnabled: reward?.is_enabled === true,
+    isPaused: reward?.is_paused === true,
+    isInStock: reward?.is_in_stock === true,
+    redemptionsRedeemedCurrentStream:
+      Number.isFinite(currentStream) && currentStream >= 0 ? Math.floor(currentStream) : null,
+    maxPerUserPerStream: {
+      enabled: reward?.max_per_user_per_stream_setting?.is_enabled === true,
+      value: numericValue(
+        reward?.max_per_user_per_stream_setting?.max_per_user_per_stream,
+      ),
+    },
+    maxPerStream: {
+      enabled: reward?.max_per_stream_setting?.is_enabled === true,
+      value: numericValue(reward?.max_per_stream_setting?.max_per_stream),
+    },
+    globalCooldown: {
+      enabled: reward?.global_cooldown_setting?.is_enabled === true,
+      seconds: numericValue(reward?.global_cooldown_setting?.global_cooldown_seconds),
+      expiresAt:
+        typeof reward?.global_cooldown_setting?.global_cooldown_expires_at === 'string'
+          ? reward.global_cooldown_setting.global_cooldown_expires_at
+          : null,
+    },
+  };
+}
+
 export function parseRewardSnapshot(reward: any): RewardSnapshot | null {
   const title = typeof reward?.title === 'string' ? reward.title.trim().slice(0, 45) : '';
   const cost = Math.floor(Number(reward?.cost));
@@ -167,6 +222,29 @@ export async function getRewardSnapshot(
     return parseRewardSnapshot(data?.data?.[0]);
   } catch (err: any) {
     logger.error('[ChannelPoints] getRewardSnapshot failed', err?.response?.data || err?.message);
+    return null;
+  }
+}
+
+/** Read Twitch's live availability and stock-limit fields for diagnostics. */
+export async function getRewardDiagnostics(
+  channelId: number,
+  rewardId: string,
+): Promise<RewardDiagnostics | null> {
+  try {
+    const data = await requestWithRefresh(channelId, async (channel, token) => {
+      const res = await axios.get(REWARDS_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Client-Id': process.env.TWITCH_CLIENT_ID!,
+        },
+        params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+      });
+      return res.data;
+    });
+    return parseRewardDiagnostics(data?.data?.[0]);
+  } catch (err: any) {
+    logger.error('[ChannelPoints] getRewardDiagnostics failed', err?.response?.data || err?.message);
     return null;
   }
 }

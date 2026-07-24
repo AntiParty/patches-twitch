@@ -1,6 +1,7 @@
 import { strict as assert } from 'assert';
 import {
   buildRewardLimitFields,
+  parseRewardDiagnostics,
   parseRewardSnapshot,
 } from '../../services/twitchChannelPoints.service';
 
@@ -71,6 +72,45 @@ describe('parseRewardSnapshot', () => {
         maxPerUserPerStream: 1,
         maxPerStream: 100,
         cooldownSeconds: 15,
+      },
+    );
+  });
+});
+
+describe('parseRewardDiagnostics', () => {
+  it('reports Twitch availability and every native stock constraint', () => {
+    assert.deepEqual(
+      parseRewardDiagnostics({
+        id: 'reward-123',
+        title: 'Giveaway entry',
+        cost: 500,
+        is_enabled: true,
+        is_paused: false,
+        is_in_stock: false,
+        redemptions_redeemed_current_stream: 1,
+        max_per_user_per_stream_setting: { is_enabled: true, max_per_user_per_stream: 1 },
+        max_per_stream_setting: { is_enabled: false, max_per_stream: 0 },
+        global_cooldown_setting: {
+          is_enabled: true,
+          global_cooldown_seconds: 30,
+          global_cooldown_expires_at: '2026-07-23T08:00:00Z',
+        },
+      }),
+      {
+        id: 'reward-123',
+        title: 'Giveaway entry',
+        cost: 500,
+        isEnabled: true,
+        isPaused: false,
+        isInStock: false,
+        redemptionsRedeemedCurrentStream: 1,
+        maxPerUserPerStream: { enabled: true, value: 1 },
+        maxPerStream: { enabled: false, value: 0 },
+        globalCooldown: {
+          enabled: true,
+          seconds: 30,
+          expiresAt: '2026-07-23T08:00:00Z',
+        },
       },
     );
   });

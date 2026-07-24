@@ -17,7 +17,8 @@
     "test": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/**/*.test.ts\" --timeout 10000",
     "test:unit": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/unit/**/*.test.ts\" --timeout 5000",
     "test:integration": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/integration/**/*.test.ts\" --timeout 15000",
-    "test:watch": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/**/*.test.ts\" --watch --watch-extensions ts"
+    "test:watch": "NODE_ENV=test mocha --require ts-node/register --require tsconfig-paths/register \"src/tests/**/*.test.ts\" --watch --watch-extensions ts",
+    "check:giveaway-reward": "bun run src/scripts/check_giveaway_reward.ts"
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",

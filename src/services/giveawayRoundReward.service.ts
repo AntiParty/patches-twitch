@@ -27,6 +27,7 @@ export interface GiveawayRoundRewardDependencies {
     rewardId: string,
   ) => void
   setRewardPaused: (channelId: number, rewardId: string, paused: boolean) => Promise<boolean>
+  getRewardPausedState: (channelId: number, rewardId: string) => Promise<boolean | null>
   resetEntries: () => Promise<boolean>
 }
 
@@ -80,8 +81,18 @@ export async function replaceRewardForNextRound(
     throw new Error('Could not clear the current giveaway round.')
   }
 
-  const unpaused = await deps.setRewardPaused(input.channelId, created.rewardId, false)
-  if (!unpaused) {
+  let opened = false
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const unpaused = await deps.setRewardPaused(input.channelId, created.rewardId, false)
+    if (!unpaused) continue
+
+    const pausedState = await deps.getRewardPausedState(input.channelId, created.rewardId)
+    if (pausedState === false) {
+      opened = true
+      break
+    }
+  }
+  if (!opened) {
     throw new Error('The next-round Twitch reward could not be opened.')
   }
   return created.rewardId

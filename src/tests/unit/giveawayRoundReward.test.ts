@@ -37,6 +37,10 @@ describe('replaceRewardForNextRound', () => {
         calls.push(`${paused ? 'pause' : 'unpause'}:${rewardId}`)
         return true
       },
+      getRewardPausedState: async (_channelId, rewardId) => {
+        calls.push(`verify-unpaused:${rewardId}`)
+        return false
+      },
       resetEntries: async () => {
         calls.push('reset-entries')
         return true
@@ -60,7 +64,35 @@ describe('replaceRewardForNextRound', () => {
       'subscribe',
       'reset-entries',
       'unpause:reward-new',
+      'verify-unpaused:reward-new',
     ])
+  })
+
+  it('retries opening the reward when Twitch still reports it as paused', async () => {
+    let unpauseAttempts = 0
+    const pausedStates = [true, false]
+    const deps: GiveawayRoundRewardDependencies = {
+      snapshotReward: async () => ({ title: 'Giveaway', cost: 500 }),
+      removeSubscription: async () => undefined,
+      deleteReward: async () => true,
+      createReward: async () => ({ ok: true, rewardId: 'reward-new' }),
+      updateReward: async () => true,
+      storeRewardId: async () => undefined,
+      addSubscription: () => undefined,
+      setRewardPaused: async (_channelId, _rewardId, paused) => {
+        if (!paused) unpauseAttempts += 1
+        return true
+      },
+      getRewardPausedState: async () => pausedStates.shift() ?? true,
+      resetEntries: async () => true,
+    }
+
+    await replaceRewardForNextRound(
+      { channelId: 7, broadcasterId: 'broadcaster', accessToken: 'token', rewardId: 'reward-old' },
+      deps,
+    )
+
+    assert.equal(unpauseAttempts, 2)
   })
 
   it('does not delete the current reward when its settings cannot be read', async () => {
@@ -77,6 +109,7 @@ describe('replaceRewardForNextRound', () => {
       storeRewardId: async () => undefined,
       addSubscription: () => undefined,
       setRewardPaused: async () => true,
+      getRewardPausedState: async () => false,
       resetEntries: async () => true,
     }
 

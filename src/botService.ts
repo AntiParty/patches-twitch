@@ -4,7 +4,7 @@ const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
-import { createReward, deleteReward, getRewardSnapshot, setRewardPaused, updateReward, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
+import { createReward, deleteReward, getRewardDiagnostics, getRewardSnapshot, setRewardPaused, updateReward, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway, resetEntries } from "./services/giveaway.service";
 import { replaceRewardForNextRound } from "./services/giveawayRoundReward.service";
 import { decryptChannelAccessToken, clearCustomBotPermanentFailed } from "./util/twitchUtils";
@@ -518,6 +518,10 @@ dbReady.then(async () => {
               addRedemptionSubscription(broadcasterId, token, broadcasterId, nextRewardId);
             },
             setRewardPaused,
+            getRewardPausedState: async (channelId, nextRewardId) => {
+              const reward = await getRewardDiagnostics(channelId, nextRewardId);
+              return reward?.isPaused ?? null;
+            },
             resetEntries: () => resetEntries(giveaway.id),
           },
         );

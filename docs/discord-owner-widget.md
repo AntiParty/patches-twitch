@@ -24,6 +24,8 @@ Developer Portal. Configure these user-data fields:
 Current rank and RS are formatted as `#109` and `50,123 RS`. Personal Best is
 the highest recorded RS, while Best Season is formatted as `Ruby · S10`. When
 no stream session is active, the session field displays `No active session`.
+The widget username and Player field use the linked account name exactly as
+stored in `Channel.player_id`, including any prefix and `#` tag.
 
 Set the Widget Top image's value type to **User Data** and its data field to
 `rank_icon`. The updater sends the same current-league PNG used by the stream

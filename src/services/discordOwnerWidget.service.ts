@@ -47,22 +47,16 @@ function signedRS(value: number | null): string {
   return `${value >= 0 ? '+' : ''}${value.toLocaleString('en-US')} RS`;
 }
 
-function displayPlayerName(value: string): string {
-  const withoutTwitchPrefix = value.replace(/^twitch[-_\s]*/i, '');
-  return withoutTwitchPrefix.split('#')[0].trim() || value;
-}
-
 function shortSeason(value: string): string {
   return value.replace(/^Season\s+/i, 'S');
 }
 
 export function buildOwnerWidgetPayload(stats: OwnerWidgetStats) {
-  const displayName = displayPlayerName(stats.playerName);
   return {
-    username: displayName,
+    username: stats.playerName,
     data: {
       dynamic: [
-        { type: 1, name: 'player_name', value: displayName },
+        { type: 1, name: 'player_name', value: stats.playerName },
         { type: 3, name: 'rank_icon', value: { url: stats.rankIconUrl } },
         { type: 1, name: 'current_league', value: stats.currentLeague },
         { type: 1, name: 'current_rank', value: `#${stats.currentRank.toLocaleString('en-US')}` },
@@ -111,7 +105,7 @@ export async function loadOwnerWidgetStats(
     : currentRS;
 
   return {
-    playerName: String(player.name || account.player_id),
+    playerName: String(account.player_id),
     currentRank,
     currentLeague: String(player.league || 'Unranked'),
     currentRS,

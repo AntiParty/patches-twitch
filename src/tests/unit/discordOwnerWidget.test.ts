@@ -2,8 +2,10 @@ import { strict as assert } from 'assert';
 import {
   buildOwnerWidgetPayload,
   createOwnerWidgetSync,
+  loadOwnerWidgetStats,
   type OwnerWidgetStats,
 } from '@/services/discordOwnerWidget.service';
+import { Channel, PeakRank, StreamSession } from '@/db';
 import { getRankIconUrl } from '@/util/rankIcons';
 
 const stats: OwnerWidgetStats = {
@@ -20,12 +22,12 @@ const stats: OwnerWidgetStats = {
 };
 
 describe('Discord owner profile widget', () => {
-  it('maps rank, session, record, and website ownership into Discord dynamic fields', () => {
+  it('preserves the fully linked account name in the Discord widget payload', () => {
     assert.deepEqual(buildOwnerWidgetPayload(stats), {
-      username: 'Antiparty',
+      username: 'twitch-Antiparty#8470',
       data: {
         dynamic: [
-          { type: 1, name: 'player_name', value: 'Antiparty' },
+          { type: 1, name: 'player_name', value: 'twitch-Antiparty#8470' },
           {
             type: 3,
             name: 'rank_icon',
@@ -41,6 +43,31 @@ describe('Discord owner profile widget', () => {
         ],
       },
     });
+  });
+
+  it('uses the linked account name as stored instead of the leaderboard display name', async () => {
+    const originalChannelFindOne = Channel.findOne;
+    const originalPeakFindOne = PeakRank.findOne;
+    const originalSessionFindOne = StreamSession.findOne;
+
+    try {
+      (Channel as any).findOne = async () => ({ player_id: 'twitch-Antiparty#8470' });
+      (PeakRank as any).findOne = async () => null;
+      (StreamSession as any).findOne = async () => null;
+
+      const loaded = await loadOwnerWidgetStats('antiparty', [{
+        name: 'twitch-antiparty#8470',
+        rank: 42,
+        rankScore: 61234,
+        league: 'Ruby',
+      }]);
+
+      assert.equal(loaded?.playerName, 'twitch-Antiparty#8470');
+    } finally {
+      (Channel as any).findOne = originalChannelFindOne;
+      (PeakRank as any).findOne = originalPeakFindOne;
+      (StreamSession as any).findOne = originalSessionFindOne;
+    }
   });
 
   it('uses the same rank icon URLs as the stream overlays', () => {

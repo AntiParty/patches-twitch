@@ -12,6 +12,7 @@ import {
   lockGiveaway,
   pauseGiveaway,
   redraw,
+  removeEntrantEntries,
   resetEntries,
   resumeGiveaway,
 } from '@/services/giveaway.service';
@@ -238,5 +239,21 @@ describe('giveaway.service', function () {
     assert.equal(after!.winner_username, null);
     const entries = await listEntries(after!.id);
     assert.equal(entries.total, 0);
+  });
+
+  it('removes every entry for one viewer without affecting other entrants', async () => {
+    const created = await createGiveaway({ channel, type: 'redeem', prize: 'A', rewardCost: 100 });
+    if (!created.ok) throw new Error('expected create ok');
+    await created.giveaway.update({ reward_id: 'reward-xyz' });
+    await addRedeemEntry({ rewardId: 'reward-xyz', channel, userId: 'u1', username: 'User1', redemptionId: 'r-1' });
+    await addRedeemEntry({ rewardId: 'reward-xyz', channel, userId: 'u1', username: 'User1', redemptionId: 'r-2' });
+    await addRedeemEntry({ rewardId: 'reward-xyz', channel, userId: 'u2', username: 'User2', redemptionId: 'r-3' });
+
+    const removed = await removeEntrantEntries(created.giveaway.id, 'u1');
+
+    assert.equal(removed, 2);
+    const entries = await listEntries(created.giveaway.id);
+    assert.equal(entries.total, 1);
+    assert.deepEqual(entries.perUser, [{ userId: 'u2', username: 'User2', count: 1 }]);
   });
 });

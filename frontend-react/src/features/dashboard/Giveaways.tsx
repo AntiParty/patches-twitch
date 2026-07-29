@@ -102,6 +102,7 @@ export function Giveaways() {
   const reset = useMutation({ mutationFn: giveawaysApi.reset, onSuccess: invalidate })
   const lock = useMutation({ mutationFn: giveawaysApi.lock, onSuccess: invalidate })
   const update = useMutation({ mutationFn: giveawaysApi.update, onSuccess: invalidate })
+  const removeEntrant = useMutation({ mutationFn: giveawaysApi.removeEntrant, onSuccess: invalidate })
 
   // Winners already drawn this round, and the pool still eligible to win.
   const winners = giveaway?.winners ?? []
@@ -313,9 +314,45 @@ export function Giveaways() {
     }
   }
 
+  const handleRemoveEntrant = async (entrant: GiveawayEntrant) => {
+    const entryLabel = entrant.count === 1 ? 'entry' : `${entrant.count} entries`
+    const ok = await confirm({
+      title: `Remove @${entrant.username}?`,
+      body: `Remove all ${entryLabel} for this viewer from the current giveaway?`,
+      confirmLabel: 'Remove viewer',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      const result = await removeEntrant.mutateAsync(entrant.userId)
+      toast.success(`Removed ${result.removed} ${result.removed === 1 ? 'entry' : 'entries'} for @${entrant.username}.`)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to remove the viewer.')
+    }
+  }
+
   const entrantColumns: Column<GiveawayEntrant>[] = [
     { key: 'username', header: 'Viewer', accessor: (r) => r.username },
     { key: 'count', header: 'Entries', align: 'right', accessor: (r) => r.count },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      width: 1,
+      render: (entrant) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="fas fa-user-xmark"
+          loading={removeEntrant.isPending && removeEntrant.variables === entrant.userId}
+          disabled={removeEntrant.isPending}
+          onClick={() => handleRemoveEntrant(entrant)}
+          aria-label={`Remove ${entrant.username} from giveaway`}
+        >
+          Remove
+        </Button>
+      ),
+    },
   ]
 
   const statusLabel = giveaway

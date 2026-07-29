@@ -161,6 +161,13 @@ export async function listEntries(giveawayId: number): Promise<ListEntriesResult
   };
 }
 
+/** Remove all draw slots belonging to one viewer from a giveaway. */
+export async function removeEntrantEntries(giveawayId: number, userId: string): Promise<number> {
+  return GiveawayEntry.destroy({
+    where: { giveaway_id: giveawayId, user_id: userId },
+  });
+}
+
 export type DrawResult =
   | { ok: true; username: string; userId: string; slot: number; total: number; winnerCount: number; target: number }
   | { ok: false; reason: 'no_entries' | 'all_won' | 'not_found' };

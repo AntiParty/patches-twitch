@@ -13,6 +13,7 @@ import {
   parseWinners,
   pauseGiveaway,
   redraw,
+  removeEntrantEntries,
   resetEntries,
   resumeGiveaway,
 } from '@/services/giveaway.service';
@@ -103,6 +104,23 @@ router.get('/api/user/giveaways/current', requireUserAPI, (req, res) =>
       total: summary.total,
       redeemScope,
     });
+  })
+);
+
+router.post('/api/user/giveaways/entries/remove', requireUserAPI, csrfProtection, (req, res) =>
+  withChannel(req, res, 'removeEntrant', async (channel) => {
+    const userId = typeof req.body?.userId === 'string' ? req.body.userId.trim() : '';
+    if (!userId || userId.length > 128) {
+      return res.status(400).json({ error: 'A valid viewer is required.' });
+    }
+    const giveaway = await getActiveGiveaway(channel.username);
+    if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
+
+    const removed = await removeEntrantEntries(giveaway.id, userId);
+    if (removed === 0) {
+      return res.status(404).json({ error: 'That viewer no longer has any entries.' });
+    }
+    return res.json({ success: true, removed });
   })
 );
 

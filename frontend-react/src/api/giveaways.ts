@@ -41,6 +41,8 @@ export const giveawaysApi = {
   pause: () => api.post('/api/user/giveaways/pause', {}),
   resume: () => api.post('/api/user/giveaways/resume', {}),
   reset: () => api.post('/api/user/giveaways/reset', {}),
+  removeEntrant: (userId: string) =>
+    api.post<{ success: true; removed: number }>('/api/user/giveaways/entries/remove', { userId }),
   redeemStart: (input: RedeemStartInput) => api.post('/api/user/giveaways/redeem/start', input),
   redeemClose: () => api.post('/api/user/giveaways/redeem/close', {}),
 }

@@ -121,6 +121,18 @@ describe('regular-ranked-only command output', () => {
     assert.doesNotMatch(messages[0], /WT rank|World Tour|#7/);
   });
 
+  it('recovers a missing session when the channel is already known to be live', async () => {
+    await Channel.update({ is_live: true }, { where: { username: channel } });
+    const { ctx, messages } = createCtx(channel);
+
+    await recordExecute(ctx, `#${channel}`, '!record', ctx.tags, []);
+
+    assert.equal(messages.length, 1);
+    assert.match(messages[0], /session RS: \+\/-0 \(50,123 RS\)/);
+    const session = await StreamSession.findOne({ where: { channel } }) as any;
+    assert.equal(session?.start_score, 50123);
+  });
+
   it('does not include World Tour peak data', async () => {
     await PeakRank.create({
       channel,

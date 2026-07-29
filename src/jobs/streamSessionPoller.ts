@@ -4,6 +4,7 @@ import { sendDiscordAlert } from '../handlers/discordHandler';
 import { getLatestLeaderboardData } from '@/commands/record';
 import logger from '../util/logger';
 import { rankedPredictionAutomationService } from '@/services/rankedPredictionAutomation.service';
+import { searchPlayer } from '@/util/leaderboardSearch';
 
 const POLL_INTERVAL_MS = 60_000; // Poll every 60 seconds
 const alertedMissingSession: Map<string, number> = new Map(); // username -> timestamp of alert
@@ -255,17 +256,7 @@ export async function runPollCycle(): Promise<void> {
         const playerId = channel.player_id.toLowerCase();
         const cachedData = await getLatestLeaderboardData();
 
-        const findPlayer = (data: any[] | null, name: string) => {
-          if (!data) return null;
-          let player = data.find(p => p.name.toLowerCase() === name);
-          if (!player && name.includes("#")) {
-            const baseName = name.split("#")[0];
-            player = data.find(p => p.name.toLowerCase().startsWith(baseName));
-          }
-          return player;
-        };
-
-        const player = findPlayer(cachedData, playerId);
+        const player = searchPlayer(cachedData, playerId);
 
         if (!player) {
           const detectedAt = liveDetectedTime.get(userLower) ?? now;

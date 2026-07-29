@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
+import { searchPlayer } from "../util/leaderboardSearch";
 
 export interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -111,6 +112,52 @@ export const execute = async (
       })) as any;
     }
 
+    let cachedData: any[] | null = null;
+    let player: any | null = null;
+
+    if (!session && channelInstance.is_live) {
+      cachedData = await getLatestLeaderboardData();
+      if (!cachedData) {
+        await ctx.say(
+          `@${username}, leaderboard data is temporarily unavailable.`,
+          ctx.tags?.["id"]
+        );
+        return;
+      }
+
+      player = searchPlayer(cachedData, playerId);
+      if (!player) {
+        await ctx.say(
+          `@${username}, the stream is live, but the linked THE FINALS account is not currently found on the ranked leaderboard.`,
+          ctx.tags?.["id"]
+        );
+        return;
+      }
+      if (!Number.isFinite(player.rankScore)) {
+        await ctx.say(
+          `@${username}, ranked score data is temporarily unavailable.`,
+          ctx.tags?.["id"]
+        );
+        return;
+      }
+
+      const startScore = Number(player.rankScore);
+      const [recoveredSession, created] = await StreamSession.findOrCreate({
+        where: { channel: sanitizedChannel.toLowerCase() },
+        defaults: {
+          channel: sanitizedChannel.toLowerCase(),
+          start_score: startScore,
+          start_wt_rank: null,
+          started_at: new Date(),
+        },
+      });
+      session = recoveredSession as any;
+      if (created) {
+        await channelInstance.update({ session_start_rs: startScore });
+        logger.info(`[record] Recovered missing live session for ${sanitizedChannel}`);
+      }
+    }
+
     if (!session) {
       await ctx.say(
         `@${username}, no active session found. Tracking begins automatically when the stream goes live.`,
@@ -119,7 +166,7 @@ export const execute = async (
       return;
     }
 
-    const cachedData = await getLatestLeaderboardData();
+    cachedData ??= await getLatestLeaderboardData();
     if (!cachedData) {
       await ctx.say(
         `@${username}, leaderboard data is temporarily unavailable.`,
@@ -129,16 +176,7 @@ export const execute = async (
     }
 
     const finalsName = playerId.toLowerCase();
-    const findPlayer = (data: any[] | null, name: string) => {
-      if (!data) return null;
-      let player = data.find((p) => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find((p) => p.name.toLowerCase().startsWith(baseName));
-      }
-      return player;
-    };
-    const player = findPlayer(cachedData, finalsName);
+    player ??= searchPlayer(cachedData, finalsName);
 
     if (!player) {
       await ctx.say(

@@ -66,8 +66,9 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<Twitc
       });
 
       if (!response.ok) {
-        logger.error(`[getLiveStreams] Batch request failed: ${response.status} ${response.statusText}`);
-        continue;
+        throw new Error(
+          `Twitch live-stream request failed: ${response.status} ${response.statusText}`,
+        );
       }
 
       const data: any = await response.json();
@@ -98,7 +99,11 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<Twitc
             Authorization: `Bearer ${accessToken}`,
           },
         });
-        if (!pageResp.ok) break;
+        if (!pageResp.ok) {
+          throw new Error(
+            `Twitch live-stream request failed: ${pageResp.status} ${pageResp.statusText}`,
+          );
+        }
         const pageData: any = await pageResp.json();
         if (pageData.data && Array.isArray(pageData.data)) {
           for (const stream of pageData.data) {
@@ -120,6 +125,7 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<Twitc
       }
     } catch (err) {
       logger.error(`[getLiveStreams] Error fetching batch ${i}-${i + batch.length}:`, err);
+      throw err;
     }
   }
 

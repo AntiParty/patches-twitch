@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import axios from 'axios';
 import logger from './logger';
+import { searchPlayer } from './leaderboardSearch';
 import { Channel, StreamSession } from '../db';
 import { getLatestLeaderboardData } from '@/commands/record';
 import { sendInfoToDiscord } from '@/handlers/discordHandler';
@@ -162,17 +163,7 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
     const playerId = channel.player_id.toLowerCase();
     const cachedData = await getLatestLeaderboardData();
 
-    const findPlayer = (data: any[] | null, name: string) => {
-      if (!data) return null;
-      let player = data.find(p => p.name.toLowerCase() === name);
-      if (!player && name.includes("#")) {
-        const baseName = name.split("#")[0];
-        player = data.find(p => p.name.toLowerCase().startsWith(baseName));
-      }
-      return player;
-    };
-
-    const player = findPlayer(cachedData, playerId);
+    const player = searchPlayer(cachedData, playerId);
 
     if (!player) {
       logger.warn(`[EventSub] ${broadcasterName} not found in leaderboard caches — scheduling retry in 5 min`);

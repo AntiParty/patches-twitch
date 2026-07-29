@@ -13,6 +13,7 @@ import { Field } from '@/components/forms/Field'
 import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
 import { Table, type Column } from '@/components/tables/Table'
+import { Dialog } from '@/components/modals/Dialog'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { Skeleton } from '@/components/feedback/Skeleton'
@@ -75,6 +76,8 @@ export function Giveaways() {
   // Optional on-stream roll animation (streamer shows the dashboard). Persisted.
   const [showRoll, setShowRoll] = useState(() => localStorage.getItem('giveawayShowRoll') !== 'off')
   const [entrantSearch, setEntrantSearch] = useState('')
+  const [entrantToRemove, setEntrantToRemove] = useState<GiveawayEntrant | null>(null)
+  const [removeAmount, setRemoveAmount] = useState('1')
   useEffect(() => {
     setEntrantSearch('')
   }, [giveaway?.id])
@@ -314,20 +317,21 @@ export function Giveaways() {
     }
   }
 
-  const handleRemoveEntrant = async (entrant: GiveawayEntrant) => {
-    const entryLabel = entrant.count === 1 ? 'entry' : `${entrant.count} entries`
-    const ok = await confirm({
-      title: `Remove @${entrant.username}?`,
-      body: `Remove all ${entryLabel} for this viewer from the current giveaway?`,
-      confirmLabel: 'Remove viewer',
-      danger: true,
-    })
-    if (!ok) return
+  const openRemoveEntrant = (entrant: GiveawayEntrant) => {
+    setEntrantToRemove(entrant)
+    setRemoveAmount('1')
+  }
+
+  const handleRemoveEntrant = async () => {
+    if (!entrantToRemove) return
+    const amount = Number(removeAmount)
+    if (!Number.isInteger(amount) || amount < 1 || amount > entrantToRemove.count) return
     try {
-      const result = await removeEntrant.mutateAsync(entrant.userId)
-      toast.success(`Removed ${result.removed} ${result.removed === 1 ? 'entry' : 'entries'} for @${entrant.username}.`)
+      const result = await removeEntrant.mutateAsync({ userId: entrantToRemove.userId, amount })
+      toast.success(`Removed ${result.removed} ${result.removed === 1 ? 'entry' : 'entries'} for @${entrantToRemove.username}.`)
+      setEntrantToRemove(null)
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to remove the viewer.')
+      toast.error(err instanceof ApiError ? err.message : 'Failed to remove the entries.')
     }
   }
 
@@ -344,9 +348,9 @@ export function Giveaways() {
           variant="ghost"
           size="sm"
           icon="fas fa-user-xmark"
-          loading={removeEntrant.isPending && removeEntrant.variables === entrant.userId}
+          loading={removeEntrant.isPending && removeEntrant.variables?.userId === entrant.userId}
           disabled={removeEntrant.isPending}
-          onClick={() => handleRemoveEntrant(entrant)}
+          onClick={() => openRemoveEntrant(entrant)}
           aria-label={`Remove ${entrant.username} from giveaway`}
         >
           Remove
@@ -721,6 +725,66 @@ export function Giveaways() {
           </div>
         </Card>
       )}
+
+      <Dialog
+        open={entrantToRemove !== null}
+        onClose={() => setEntrantToRemove(null)}
+        title={entrantToRemove ? `Remove entries for @${entrantToRemove.username}` : 'Remove entries'}
+        dismissable={!removeEntrant.isPending}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setEntrantToRemove(null)} disabled={removeEntrant.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon="fas fa-trash"
+              loading={removeEntrant.isPending}
+              disabled={
+                !entrantToRemove ||
+                !Number.isInteger(Number(removeAmount)) ||
+                Number(removeAmount) < 1 ||
+                Number(removeAmount) > entrantToRemove.count
+              }
+              onClick={handleRemoveEntrant}
+            >
+              Remove entries
+            </Button>
+          </>
+        }
+      >
+        {entrantToRemove && (
+          <div className={styles.removeEntryForm}>
+            <p>
+              This viewer has <strong>{entrantToRemove.count.toLocaleString()}</strong>{' '}
+              {entrantToRemove.count === 1 ? 'entry' : 'entries'} in the current giveaway.
+            </p>
+            <Field label="Entries to remove">
+              <div className={styles.removeEntryControls}>
+                <Input
+                  type="number"
+                  min={1}
+                  max={entrantToRemove.count}
+                  step={1}
+                  value={removeAmount}
+                  onChange={(event) => setRemoveAmount(event.target.value)}
+                  autoFocus
+                />
+                <Button
+                  variant="ghost"
+                  type="button"
+                  onClick={() => setRemoveAmount(String(entrantToRemove.count))}
+                >
+                  Select all
+                </Button>
+              </div>
+            </Field>
+            <span className={styles.removeEntryRemaining}>
+              {Math.max(0, entrantToRemove.count - (Number(removeAmount) || 0)).toLocaleString()} will remain.
+            </span>
+          </div>
+        )}
+      </Dialog>
 
       <AnimatePresence>
         {roll && (

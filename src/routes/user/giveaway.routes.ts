@@ -113,10 +113,15 @@ router.post('/api/user/giveaways/entries/remove', requireUserAPI, csrfProtection
     if (!userId || userId.length > 128) {
       return res.status(400).json({ error: 'A valid viewer is required.' });
     }
+    const rawAmount = req.body?.amount;
+    const amount = rawAmount === undefined ? undefined : Number(rawAmount);
+    if (amount !== undefined && (!Number.isInteger(amount) || amount < 1 || amount > 1_000_000)) {
+      return res.status(400).json({ error: 'Entry amount must be a positive whole number.' });
+    }
     const giveaway = await getActiveGiveaway(channel.username);
     if (!giveaway) return res.status(409).json({ error: 'No active giveaway.' });
 
-    const removed = await removeEntrantEntries(giveaway.id, userId);
+    const removed = await removeEntrantEntries(giveaway.id, userId, amount);
     if (removed === 0) {
       return res.status(404).json({ error: 'That viewer no longer has any entries.' });
     }

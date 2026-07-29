@@ -166,6 +166,28 @@
   font-variant-numeric: tabular-nums;
 }
 
+.removeEntryForm p {
+  margin: 0 0 16px;
+}
+
+.removeEntryForm strong {
+  color: var(--text-main);
+}
+
+.removeEntryControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.removeEntryRemaining {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .controlStack {
   display: grid;
   gap: 10px;

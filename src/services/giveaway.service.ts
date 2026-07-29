@@ -161,8 +161,25 @@ export async function listEntries(giveawayId: number): Promise<ListEntriesResult
   };
 }
 
-/** Remove all draw slots belonging to one viewer from a giveaway. */
-export async function removeEntrantEntries(giveawayId: number, userId: string): Promise<number> {
+/** Remove all, or a limited number of the newest, draw slots belonging to one viewer. */
+export async function removeEntrantEntries(
+  giveawayId: number,
+  userId: string,
+  amount?: number,
+): Promise<number> {
+  if (amount !== undefined) {
+    const limit = Math.max(0, Math.floor(amount));
+    if (limit === 0) return 0;
+    const entries = await GiveawayEntry.findAll({
+      attributes: ['id'],
+      where: { giveaway_id: giveawayId, user_id: userId },
+      order: [['id', 'DESC']],
+      limit,
+    });
+    const ids = entries.map((entry) => entry.id);
+    if (ids.length === 0) return 0;
+    return GiveawayEntry.destroy({ where: { id: { [Op.in]: ids } } });
+  }
   return GiveawayEntry.destroy({
     where: { giveaway_id: giveawayId, user_id: userId },
   });

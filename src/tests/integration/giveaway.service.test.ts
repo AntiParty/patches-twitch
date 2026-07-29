@@ -256,4 +256,30 @@ describe('giveaway.service', function () {
     assert.equal(entries.total, 1);
     assert.deepEqual(entries.perUser, [{ userId: 'u2', username: 'User2', count: 1 }]);
   });
+
+  it('removes only the requested number of entries for a viewer', async () => {
+    const created = await createGiveaway({ channel, type: 'redeem', prize: 'A', rewardCost: 100 });
+    if (!created.ok) throw new Error('expected create ok');
+    await created.giveaway.update({ reward_id: 'reward-xyz' });
+    for (const redemptionId of ['r-1', 'r-2', 'r-3']) {
+      await addRedeemEntry({
+        rewardId: 'reward-xyz',
+        channel,
+        userId: 'u1',
+        username: 'User1',
+        redemptionId,
+      });
+    }
+    await addRedeemEntry({ rewardId: 'reward-xyz', channel, userId: 'u2', username: 'User2', redemptionId: 'r-4' });
+
+    const removed = await removeEntrantEntries(created.giveaway.id, 'u1', 2);
+
+    assert.equal(removed, 2);
+    const entries = await listEntries(created.giveaway.id);
+    assert.equal(entries.total, 2);
+    assert.deepEqual(entries.perUser, [
+      { userId: 'u1', username: 'User1', count: 1 },
+      { userId: 'u2', username: 'User2', count: 1 },
+    ]);
+  });
 });

@@ -4,12 +4,14 @@ import { Button } from '@/components/buttons/Button'
 import type { GiveawayEntrant } from '@/types/giveaway'
 import {
   buildWheelSegments,
+  randomSpinTurns,
   wheelLandingRotation,
 } from './giveawayDisplay'
 import styles from './GiveawayReveal.module.css'
 
 const MAX_VISIBLE_SEGMENTS = 24
 const REVEAL_SECONDS = 4.6
+const ANNOUNCEMENT_DELAY_MS = 1800
 
 interface GiveawayRevealProps {
   entrants: GiveawayEntrant[]
@@ -31,12 +33,14 @@ export function GiveawayReveal({
   const reduceMotion = useReducedMotion()
   const [done, setDone] = useState(false)
   const revealedRef = useRef(false)
+  const announcementTimeoutRef = useRef<number | null>(null)
   const segments = useMemo(
     () => buildWheelSegments(entrants, winner, MAX_VISIBLE_SEGMENTS),
     [entrants, winner],
   )
-  const winnerIndex = segments.length - 1
-  const rotation = wheelLandingRotation(winnerIndex, segments.length)
+  const winnerIndex = Math.max(0, segments.findIndex((segment) => segment.isWinner))
+  const [spinTurns] = useState(() => randomSpinTurns())
+  const rotation = wheelLandingRotation(winnerIndex, segments.length, spinTurns)
   const showLabels = segments.length <= 12
   const sliceDegrees = 360 / segments.length
   const gradient = segments
@@ -52,7 +56,10 @@ export function GiveawayReveal({
     setDone(true)
     if (revealedRef.current) return
     revealedRef.current = true
-    onRevealed()
+    announcementTimeoutRef.current = window.setTimeout(
+      onRevealed,
+      ANNOUNCEMENT_DELAY_MS,
+    )
   }, [onRevealed])
 
   useEffect(() => {
@@ -62,6 +69,15 @@ export function GiveawayReveal({
     )
     return () => window.clearTimeout(timeout)
   }, [completeReveal, reduceMotion])
+
+  useEffect(
+    () => () => {
+      if (announcementTimeoutRef.current !== null) {
+        window.clearTimeout(announcementTimeoutRef.current)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -93,15 +109,20 @@ export function GiveawayReveal({
           {done ? 'Winner selected' : 'Spinning for the winner'}
         </h2>
         <p className={styles.explainer}>
-          Entry counts affected the secure draw. The wheel reveals the saved result.
+          {done
+            ? 'The secure result is locked in. Chat will announce it in a moment.'
+            : 'Every eligible entry was included in the secure draw.'}
         </p>
 
         <div className={styles.wheelStage}>
-          <div className={styles.pointer} aria-hidden="true" />
+          <div
+            className={`${styles.pointer} ${done ? styles.pointerLocked : ''}`}
+            aria-hidden="true"
+          />
           <motion.div
-            className={styles.wheel}
+            className={`${styles.wheel} ${done ? styles.wheelSettled : ''}`}
             style={{ background: `conic-gradient(${gradient})` }}
-            initial={{ rotate: 0 }}
+            initial={{ rotate: -(sliceDegrees * 0.37) }}
             animate={{ rotate: reduceMotion ? rotation % 360 : rotation }}
             transition={{
               duration: reduceMotion ? 0.01 : REVEAL_SECONDS,

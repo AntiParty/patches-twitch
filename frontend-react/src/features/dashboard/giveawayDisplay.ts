@@ -3,6 +3,32 @@ import type { GiveawayEntrant } from '@/types/giveaway'
 export interface WheelSegment {
   username: string
   entryNumber: number
+  isWinner?: boolean
+}
+
+const UINT32_RANGE = 0x1_0000_0000
+
+export function secureRandomUnit(): number {
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    const value = new Uint32Array(1)
+    globalThis.crypto.getRandomValues(value)
+    return value[0] / UINT32_RANGE
+  }
+  return Math.random()
+}
+
+function normalizedRandom(random: () => number): number {
+  return Math.min(1 - Number.EPSILON, Math.max(0, random()))
+}
+
+export function randomSpinTurns(
+  random: () => number = secureRandomUnit,
+  minimum = 6,
+  maximum = 9,
+): number {
+  const low = Math.max(1, Math.floor(minimum))
+  const high = Math.max(low, Math.floor(maximum))
+  return low + Math.floor(normalizedRandom(random) * (high - low + 1))
 }
 
 export function filterGiveawayEntrants(
@@ -20,7 +46,7 @@ export function buildWheelSegments(
   entrants: GiveawayEntrant[],
   winner: string,
   maximumSegments = 24,
-  random: () => number = Math.random,
+  random: () => number = secureRandomUnit,
 ): WheelSegment[] {
   const weighted = entrants
     .map((entrant) => ({ ...entrant, count: Math.max(0, Math.floor(entrant.count)) }))
@@ -28,7 +54,7 @@ export function buildWheelSegments(
   const total = weighted.reduce((sum, entrant) => sum + entrant.count, 0)
   const limit = Math.max(1, Math.floor(maximumSegments))
 
-  if (total === 0) return [{ username: winner, entryNumber: 1 }]
+  if (total === 0) return [{ username: winner, entryNumber: 1, isWinner: true }]
 
   const ticketAt = (entryNumber: number): WheelSegment => {
     let remaining = entryNumber
@@ -47,13 +73,12 @@ export function buildWheelSegments(
       : Array.from({ length: limit - 1 }, () => {
           const entryNumber = Math.min(
             total,
-            Math.floor(Math.max(0, random()) * total) + 1,
+            Math.floor(normalizedRandom(random) * total) + 1,
           )
           return ticketAt(entryNumber)
         })
 
   const winnerSegment =
-    segments.find((segment) => segment.username === winner) ??
     weighted.reduce(
       (found, entrant, index) =>
         found ??
@@ -68,10 +93,13 @@ export function buildWheelSegments(
     ) ??
     { username: winner, entryNumber: total }
 
-  const firstWinner = segments.findIndex((segment) => segment.username === winner)
-  if (firstWinner >= 0) segments.splice(firstWinner, 1)
+  const duplicateWinnerTicket = segments.findIndex(
+    (segment) => segment.entryNumber === winnerSegment.entryNumber,
+  )
+  if (duplicateWinnerTicket >= 0) segments.splice(duplicateWinnerTicket, 1)
   if (segments.length >= limit) segments.pop()
-  segments.push(winnerSegment)
+  const winnerIndex = Math.floor(normalizedRandom(random) * (segments.length + 1))
+  segments.splice(winnerIndex, 0, { ...winnerSegment, isWinner: true })
   return segments
 }
 

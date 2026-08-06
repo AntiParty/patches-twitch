@@ -2,6 +2,7 @@ import { strict as assert } from 'assert';
 import {
   isDuplicateEventSubSubscription,
   isEventSubAlreadyExistsError,
+  shouldReconnectEventSubSocket,
 } from '../../util/twitchEventSubWs';
 
 describe('twitchEventSubWs subscription helpers', () => {
@@ -38,5 +39,23 @@ describe('twitchEventSubWs subscription helpers', () => {
     };
 
     assert.equal(isEventSubAlreadyExistsError(err), true);
+  });
+
+  it('reconnects only when the authoritative socket closes unexpectedly', () => {
+    const authoritative = {};
+    const stale = {};
+
+    assert.equal(
+      shouldReconnectEventSubSocket(authoritative, authoritative, true),
+      true,
+    );
+    assert.equal(
+      shouldReconnectEventSubSocket(authoritative, stale, true),
+      false,
+    );
+    assert.equal(
+      shouldReconnectEventSubSocket(authoritative, authoritative, false),
+      false,
+    );
   });
 });

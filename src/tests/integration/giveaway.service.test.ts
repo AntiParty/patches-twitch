@@ -110,6 +110,7 @@ describe('giveaway.service', function () {
       redemptionId: 'redeem-1',
     });
     assert.equal(dup.duplicate, true);
+    assert.equal(dup.reason, 'duplicate');
 
     const active = await getActiveGiveaway(channel);
     const entries = await listEntries(active!.id);
@@ -239,6 +240,40 @@ describe('giveaway.service', function () {
     assert.equal(after!.winner_username, null);
     const entries = await listEntries(after!.id);
     assert.equal(entries.total, 0);
+  });
+
+  it('reports why a redeem entry is rejected without silently dropping it', async () => {
+    const noGiveaway = await addRedeemEntry({
+      rewardId: 'reward-xyz',
+      channel,
+      userId: 'u1',
+      username: 'User1',
+      redemptionId: 'redeem-no-giveaway',
+    });
+    assert.equal(noGiveaway.reason, 'no_giveaway');
+
+    const created = await createGiveaway({ channel, type: 'redeem', prize: 'A', rewardCost: 100 });
+    if (!created.ok) throw new Error('expected create ok');
+    await created.giveaway.update({ reward_id: 'reward-correct', status: 'paused' });
+
+    const paused = await addRedeemEntry({
+      rewardId: 'reward-correct',
+      channel,
+      userId: 'u1',
+      username: 'User1',
+      redemptionId: 'redeem-paused',
+    });
+    assert.equal(paused.reason, 'not_open');
+
+    await created.giveaway.update({ status: 'open' });
+    const mismatch = await addRedeemEntry({
+      rewardId: 'reward-wrong',
+      channel,
+      userId: 'u1',
+      username: 'User1',
+      redemptionId: 'redeem-mismatch',
+    });
+    assert.equal(mismatch.reason, 'reward_mismatch');
   });
 
   it('removes every entry for one viewer without affecting other entrants', async () => {

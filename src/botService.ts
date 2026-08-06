@@ -15,6 +15,9 @@ import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 import { startCustomBotTokenRefresher } from "./jobs/customBotTokenRefresher";
 import { clients } from "./util/ircBot";
+import { Op } from "sequelize";
+import { restoreGiveawayRedemptionSubscriptions } from "./services/giveawaySubscriptionRestore.service";
+import { startGiveawayRedemptionReconciler } from "./jobs/giveawayRedemptionReconciler";
 
 const botControlSecret = process.env.BOT_CONTROL_SECRET ?? '';
 if (!botControlSecret) {
@@ -57,28 +60,51 @@ dbReady.then(async () => {
       );
     });
 
-    // Restore redemption EventSub subscriptions for any open redeem giveaways
+    // Restore redemption EventSub subscriptions for every non-closed redeem
+    // giveaway so paused/drawn rewards remain connected across bot restarts.
     try {
-      const openRedeemGiveaways = await Giveaway.findAll({
-        where: { status: "open", type: "redeem" },
+      const redeemGiveaways = await Giveaway.findAll({
+        where: { status: { [Op.ne]: "closed" }, type: "redeem" },
       });
-      for (const giveaway of openRedeemGiveaways) {
-        if (!giveaway.reward_id) continue;
-        const channel = await Channel.findOne({ where: { username: giveaway.channel } });
-        if (!channel?.twitch_user_id) continue;
-        const token = decryptChannelAccessToken(channel);
-        if (!token) continue;
-        addRedemptionSubscription(
-          channel.twitch_user_id,
-          token,
-          channel.twitch_user_id,
-          giveaway.reward_id
-        );
-        logger.info(`[Startup] Restored redemption sub for giveaway in ${giveaway.channel}`);
-      }
+      const restoration = await restoreGiveawayRedemptionSubscriptions(
+        redeemGiveaways.map((giveaway) => ({
+          id: giveaway.id,
+          channel: giveaway.channel,
+          type: giveaway.type,
+          status: giveaway.status,
+          rewardId: giveaway.reward_id,
+        })),
+        {
+          resolveChannel: async (username) => {
+            const channel = await Channel.findOne({ where: { username } });
+            const token = channel ? decryptChannelAccessToken(channel) : null;
+            if (!channel?.twitch_user_id || !token) return null;
+            return { broadcasterId: channel.twitch_user_id, accessToken: token };
+          },
+          subscribe: ({ giveawayId, channel, broadcasterId, accessToken, rewardId }) => {
+            addRedemptionSubscription(broadcasterId, accessToken, broadcasterId, rewardId);
+            logger.info(
+              `[Startup] Restored redemption subscription for giveaway ${giveawayId} in ${channel} (reward ${rewardId})`,
+            );
+          },
+          onError: (giveaway, error) => {
+            logger.warn(
+              `[Startup] Could not restore redemption subscription for giveaway ${giveaway.id} in ${giveaway.channel} (reward ${giveaway.rewardId || 'none'}): ${error instanceof Error ? error.message : String(error)}`,
+            );
+          },
+        },
+      );
+      logger.info(
+        `[Startup] Redemption subscription restore complete: ${restoration.restored} restored, ${restoration.failed} failed`,
+      );
     } catch (err) {
       logger.error("[Startup] Failed to restore redeem giveaway subscriptions:", err);
     }
+
+    const stopGiveawayReconciler = startGiveawayRedemptionReconciler();
+    process.on('SIGINT', stopGiveawayReconciler);
+    process.on('SIGTERM', stopGiveawayReconciler);
+    process.on('exit', stopGiveawayReconciler);
 
     // --- Control API ---
     const controlApp = express();

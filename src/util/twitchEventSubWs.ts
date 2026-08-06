@@ -8,6 +8,7 @@ import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
 import { rankedPredictionAutomationService } from '@/services/rankedPredictionAutomation.service';
 import { addRedeemEntry } from '@/services/giveaway.service';
+import { decryptChannelAccessToken } from '@/util/twitchUtils';
 
 export interface UserSubscription {
   userId: string;
@@ -40,6 +41,14 @@ export function isEventSubAlreadyExistsError(err: any): boolean {
   const status = err?.response?.status;
   const message = String(err?.response?.data?.message || err?.message || '');
   return status === 409 || /subscription already exists/i.test(message);
+}
+
+export function shouldReconnectEventSubSocket(
+  currentSocket: unknown,
+  closingSocket: unknown,
+  reconnectEnabled: boolean | undefined,
+): boolean {
+  return reconnectEnabled !== false && currentSocket === closingSocket;
 }
 
 function ensureUserSocket(userId: string, accessToken: string) {
@@ -204,8 +213,14 @@ async function handleRedemptionAdd(event: any) {
       return;
     }
     const result = await addRedeemEntry({ rewardId, channel, userId, username, redemptionId });
-    if (result.ok && !result.duplicate) {
+    if (result.reason === 'inserted') {
       logger.info(`[EventSubWs] Giveaway redeem entry added for ${username} in ${channel}`);
+    } else if (result.reason === 'duplicate') {
+      logger.debug?.(`[EventSubWs] Duplicate giveaway redemption ${redemptionId} ignored for ${channel}`);
+    } else {
+      logger.warn(
+        `[EventSubWs] Giveaway redemption ${redemptionId} not stored for ${channel}: ${result.reason} (reward ${rewardId})`,
+      );
     }
   } catch (err) {
     logger.error('[EventSubWs] Failed to handle redemption add:', err);
@@ -240,7 +255,7 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
         if (!reconnectUrl) {
           // Fetch fresh token from DB before subscribing
           const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
-          const freshToken = channel ? (channel as any).access_token : accessToken;
+          const freshToken = channel ? (decryptChannelAccessToken(channel) || accessToken) : accessToken;
 
           // Update stored subscription tokens
           if (userWebSockets[userId]?.subscriptions) {
@@ -311,24 +326,32 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
   });
 
   ws.on('close', async () => {
+    const socketState = userWebSockets[userId];
+    const shouldReconnect = shouldReconnectEventSubSocket(
+      socketState?.ws,
+      ws,
+      socketState?.shouldReconnect,
+    );
     void recordOperationalEvent({
       type: 'eventsub_disconnected',
-      severity: userWebSockets[userId]?.shouldReconnect === false ? 'info' : 'warning',
-      reasonCode: reconnectUrl ? 'handoff' : 'socket_closed',
+      severity: shouldReconnect ? 'warning' : 'info',
+      reasonCode: shouldReconnect ? 'socket_closed' : 'stale_or_intentional',
     });
-    // Don't reconnect if this is a reconnect-URL socket (the main handler manages that)
-    if (reconnectUrl) return;
-
-    if (userWebSockets[userId]?.shouldReconnect === false) {
-      logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, NOT reconnecting (shouldReconnect=false).`);
+    if (!shouldReconnect) {
+      if (socketState?.shouldReconnect === false) {
+        logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, NOT reconnecting (shouldReconnect=false).`);
+      } else {
+        logger.debug?.(`[EventSubWs] Ignoring close from stale socket for user ${userId}.`);
+      }
       return;
     }
     logger.warn(`[EventSubWs] WebSocket closed for user ${userId}, reconnecting in 5s...`);
     setTimeout(async () => {
-      if (userWebSockets[userId]?.shouldReconnect !== false) {
+      const latestState = userWebSockets[userId];
+      if (shouldReconnectEventSubSocket(latestState?.ws, ws, latestState?.shouldReconnect)) {
         try {
           const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
-          const freshToken = channel ? (channel as any).access_token : accessToken;
+          const freshToken = channel ? (decryptChannelAccessToken(channel) || accessToken) : accessToken;
 
           // Update stored subscription tokens with fresh token
           if (userWebSockets[userId]?.subscriptions) {
@@ -342,10 +365,11 @@ async function createUserWebSocket(userId: string, accessToken: string, reconnec
           logger.error(`[EventSubWs] Failed to reconnect for ${userId}:`, err);
           // Retry again in 30s
           setTimeout(async () => {
-            if (userWebSockets[userId]?.shouldReconnect !== false) {
+            const retryState = userWebSockets[userId];
+            if (shouldReconnectEventSubSocket(retryState?.ws, ws, retryState?.shouldReconnect)) {
               try {
                 const channel = await Channel.findOne({ where: { twitch_user_id: userId } });
-                const freshToken = channel ? (channel as any).access_token : accessToken;
+                const freshToken = channel ? (decryptChannelAccessToken(channel) || accessToken) : accessToken;
                 userWebSockets[userId].ws = await createUserWebSocket(userId, freshToken);
               } catch (retryErr) {
                 logger.error(`[EventSubWs] Retry reconnect failed for ${userId}:`, retryErr);

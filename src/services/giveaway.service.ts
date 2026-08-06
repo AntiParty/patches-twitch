@@ -113,15 +113,24 @@ export interface AddRedeemInput {
   redemptionId: string;
 }
 
+export type AddRedeemResult =
+  | { ok: true; duplicate: false; reason: 'inserted' }
+  | { ok: true; duplicate: true; reason: 'duplicate' }
+  | {
+      ok: false;
+      duplicate: false;
+      reason: 'no_giveaway' | 'wrong_type' | 'not_open' | 'reward_mismatch';
+    };
+
 /** Insert a redeem slot, idempotent on redemptionId (Twitch may retry deliveries). */
-export async function addRedeemEntry(input: AddRedeemInput): Promise<{ ok: boolean; duplicate: boolean }> {
+export async function addRedeemEntry(input: AddRedeemInput): Promise<AddRedeemResult> {
   const channel = normalizeChannel(input.channel);
   const giveaway = await getActiveGiveaway(channel);
-  if (!giveaway || giveaway.status !== 'open' || giveaway.type !== 'redeem') {
-    return { ok: false, duplicate: false };
-  }
+  if (!giveaway) return { ok: false, duplicate: false, reason: 'no_giveaway' };
+  if (giveaway.type !== 'redeem') return { ok: false, duplicate: false, reason: 'wrong_type' };
+  if (giveaway.status !== 'open') return { ok: false, duplicate: false, reason: 'not_open' };
   if (giveaway.reward_id && giveaway.reward_id !== input.rewardId) {
-    return { ok: false, duplicate: false };
+    return { ok: false, duplicate: false, reason: 'reward_mismatch' };
   }
 
   const [, created] = await GiveawayEntry.findOrCreate({
@@ -134,7 +143,9 @@ export async function addRedeemEntry(input: AddRedeemInput): Promise<{ ok: boole
       created_at: new Date(),
     },
   });
-  return { ok: true, duplicate: !created };
+  return created
+    ? { ok: true, duplicate: false, reason: 'inserted' }
+    : { ok: true, duplicate: true, reason: 'duplicate' };
 }
 
 export interface ListEntriesResult {

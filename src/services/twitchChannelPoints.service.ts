@@ -10,9 +10,36 @@ import axios from 'axios';
 import { Channel } from '@/db';
 import { decryptChannelAccessToken, refreshAccessToken } from '@/util/twitchUtils';
 import logger from '@/util/logger';
+import type {
+  RecoverableRedemptionStatus,
+  TwitchRewardRedemptionPage,
+} from '@/services/giveawayRedemptionRecovery.service';
 
 const MANAGE_SCOPE = 'channel:manage:redemptions';
 const REWARDS_URL = 'https://api.twitch.tv/helix/channel_points/custom_rewards';
+
+export function parseRewardRedemptionsPage(payload: any): TwitchRewardRedemptionPage {
+  const rows = Array.isArray(payload?.data) ? payload.data : [];
+  const cursor = typeof payload?.pagination?.cursor === 'string' && payload.pagination.cursor
+    ? payload.pagination.cursor
+    : null;
+
+  return {
+    redemptions: rows.map((row: any) => ({
+      id: typeof row?.id === 'string' ? row.id : '',
+      userId: typeof row?.user_id === 'string' ? row.user_id : '',
+      username:
+        typeof row?.user_name === 'string' && row.user_name
+          ? row.user_name
+          : typeof row?.user_login === 'string'
+            ? row.user_login
+            : '',
+      status: typeof row?.status === 'string' ? row.status : '',
+      redeemedAt: typeof row?.redeemed_at === 'string' ? row.redeemed_at : '',
+    })),
+    cursor,
+  };
+}
 
 export type CreateRewardResult =
   | { ok: true; rewardId: string }
@@ -201,6 +228,32 @@ export function buildRewardLimitFields(
     }
   }
   return out;
+}
+
+export async function getRewardRedemptionsPage(
+  channelId: number,
+  rewardId: string,
+  status: RecoverableRedemptionStatus,
+  after?: string,
+): Promise<TwitchRewardRedemptionPage> {
+  const data = await requestWithRefresh(channelId, async (channel, token) => {
+    const res = await axios.get(`${REWARDS_URL}/redemptions`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Client-Id': process.env.TWITCH_CLIENT_ID!,
+      },
+      params: {
+        broadcaster_id: channel.twitch_user_id,
+        reward_id: rewardId,
+        status,
+        sort: 'OLDEST',
+        first: 50,
+        ...(after ? { after } : {}),
+      },
+    });
+    return res.data;
+  });
+  return parseRewardRedemptionsPage(data);
 }
 
 /** Read the live reward fields required to recreate it for a clean giveaway round. */

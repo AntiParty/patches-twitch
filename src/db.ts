@@ -9,6 +9,7 @@ import { Op } from 'sequelize';
 import { migratePredictionPresets } from './scripts/migrate_prediction_presets';
 import { migratePredictionAutomation } from './scripts/migrate_prediction_automation';
 import { migrateGiveaways } from './scripts/migrate_giveaways';
+import { migrateDisabledChannelCommands } from './scripts/migrate_disabled_channel_commands';
 
 dotenv.config();
 
@@ -93,6 +94,32 @@ CustomResponse.init(
       { unique: true, fields: ['channel', 'command'] }
     ]
   }
+);
+
+class DisabledChannelCommand extends Model {
+  declare channel: string;
+  declare command: string;
+  declare created_at: Date;
+  declare updated_at: Date;
+}
+
+DisabledChannelCommand.init(
+  {
+    channel: { type: DataTypes.STRING, allowNull: false, primaryKey: true },
+    command: { type: DataTypes.STRING, allowNull: false, primaryKey: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+    updated_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize,
+    modelName: 'DisabledChannelCommand',
+    tableName: 'DisabledChannelCommands',
+    timestamps: false,
+    indexes: [
+      { unique: true, fields: ['channel', 'command'], name: 'disabled_channel_commands_channel_command_unique' },
+      { fields: ['channel'], name: 'disabled_channel_commands_channel' },
+    ],
+  },
 );
 
 // StreamSession model
@@ -719,6 +746,7 @@ async function runMigrations() {
     await migratePredictionPresets(queryInterface);
     await migratePredictionAutomation(queryInterface);
     await migrateGiveaways(queryInterface);
+    await migrateDisabledChannelCommands(queryInterface);
   } catch (err) {
     logger.error('[Migration] Migration error:', err);
   }
@@ -741,6 +769,7 @@ async function enableSqliteConcurrency() {
 // Sync the database and export a promise for sync completion
 const dbReady = enableSqliteConcurrency()
   .then(() => migratePredictionAutomation(sequelize.getQueryInterface()))
+  .then(() => migrateDisabledChannelCommands(sequelize.getQueryInterface()))
   .then(() => sequelize.sync())
   .then(async () => {
     await runMigrations();
@@ -1113,4 +1142,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse };

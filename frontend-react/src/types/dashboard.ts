@@ -21,6 +21,16 @@ export interface CommandsResponse {
   commands: CustomCommand[]
 }
 
+export interface CommandControl {
+  name: string
+  label: string
+  enabled: boolean
+}
+
+export interface CommandControlsResponse {
+  commands: CommandControl[]
+}
+
 /** POST /api/toggle-bot */
 export interface ToggleBotResponse {
   success: boolean

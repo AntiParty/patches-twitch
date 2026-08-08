@@ -8,11 +8,72 @@ import { requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidCommandName, isValidCommandResponse } from '@/middleware/validation.middleware';
 import { containsBlockedWord, containsBlockedPhrase, matchesBlockRegex } from '@/util/messageFilter';
 import { sendDiscordAlert } from '@/handlers/discordHandler';
+import { csrfProtection } from '@/middleware/csrf.middleware';
+import {
+    getViewerCommandSettings,
+    resolveViewerCommandName,
+    setViewerCommandEnabled,
+} from '@/services/channelCommandSettings.service';
 
 const router = Router();
 
 // List of commands allowed to be customized
 const ALLOWED_CUSTOM_COMMANDS = ['rank', 'record', 'peak'];
+
+type CommandControlsDependencies = {
+    getSettings: typeof getViewerCommandSettings;
+    resolveCommand: typeof resolveViewerCommandName;
+    setEnabled: (channel: string, command: any, enabled: boolean) => Promise<any>;
+    logger: { error: (...args: any[]) => unknown };
+};
+
+export function createCommandControlsRouteHandlers(
+    dependencies: CommandControlsDependencies = {
+        getSettings: getViewerCommandSettings,
+        resolveCommand: resolveViewerCommandName,
+        setEnabled: setViewerCommandEnabled,
+        logger,
+    },
+) {
+    return {
+        list: async (req: any, res: any) => {
+            try {
+                const commands = await dependencies.getSettings(req.session.twitchUsername);
+                res.json({ commands });
+            } catch (err) {
+                dependencies.logger.error('[dashboard] Failed to load command controls:', err);
+                res.status(500).json({ error: 'Failed to load command controls.' });
+            }
+        },
+        update: async (req: any, res: any) => {
+            if (typeof req.body?.enabled !== 'boolean') {
+                return res.status(400).json({ error: 'enabled must be a boolean.' });
+            }
+
+            const command = dependencies.resolveCommand(req.params.name);
+            if (!command) {
+                return res.status(403).json({ error: 'This command cannot be controlled.' });
+            }
+
+            try {
+                const setting = await dependencies.setEnabled(
+                    req.session.twitchUsername,
+                    command,
+                    req.body.enabled,
+                );
+                res.json({ success: true, command: setting });
+            } catch (err) {
+                dependencies.logger.error('[dashboard] Failed to update command control:', err);
+                res.status(500).json({ error: 'Failed to update command control.' });
+            }
+        },
+    };
+}
+
+const commandControlsHandlers = createCommandControlsRouteHandlers();
+
+router.get('/api/my-command-controls', requireUserAPI, commandControlsHandlers.list);
+router.put('/api/my-command-controls/:name', requireUserAPI, csrfProtection, commandControlsHandlers.update);
 
 /**
  * GET /api/my-commands

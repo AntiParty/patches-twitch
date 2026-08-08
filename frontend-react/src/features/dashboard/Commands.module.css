@@ -1,160 +1,277 @@
-/* Commands tab — ported from the legacy commands view. */
-.split {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 10px;
-}
-
-.cmdList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.cmdRow {
-  background: var(--bg-card);
-  padding: 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-}
-.cmdRowHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.cmdName {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary);
-}
-.cmdRowActions {
+.toolbar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-.stateTag {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: 10px;
-}
-.stateCustom {
-  color: var(--success);
-  background: rgba(66, 212, 131, 0.12);
-}
-.stateDefault {
-  color: var(--text-muted);
-}
-.cmdInputRow {
-  display: flex;
-  gap: 10px;
-}
-
-/* Variables panel */
-.varsPanel {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-.varsHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 12px;
-  font-size: 14px;
-  color: var(--text-muted);
-  font-weight: 650;
-}
-.varsHint {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 400;
-}
-.varsGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.varChip {
-  font-size: 12px;
-  background: var(--bg-app);
-  padding: 8px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: border-color 0.15s;
-  text-align: left;
-  color: inherit;
-  font-family: inherit;
-}
-.varChip:hover {
-  border-color: var(--primary);
-}
-.varChip code {
-  color: var(--primary);
-  font-weight: 700;
-}
-.varChip div {
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-.varsEmpty {
-  grid-column: 1 / -1;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 8px 0;
 }
 
-/* Live preview */
-.preview {
-  background: #18181b;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  height: 300px;
-  display: flex;
-  flex-direction: column;
+.toolbar i {
+  position: absolute;
+  left: 14px;
+  z-index: 1;
+  color: var(--text-subtle);
+  pointer-events: none;
+}
+
+.toolbar input {
+  min-height: 42px;
+  padding-left: 40px;
+  background: var(--bg-card);
+}
+
+.commandCard {
+  padding: 0;
   overflow: hidden;
 }
-.previewHeader {
-  background: #efeff1;
-  color: #000;
-  padding: 10px 14px;
-  font-weight: 600;
-  font-size: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+
+.tableScroll {
+  overflow-x: auto;
 }
-.previewBody {
-  flex: 1;
-  padding: 14px;
-  overflow-y: auto;
-  font-size: 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+
+.commandTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
-.msg {
-  line-height: 1.4;
+
+.commandTable th,
+.commandTable td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
 }
-.msgUser {
-  font-weight: 700;
-}
-.msgBot {
-  font-weight: 700;
-  color: var(--primary);
-}
-.previewNote {
-  margin-top: 12px;
-  font-size: 12px;
+
+.commandTable th {
   color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-card), black 7%);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.commandTable th:nth-child(1) { width: 16%; }
+.commandTable th:nth-child(2) { width: auto; }
+.commandTable th:nth-child(3) { width: 84px; text-align: center; }
+.commandTable th:nth-child(4) { width: 94px; }
+
+.commandTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.commandTable tbody tr {
+  transition-property: background-color;
+  transition-duration: 140ms;
+}
+
+.commandTable tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.commandTable td:nth-child(3) {
   text-align: center;
 }
 
-@media (max-width: 860px) {
-  .split {
+.commandTable td:last-child {
+  text-align: right;
+}
+
+.commandName {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.responseCell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.responseCell > span {
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 13px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.responseCell small {
+  color: var(--text-subtle);
+  font-size: 10px;
+}
+
+.toggle {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bg-input);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  transition-property: background-color, box-shadow;
+  transition-duration: 160ms;
+}
+
+.toggle::after {
+  position: absolute;
+  inset: -9px;
+  content: '';
+}
+
+.toggle span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition-property: transform, background-color;
+  transition-duration: 160ms;
+}
+
+.toggleOn {
+  background: var(--primary);
+  box-shadow: inset 0 0 0 1px transparent, 0 0 0 3px var(--primary-ring);
+}
+
+.toggleOn span {
+  background: white;
+  transform: translateX(16px);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.toggle:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.tableState {
+  padding: 28px 16px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.editor {
+  display: grid;
+  gap: 14px;
+}
+
+.commandSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: calc(var(--radius-sm) + 4px);
+  background: var(--bg-app);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.commandSummary > span:last-child {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.fieldLabel,
+.variableHeader > span {
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.characterCount {
+  margin-top: -10px;
+  color: var(--text-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.variableHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.variableHeader small {
+  color: var(--text-subtle);
+  font-size: 10px;
+}
+
+.variableGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.variable {
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-app);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition-property: background-color, box-shadow, transform;
+  transition-duration: 140ms;
+}
+
+.variable:hover {
+  background: var(--bg-hover);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.variable:active {
+  transform: scale(0.96);
+}
+
+.variable code {
+  display: block;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.variable span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .commandTable {
+    min-width: 620px;
+  }
+
+  .variableGrid {
     grid-template-columns: 1fr;
   }
 }

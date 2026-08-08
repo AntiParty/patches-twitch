@@ -9,6 +9,7 @@ import { sendWarningToDiscord } from "../handlers/discordHandler";
 import { getChatDropResolution } from "./chatDropResolution";
 import { recordOperationalEvent } from "../services/operationalEvents.service";
 import { devModeChannels, isCommandSilenced } from "./devModeState";
+import { shouldSkipDisabledViewerCommand } from "../services/commandDispatchPolicy.service";
 import {
   chooseReplyTarget,
   extractMentionedUsername,
@@ -755,6 +756,11 @@ export const startChatBot = async (
       // -----------------------------------------------------------------------
       if (isCommandSilenced(channelName, commandKey)) {
         logger.info(`[DevMode] Silencing command ${commandKey} in #${channelName}`);
+        continue;
+      }
+
+      if (await shouldSkipDisabledViewerCommand(channelName, rawCommand)) {
+        logger.info(`[commands] Disabled ${commandKey} ignored in #${channelName}`);
         continue;
       }
 

@@ -6,6 +6,14 @@ export interface WheelSegment {
   isWinner?: boolean
 }
 
+export function twitchAvatarUrl(username: string): string {
+  return `https://unavatar.io/twitch/${encodeURIComponent(username.replace(/^@/, ''))}`
+}
+
+export function avatarInitial(username: string): string {
+  return username.replace(/^@/, '').trim().charAt(0).toLocaleUpperCase() || '?'
+}
+
 const UINT32_RANGE = 0x1_0000_0000
 
 export function secureRandomUnit(): number {
@@ -101,6 +109,41 @@ export function buildWheelSegments(
   const winnerIndex = Math.floor(normalizedRandom(random) * (segments.length + 1))
   segments.splice(winnerIndex, 0, { ...winnerSegment, isWinner: true })
   return segments
+}
+
+export function buildReelCards(
+  entrants: GiveawayEntrant[],
+  winner: string,
+  leadInCards = 8,
+  trailingCards = 10,
+  random: () => number = secureRandomUnit,
+): WheelSegment[] {
+  const leadIn = Math.max(0, Math.floor(leadInCards))
+  const trailing = Math.max(0, Math.floor(trailingCards))
+  const segments = buildWheelSegments(entrants, winner, leadIn + trailing + 1, random)
+  const winnerCard = segments.find((segment) => segment.isWinner) ?? {
+    username: winner,
+    entryNumber: 1,
+    isWinner: true,
+  }
+  const candidates = segments.filter((segment) => !segment.isWinner)
+  const fallback = { username: winner, entryNumber: winnerCard.entryNumber }
+  const cards: WheelSegment[] = Array.from(
+    { length: leadIn + trailing },
+    (_, index) => candidates[index % Math.max(1, candidates.length)] ?? fallback,
+  ).map((segment) => ({ ...segment, isWinner: undefined }))
+
+  cards.splice(leadIn, 0, { ...winnerCard, isWinner: true })
+  return cards
+}
+
+export function reelLandingOffset(
+  winnerIndex: number,
+  cardWidth: number,
+  cardGap: number,
+  viewportWidth: number,
+): number {
+  return winnerIndex * (cardWidth + cardGap) - (viewportWidth - cardWidth) / 2
 }
 
 export function wheelLandingRotation(

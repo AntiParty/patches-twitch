@@ -5,31 +5,38 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(6, 5, 5, 0.9);
+  background: rgba(4, 7, 12, 0.91);
   backdrop-filter: blur(12px);
 }
 
 .panel {
-  width: min(760px, 100%);
+  width: min(860px, 100%);
   max-height: calc(100vh - 40px);
   padding: clamp(22px, 4vw, 42px);
   overflow: auto;
-  text-align: center;
+  border: 1px solid rgba(176, 205, 232, 0.14);
   border-radius: 24px;
   color: var(--text-main);
-  background: color-mix(in srgb, var(--bg-card) 94%, black);
+  text-align: center;
+  background:
+    linear-gradient(130deg, rgba(72, 100, 128, 0.1), transparent 34%),
+    color-mix(in srgb, var(--bg-card) 93%, #05090e);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 32px 90px rgba(0, 0, 0, 0.48);
+    inset 0 1px rgba(255, 255, 255, 0.06),
+    0 32px 90px rgba(0, 0, 0, 0.54);
 }
 
-.eyebrow {
-  color: var(--primary);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+.eyebrow,
+.reelWinner span,
+.reelCount span {
+  color: #b8cce0;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
+
+.eyebrow { color: #e2b84e; }
 
 .title {
   margin: 8px 0 0;
@@ -41,156 +48,177 @@
 
 .explainer {
   max-width: 520px;
-  margin: 12px auto 20px;
+  margin: 12px auto 22px;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.5;
   text-wrap: pretty;
 }
 
-.wheelStage {
+.reelStage {
   position: relative;
-  width: min(56vh, 500px, 82vw);
-  aspect-ratio: 1;
-  margin: 0 auto;
-}
-
-.pointer {
-  position: absolute;
-  z-index: 4;
-  top: -5px;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-top: 28px solid #fff;
-  border-right: 17px solid transparent;
-  border-left: 17px solid transparent;
-  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.5));
-  transform: translateX(-50%);
-  transition:
-    border-top-color 220ms ease,
-    filter 220ms ease;
-}
-
-.pointerLocked {
-  border-top-color: var(--success, #22c55e);
-  filter:
-    drop-shadow(0 4px 5px rgba(0, 0, 0, 0.5))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--success, #22c55e) 74%, transparent));
-}
-
-.wheel {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-radius: 50%;
+  padding: 16px 0;
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(3, 7, 12, 0.95), transparent 13%, transparent 87%, rgba(3, 7, 12, 0.95)),
+    linear-gradient(145deg, #152537, #09121c);
   box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.24),
-    inset 0 0 42px rgba(0, 0, 0, 0.26),
-    0 18px 45px rgba(0, 0, 0, 0.38);
-  transition: box-shadow 260ms ease;
+    inset 0 1px rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(180, 211, 238, 0.08),
+    0 18px 45px rgba(0, 0, 0, 0.3);
+}
+
+.reelViewport {
+  position: relative;
+  overflow: hidden;
+  min-height: 154px;
+}
+
+.reelTrack {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  padding: 2px 0;
   will-change: transform;
 }
 
-.wheel::after {
+.reelMarker {
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 36% 24%, rgba(255, 255, 255, 0.2), transparent 30%),
-    radial-gradient(circle at center, transparent 58%, rgba(0, 0, 0, 0.24) 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  z-index: 3;
+  top: 7px;
+  bottom: 7px;
+  left: 50%;
+  width: 3px;
+  background: #f4bf39;
+  box-shadow: 0 0 18px rgba(244, 191, 57, 0.86);
+  transform: translateX(-50%);
+  transition: background-color 220ms ease, box-shadow 220ms ease;
+}
+
+.reelMarker::before,
+.reelMarker::after {
+  position: absolute;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: 9px solid transparent;
+  border-left: 9px solid transparent;
   content: '';
-  pointer-events: none;
+  transform: translateX(-50%);
 }
 
-.wheelSettled {
+.reelMarker::before { top: 0; border-top: 10px solid #ffe38a; }
+.reelMarker::after { bottom: 0; border-bottom: 10px solid #ffe38a; }
+
+.reelMarkerLocked {
+  background: #7ae684;
+  box-shadow: 0 0 20px rgba(105, 225, 118, 0.9);
+}
+
+.reelCard {
+  display: grid;
+  width: 132px;
+  min-width: 132px;
+  min-height: 150px;
+  align-content: center;
+  justify-items: center;
+  padding: 12px 8px 10px;
+  border: 1px solid rgba(164, 198, 230, 0.18);
+  border-radius: 12px;
+  color: #ecf5ff;
+  background: linear-gradient(145deg, #294258, #142434);
   box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.28),
-    inset 0 0 42px rgba(0, 0, 0, 0.22),
-    0 18px 45px rgba(0, 0, 0, 0.38),
-    0 0 34px color-mix(in srgb, var(--success, #22c55e) 26%, transparent);
+    inset 0 1px rgba(255, 255, 255, 0.11),
+    0 7px 15px rgba(0, 0, 0, 0.28);
 }
 
-.wheelLabel {
+.reelCardWinner {
+  border-color: rgba(255, 215, 104, 0.9);
+  background: linear-gradient(145deg, #725523, #302510);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.2),
+    0 0 24px rgba(244, 191, 57, 0.52);
+}
+
+.avatar {
+  position: relative;
+  display: grid;
+  width: 61px;
+  height: 61px;
+  margin-bottom: 8px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid rgba(202, 224, 243, 0.56);
+  border-radius: 50%;
+  color: #d9ecff;
+  background: #23394e;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.reelCardWinner .avatar { border-color: #ffda72; }
+
+.avatar img {
   position: absolute;
   z-index: 1;
-  inset: 5%;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-  transform-origin: center;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.wheelLabel > span {
-  display: block;
-  max-width: 118px;
-  overflow: hidden;
-  color: #fff;
-  font-size: clamp(9px, 1.6vw, 13px);
-  font-weight: 850;
+.avatarFallback {
+  font-size: 22px;
+  font-weight: 900;
   line-height: 1;
+}
+
+.reelCard > strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.1;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.72);
   white-space: nowrap;
 }
 
-.hub {
-  position: absolute;
-  z-index: 3;
-  inset: 50% auto auto 50%;
+.reelCard > span:last-child {
+  margin-top: 4px;
+  color: #a7bdd1;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reelWinner,
+.reelCount {
   display: grid;
-  width: 38%;
-  aspect-ratio: 1;
+  min-height: 52px;
+  margin-top: 15px;
   place-items: center;
+}
+
+.reelWinner strong {
+  max-width: 100%;
+  margin-top: 4px;
   overflow: hidden;
-  border-radius: 50%;
-  color: #fff;
-  background: color-mix(in srgb, var(--bg-card) 95%, black);
-  box-shadow:
-    0 0 0 8px rgba(8, 7, 7, 0.48),
-    0 0 0 10px rgba(255, 255, 255, 0.16),
-    0 12px 34px rgba(0, 0, 0, 0.42);
-  transform: translate(-50%, -50%);
+  color: #78e687;
+  font-size: clamp(20px, 3vw, 30px);
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.hubCount,
-.hubWinner {
-  display: grid;
-  max-width: 90%;
-  place-items: center;
-}
-
-.hubCount strong {
-  font-size: clamp(24px, 5vw, 48px);
+.reelCount strong {
+  color: #f4f8fb;
+  font-size: 27px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
-.hubCount span,
-.hubWinner span {
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.hubWinner strong {
-  max-width: 100%;
-  margin-top: 5px;
-  overflow: hidden;
-  color: var(--success, #22c55e);
-  font-size: clamp(16px, 3vw, 30px);
-  line-height: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.reelCount span { margin-top: 4px; }
 
 .resultLine {
   min-height: 20px;
-  margin-top: 15px;
+  margin-top: 10px;
   color: var(--text-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -203,23 +231,11 @@
 }
 
 @media (max-width: 560px) {
-  .backdrop {
-    padding: 8px;
-  }
-
-  .panel {
-    max-height: calc(100vh - 16px);
-    padding: 22px 14px;
-    border-radius: 18px;
-  }
-
-  .wheelStage {
-    width: min(52vh, 88vw);
-  }
+  .backdrop { padding: 8px; }
+  .panel { max-height: calc(100vh - 16px); padding: 22px 14px; border-radius: 18px; }
+  .reelStage { margin-inline: -4px; border-radius: 13px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wheel {
-    will-change: auto;
-  }
+  .reelTrack { will-change: auto; }
 }

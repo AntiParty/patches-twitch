@@ -25,18 +25,18 @@
 
 **Interfaces:**
 - Consumes: `GiveawayEntrant[]`, saved winner username, and `WheelSegment`.
-- Produces: `buildReelCards(entrants, winner, visibleCards, random): WheelSegment[]`, `reelLandingOffset(winnerIndex, cardWidth, cardGap, viewportWidth): number`, `twitchAvatarUrl(username): string`, and `avatarInitial(username): string`.
+- Produces: `buildReelCards(entrants, winner, leadInCards, trailingCards, random): WheelSegment[]`, `reelLandingOffset(winnerIndex, cardWidth, cardGap, viewportWidth): number`, `twitchAvatarUrl(username): string`, and `avatarInitial(username): string`.
 
 - [ ] **Step 1: Write failing helper tests**
 
 ```ts
 test('places the saved winner in the landing card', () => {
-  const cards = buildReelCards(entrants, 'Bravo', 5, () => 0)
+  const cards = buildReelCards(entrants, 'Bravo', 5, 6, () => 0)
   expect(cards[5]).toMatchObject({ username: 'Bravo', isWinner: true })
 })
 
 test('centers the winner card below the marker', () => {
-  expect(reelLandingOffset(5, 132, 12, 660)).toBe(402)
+  expect(reelLandingOffset(5, 132, 12, 660)).toBe(456)
 })
 
 test('encodes avatar usernames and derives an initial fallback', () => {

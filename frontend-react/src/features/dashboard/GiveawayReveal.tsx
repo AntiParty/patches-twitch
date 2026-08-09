@@ -3,15 +3,20 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Button } from '@/components/buttons/Button'
 import type { GiveawayEntrant } from '@/types/giveaway'
 import {
-  buildWheelSegments,
-  randomSpinTurns,
-  wheelLandingRotation,
+  avatarInitial,
+  buildReelCards,
+  reelLandingOffset,
+  twitchAvatarUrl,
 } from './giveawayDisplay'
 import styles from './GiveawayReveal.module.css'
 
-const MAX_VISIBLE_SEGMENTS = 24
 const REVEAL_SECONDS = 4.6
 const ANNOUNCEMENT_DELAY_MS = 1800
+const REEL_LEAD_IN_CARDS = 8
+const REEL_TRAILING_CARDS = 10
+const REEL_CARD_WIDTH = 132
+const REEL_CARD_GAP = 12
+const DEFAULT_REEL_VIEWPORT_WIDTH = 660
 
 interface GiveawayRevealProps {
   entrants: GiveawayEntrant[]
@@ -34,32 +39,36 @@ export function GiveawayReveal({
   const [done, setDone] = useState(false)
   const revealedRef = useRef(false)
   const announcementTimeoutRef = useRef<number | null>(null)
-  const segments = useMemo(
-    () => buildWheelSegments(entrants, winner, MAX_VISIBLE_SEGMENTS),
+  const reelViewportRef = useRef<HTMLDivElement | null>(null)
+  const [reelViewportWidth, setReelViewportWidth] = useState(DEFAULT_REEL_VIEWPORT_WIDTH)
+  const [failedAvatars, setFailedAvatars] = useState<Set<string>>(() => new Set())
+  const reelCards = useMemo(
+    () => buildReelCards(entrants, winner, REEL_LEAD_IN_CARDS, REEL_TRAILING_CARDS),
     [entrants, winner],
   )
-  const winnerIndex = Math.max(0, segments.findIndex((segment) => segment.isWinner))
-  const [spinTurns] = useState(() => randomSpinTurns())
-  const rotation = wheelLandingRotation(winnerIndex, segments.length, spinTurns)
-  const showLabels = segments.length <= 12
-  const sliceDegrees = 360 / segments.length
-  const gradient = segments
-    .map((_, index) => {
-      const start = index * sliceDegrees
-      const end = (index + 1) * sliceDegrees
-      const hue = Math.round((index * 320) / Math.max(1, segments.length - 1))
-      return `hsl(${hue} 68% 48%) ${start}deg ${end}deg`
-    })
-    .join(', ')
+  const winnerIndex = Math.max(0, reelCards.findIndex((card) => card.isWinner))
+  const landingOffset = reelLandingOffset(
+    winnerIndex,
+    REEL_CARD_WIDTH,
+    REEL_CARD_GAP,
+    reelViewportWidth,
+  )
+
+  useEffect(() => {
+    const viewport = reelViewportRef.current
+    if (!viewport) return
+    const updateWidth = () => setReelViewportWidth(viewport.clientWidth || DEFAULT_REEL_VIEWPORT_WIDTH)
+    updateWidth()
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [])
 
   const completeReveal = useCallback(() => {
     setDone(true)
     if (revealedRef.current) return
     revealedRef.current = true
-    announcementTimeoutRef.current = window.setTimeout(
-      onRevealed,
-      ANNOUNCEMENT_DELAY_MS,
-    )
+    announcementTimeoutRef.current = window.setTimeout(onRevealed, ANNOUNCEMENT_DELAY_MS)
   }, [onRevealed])
 
   useEffect(() => {
@@ -114,76 +123,80 @@ export function GiveawayReveal({
             : 'Every eligible entry was included in the secure draw.'}
         </p>
 
-        <div className={styles.wheelStage}>
+        <div className={styles.reelStage}>
           <div
-            className={`${styles.pointer} ${done ? styles.pointerLocked : ''}`}
+            className={`${styles.reelMarker} ${done ? styles.reelMarkerLocked : ''}`}
             aria-hidden="true"
           />
-          <motion.div
-            className={`${styles.wheel} ${done ? styles.wheelSettled : ''}`}
-            style={{ background: `conic-gradient(${gradient})` }}
-            initial={{ rotate: -(sliceDegrees * 0.37) }}
-            animate={{ rotate: reduceMotion ? rotation % 360 : rotation }}
-            transition={{
-              duration: reduceMotion ? 0.01 : REVEAL_SECONDS,
-              ease: [0.12, 0.74, 0.16, 1],
-            }}
-            onAnimationComplete={completeReveal}
-          >
-            {showLabels &&
-              segments.map((segment, index) => {
-                const angle = (index + 0.5) * sliceDegrees
+          <div className={styles.reelViewport} ref={reelViewportRef}>
+            <motion.div
+              className={styles.reelTrack}
+              initial={{ x: 0 }}
+              animate={{ x: -landingOffset }}
+              transition={{
+                duration: reduceMotion ? 0.01 : REVEAL_SECONDS,
+                ease: [0.08, 0.76, 0.14, 1],
+              }}
+              onAnimationComplete={completeReveal}
+            >
+              {reelCards.map((card, index) => {
+                const avatarUrl = twitchAvatarUrl(card.username)
+                const avatarFailed = failedAvatars.has(avatarUrl)
                 return (
-                  <span
-                    className={styles.wheelLabel}
-                    key={`${segment.entryNumber}-${index}`}
-                    style={{ transform: `rotate(${angle}deg) translateY(-42%)` }}
+                  <article
+                    className={`${styles.reelCard} ${card.isWinner ? styles.reelCardWinner : ''}`}
+                    key={`${card.entryNumber}-${index}`}
                   >
-                    <span style={{ transform: `rotate(${-angle}deg)` }}>
-                      @{segment.username}
+                    <span className={styles.avatar} aria-hidden="true">
+                      {!avatarFailed && (
+                        <img
+                          src={avatarUrl}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          onError={() => setFailedAvatars((current) => new Set(current).add(avatarUrl))}
+                        />
+                      )}
+                      <span className={styles.avatarFallback}>{avatarInitial(card.username)}</span>
                     </span>
-                  </span>
+                    <strong>@{card.username}</strong>
+                    <span>Entry #{card.entryNumber.toLocaleString()}</span>
+                  </article>
                 )
               })}
-          </motion.div>
-
-          <div className={styles.hub}>
-            <AnimatePresence initial={false} mode="wait">
-              {done ? (
-                <motion.div
-                  key="winner"
-                  className={styles.hubWinner}
-                  initial={{ opacity: 0, scale: 0.25, filter: 'blur(4px)' }}
-                  animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                  transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
-                  aria-live="polite"
-                >
-                  <span>Winner</span>
-                  <strong>@{winner}</strong>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="count"
-                  className={styles.hubCount}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                >
-                  <strong>{total.toLocaleString()}</strong>
-                  <span>entries</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </motion.div>
           </div>
         </div>
+
+        <AnimatePresence initial={false} mode="wait">
+          {done ? (
+            <motion.div
+              key="winner"
+              className={styles.reelWinner}
+              initial={{ opacity: 0, scale: 0.25, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
+              aria-live="polite"
+            >
+              <span>Winner</span>
+              <strong>@{winner}</strong>
+            </motion.div>
+          ) : (
+            <div className={styles.reelCount}>
+              <strong>{total.toLocaleString()}</strong>
+              <span>eligible entries</span>
+            </div>
+          )}
+        </AnimatePresence>
 
         <div className={styles.resultLine}>
           {done ? (
             <>
               Entry <b>#{slot.toLocaleString()}</b> of {total.toLocaleString()}
             </>
-          ) : segments.length < total ? (
-            `${segments.length} representative wheel slices · all ${total.toLocaleString()} entries were eligible`
+          ) : entrants.length < total ? (
+            `${reelCards.length} representative cards · all ${total.toLocaleString()} entries were eligible`
           ) : (
-            `${total.toLocaleString()} entries on the wheel`
+            `${total.toLocaleString()} entries in the reel`
           )}
         </div>
 

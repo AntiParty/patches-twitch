@@ -5,6 +5,7 @@ import {
   randomSpinTurns,
   wheelLandingRotation,
 } from '../src/features/dashboard/giveawayDisplay'
+import * as giveawayDisplay from '../src/features/dashboard/giveawayDisplay'
 
 describe('buildWheelSegments', () => {
   const entrants = [
@@ -62,6 +63,30 @@ describe('wheelLandingRotation', () => {
   test('varies the number of complete turns within a controlled range', () => {
     expect(randomSpinTurns(() => 0)).toBe(6)
     expect(randomSpinTurns(() => 0.999999)).toBe(9)
+  })
+})
+
+describe('giveaway reel display', () => {
+  const entrants = [
+    { userId: 'alpha', username: 'Alpha', count: 3 },
+    { userId: 'bravo', username: 'Bravo', count: 1 },
+  ]
+
+  test('places the saved winner in the landing card after the lead-in cards', () => {
+    const cards = giveawayDisplay.buildReelCards(entrants, 'Bravo', 5, 6, () => 0)
+
+    expect(cards).toHaveLength(12)
+    expect(cards[5]).toMatchObject({ username: 'Bravo', isWinner: true })
+    expect(cards.filter((card) => card.isWinner)).toHaveLength(1)
+  })
+
+  test('centers the winner card below the fixed marker', () => {
+    expect(giveawayDisplay.reelLandingOffset(5, 132, 12, 660)).toBe(456)
+  })
+
+  test('encodes avatar usernames and derives an initial fallback', () => {
+    expect(giveawayDisplay.twitchAvatarUrl('A name')).toBe('https://unavatar.io/twitch/A%20name')
+    expect(giveawayDisplay.avatarInitial('@patches')).toBe('P')
   })
 })
 

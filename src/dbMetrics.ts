@@ -94,6 +94,28 @@ AnalyticsDay.init(
     timestamps: false,
   }
 );
+
+/**
+ * Durable platform totals, retained as one updatable row per UTC day.
+ * Unlike request-level analytics, these rows are never cleaned up.
+ */
+export class PlatformStatsSnapshot extends Model {}
+PlatformStatsSnapshot.init(
+  {
+    day: { type: DataTypes.STRING(10), primaryKey: true },
+    capturedAt: { type: DataTypes.DATE, allowNull: false },
+    streamers: { type: DataTypes.INTEGER, allowNull: false },
+    commandsProcessed: { type: DataTypes.BIGINT, allowNull: false },
+    predictionsCreated: { type: DataTypes.INTEGER, allowNull: false },
+    apiRequests: { type: DataTypes.BIGINT, allowNull: false },
+  },
+  {
+    sequelize: sequelizeMetrics,
+    modelName: 'PlatformStatsSnapshot',
+    tableName: 'PlatformStatsSnapshots',
+    timestamps: false,
+  },
+);
 // IGN Visit model for the YouTube/IGN experiment
 export class IGNVisit extends Model {}
 IGNVisit.init(

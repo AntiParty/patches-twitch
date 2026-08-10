@@ -10,7 +10,8 @@ validateEnvironment();
 import fs from 'fs';
 import express from "express";
 import client from 'prom-client';
-import { Channel } from "@/db";
+import { Channel, PredictionAutomationRun } from "@/db";
+import { Op } from 'sequelize';
 import session from 'express-session';
 import { sessionConfig } from '@/config/session.config';
 import logger from "@/util/logger";
@@ -21,6 +22,7 @@ import { csrfProtection } from "@/middleware/csrf.middleware";
 import { startCacheUpdater } from "@/jobs/cacheUpdater";  
 
 import { blockSuspiciousRequests, rateLimitByIP } from "@/middleware/security";
+import { platformStatsPersistence } from '@/services/platformStatsPersistence.service';
 
 // Import all routes
 import routes from './routes';
@@ -50,6 +52,8 @@ export const commandCounter = new client.Counter({
 const statsFilePath = path.join(process.cwd(), "stats.json");
 let commandsProcessed = 0;
 let apiRequests = 0;
+let commandsProcessedSinceStartup = 0;
+let apiRequestsSinceStartup = 0;
 
 // Load commandsProcessed from stats.json on startup
 try {
@@ -68,6 +72,7 @@ try {
 // Increment commandsProcessed
 export function incrementCommandsProcessed() {
   commandsProcessed++;
+  commandsProcessedSinceStartup++;
 }
 
 // Get current commandsProcessed value
@@ -77,6 +82,7 @@ export function getCommandsProcessed() {
 
 export function incrementApiRequests() {
   apiRequests++;
+  apiRequestsSinceStartup++;
 }
 
 export function getApiRequests() {
@@ -86,10 +92,24 @@ export function getApiRequests() {
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
 
+// Prefer the durable daily snapshot when it is newer than the runtime file.
+// Deltas recorded before hydration are retained even if the file is stale.
+void platformStatsPersistence.loadLifetimeCounters()
+  .then((counters) => {
+    if (!counters) return;
+    commandsProcessed = Math.max(commandsProcessed, counters.commandsProcessed + commandsProcessedSinceStartup);
+    apiRequests = Math.max(apiRequests, counters.apiRequests + apiRequestsSinceStartup);
+  })
+  .catch((error) => logger.warn('[platform-stats] unable to hydrate lifetime counters', { error }));
+
 // --- Stats Export Helper ---
 // Writes current stats to stats.json
-function exportStatsToJson() {
-  Channel.count().then(userCount => {
+async function exportStatsToJson() {
+  try {
+    const [userCount, predictionsCreated] = await Promise.all([
+      Channel.count(),
+      PredictionAutomationRun.count({ where: { twitch_prediction_id: { [Op.not]: null } } }),
+    ]);
     const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
     const stats = {
       userCount,
@@ -102,7 +122,15 @@ function exportStatsToJson() {
       //hide this log
       //else logger.info("Exported stats.json");
     });
-  });
+    await platformStatsPersistence.saveDailySnapshot({
+      streamers: userCount,
+      commandsProcessed,
+      predictionsCreated,
+      apiRequests,
+    });
+  } catch (error) {
+    logger.error('[platform-stats] unable to persist platform totals', { error });
+  }
 }
 
 // --- React SPA serving (production) ---
@@ -263,6 +291,7 @@ export const setupServer = () => {
   });
 
   // Export stats to JSON periodically
+  void exportStatsToJson();
   setInterval(exportStatsToJson, 60000); // Every minute
 
   // Return configured Express app

@@ -372,11 +372,12 @@ router.get("/force-stats", async (req: Request, res: Response) => {
         const uptime = Math.floor((Date.now() - serverStartTime) / 1000);
 
         // Import these functions dynamically to avoid circular dependencies
-        const { getCommandsProcessed } = await import('@/server');
+        const { getApiRequests, getCommandsProcessed } = await import('@/server');
 
         const stats = {
             userCount,
             commandsProcessed: getCommandsProcessed(),
+            apiRequests: getApiRequests(),
             uptime
         };
 

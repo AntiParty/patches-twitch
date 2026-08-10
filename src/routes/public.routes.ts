@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { Channel, CommandUsage, StreamSession } from '@/db';
+import { Channel, CommandUsage, PredictionAutomationRun, StreamSession } from '@/db';
 import { PerformanceMetric } from '@/dbMetrics';
 import { Referral } from '@/dbMetrics';
 import logger from '@/util/logger';
@@ -16,6 +16,8 @@ import { rateLimitFeedback } from '@/middleware/security';
 import { getAnalytics } from '@/util/webAnalytics';
 import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { log } from 'console';
+import { Op } from 'sequelize';
+import { createEmbarkStatsHandler } from '@/services/embarkStats.service';
 
 const router = Router();
 
@@ -388,6 +390,22 @@ router.get("/force-stats", async (req: Request, res: Response) => {
         logger.error("Error in /force-stats:", err);
         res.status(500).json({ error: "Failed to fetch stats" });
     }
+});
+
+/**
+ * GET /api/embark-stats
+ * Small, public aggregate used by the Embark partnership briefing.
+ */
+router.get('/api/embark-stats', async (req: Request, res: Response) => {
+    const { getApiRequests, getCommandsProcessed } = await import('@/server');
+    return createEmbarkStatsHandler({
+        countStreamers: () => Channel.count(),
+        countCreatedPredictions: () => PredictionAutomationRun.count({
+            where: { twitch_prediction_id: { [Op.not]: null } },
+        }),
+        getCommandsProcessed,
+        getApiRequests,
+    })(req, res);
 });
 
 /**

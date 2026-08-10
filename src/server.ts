@@ -49,6 +49,7 @@ export const commandCounter = new client.Counter({
 // --- Stats Tracking ---
 const statsFilePath = path.join(process.cwd(), "stats.json");
 let commandsProcessed = 0;
+let apiRequests = 0;
 
 // Load commandsProcessed from stats.json on startup
 try {
@@ -56,6 +57,9 @@ try {
   const stats = JSON.parse(statsRaw);
   if (typeof stats.commandsProcessed === "number") {
     commandsProcessed = stats.commandsProcessed;
+  }
+  if (typeof stats.apiRequests === "number") {
+    apiRequests = stats.apiRequests;
   }
 } catch (err) {
   commandsProcessed = 0;
@@ -71,6 +75,14 @@ export function getCommandsProcessed() {
   return commandsProcessed;
 }
 
+export function incrementApiRequests() {
+  apiRequests++;
+}
+
+export function getApiRequests() {
+  return apiRequests;
+}
+
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
 
@@ -82,6 +94,7 @@ function exportStatsToJson() {
     const stats = {
       userCount,
       commandsProcessed,
+      apiRequests,
       uptime
     };
     fs.writeFile(statsFilePath, JSON.stringify(stats, null, 2), err => {
@@ -156,6 +169,15 @@ export const setupServer = () => {
 
     if (!skipLog) {
       logger.info(`[REQ] ${req.method} ${req.url}`);
+    }
+    next();
+  });
+
+  // Developer API requests are counted in memory and persisted with the existing
+  // one-minute stats export, avoiding a database write for every API call.
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/v1/') && req.method !== 'OPTIONS') {
+      res.once('finish', incrementApiRequests);
     }
     next();
   });

@@ -1,7 +1,26 @@
-import { embarkCapabilities, embarkContact, embarkGallery, embarkMetrics } from './embarkBriefing'
+import { useQuery } from '@tanstack/react-query'
+import { publicApi } from '@/api/public'
+import { embarkCapabilities, embarkContact, embarkGallery } from './embarkBriefing'
 import styles from './Embark.module.css'
 
+function formatMetric(value: number | undefined): string {
+  return typeof value === 'number' ? new Intl.NumberFormat('en-US').format(value) : '—'
+}
+
 export function Embark() {
+  const { data: stats } = useQuery({
+    queryKey: ['embark-stats'],
+    queryFn: publicApi.getEmbarkStats,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  })
+  const metrics = [
+    { value: formatMetric(stats?.streamers), label: 'Streamers' },
+    { value: formatMetric(stats?.commandsProcessed), label: 'Commands processed' },
+    { value: formatMetric(stats?.predictionsCreated), label: 'Predictions created' },
+    { value: formatMetric(stats?.apiRequests), label: 'API requests' },
+  ]
+
   return (
     <article className={styles.root}>
       <section className={styles.hero} aria-labelledby="embark-title">
@@ -58,10 +77,10 @@ export function Embark() {
         <section className={styles.section} aria-labelledby="traction">
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>Traction</p>
-            <h2 id="traction">A working platform, with metrics ready to update.</h2>
+            <h2 id="traction">A working platform, with live platform totals.</h2>
           </div>
           <div className={styles.metrics}>
-            {embarkMetrics.map((metric) => (
+            {metrics.map((metric) => (
               <div className={styles.metric} key={metric.label}>
                 <strong>{metric.value}</strong>
                 <span>{metric.label}</span>

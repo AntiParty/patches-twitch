@@ -7,13 +7,6 @@ export const embarkCapabilities = [
   'Public and developer API',
 ]
 
-export const embarkMetrics = [
-  { value: '[X]', label: 'Streamers' },
-  { value: '[X]', label: 'Commands processed' },
-  { value: '[X]', label: 'Predictions created' },
-  { value: '[X]', label: 'API requests' },
-]
-
 export const embarkGallery = [
   { label: '01', title: 'Streamer dashboard', detail: 'A single operating surface for a channel.' },
   { label: '02', title: 'Twitch chat', detail: 'Ranked context delivered where viewers already are.' },

@@ -13,6 +13,13 @@ export interface PublicStats {
   uptime: number
 }
 
+export interface EmbarkStats {
+  streamers: number
+  commandsProcessed: number
+  predictionsCreated: number
+  apiRequests: number
+}
+
 export const publicApi = {
   /** Public drops config (static file served by the backend). */
   getDrops: () => api.get<DropsConfig>(`/drops.json?t=${Date.now()}`),
@@ -22,4 +29,7 @@ export const publicApi = {
 
   /** Aggregate bot usage counters (public stats file). */
   getStats: () => api.get<PublicStats>('/stats.json'),
+
+  /** Current platform totals shown in the Embark partnership briefing. */
+  getEmbarkStats: () => api.get<EmbarkStats>('/api/embark-stats'),
 }

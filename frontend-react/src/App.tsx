@@ -10,6 +10,7 @@ import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { AdminLayout } from '@/layouts/AdminLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { Landing } from '@/features/landing/Landing'
+import { Embark } from '@/features/embark/Embark'
 import { NotFound } from '@/pages/NotFound'
 import { Overview } from '@/features/dashboard/Overview'
 import { Commands } from '@/features/dashboard/Commands'
@@ -69,6 +70,7 @@ export default function App() {
         {/* Public / marketing pages share the AppLayout shell */}
         <Route element={<AppLayout />}>
           <Route path="/" element={<Landing />} />
+          <Route path="/embark" element={<Embark />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/developer" element={<Developer />} />

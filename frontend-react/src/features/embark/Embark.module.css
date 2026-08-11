@@ -3,8 +3,8 @@
 .hero { padding:124px 0 72px; border-bottom:1px solid var(--line); }
 .kicker,.eyebrow { margin:0; color:#9297a0; font-size:11px; font-weight:650; letter-spacing:.13em; text-transform:uppercase; }
 .heroGrid { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(290px,.7fr); gap:64px; align-items:end; margin-top:34px; }
-h1,h2 { margin:0; color:var(--ink); font-weight:600; letter-spacing:-.05em; text-wrap:balance; }
-h1 { max-width:11ch; font-size:clamp(46px,7vw,82px); line-height:.97; }
+.root h1,.root h2 { margin:0; color:var(--ink); font-weight:600; letter-spacing:-.05em; text-wrap:balance; }
+.root h1 { max-width:11ch; font-size:clamp(46px,7vw,82px); line-height:.97; }
 .heroStatement p { margin:0; color:var(--muted); font-size:18px; line-height:1.58; text-wrap:pretty; }
 .primaryLink { display:inline-flex; gap:10px; align-items:center; margin-top:28px; color:var(--ink); font-size:15px; font-weight:650; text-decoration:none; }
 .primaryLink span { color:#ee8278; font-size:19px; transition:transform 160ms var(--ease); }

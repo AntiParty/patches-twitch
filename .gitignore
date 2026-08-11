@@ -57,3 +57,4 @@ scripts/seed-output/
 
 # Brainstorm companion sessions
 .superpowers/
+frontend/public/drops.json

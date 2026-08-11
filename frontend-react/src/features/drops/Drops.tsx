@@ -27,6 +27,7 @@ export function Drops() {
   return (
     <div className={styles.page}>
       <header className={styles.hero}>
+        <p className={styles.eyebrow}><span /> THE FINALS / TWITCH DROPS</p>
         <h1>
           Twitch <span className={styles.gradient}>Drops</span>
         </h1>
@@ -39,8 +40,11 @@ export function Drops() {
       {streamers.length > 0 && (
         <section className={styles.section}>
           <div className={styles.sectionHead}>
-            <h2>Live With Drops</h2>
-            <span className={styles.liveBadge}>LIVE</span>
+            <div>
+              <p className={styles.sectionLabel}>Watch now</p>
+              <h2>Live with Drops</h2>
+            </div>
+            <span className={styles.liveBadge}><span /> LIVE</span>
           </div>
           <div className={styles.streamersGrid}>
             {streamers.map((s) => (
@@ -71,11 +75,24 @@ export function Drops() {
 
       {/* Featured + drops list */}
       <section className={styles.section}>
-        <div className={styles.split}>
-          <div>{data?.featuredImage && <img className={styles.featuredImg} src={data.featuredImage} alt="Featured drop" />}</div>
-          <div>
-            <div className={styles.sectionHead} style={{ justifyContent: 'space-between' }}>
-              <h2>Available Drops</h2>
+        <div className={styles.dropsPanel}>
+          <div className={styles.featuredMedia}>
+            {data?.featuredImage ? (
+              <img className={styles.featuredImg} src={data.featuredImage} alt="Featured Twitch drop" />
+            ) : (
+              <div className={styles.featuredFallback} aria-hidden="true">
+                <div className={styles.fallbackGrid} />
+                <i className="fas fa-gift" />
+                <span>DROP SIGNAL</span>
+              </div>
+            )}
+          </div>
+          <div className={styles.dropsContent}>
+            <div className={styles.sectionHead}>
+              <div>
+                <p className={styles.sectionLabel}>Current campaign</p>
+                <h2>Available Drops</h2>
+              </div>
               {data?.lastUpdated && <span className={styles.lastUpdated}>Last updated: {data.lastUpdated}</span>}
             </div>
 
@@ -109,14 +126,16 @@ export function Drops() {
       {/* How to claim */}
       <section className={styles.section}>
         <div className={styles.sectionHead}>
-          <h2>How to Claim Twitch Drops</h2>
+          <div>
+            <p className={styles.sectionLabel}>The route to rewards</p>
+            <h2>How to claim Drops</h2>
+          </div>
         </div>
         <div className={styles.steps}>
           {STEPS.map((s, i) => (
             <div className={styles.step} key={s.title}>
-              <div className={styles.stepNumber}>{i + 1}</div>
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
+              <div className={styles.stepRail}><div className={styles.stepNumber}>{String(i + 1).padStart(2, '0')}</div></div>
+              <div><h3>{s.title}</h3><p>{s.body}</p></div>
             </div>
           ))}
         </div>

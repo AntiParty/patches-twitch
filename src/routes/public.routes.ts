@@ -18,6 +18,7 @@ import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { log } from 'console';
 import { Op } from 'sequelize';
 import { createEmbarkStatsHandler } from '@/services/embarkStats.service';
+import { platformCommandStats } from '@/services/platformCommandStats.service';
 
 const router = Router();
 
@@ -398,13 +399,13 @@ router.get("/force-stats", async (req: Request, res: Response) => {
  * Small, public aggregate used by the Embark partnership briefing.
  */
 router.get('/api/embark-stats', async (req: Request, res: Response) => {
-    const { getApiRequests, getCommandsProcessed } = await import('@/server');
+    const { getApiRequests } = await import('@/server');
     return createEmbarkStatsHandler({
         countStreamers: () => Channel.count(),
         countCreatedPredictions: () => PredictionAutomationRun.count({
             where: { twitch_prediction_id: { [Op.not]: null } },
         }),
-        getCommandsProcessed,
+        getCommandsProcessed: platformCommandStats.getCommandsProcessed,
         getApiRequests,
     })(req, res);
 });

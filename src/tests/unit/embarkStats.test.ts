@@ -21,6 +21,25 @@ describe('Embark stats', () => {
     });
   });
 
+  it('awaits an asynchronous command total from shared analytics storage', async () => {
+    const handler = createEmbarkStatsHandler({
+      countStreamers: async () => 42,
+      countCreatedPredictions: async () => 18,
+      getCommandsProcessed: async () => 12_345,
+      getApiRequests: () => 678,
+    });
+    let body: unknown;
+
+    await handler({} as any, { json: (value: unknown) => { body = value; } } as any);
+
+    assert.deepEqual(body, {
+      streamers: 42,
+      commandsProcessed: 12_345,
+      predictionsCreated: 18,
+      apiRequests: 678,
+    });
+  });
+
   it('does not emit a partial response when a data source fails', async () => {
     const handler = createEmbarkStatsHandler({
       countStreamers: async () => { throw new Error('database unavailable'); },

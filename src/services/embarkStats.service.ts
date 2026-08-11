@@ -4,21 +4,22 @@ import logger from '@/util/logger';
 export interface EmbarkStatsDependencies {
   countStreamers: () => Promise<number>;
   countCreatedPredictions: () => Promise<number>;
-  getCommandsProcessed: () => number;
+  getCommandsProcessed: () => number | Promise<number>;
   getApiRequests: () => number;
 }
 
 export function createEmbarkStatsHandler(deps: EmbarkStatsDependencies) {
   return async (_req: Request, res: Response) => {
     try {
-      const [streamers, predictionsCreated] = await Promise.all([
+      const [streamers, predictionsCreated, commandsProcessed] = await Promise.all([
         deps.countStreamers(),
         deps.countCreatedPredictions(),
+        deps.getCommandsProcessed(),
       ]);
 
       res.json({
         streamers,
-        commandsProcessed: deps.getCommandsProcessed(),
+        commandsProcessed,
         predictionsCreated,
         apiRequests: deps.getApiRequests(),
       });

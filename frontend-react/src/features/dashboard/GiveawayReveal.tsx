@@ -5,12 +5,13 @@ import type { GiveawayEntrant } from '@/types/giveaway'
 import {
   avatarInitial,
   buildReelCards,
+  giveawayWinChance,
   reelLandingOffset,
   twitchAvatarUrl,
 } from './giveawayDisplay'
 import styles from './GiveawayReveal.module.css'
 
-const REVEAL_SECONDS = 4.6
+const REVEAL_SECONDS = 7
 const ANNOUNCEMENT_DELAY_MS = 1800
 const REEL_LEAD_IN_CARDS = 8
 const REEL_TRAILING_CARDS = 10
@@ -47,6 +48,7 @@ export function GiveawayReveal({
     [entrants, winner],
   )
   const winnerIndex = Math.max(0, reelCards.findIndex((card) => card.isWinner))
+  const winnerChance = giveawayWinChance(entrants, winner)
   const landingOffset = reelLandingOffset(
     winnerIndex,
     REEL_CARD_WIDTH,
@@ -179,6 +181,7 @@ export function GiveawayReveal({
             >
               <span>Winner</span>
               <strong>@{winner}</strong>
+              <span className={styles.reelChance}>{winnerChance.toLocaleString()}% chance to win</span>
             </motion.div>
           ) : (
             <div className={styles.reelCount}>

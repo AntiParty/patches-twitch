@@ -50,6 +50,21 @@ export function filterGiveawayEntrants(
   )
 }
 
+export function giveawayWinChance(entrants: GiveawayEntrant[], winner: string): number {
+  const normalizedWinner = winner.replace(/^@/, '').trim().toLocaleLowerCase()
+  const totalEntries = entrants.reduce(
+    (total, entrant) => total + Math.max(0, Math.floor(entrant.count)),
+    0,
+  )
+  if (totalEntries === 0) return 0
+
+  const winnerEntries = entrants
+    .filter((entrant) => entrant.username.replace(/^@/, '').trim().toLocaleLowerCase() === normalizedWinner)
+    .reduce((total, entrant) => total + Math.max(0, Math.floor(entrant.count)), 0)
+
+  return Math.round((winnerEntries / totalEntries) * 1000) / 10
+}
+
 export function buildWheelSegments(
   entrants: GiveawayEntrant[],
   winner: string,

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildWheelSegments,
+  giveawayWinChance,
   filterGiveawayEntrants,
   randomSpinTurns,
   wheelLandingRotation,
@@ -87,6 +88,22 @@ describe('giveaway reel display', () => {
   test('encodes avatar usernames and derives an initial fallback', () => {
     expect(giveawayDisplay.twitchAvatarUrl('A name')).toBe('https://unavatar.io/twitch/A%20name')
     expect(giveawayDisplay.avatarInitial('@patches')).toBe('P')
+  })
+
+  test('calculates the winner chance from their eligible entries', () => {
+    expect(giveawayWinChance(entrants, 'Alpha')).toBe(75)
+    expect(giveawayWinChance(entrants, 'Bravo')).toBe(25)
+  })
+
+  test('keeps one decimal place when the chance cannot be expressed as a whole percent', () => {
+    expect(giveawayWinChance([
+      { userId: 'alpha', username: 'Alpha', count: 1 },
+      { userId: 'bravo', username: 'Bravo', count: 2 },
+    ], 'Alpha')).toBe(33.3)
+  })
+
+  test('returns zero chance when the winner is absent from an empty pool', () => {
+    expect(giveawayWinChance([], 'Winner')).toBe(0)
   })
 })
 

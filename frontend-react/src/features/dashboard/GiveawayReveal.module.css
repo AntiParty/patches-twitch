@@ -207,6 +207,16 @@
   white-space: nowrap;
 }
 
+.reelChance {
+  margin-top: 7px;
+  color: #d9ecff;
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
 .reelCount strong {
   color: #f4f8fb;
   font-size: 27px;

@@ -117,6 +117,13 @@ router.get('/api/me', requireUserAPI, async (req: any, res: any) => {
             botEnabled: Boolean(channel.get('bot_enabled')),
             authRevoked: Boolean(channel.auth_revoked),
             onboardingCompleted: channel.get('onboarding_completed_at') != null,
+            chatReadiness: channel.get('chat_readiness_code')
+                ? {
+                    code: channel.get('chat_readiness_code'),
+                    message: channel.get('chat_readiness_message'),
+                    detectedAt: channel.get('chat_readiness_detected_at'),
+                }
+                : null,
         });
     } catch (err) {
         logger.error('Error fetching /api/me:', err);

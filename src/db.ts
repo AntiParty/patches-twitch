@@ -54,6 +54,9 @@ class Channel extends Model {
   declare auth_revoked: boolean;
   declare onboarding_completed_at: Date | null;
   declare ign_not_found_notified_at: Date | null;
+  declare chat_readiness_code: string | null;
+  declare chat_readiness_message: string | null;
+  declare chat_readiness_detected_at: Date | null;
 }
 
 
@@ -288,11 +291,31 @@ Channel.init(
       allowNull: true,
       defaultValue: null,
     },
+    // Latest actionable reason Twitch declined one of the bot's messages.
+    // Kept on the channel so the web process can surface it to the streamer.
+    chat_readiness_code: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    chat_readiness_message: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    chat_readiness_detected_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     sequelize,
     modelName: 'Channel',
     tableName: 'Channels',
+    indexes: [
+      { fields: ['twitch_user_id'], name: 'channels_twitch_user_id' },
+    ],
     hooks: {
       afterCreate: async (channel: Channel) => {
         const allowed = ['rank', 'record', 'peak'];
@@ -741,6 +764,41 @@ async function runMigrations() {
         defaultValue: null,
       });
       logger.info('[Migration] ign_not_found_notified_at column added successfully.');
+    }
+
+    // Latest chat restriction observed while sending a bot response. These are
+    // nullable so existing channels start in the neutral "not yet observed" state.
+    if (!tableInfo.chat_readiness_code) {
+      logger.info('[Migration] Adding chat_readiness_code column to Channels table...');
+      await queryInterface.addColumn('Channels', 'chat_readiness_code', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+      });
+    }
+    if (!tableInfo.chat_readiness_message) {
+      logger.info('[Migration] Adding chat_readiness_message column to Channels table...');
+      await queryInterface.addColumn('Channels', 'chat_readiness_message', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+      });
+    }
+    if (!tableInfo.chat_readiness_detected_at) {
+      logger.info('[Migration] Adding chat_readiness_detected_at column to Channels table...');
+      await queryInterface.addColumn('Channels', 'chat_readiness_detected_at', {
+        type: DataTypes.DATE,
+        allowNull: true,
+        defaultValue: null,
+      });
+    }
+
+    const channelIndexes = (await queryInterface.showIndex('Channels')) as any[];
+    if (!channelIndexes.some((index: any) => index.name === 'channels_twitch_user_id')) {
+      logger.info('[Migration] Adding channels_twitch_user_id index...');
+      await queryInterface.addIndex('Channels', ['twitch_user_id'], {
+        name: 'channels_twitch_user_id',
+      });
     }
 
     await migratePredictionPresets(queryInterface);

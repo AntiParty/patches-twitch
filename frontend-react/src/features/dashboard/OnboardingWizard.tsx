@@ -14,6 +14,7 @@ import { ApiError } from '@/api/errors'
 import { onboardingApi, type IgnLookup } from '@/api/onboarding'
 import { dashboardApi } from '@/api/dashboard'
 import { useProfile, useCompleteOnboarding } from './hooks'
+import { ChatReadinessNotice } from './ChatReadinessNotice'
 import styles from './OnboardingWizard.module.css'
 
 export function OnboardingWizard() {
@@ -97,6 +98,12 @@ export function OnboardingWizard() {
       <p className={styles.intro}>
         Link your THE FINALS account so the bot can track your rank and power chat commands.
       </p>
+      <ChatReadinessNotice issue={profile.chatReadiness} compact />
+      {!profile.chatReadiness && (
+        <p className={styles.chatTip}>
+          Tip: making the bot a moderator or VIP lets it speak through followers-only, subscriber-only, and slow chat modes.
+        </p>
+      )}
       <Field label="Embark ID">
         <Input
           value={ign}

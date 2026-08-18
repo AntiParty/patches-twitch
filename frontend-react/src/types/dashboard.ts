@@ -8,6 +8,14 @@ export interface ChannelProfile {
   botEnabled: boolean
   authRevoked: boolean
   onboardingCompleted: boolean
+  chatReadiness: ChatReadinessIssue | null
+}
+
+/** The latest actionable restriction Twitch reported while the bot sent chat. */
+export interface ChatReadinessIssue {
+  code: string
+  message: string | null
+  detectedAt: string | null
 }
 
 /** A customizable chat command. */

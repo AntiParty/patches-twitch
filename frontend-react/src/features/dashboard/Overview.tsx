@@ -11,6 +11,7 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { useToast } from '@/hooks/useToast'
 import { ApiError } from '@/api/errors'
 import { useProfile, useToggleBot } from './hooks'
+import { ChatReadinessNotice } from './ChatReadinessNotice'
 import styles from './Overview.module.css'
 
 export function Overview() {
@@ -99,6 +100,8 @@ export function Overview() {
           </Button>
         </div>
       </section>
+
+      <ChatReadinessNotice issue={profile.chatReadiness} />
 
       {/* Metric cards */}
       <div className={styles.metrics}>

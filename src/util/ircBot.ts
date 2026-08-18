@@ -6,7 +6,8 @@ import logger from "./logger";
 import { trackMessageIn, trackMessageOut } from "./messageRateTracker";
 import { refreshToken as getAppAccessToken } from "./twitchUtils";
 import { sendWarningToDiscord } from "../handlers/discordHandler";
-import { getChatDropResolution } from "./chatDropResolution";
+import { createChatReadinessTracker, getChatDropResolution, getChatReadinessUpdateForSend } from "./chatDropResolution";
+import { Op } from "sequelize";
 import { recordOperationalEvent } from "../services/operationalEvents.service";
 import { devModeChannels, isCommandSilenced } from "./devModeState";
 import { shouldSkipDisabledViewerCommand } from "../services/commandDispatchPolicy.service";
@@ -46,6 +47,18 @@ const INITIAL_RECONNECT_DELAY = 5000; // 5 seconds
 const MAX_RECONNECT_DELAY = 300000; // 5 minutes
 const chatDropAlertLastSent = new Map<string, number>();
 const CHAT_DROP_ALERT_COOLDOWN_MS = 30 * 60 * 1000;
+const chatReadinessTracker = createChatReadinessTracker();
+
+/** Seed the in-memory readiness cache from durable warnings on bot startup. */
+export async function loadChatReadinessCache(): Promise<void> {
+  const channels = await Channel.findAll({
+    attributes: ['twitch_user_id'],
+    where: { chat_readiness_code: { [Op.ne]: null } },
+  } as any);
+  chatReadinessTracker.hydrate(
+    channels.map((channel: any) => String(channel.get('twitch_user_id') || '')).filter(Boolean),
+  );
+}
 
 async function alertActionableChatDrop(broadcasterId: string, dropReason: any): Promise<void> {
   const resolution = getChatDropResolution(dropReason);
@@ -60,15 +73,37 @@ async function alertActionableChatDrop(broadcasterId: string, dropReason: any): 
   let channelLabel = `broadcaster_id=${broadcasterId}`;
   try {
     const channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } }) as any;
-    if (channel?.username) channelLabel = `#${channel.username}`;
+    if (channel) {
+      channelLabel = `#${channel.username || broadcasterId}`;
+      await channel.update({
+        chat_readiness_code: resolution.code,
+        chat_readiness_message: dropReason?.message || resolution.title,
+        chat_readiness_detected_at: new Date(),
+      });
+      chatReadinessTracker.track(broadcasterId);
+    }
   } catch {
-    // Best-effort context only.
+    // Best-effort diagnostic only; never interfere with chat sending.
   }
 
   await sendWarningToDiscord(
     resolution.title,
     `${channelLabel}: ${dropReason?.message || resolution.code}\n\nFix: ${resolution.action}`
   );
+}
+
+async function clearChatReadinessAfterSuccessfulSend(broadcasterId: string, sendResult: any): Promise<void> {
+  const update = getChatReadinessUpdateForSend(sendResult);
+  if (!update || !chatReadinessTracker.needsClear(broadcasterId, sendResult)) return;
+
+  try {
+    await Channel.update(update, {
+      where: { twitch_user_id: broadcasterId },
+    } as any);
+    chatReadinessTracker.clear(broadcasterId);
+  } catch (err) {
+    logger.warn(`[ircBot] Failed to clear chat readiness for ${broadcasterId}:`, err);
+  }
 }
 
 function getReconnectDelay(attempts: number): number {
@@ -408,6 +443,7 @@ export async function sendChatMessage(
   try {
     trackMessageOut();
     let result = await postChatMessage(body, replyParentId ? "response" : "message");
+    await clearChatReadinessAfterSuccessfulSend(broadcasterId, result);
     if (result?.is_sent === false) {
       logger.warn(
         `[ircBot] Twitch dropped chat message for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
@@ -419,6 +455,7 @@ export async function sendChatMessage(
         delete fallbackBody.reply_parent_message_id;
         logger.warn(`[ircBot] Retrying chat message for broadcaster ${broadcasterId} without reply_parent_message_id.`);
         result = await postChatMessage(fallbackBody, "message_retry_without_reply");
+        await clearChatReadinessAfterSuccessfulSend(broadcasterId, result);
         if (result?.is_sent === false) {
           logger.warn(
             `[ircBot] Twitch dropped non-reply chat retry for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`
@@ -436,6 +473,7 @@ export async function sendChatMessage(
         if (newAccessToken) {
           appAccessToken = newAccessToken;
           const result = await postChatMessage(body, "after_token_refresh");
+          await clearChatReadinessAfterSuccessfulSend(broadcasterId, result);
           if (result?.is_sent === false) {
             logger.warn(
               `[ircBot] Twitch dropped chat message after token refresh for broadcaster ${broadcasterId}: ${JSON.stringify(result.drop_reason || result)}`

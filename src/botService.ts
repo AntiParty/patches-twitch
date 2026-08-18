@@ -14,7 +14,7 @@ import crypto from "crypto";
 import { sendMessageToDiscord } from "./handlers/discordHandler";
 import { startBotTokenAutoRefresher } from "./jobs/botTokenRefresher";
 import { startCustomBotTokenRefresher } from "./jobs/customBotTokenRefresher";
-import { clients } from "./util/ircBot";
+import { clients, loadChatReadinessCache } from "./util/ircBot";
 import { Op } from "sequelize";
 import { restoreGiveawayRedemptionSubscriptions } from "./services/giveawaySubscriptionRestore.service";
 import { startGiveawayRedemptionReconciler } from "./jobs/giveawayRedemptionReconciler";
@@ -35,6 +35,7 @@ dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
 
   try {
+    await loadChatReadinessCache();
     await botManager.loadTokensOnStartup();
     // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
     startBotTokenAutoRefresher();

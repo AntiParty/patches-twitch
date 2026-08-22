@@ -7,6 +7,7 @@ import {
   buildReelCards,
   giveawayWinChance,
   reelLandingOffset,
+  shouldLoadReelAvatar,
   twitchAvatarUrl,
 } from './giveawayDisplay'
 import styles from './GiveawayReveal.module.css'
@@ -42,7 +43,7 @@ export function GiveawayReveal({
   const announcementTimeoutRef = useRef<number | null>(null)
   const reelViewportRef = useRef<HTMLDivElement | null>(null)
   const [reelViewportWidth, setReelViewportWidth] = useState(DEFAULT_REEL_VIEWPORT_WIDTH)
-  const [failedAvatars, setFailedAvatars] = useState<Set<string>>(() => new Set())
+  const [winnerAvatarFailed, setWinnerAvatarFailed] = useState(false)
   const reelCards = useMemo(
     () => buildReelCards(entrants, winner, REEL_LEAD_IN_CARDS, REEL_TRAILING_CARDS),
     [entrants, winner],
@@ -111,8 +112,8 @@ export function GiveawayReveal({
     >
       <motion.section
         className={styles.panel}
-        initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
-        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
       >
         <div className={styles.eyebrow}>Secure draw complete</div>
@@ -142,20 +143,21 @@ export function GiveawayReveal({
               onAnimationComplete={completeReveal}
             >
               {reelCards.map((card, index) => {
-                const avatarUrl = twitchAvatarUrl(card.username)
-                const avatarFailed = failedAvatars.has(avatarUrl)
+                const loadAvatar = shouldLoadReelAvatar(done, Boolean(card.isWinner))
+                const avatarUrl = loadAvatar ? twitchAvatarUrl(card.username) : null
                 return (
                   <article
                     className={`${styles.reelCard} ${card.isWinner ? styles.reelCardWinner : ''}`}
                     key={`${card.entryNumber}-${index}`}
                   >
                     <span className={styles.avatar} aria-hidden="true">
-                      {!avatarFailed && (
+                      {avatarUrl && !winnerAvatarFailed && (
                         <img
                           src={avatarUrl}
                           alt=""
+                          decoding="async"
                           referrerPolicy="no-referrer"
-                          onError={() => setFailedAvatars((current) => new Set(current).add(avatarUrl))}
+                          onError={() => setWinnerAvatarFailed(true)}
                         />
                       )}
                       <span className={styles.avatarFallback}>{avatarInitial(card.username)}</span>
@@ -174,8 +176,8 @@ export function GiveawayReveal({
             <motion.div
               key="winner"
               className={styles.reelWinner}
-              initial={{ opacity: 0, scale: 0.25, filter: 'blur(4px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              initial={{ opacity: 0, scale: 0.25 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ type: 'spring', duration: 0.3, bounce: 0 }}
               aria-live="polite"
             >

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '@/api/public'
 import { embarkCapabilities, embarkContact, embarkGallery } from './embarkBriefing'
+import { EmbarkProductPreview } from './EmbarkProductPreview'
 import styles from './Embark.module.css'
 
 function formatMetric(value: number | undefined): string {
@@ -95,15 +96,9 @@ export function Embark() {
             <h2 id="product">Designed for the stream, operated by the creator.</h2>
           </div>
           <div className={styles.gallery}>
-            {embarkGallery.map((item, index) => (
+            {embarkGallery.map((item) => (
               <figure className={styles.galleryItem} key={item.title}>
-                <div className={`${styles.placeholder} ${index === 0 ? styles.placeholderWide : ''}`}>
-                  <span>{item.label}</span>
-                  <div className={styles.placeholderUi} aria-hidden="true">
-                    <i /><i /><i /><i />
-                  </div>
-                  <em>Screenshot placeholder</em>
-                </div>
+                <EmbarkProductPreview kind={item.kind} />
                 <figcaption><strong>{item.title}</strong><span>{item.detail}</span></figcaption>
               </figure>
             ))}
@@ -138,7 +133,7 @@ export function Embark() {
           <div className={styles.contactLinks}>
             <a href={embarkContact.site}>FinalsRS</a>
             <a href={embarkContact.twitch} target="_blank" rel="noreferrer">Twitch</a>
-            <a href={`mailto:${embarkContact.email}`}>{embarkContact.email}</a>
+            <a href={embarkContact.twitch} target="_blank" rel="noreferrer">Message on Twitch</a>
           </div>
         </section>
       </div>

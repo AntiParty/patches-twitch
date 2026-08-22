@@ -24,6 +24,7 @@ import { giveawaysApi } from '@/api/giveaways'
 import type { GiveawayEntrant } from '@/types/giveaway'
 import { GiveawayReveal } from './GiveawayReveal'
 import { filterGiveawayEntrants } from './giveawayDisplay'
+import { canShowGiveawayRollPreview, createGiveawayRollPreview } from './giveawayPreview'
 import styles from './Giveaways.module.css'
 
 const CURRENT_KEY = ['giveaways', 'current'] as const
@@ -39,6 +40,7 @@ export function Giveaways() {
   const qc = useQueryClient()
   const toast = useToast()
   const confirm = useConfirm()
+  const showLocalPreview = canShowGiveawayRollPreview(import.meta.env.DEV, window.location.hostname)
 
   const currentQuery = useQuery({
     queryKey: CURRENT_KEY,
@@ -86,6 +88,7 @@ export function Giveaways() {
     winner: string
     slot: number
     total: number
+    preview?: boolean
   } | null>(null)
   useEffect(() => {
     localStorage.setItem('giveawayShowRoll', showRoll ? 'on' : 'off')
@@ -122,6 +125,10 @@ export function Giveaways() {
     (giveaway.type === 'redeem'
       ? giveaway.status !== 'closed'
       : giveaway.status === 'locked' || giveaway.status === 'drawn')
+
+  const startRollPreview = (viewerCount: number) => {
+    setRoll({ ...createGiveawayRollPreview(viewerCount), preview: true })
+  }
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -687,6 +694,19 @@ export function Giveaways() {
             </span>
           </label>
 
+          {showLocalPreview && (
+            <div style={{ marginTop: 16, padding: 14, border: '1px dashed var(--border, rgba(255,255,255,0.2))', borderRadius: 12 }}>
+              <strong style={{ fontSize: 13 }}>Local reveal performance test</strong>
+              <p style={{ margin: '4px 0 10px', color: 'var(--text-muted)', fontSize: 12 }}>
+                Opens a local-only reel. It does not create entries, call Twitch, or announce a winner.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <Button variant="ghost" type="button" onClick={() => startRollPreview(100)}>Preview 100 users</Button>
+                <Button variant="ghost" type="button" onClick={() => startRollPreview(200)}>Preview 200 users</Button>
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 20 }}>
             {perUser.length === 0 ? (
               <EmptyState icon="fas fa-ticket" title="No entries yet" description="Entries appear here as viewers join." />
@@ -793,7 +813,9 @@ export function Giveaways() {
             winner={roll.winner}
             slot={roll.slot}
             total={roll.total}
-            onRevealed={() => finishReveal({ username: roll.winner, slot: roll.slot, total: roll.total })}
+            onRevealed={() => {
+              if (!roll.preview) void finishReveal({ username: roll.winner, slot: roll.slot, total: roll.total })
+            }}
             onClose={() => setRoll(null)}
           />
         )}

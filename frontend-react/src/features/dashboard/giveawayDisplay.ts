@@ -10,6 +10,10 @@ export function twitchAvatarUrl(username: string): string {
   return `https://unavatar.io/twitch/${encodeURIComponent(username.replace(/^@/, ''))}`
 }
 
+export function shouldLoadReelAvatar(isRevealed: boolean, isWinnerCard: boolean): boolean {
+  return isRevealed && isWinnerCard
+}
+
 export function avatarInitial(username: string): string {
   return username.replace(/^@/, '').trim().charAt(0).toLocaleUpperCase() || '?'
 }

@@ -8,11 +8,11 @@ export const embarkCapabilities = [
 ]
 
 export const embarkGallery = [
-  { label: '01', title: 'Streamer dashboard', detail: 'A single operating surface for a channel.' },
-  { label: '02', title: 'Twitch chat', detail: 'Ranked context delivered where viewers already are.' },
-  { label: '03', title: 'Rank tracking', detail: 'Session movement, RS, and long-term progress.' },
-  { label: '04', title: 'Predictions', detail: 'Structured viewer participation around live play.' },
-]
+  { kind: 'dashboard', title: 'Streamer dashboard', detail: 'A single operating surface for a channel.' },
+  { kind: 'chat', title: 'Twitch chat', detail: 'Ranked context delivered where viewers already are.' },
+  { kind: 'tracking', title: 'Rank tracking', detail: 'Session movement, RS, and long-term progress.' },
+  { kind: 'predictions', title: 'Predictions', detail: 'Structured viewer participation around live play.' },
+] as const
 
 export const embarkContact = {
   site: '/',

@@ -5,8 +5,7 @@
   display: grid;
   place-items: center;
   padding: 20px;
-  background: rgba(4, 7, 12, 0.91);
-  backdrop-filter: blur(12px);
+  background: rgba(4, 7, 12, 0.95);
 }
 
 .panel {

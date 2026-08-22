@@ -90,6 +90,12 @@ describe('giveaway reel display', () => {
     expect(giveawayDisplay.avatarInitial('@patches')).toBe('P')
   })
 
+  test('defers avatar loading until the saved winner is revealed', () => {
+    expect(giveawayDisplay.shouldLoadReelAvatar(false, true)).toBe(false)
+    expect(giveawayDisplay.shouldLoadReelAvatar(true, false)).toBe(false)
+    expect(giveawayDisplay.shouldLoadReelAvatar(true, true)).toBe(true)
+  })
+
   test('calculates the winner chance from their eligible entries', () => {
     expect(giveawayWinChance(entrants, 'Alpha')).toBe(75)
     expect(giveawayWinChance(entrants, 'Bravo')).toBe(25)

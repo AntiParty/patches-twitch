@@ -5,7 +5,7 @@ export type EmbarkPreviewKind = 'dashboard' | 'chat' | 'tracking' | 'predictions
 const labels: Record<EmbarkPreviewKind, string> = {
   dashboard: 'Live dashboard',
   chat: 'Twitch chat',
-  tracking: 'Rank progression',
+  tracking: 'Live session tracker',
   predictions: 'Prediction control',
 }
 
@@ -35,27 +35,39 @@ function DashboardPreview() {
 
 function ChatPreview() {
   return <>
-    <div className={styles.previewTopbar}><b># antiparty</b><span className={styles.previewViewer}>1,284 viewers</span></div>
+    <div className={styles.previewTopbar}><b># antiparty</b><span className={styles.previewViewer}>1,284 watching</span></div>
     <div className={styles.chatLines}>
-      <p><b>trev_au</b> <span>!rank</span></p>
-      <p className={styles.botLine}><b>FinalsRS</b><span>ANTIPARTY is Diamond 3 · 43,280 RS</span></p>
-      <p><b>cassieplays</b> <span>huge session gain</span></p>
-      <p className={styles.chatInput}>Send a message <i>⌁</i></p>
+      <p><b>trev_au</b><span>!rank antiparty</span></p>
+      <p className={styles.botLine}>
+        <em>Ranked update</em><b>FinalsRS</b><span>Diamond 3 · 43,280 RS · +482 today</span><small>Updated from live session</small>
+      </p>
+      <p><b>cassieplays</b><span>That climb is unreal</span></p>
+      <p className={styles.chatInput}>Message #antiparty <i>⌁</i></p>
     </div>
   </>
 }
 
 function TrackingPreview() {
   return <>
-    <div className={styles.previewTopbar}><b>Ranked progress</b><span>Season 8</span></div>
-    <div className={styles.trackHeader}><div><small>CURRENT</small><b>Diamond 3</b></div><div><small>PEAK</small><b>43,701</b></div></div>
-    <div className={styles.chart}><svg viewBox="0 0 300 82" preserveAspectRatio="none" aria-hidden="true"><path d="M0 66 C26 58 34 65 56 49 S86 61 108 40 S139 50 157 32 S189 44 208 24 S242 33 260 17 S284 20 300 5" /><path className={styles.chartFill} d="M0 66 C26 58 34 65 56 49 S86 61 108 40 S139 50 157 32 S189 44 208 24 S242 33 260 17 S284 20 300 5 V82 H0Z" /></svg><div><span>Mon</span><span>Wed</span><span>Fri</span><span>Now</span></div></div>
+    <div className={styles.previewTopbar}><b>Live session</b><span className={styles.previewLive}>01:42:18</span></div>
+    <div className={styles.trackHeader}>
+      <div><small>Session start</small><b>42,798 RS</b></div>
+      <div><small>Current RS</small><b>43,280</b></div>
+      <div className={styles.sessionChange}><small>Session change</small><b>+482 RS</b></div>
+    </div>
+    <div className={styles.chart}><svg viewBox="0 0 300 82" preserveAspectRatio="none" aria-hidden="true"><path d="M0 66 C26 58 34 65 56 49 S86 61 108 40 S139 50 157 32 S189 44 208 24 S242 33 260 17 S284 20 300 5" /><path className={styles.chartFill} d="M0 66 C26 58 34 65 56 49 S86 61 108 40 S139 50 157 32 S189 44 208 24 S242 33 260 17 S284 20 300 5 V82 H0Z" /></svg><div><span>Match 1</span><span>Match 3</span><span>Match 5</span><span>Live</span></div></div>
   </>
 }
 
 function PredictionsPreview() {
   return <>
-    <div className={styles.previewTopbar}><b>Prediction live</b><span className={styles.previewLive}>03:18</span></div>
-    <div className={styles.predictionBody}><p>Will we reach 44k RS tonight?</p><div className={styles.predictionOption}><span>YES</span><b>68%</b></div><div className={`${styles.predictionOption} ${styles.predictionNo}`}><span>NO</span><b>32%</b></div><small>1,842 channel points committed</small></div>
+    <div className={styles.previewTopbar}><b>Prediction live</b><span className={styles.previewLive}>02:14</span></div>
+    <div className={styles.predictionBody}>
+      <small className={styles.predictionKicker}>Open prediction</small>
+      <p>Will AntiParty break 44k RS?</p>
+      <div className={styles.predictionOption}><span>Yes</span><b>68%<small>10,758 points</small></b></div>
+      <div className={`${styles.predictionOption} ${styles.predictionNo}`}><span>No</span><b>32%<small>5,062 points</small></b></div>
+      <div className={styles.predictionMeta}><span>2,416 viewers participating</span><span>15,820 points committed</span></div>
+    </div>
   </>
 }

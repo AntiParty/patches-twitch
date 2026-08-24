@@ -16,6 +16,6 @@ export const embarkGallery = [
 
 export const embarkContact = {
   site: '/',
-  twitch: 'https://twitch.tv/antiparty',
-  email: 'your-email@example.com',
+  x: 'https://x.com/AntipartyGG',
+  email: 'partnerships@finalsrs.com',
 }

@@ -6,6 +6,7 @@ describe('Embark briefing content', () => {
 
     expect('embarkMetrics' in briefing).toBe(false)
     expect(briefing.embarkCapabilities).toHaveLength(6)
-    expect(briefing.embarkContact.email).toBe('your-email@example.com')
+    expect(briefing.embarkContact.email).toBe('partnerships@finalsrs.com')
+    expect(briefing.embarkContact.x).toBe('https://x.com/AntipartyGG')
   })
 })

@@ -1,32 +1,22 @@
 import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '@/api/public'
 import { embarkCapabilities, embarkContact, embarkGallery } from './embarkBriefing'
+import { EmbarkMetrics } from './EmbarkMetrics'
 import { EmbarkProductPreview } from './EmbarkProductPreview'
 import styles from './Embark.module.css'
 
-function formatMetric(value: number | undefined): string {
-  return typeof value === 'number' ? new Intl.NumberFormat('en-US').format(value) : '—'
-}
-
 export function Embark() {
-  const { data: stats } = useQuery({
+  const { data: stats, status } = useQuery({
     queryKey: ['embark-stats'],
     queryFn: publicApi.getEmbarkStats,
     staleTime: 5 * 60_000,
     retry: 1,
   })
-  const metrics = [
-    { value: formatMetric(stats?.streamers), label: 'Streamers' },
-    { value: formatMetric(stats?.commandsProcessed), label: 'Commands processed' },
-    { value: formatMetric(stats?.predictionsCreated), label: 'Predictions created' },
-    { value: formatMetric(stats?.apiRequests), label: 'API requests' },
-  ]
-
   return (
     <article className={styles.root}>
       <section className={styles.hero} aria-labelledby="embark-title">
         <div className={styles.container}>
-          <p className={styles.kicker}>Private briefing</p>
+          <p className={styles.kicker}>Partnership briefing</p>
           <div className={styles.heroGrid}>
             <div>
               <p className={styles.eyebrow}>FinalsRS × Embark</p>
@@ -34,18 +24,21 @@ export function Embark() {
             </div>
             <div className={styles.heroStatement}>
               <p>
-                FinalsRS is an independently built Twitch and creator platform made specifically for
-                THE FINALS—connecting ranked play, streams, and the communities around them.
+                FinalsRS gives THE FINALS creators live ranked context, chat-native tools, and
+                community moments without pulling anyone away from the match.
               </p>
-              <a className={styles.primaryLink} href={embarkContact.site}>
-                View FinalsRS <span aria-hidden="true">↗</span>
+              <a
+                className={styles.primaryLink}
+                href={`mailto:${embarkContact.email}?subject=FinalsRS%20partnership%20conversation`}
+              >
+                Start a partnership conversation <span aria-hidden="true">↗</span>
               </a>
             </div>
           </div>
           <dl className={styles.briefMeta}>
             <div><dt>Platform</dt><dd>FinalsRS</dd></div>
             <div><dt>Built by</dt><dd>AntiParty</dd></div>
-            <div><dt>Conversation</dt><dd>Partnership / integration</dd></div>
+            <div><dt>Conversation</dt><dd>Official integration</dd></div>
           </dl>
         </div>
       </section>
@@ -53,8 +46,8 @@ export function Embark() {
       <div className={styles.container}>
         <section className={styles.section} aria-labelledby="what-it-does">
           <div className={styles.sectionHeader}>
-            <p className={styles.eyebrow}>What FinalsRS does</p>
-            <h2 id="what-it-does">A practical layer between the match and the stream.</h2>
+            <p className={styles.eyebrow}>What it unlocks</p>
+            <h2 id="what-it-does">A practical layer between the match, the stream, and its community.</h2>
           </div>
           <ul className={styles.capabilities}>
             {embarkCapabilities.map((capability, index) => (
@@ -64,30 +57,24 @@ export function Embark() {
         </section>
 
         <section className={styles.statement} aria-labelledby="why-it-exists">
-          <p className={styles.eyebrow}>Why it exists</p>
+          <p className={styles.eyebrow}>Why it matters to Embark</p>
           <h2 id="why-it-exists">
-            Built from firsthand experience streaming and playing THE FINALS.
+            A stronger creator loop around the game, not another destination to maintain.
           </h2>
           <p>
-            FinalsRS exists to make the relationship between the game, streamers, and their viewers
-            feel more immediate. The platform gives a stream useful ranked context without asking
-            creators to leave the match or viewers to leave chat.
+            Official data and integrations could make the product more reliable, grow engagement around
+            live play, and give creators a single place to run the community moments that keep viewers
+            involved.
           </p>
         </section>
 
         <section className={styles.section} aria-labelledby="traction">
           <div className={styles.sectionHeader}>
             <p className={styles.eyebrow}>Traction</p>
-            <h2 id="traction">A working platform, with live platform totals.</h2>
+            <h2 id="traction">A working platform, measured in lifetime totals.</h2>
           </div>
-          <div className={styles.metrics}>
-            {metrics.map((metric) => (
-              <div className={styles.metric} key={metric.label}>
-                <strong>{metric.value}</strong>
-                <span>{metric.label}</span>
-              </div>
-            ))}
-          </div>
+          <p className={styles.metricContext}>Lifetime platform totals</p>
+          <EmbarkMetrics status={status} stats={stats} />
         </section>
 
         <section className={styles.section} aria-labelledby="product">
@@ -119,21 +106,23 @@ export function Embark() {
 
         <section className={styles.opportunity} aria-labelledby="opportunity">
           <p className={styles.eyebrow}>Opportunity</p>
-          <h2 id="opportunity">Open to a conversation about what comes next.</h2>
+          <h2 id="opportunity">Explore an official FinalsRS integration.</h2>
           <ul>
-            <li>Partnership or official integration</li>
-            <li>Licensing or acquisition of FinalsRS and its technology</li>
-            <li>Joining Embark to continue creator and community tooling work</li>
+            <li>Bring more reliable game context to every creator experience.</li>
+            <li>Explore how FinalsRS can support creator and community initiatives.</li>
+            <li>Discuss licensing, acquisition, or continued product work.</li>
           </ul>
         </section>
 
         <section className={styles.contact} aria-labelledby="contact">
           <p className={styles.eyebrow}>Contact</p>
-          <h2 id="contact">Built by AntiParty.</h2>
+          <h2 id="contact">Let’s talk.</h2>
           <div className={styles.contactLinks}>
-            <a href={embarkContact.site}>FinalsRS</a>
-            <a href={embarkContact.twitch} target="_blank" rel="noreferrer">Twitch</a>
-            <a href={embarkContact.twitch} target="_blank" rel="noreferrer">Message on Twitch</a>
+            <a href={`mailto:${embarkContact.email}?subject=FinalsRS%20partnership%20conversation`}>
+              {embarkContact.email}
+            </a>
+            <a href={embarkContact.site}>View FinalsRS</a>
+            <a href={embarkContact.x} target="_blank" rel="noreferrer">Message on X</a>
           </div>
         </section>
       </div>

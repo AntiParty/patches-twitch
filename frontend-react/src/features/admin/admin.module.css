@@ -158,6 +158,12 @@
 }
 
 /* Drops editor */
+.dropSettings {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.2fr);
+  gap: 16px;
+  align-items: start;
+}
 .dropRow {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 40px;
@@ -167,6 +173,7 @@
 }
 
 @media (max-width: 720px) {
+  .dropSettings,
   .dropRow {
     grid-template-columns: 1fr;
   }

@@ -7,6 +7,7 @@ export interface DropConfigItem {
 export interface DropsConfig {
     lastUpdated: string;
     featuredImage: string;
+    endsAt: string;
     drops: DropConfigItem[];
 }
 
@@ -14,6 +15,18 @@ const MAX_DROPS = 50;
 
 function cleanText(value: unknown, maxLength: number): string {
     return String(value ?? '').trim().slice(0, maxLength);
+}
+
+function normalizeEndDate(value: unknown): string {
+    const endDate = cleanText(value, 100);
+    if (!endDate) return '';
+
+    const timestamp = Date.parse(endDate);
+    if (!Number.isFinite(timestamp)) {
+        throw new Error('Invalid Drops configuration end date');
+    }
+
+    return new Date(timestamp).toISOString();
 }
 
 export function normalizeDropsConfig(input: unknown): DropsConfig {
@@ -37,6 +50,17 @@ export function normalizeDropsConfig(input: unknown): DropsConfig {
     return {
         lastUpdated: cleanText(source.lastUpdated, 100),
         featuredImage: cleanText(source.featuredImage, 500),
+        endsAt: normalizeEndDate(source.endsAt),
         drops,
+    };
+}
+
+export function getPublicDropsConfig(config: DropsConfig, now = new Date()): DropsConfig {
+    if (!config.endsAt || now.getTime() < Date.parse(config.endsAt)) return config;
+
+    return {
+        ...config,
+        featuredImage: '',
+        drops: [],
     };
 }

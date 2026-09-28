@@ -20,6 +20,9 @@ export function Drops() {
   const streamersQuery = useQuery({ queryKey: ['drops', 'streamers'], queryFn: publicApi.getActiveStreamers, retry: false })
 
   const data = dropsQuery.data
+  const campaignExpired = Boolean(data?.endsAt && Date.now() >= Date.parse(data.endsAt))
+  const featuredImage = campaignExpired ? '' : data?.featuredImage
+  const activeDrops = campaignExpired ? [] : (data?.drops ?? [])
   const streamers = (streamersQuery.data ?? []).filter(
     (s, i, arr) => arr.findIndex((x) => x.channel === s.channel) === i,
   )
@@ -77,8 +80,8 @@ export function Drops() {
       <section className={styles.section}>
         <div className={styles.dropsPanel}>
           <div className={styles.featuredMedia}>
-            {data?.featuredImage ? (
-              <img className={styles.featuredImg} src={data.featuredImage} alt="Featured Twitch drop" />
+            {featuredImage ? (
+              <img className={styles.featuredImg} src={featuredImage} alt="Featured Twitch drop" />
             ) : (
               <div className={styles.featuredFallback} aria-hidden="true">
                 <div className={styles.fallbackGrid} />
@@ -100,11 +103,11 @@ export function Drops() {
               <div style={{ display: 'grid', placeItems: 'center', padding: 40 }}><Spinner /></div>
             ) : dropsQuery.isError ? (
               <EmptyState icon="fas fa-gift" title="Failed to load drops" description="Please try again later." />
-            ) : !data?.drops.length ? (
+            ) : !activeDrops.length ? (
               <EmptyState icon="fas fa-gift" title="No active drops right now" />
             ) : (
               <ul className={styles.dropsList}>
-                {data.drops.map((d, i) => (
+                {activeDrops.map((d, i) => (
                   <li className={styles.dropItem} key={i}>
                     <div>
                       <div className={styles.dropName}>{d.name}</div>

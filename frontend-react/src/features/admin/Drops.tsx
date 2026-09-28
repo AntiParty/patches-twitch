@@ -23,17 +23,24 @@ export function Drops() {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['admin', 'drops'], queryFn: adminApi.getDrops })
 
   const [featuredImage, setFeaturedImage] = useState('')
+  const [endsAt, setEndsAt] = useState('')
   const [drops, setDrops] = useState<DropItem[]>([])
 
   useEffect(() => {
     if (!data) return
     setFeaturedImage(data.featuredImage)
+    setEndsAt(data.endsAt ? data.endsAt.slice(0, 16) : '')
     setDrops(data.drops)
   }, [data])
 
   const save = useMutation({
     mutationFn: () =>
-      adminApi.saveDrops({ lastUpdated: new Date().toISOString(), featuredImage: featuredImage.trim(), drops }),
+      adminApi.saveDrops({
+        lastUpdated: new Date().toISOString(),
+        featuredImage: featuredImage.trim(),
+        endsAt: endsAt ? `${endsAt}:00.000Z` : '',
+        drops,
+      }),
   })
   const upload = useMutation({ mutationFn: (file: File) => adminApi.uploadDropImage(file) })
 
@@ -72,21 +79,35 @@ export function Drops() {
       />
 
       <Card title="Global Settings" style={{ marginBottom: 18 }}>
-        <Field label="Featured image URL">
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Input value={featuredImage} onChange={(e) => setFeaturedImage(e.target.value)} placeholder="/uploads/…" />
-            <Button variant="ghost" icon="fas fa-upload" loading={upload.isPending} onClick={() => fileRef.current?.click()}>
-              Upload
-            </Button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              style={{ display: 'none' }}
-              onChange={(e) => handleUpload(e.target.files?.[0])}
+        <div className={styles.dropSettings}>
+          <Field
+            label="Drops end (UTC)"
+            htmlFor="drops-end"
+            hint="At this time, the public image and drop list are hidden automatically."
+          >
+            <Input
+              id="drops-end"
+              type="datetime-local"
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
             />
-          </div>
-        </Field>
+          </Field>
+          <Field label="Featured image URL">
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Input value={featuredImage} onChange={(e) => setFeaturedImage(e.target.value)} placeholder="/uploads/…" />
+              <Button variant="ghost" icon="fas fa-upload" loading={upload.isPending} onClick={() => fileRef.current?.click()}>
+                Upload
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                style={{ display: 'none' }}
+                onChange={(e) => handleUpload(e.target.files?.[0])}
+              />
+            </div>
+          </Field>
+        </div>
         {featuredImage && (
           <img src={featuredImage} alt="Featured" style={{ marginTop: 12, maxHeight: 120, borderRadius: 8, border: '1px solid var(--border)' }} />
         )}

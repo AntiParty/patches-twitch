@@ -355,6 +355,7 @@
               </div>
             </div>
             <div class="drops-settings">
+              <label class="field">Drops End (UTC)<input class="input" id="drops-end" type="datetime-local"></label>
               <label class="field">Last Updated Text<input class="input" id="drops-last-updated"
                   placeholder="June 7, 2026"></label>
               <div class="upload-field">
@@ -678,6 +679,7 @@
     async function loadDrops() {
       try {
       const data = await api('/admin/api/drops');
+      document.getElementById('drops-end').value = data.endsAt ? data.endsAt.slice(0, 16) : '';
       document.getElementById('drops-last-updated').value = data.lastUpdated || '';
       document.getElementById('drops-featured-image').value = data.featuredImage || '';
       state.drops = Array.isArray(data.drops) ? data.drops : [];
@@ -698,6 +700,7 @@
     });
     document.getElementById('save-drops-button').addEventListener('click', async () => {
       const value = {
+      endsAt: document.getElementById('drops-end').value ? `${document.getElementById('drops-end').value}:00.000Z` : '',
       lastUpdated: document.getElementById('drops-last-updated').value,
       featuredImage: document.getElementById('drops-featured-image').value,
       drops: readDropRows(),

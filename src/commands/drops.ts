@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import { getPublicDropsConfig, normalizeDropsConfig } from '@/services/dropsConfig.service';
 
 interface CommandContext {
     say: (message: string, replyParentId?: string, bypassFilter?: boolean) => Promise<void>;
@@ -23,7 +24,7 @@ export const execute = async (
             return;
         }
         const dropsData = fs.readFileSync(dropsPath, 'utf-8');
-        const drops = JSON.parse(dropsData);
+        const drops = getPublicDropsConfig(normalizeDropsConfig(JSON.parse(dropsData)));
 
         if (!drops.drops || drops.drops.length === 0) {
             await ctx.say(`There are no active drops right now.`, messageId);
@@ -38,8 +39,7 @@ export const execute = async (
             })
             .join(' | ');
 
-        // Get end date from first drop (assuming all drops end at the same time)
-        const endDate = drops.drops[0]?.endDate ? ` | Ends: ${drops.drops[0].endDate}` : '';
+        const endDate = drops.endsAt ? ` | Ends: ${drops.endsAt}` : '';
 
         // Bypass filter for trusted drops message
         await ctx.say(`Current Finals Drops: ${dropList}${endDate} | Be sure to Link your account to get drops here: https://id.embark.games/id/connected-platforms`, messageId, true);

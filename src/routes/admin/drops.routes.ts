@@ -38,7 +38,7 @@ router.get('/api/drops', requireStaffAPI, async (_req: any, res: any) => {
         res.json(normalizeDropsConfig(JSON.parse(raw)));
     } catch (error: any) {
         if (error?.code === 'ENOENT') {
-            return res.json({ lastUpdated: '', featuredImage: '', drops: [] });
+            return res.json({ lastUpdated: '', featuredImage: '', endsAt: '', drops: [] });
         }
         logger.error('[Drops] Failed to read configuration:', error);
         res.status(500).json({ error: 'Failed to read Drops configuration' });

@@ -53,18 +53,17 @@ export function Landing() {
         </div>
 
         <div className={styles.heroInner}>
-          <p className={styles.eyebrow}>Twitch bot for THE FINALS</p>
+          <p className={styles.eyebrow}>Twitch tools for THE FINALS</p>
           <h1 id="landing-h1" className={styles.headline}>
-            Ranked stats
+            Make every ranked moment
             <br />
-            before chat asks.
+            part of the stream.
           </h1>
           <p className={styles.sub}>
-            FinalsRS brings live RS, session tracking, and peak rank into Twitch
-            chat — so you stay in the match.
+            Live RS, session movement, and viewer predictions—ready in chat while you stay in the match.
           </p>
           <a href={primaryHref} className={styles.cta}>
-            {primaryLabel}
+            {isAuthenticated ? primaryLabel : 'Add FinalsRS to Twitch'}
           </a>
         </div>
 
@@ -82,8 +81,8 @@ export function Landing() {
         </section>
 
         <section className={styles.section} id="commands">
-          <p className={styles.sectionLabel}>Commands</p>
-          <h2 className={styles.sectionTitle}>What chat can type</h2>
+          <p className={styles.sectionLabel}>Live product</p>
+          <h2 className={styles.sectionTitle}>What FinalsRS does while you stream</h2>
           <ul className={styles.cmdList}>
             {COMMANDS.map((c) => (
               <li key={c.cmd}>
@@ -95,8 +94,8 @@ export function Landing() {
         </section>
 
         <section className={styles.section} id="more">
-          <p className={styles.sectionLabel}>Also included</p>
-          <h2 className={styles.sectionTitle}>Everything else ranked needs</h2>
+          <p className={styles.sectionLabel}>Run the channel</p>
+          <h2 className={styles.sectionTitle}>Everything else your stream needs</h2>
           <div className={styles.featureRow}>
             {FEATURES.map((f) => (
               <div key={f.title} className={styles.feature}>
@@ -112,7 +111,7 @@ export function Landing() {
 
         <section className={styles.section} id="setup">
           <p className={styles.sectionLabel}>Setup</p>
-          <h2 className={styles.sectionTitle}>Three steps</h2>
+          <h2 className={styles.sectionTitle}>Live in three steps</h2>
           <ol className={styles.steps}>
             <li>
               <span>01</span>
@@ -158,10 +157,10 @@ export function Landing() {
 }
 
 const COMMANDS = [
-  { cmd: '!rank', desc: 'Current league and RS' },
-  { cmd: '!record', desc: 'Session gain or loss' },
-  { cmd: '!peak', desc: 'Best rank across seasons' },
-  { cmd: '!predict', desc: 'T500 cutoff estimate' },
+  { cmd: 'Chat asks', desc: 'Viewers get the ranked context they want without leaving the stream.' },
+  { cmd: 'Your session moves', desc: 'Every live gain and loss becomes a clear story for chat to follow.' },
+  { cmd: 'Predictions open', desc: 'Turn the next ranked milestone into a shared viewer moment.' },
+  { cmd: 'You keep playing', desc: 'FinalsRS handles the context while you stay focused on the match.' },
 ]
 
 const FEATURES = [

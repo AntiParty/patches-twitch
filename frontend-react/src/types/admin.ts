@@ -72,6 +72,7 @@ export interface DropItem {
 export interface DropsConfig {
   lastUpdated: string
   featuredImage: string
+  endsAt: string
   drops: DropItem[]
 }
 

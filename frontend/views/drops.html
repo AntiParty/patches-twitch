@@ -698,13 +698,18 @@
           const res = await fetch("/drops.json?t=" + Date.now());
           if (!res.ok) throw new Error("Failed to load drops data");
           const data = await res.json();
+          const campaignExpired = Boolean(
+            data.endsAt && Date.now() >= Date.parse(data.endsAt),
+          );
 
           // Update Header Info
           if (data.lastUpdated) {
             document.getElementById("drops-last-updated").textContent =
               `Last updated: ${data.lastUpdated}`;
           }
-          if (data.featuredImage) {
+          if (campaignExpired) {
+            document.getElementById("drops-featured-img").closest(".drops-featured-image").hidden = true;
+          } else if (data.featuredImage) {
             document.getElementById("drops-featured-img").src =
               data.featuredImage;
           }
@@ -713,7 +718,12 @@
           const listEl = document.getElementById("drops-list");
           listEl.innerHTML = ""; // Clear placeholder
 
-          if (data.drops && Array.isArray(data.drops)) {
+          if (campaignExpired || !data.drops || data.drops.length === 0) {
+            listEl.innerHTML = `
+              <div style="text-align: center; padding: 20px; color: var(--text-tertiary);">
+                No active drops right now.
+              </div>`;
+          } else if (Array.isArray(data.drops)) {
             data.drops.forEach((drop) => {
               const li = document.createElement("li");
               li.className = "drop-item";

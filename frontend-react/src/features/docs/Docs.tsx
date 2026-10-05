@@ -18,6 +18,7 @@ const NAV = [
       ['drops-cmd', '!drops'],
       ['goals', '!goal'],
       ['predict', '!predict'],
+      ['top500', '!top500'],
       ['predictions', 'Predictions'],
     ],
   },
@@ -152,6 +153,11 @@ export function Docs() {
               [<code>!goal remove</code>, 'Clear your current active goal.'],
             ]}
           />
+        </Section>
+
+        <Section id="top500" tag="Information" title="Current Top 500 Cutoff">
+          <p>Use <code>!top500</code> (or <code>!t500</code>) to see the RS and player at rank #500 in the current season’s latest cached leaderboard. Available to everyone, including before Ruby unlocks. Ties may affect placement.</p>
+          <CodeExample lines={[{ cmd: '!top500' }]} />
         </Section>
 
         <Section id="predict" tag="Premium / Tester" premium title="Predict Cutoff">

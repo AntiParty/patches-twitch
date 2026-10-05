@@ -166,7 +166,7 @@
       }
 
       .drops-container {
-        max-width: 1000px;
+        max-width: 1320px;
         margin: 0 auto;
         padding: 0 1.5rem;
       }
@@ -552,17 +552,6 @@
 
       <section class="drops-content">
         <div class="drops-container">
-          <!-- Active Streamers -->
-          <div class="streamers-section" id="streamers-section">
-            <div class="streamers-header">
-              <h2>Live With Drops</h2>
-              <span class="live-badge">LIVE</span>
-            </div>
-            <div class="streamers-grid" id="streamers-grid">
-              <!-- Populated by JS -->
-            </div>
-          </div>
-
           <!-- Featured Image -->
           <div class="drops-featured-image">
             <img
@@ -581,6 +570,7 @@
               >
             </div>
 
+            <p id="drops-end-date"></p>
             <ul class="drops-list" id="drops-list">
               <!-- Populated by JS -->
               <div
@@ -618,6 +608,18 @@
                 </svg>
                 View Twitch Drops
               </a>
+            </div>
+          </div>
+
+          <!-- Active Streamers -->
+          <div class="streamers-section" id="streamers-section">
+            <div class="streamers-header">
+              <h2>Live in THE FINALS</h2>
+              <span class="live-badge">LIVE</span>
+            </div>
+            <p>Check the stream for Drops eligibility before watching.</p>
+            <div class="streamers-grid" id="streamers-grid">
+              <!-- Populated by JS -->
             </div>
           </div>
 
@@ -701,6 +703,12 @@
           const campaignExpired = Boolean(
             data.endsAt && Date.now() >= Date.parse(data.endsAt),
           );
+          const endTime = Date.parse(data.endsAt);
+          document.getElementById("drops-end-date").textContent = Number.isFinite(endTime)
+            ? `${campaignExpired ? 'Ended' : 'Campaign ends'}: ${new Intl.DateTimeFormat(undefined, {
+                month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+              }).format(endTime)}`
+            : 'End date not announced';
 
           // Update Header Info
           if (data.lastUpdated) {

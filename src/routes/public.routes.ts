@@ -19,8 +19,15 @@ import { log } from 'console';
 import { Op } from 'sequelize';
 import { createEmbarkStatsHandler } from '@/services/embarkStats.service';
 import { platformCommandStats } from '@/services/platformCommandStats.service';
+import { createDropsStreamersService } from '@/services/dropsStreamers.service';
+import { getLiveStreamsForUsers, refreshToken } from '@/util/twitchUtils';
 
 const router = Router();
+
+const getDropsStreamers = createDropsStreamersService(async () => {
+    const channels = await Channel.findAll({ attributes: ['username'] });
+    return getLiveStreamsForUsers(channels.map(channel => channel.username));
+}, refreshToken);
 
 // Path to frontend assets and templates
 const viewsPath = path.join(process.cwd(), "frontend", "views");
@@ -707,23 +714,11 @@ router.get('/api/rs-prediction', async (req: Request, res: Response) => {
 
 /**
  * GET /api/active-streamers
- * Returns list of currently active stream sessions
+ * Returns tracked channels currently streaming THE FINALS, cached for one minute.
  */
 router.get('/api/active-streamers', async (req: Request, res: Response) => {
     try {
-        // Find channels marked as live
-        const activeChannels = await Channel.findAll({
-            where: { is_live: true },
-            attributes: ['username', 'stream_thumbnail_url'],
-            limit: 12 // Limit to 12 active streamers
-        });
-        
-        // Return structured data for frontend
-        const activeStreamers = activeChannels.map((c: any) => ({
-            channel: c.username,
-            thumbnail_url: c.stream_thumbnail_url
-        }));
-        res.status(200).json(activeStreamers);
+        res.status(200).json(await getDropsStreamers());
     } catch (err) {
         logger.error('Error fetching active streamers:', err);
         res.status(500).json({ error: 'Failed to fetch active streamers' });

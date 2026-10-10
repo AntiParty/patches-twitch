@@ -12,9 +12,12 @@ const NAV = [
   {
     group: 'Command Reference',
     links: [
+      ['commands', 'All Commands'],
       ['rank-vars', '!rank'],
       ['record-vars', '!record'],
       ['peak-vars', '!peak'],
+      ['enter-vars', '!enter'],
+      ['tracker-vars', '!tracker'],
       ['drops-cmd', '!drops'],
       ['goals', '!goal'],
       ['predict', '!predict'],
@@ -26,6 +29,35 @@ const NAV = [
 ]
 
 const DISCORD = 'https://discord.com/invite/2UKzvzSEqA'
+
+// Mirrors COMMAND_CATALOG in src/util/commandCatalog.ts (non-hidden entries);
+// the frontend can't import from src/. Order: everyone, mods/broadcaster, tester.
+const COMMANDS: { name: string; aliases: string[]; who: string; desc: string }[] = [
+  { name: 'bans', aliases: ['banned', 'cheaters'], who: 'Everyone', desc: 'Shows recently banned players on the ranked leaderboard.' },
+  { name: 'drops', aliases: ['drop', 'dropsinfo'], who: 'Everyone', desc: 'Lists the current active THE FINALS drops.' },
+  { name: 'enter', aliases: [], who: 'Everyone', desc: 'Enters the current giveaway (one entry per person).' },
+  { name: 'giveaway', aliases: [], who: 'Everyone', desc: 'Shows the current giveaway status and your entries.' },
+  { name: 'goal', aliases: ['setgoal', 'target'], who: 'Everyone', desc: 'Sets or shows your leaderboard rank goal and progress.' },
+  { name: 'myrank', aliases: ['randomrank', 'rrank'], who: 'Everyone', desc: 'Gets a random THE FINALS-style rank for yourself.' },
+  { name: 'peak', aliases: [], who: 'Everyone', desc: 'Shows your all-time peak rank and Rank Score.' },
+  { name: 'ping', aliases: ['status'], who: 'Everyone', desc: 'Checks that the bot is responsive and shows latency.' },
+  { name: 'rank', aliases: ['r', 'rs', 'rankscore'], who: 'Everyone', desc: 'Shows current ranked leaderboard rank, league, and Rank Score.' },
+  { name: 'record', aliases: ['wl', 'winloss', 'session'], who: 'Everyone', desc: 'Shows Rank Score gained or lost this stream session.' },
+  { name: 'top500', aliases: ['t500'], who: 'Everyone', desc: 'Shows the RS and player at rank #500.' },
+  { name: 'tracker', aliases: ['profile'], who: 'Everyone', desc: 'Links to your tracker profile.' },
+  { name: 'update', aliases: ['nextupdate', 'updatetime', 'rankupdate'], who: 'Everyone', desc: 'Shows time until the next weekly ranked update (Thursdays 4 AM MDT).' },
+  { name: 'addaccount', aliases: ['linkaccount', 'link'], who: 'Broadcaster / mods', desc: 'Links your THE FINALS account to the bot (!link <FinalsName#1234>).' },
+  { name: 'editcmd', aliases: ['setcmd', 'commandedit'], who: 'Broadcaster / mods', desc: 'Customizes the response for !rank, !record, !peak, !enter, or !tracker.' },
+  { name: 'start', aliases: [], who: 'Broadcaster / mods', desc: 'Starts a channel points prediction from a preset.' },
+  { name: 'end', aliases: [], who: 'Broadcaster / mods', desc: 'Resolves the running channel points prediction.' },
+  { name: 'cancel', aliases: [], who: 'Broadcaster / mods', desc: 'Cancels the running channel points prediction and refunds viewers.' },
+  { name: 'rankpred', aliases: [], who: 'Broadcaster / mods', desc: 'Manages automatic ranked predictions.' },
+  { name: 'part', aliases: ['leave'], who: 'Broadcaster', desc: 'Makes the bot leave your channel.' },
+  { name: 'unlink', aliases: ['remove', 'disconnect'], who: 'Broadcaster', desc: 'Removes the link to your account and parts the bot.' },
+  { name: 'preset', aliases: [], who: 'Broadcaster', desc: 'Manages channel points prediction presets.' },
+  { name: 'suppress', aliases: [], who: 'Broadcaster', desc: 'Toggles the bot link-account reminder.' },
+  { name: 'predict', aliases: ['cutoff', 'safe'], who: 'Testers', desc: 'Forecasts a future Top 500 cutoff from historical trends.' },
+]
 
 export function Docs() {
   return (
@@ -66,6 +98,40 @@ export function Docs() {
           </p>
         </header>
 
+        <Section id="commands" tag="Reference" title="All Commands">
+          <p>
+            Every public chat command. Use <code>!help &lt;command&gt;</code> in chat for a quick summary.
+          </p>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>Aliases</th>
+                  <th>Who can use</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMMANDS.map((c) => (
+                  <tr key={c.name} id={'cmd-' + c.name} className={styles.cmdRow}>
+                    <td><code>!{c.name}</code></td>
+                    <td>
+                      {c.aliases.length
+                        ? c.aliases.map((a, i) => (
+                            <span key={a}>{i > 0 && ', '}<code>!{a}</code></span>
+                          ))
+                        : '—'}
+                    </td>
+                    <td>{c.who}</td>
+                    <td>{c.desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
         <Section id="linking" tag="Essentials" title="Account Management">
           <p>
             To start tracking your stats, you must link your <strong>THE FINALS</strong> account.
@@ -81,8 +147,8 @@ export function Docs() {
 
         <Section id="customizing" tag="Advanced" title="Customizing Commands">
           <p>
-            FinalsRS lets you fully customize how the bot responds to commands like <code>!rank</code>,{' '}
-            <code>!record</code>, and <code>!peak</code>. Variables wrapped in curly braces (e.g.{' '}
+            FinalsRS lets you fully customize how the bot responds to <code>!rank</code>,{' '}
+            <code>!record</code>, <code>!peak</code>, <code>!enter</code>, and <code>!tracker</code>. Variables wrapped in curly braces (e.g.{' '}
             <code>{'{rank}'}</code>) are replaced with real player data.
           </p>
           <h3>The !editcmd Command</h3>
@@ -94,8 +160,8 @@ export function Docs() {
             ]}
           />
           <p>
-            To reset a command to its default behavior, type <code>!editcmd &lt;command&gt;</code>{' '}
-            without a message.
+            To reset a command to its default behavior, type <code>!editcmd &lt;command&gt; reset</code>.
+            Run <code>!editcmd &lt;command&gt;</code> on its own to see the current response.
           </p>
         </Section>
 
@@ -107,6 +173,8 @@ export function Docs() {
               ['{rank}', 'Current leaderboard rank (e.g. #450).'],
               ['{league}', 'Current league (e.g. Diamond 3).'],
               ['{rankScore}', 'Current Rank Score (RS) value.'],
+              ['{score}', 'Alias for {rankScore}.'],
+              ['{found}', 'true if the player was found on the leaderboard, otherwise false.'],
             ]}
           />
         </Section>
@@ -118,6 +186,9 @@ export function Docs() {
               ['{sessionRS}', 'RS gained or lost this session (e.g. +120).'],
               ['{currentRS}', 'Your total current RS.'],
               ['{startRS}', 'Your RS at the start of the stream.'],
+              ['{gain}', 'Alias for {sessionRS}.'],
+              ['{score}', 'Alias for {currentRS}.'],
+              ['{username}', 'The Twitch user who called the command.'],
             ]}
           />
         </Section>
@@ -129,7 +200,28 @@ export function Docs() {
               ['{rank}', 'Highest rank ever achieved.'],
               ['{league}', 'League of peak rank (e.g. Diamond 1).'],
               ['{rankScore}', 'Peak Rank Score (RS) value.'],
+              ['{score}', 'Alias for {rankScore}.'],
               ['{season}', 'The season the peak was achieved.'],
+            ]}
+          />
+        </Section>
+
+        <Section id="enter-vars" tag="Reference" title="!enter Command">
+          <p>Enters the current giveaway. Customize the confirmation with <code>!editcmd enter</code>.</p>
+          <VarGrid
+            vars={[
+              ['{user}', 'The Twitch user who entered.'],
+              ['{prize}', 'The current giveaway prize.'],
+            ]}
+          />
+        </Section>
+
+        <Section id="tracker-vars" tag="Reference" title="!tracker Command">
+          <p>Links to your tracker profile. Customize the reply with <code>!editcmd tracker</code>.</p>
+          <VarGrid
+            vars={[
+              ['{url}', 'Link to your tracker profile.'],
+              ['{id}', 'Your linked THE FINALS player ID.'],
             ]}
           />
         </Section>
@@ -235,8 +327,8 @@ export function Docs() {
           <p>Standard commands for interacting with the bot and discovering available features.</p>
           <CmdTable
             rows={[
-              [<code>!commands</code>, 'Lists all available commands for the channel.'],
-              [<code>!help [command]</code>, 'Get detailed usage info for a specific command.'],
+              [<code>!help</code>, 'Lists the public commands.'],
+              [<code>!help [command]</code>, 'Shows the description, usage, and docs link for a specific command.'],
               [<code>!ping</code>, 'Check if the bot is responsive and view latency.'],
             ]}
           />

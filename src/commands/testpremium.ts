@@ -18,15 +18,16 @@ export const minRole = "tester";
 
 // Role hierarchy for permission checks
 const ROLE_HIERARCHY: Record<string, number> = {
-  'Basic user': 0,
+  'basic user': 0,
   'tester': 1,
   'analyst': 2,
-  'Staff': 3,
-  'admin': 4,
+  'admin': 3,
+  'staff': 4,
+  'owner': 5,
 };
 
 function hasRole(userRole: string, requiredRole: string): boolean {
-  return (ROLE_HIERARCHY[userRole] || 0) >= (ROLE_HIERARCHY[requiredRole] || 0);
+  return (ROLE_HIERARCHY[(userRole || '').toLowerCase()] || 0) >= (ROLE_HIERARCHY[(requiredRole || '').toLowerCase()] || 0);
 }
 
 export const execute = async (
@@ -173,7 +174,7 @@ async function handleStatus(
   }
 
   // Check if they have access (via subscription OR role)
-  const hasAccess = hasSub || ['tester', 'Staff', 'admin'].includes(role);
+  const hasAccess = hasSub || ['tester', 'staff', 'admin'].includes(role.toLowerCase());
   statusMsg += ` | Has Premium Access: ${hasAccess ? 'Yes' : 'No'}`;
 
   await ctx.say(statusMsg);
@@ -194,13 +195,13 @@ async function handleSimulate(
   // Check current status
   const hasSub = targetChannel.has_subscription;
   const role = targetChannel.role || 'Basic user';
-  const hasAccess = hasSub || ['tester', 'Staff', 'admin'].includes(role);
+  const hasAccess = hasSub || ['tester', 'staff', 'admin'].includes(role.toLowerCase());
 
   await ctx.say(
     `@${displayName} Simulating premium for ${targetUser}: ` +
     `Current access: ${hasAccess ? 'GRANTED' : 'DENIED'} | ` +
     `Subscription: ${hasSub ? 'Active' : 'Inactive'} | ` +
-    `Role bypass: ${['tester', 'Staff', 'admin'].includes(role) ? 'Yes (' + role + ')' : 'No'}`
+    `Role bypass: ${['tester', 'staff', 'admin'].includes(role.toLowerCase()) ? 'Yes (' + role + ')' : 'No'}`
   );
 }
 
@@ -295,4 +296,4 @@ async function handleInfo(
   );
 }
 
-export const aliases = ["testpremium", "tpremium", "premiumtest"];
+export const aliases = ["tpremium", "premiumtest"];

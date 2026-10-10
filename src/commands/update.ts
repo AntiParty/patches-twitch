@@ -1,7 +1,7 @@
 /**
  * !update / !nextupdate
  * Reports how long until the next weekly ranked update.
- * Updates drop every Thursday at 3:00 AM Mountain Daylight Time (UTC-6).
+ * Updates drop every Thursday at 4:00 AM Mountain Daylight Time (UTC-6) = 10:00 UTC.
  */
 
 // MDT is UTC-6. MST (winter) is UTC-7, but the game's update schedule is
@@ -12,7 +12,7 @@ const UPDATE_DAY = 4;      // Thursday (0 = Sunday … 6 = Saturday)
 function getNextUpdateMs(): number {
     const now = new Date();
 
-    // Build a candidate for this week's Thursday @ 09:00 UTC
+    // Build a candidate for this week's Thursday @ 10:00 UTC
     const candidate = new Date(now);
     candidate.setUTCHours(UPDATE_HOUR_UTC, 0, 0, 0);
 

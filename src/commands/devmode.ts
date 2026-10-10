@@ -67,4 +67,4 @@ export function getDevModeChannels(): string[] {
     return Array.from(devModeChannels);
 }
 
-export const aliases = ['devmode', 'dev'];
+export const aliases = ['dev'];

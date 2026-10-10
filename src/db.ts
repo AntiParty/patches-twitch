@@ -71,6 +71,10 @@ async function setCustomResponse(channel: string, command: string, response: str
   await CustomResponse.upsert({ channel, command, response });
 }
 
+async function deleteCustomResponse(channel: string, command: string): Promise<number> {
+  return CustomResponse.destroy({ where: { channel, command } });
+}
+
 
 class CustomResponse extends Model { }
 CustomResponse.init(
@@ -1200,4 +1204,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse, deleteCustomResponse };

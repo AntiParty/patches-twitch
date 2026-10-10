@@ -28,7 +28,8 @@ export const execute = async (
   ctx: CommandContext,
   _channel: string,
   message: string,
-  args: string[]
+  _tags: Record<string, any>,
+  _args: string[]
 ) => {
   try {
     const username = ctx.tags?.['display-name'] || ctx.user || 'user';

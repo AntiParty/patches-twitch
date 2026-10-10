@@ -54,7 +54,7 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
 
   if (temp !== "N/A") parts.push(`Temp: ${temp}`);
 
-  await ctx.say(parts.join(" | "));
+  await ctx.say(parts.join(" | "), ctx.tags?.["id"]);
 };
 
-export const aliases = ["status", "ping"];
+export const aliases = ["status"];

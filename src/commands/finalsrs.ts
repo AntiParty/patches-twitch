@@ -19,4 +19,4 @@ export const execute = async (
     }
 }
 
-export const aliases = ["finalsrs", "aboutfinalsrs"];
+export const aliases = ["aboutfinalsrs"];

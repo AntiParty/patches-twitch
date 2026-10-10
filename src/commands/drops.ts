@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import logger from '@/util/logger';
 import { getPublicDropsConfig, normalizeDropsConfig } from '@/services/dropsConfig.service';
 
 interface CommandContext {
@@ -13,8 +14,9 @@ interface CommandContext {
 export const execute = async (
     ctx: CommandContext,
     _channel: string,
-    message: string,
-    args: string[]
+    _message: string,
+    _tags: Record<string, any>,
+    _args: string[]
 ) => {
     const messageId = ctx.tags?.["id"];
     try {
@@ -44,9 +46,9 @@ export const execute = async (
         // Bypass filter for trusted drops message
         await ctx.say(`Current Finals Drops: ${dropList}${endDate} | Be sure to Link your account to get drops here: https://id.embark.games/id/connected-platforms`, messageId, true);
     } catch (error) {
-        console.error('Error reading drops file:', error);
+        logger.error('[drops] Error reading drops file:', error);
         await ctx.say(`There are no active drops right now.`, messageId);
     }
 }
 
-export const aliases = ['drops', 'drop', 'dropsinfo'];
+export const aliases = ['drop', 'dropsinfo'];

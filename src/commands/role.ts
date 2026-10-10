@@ -33,4 +33,3 @@ export const execute = async (
     }
 }
 
-export const aliases = ["role"];

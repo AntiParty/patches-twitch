@@ -102,4 +102,4 @@ export const execute = async (
   }
 };
 
-export const aliases = ["predict", "cutoff", "safe"];
+export const aliases = ["cutoff", "safe"];

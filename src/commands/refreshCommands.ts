@@ -13,8 +13,9 @@ interface CommandContext {
 export const execute = async (
     ctx: CommandContext,
     _channel: string,
-    message: string,
-    args: string[]
+    _message: string,
+    _tags: Record<string, any>,
+    _args: string[]
 ) => {
     try {
         if (ctx.user.toLowerCase() !== "antiparty") {
@@ -26,9 +27,8 @@ export const execute = async (
         logger.info(`[refresh] Commands reloaded by ${ctx.user} in ${ctx.channel}`);
 
     } catch (error) {
-        console.error("Error occurred while executing refresh command:", error);
         await ctx.say(`[Admin] Failed to reload commands.`, ctx.tags?.["id"]);
-        logger.error(`[refresh] Failed to reload commands by ${ctx.user} in ${ctx.channel}`);
+        logger.error(`[refresh] Failed to reload commands by ${ctx.user} in ${ctx.channel}`, error);
     }
 }
 

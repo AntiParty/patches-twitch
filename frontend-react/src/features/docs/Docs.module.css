@@ -208,3 +208,10 @@
     position: static;
   }
 }
+
+.cmdRow {
+  scroll-margin-top: 80px;
+}
+.cmdRow:target td {
+  background: var(--bg-hover);
+}

@@ -31,7 +31,7 @@ describe('drops command', () => {
             user: 'viewer',
             channel: 'patches',
             message: '!drops',
-        }, 'patches', '!drops', []);
+        }, 'patches', '!drops', {}, []);
 
         assert.deepEqual(messages, ['There are no active drops right now.']);
     });

@@ -14,6 +14,7 @@ export const execute = async (
   ctx: CommandContext,
   _channel: string,
   _message: string,
+  _tags: Record<string, any>,
   _args: string[]
 ) => {
   try {

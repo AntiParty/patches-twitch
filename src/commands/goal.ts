@@ -1,6 +1,6 @@
 import logger from "../util/logger";
 import { Channel, RankGoal } from "../db";
-import { getLatestLeaderboardData } from "./record";
+import { getLatestLeaderboardData } from "../util/leaderboardCache";
 
 export interface CommandContext {
     say: (message: string, replyToId?: string) => Promise<void>;

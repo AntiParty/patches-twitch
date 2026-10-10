@@ -26,7 +26,7 @@ export async function execute(ctx: any, channel: string, _message: string, _tags
     const playerId = channelInstance?.player_id?.trim();
     if (!playerId) {
       await ctx.say(
-        `No THE FINALS account linked yet. Run: !link YourName#1234 (replace with your exact in-game name + tag). Need help? https://finalsrs.com/docs#link`,
+        `No THE FINALS account linked yet. Run: !link YourName#1234 (replace with your exact in-game name + tag). Need help? https://finalsrs.com/docs#linking`,
         messageId
       );
       return;

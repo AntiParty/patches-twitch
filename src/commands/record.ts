@@ -1,8 +1,8 @@
-import path from "path";
-import fs from "fs/promises";
 import logger from "../util/logger";
 import { Channel, StreamSession, getCustomResponse } from "../db";
 import { searchPlayer } from "../util/leaderboardSearch";
+import * as leaderboardCache from "../util/leaderboardCache";
+import { getTransitionSuffix } from "../util/leaderboardCache";
 
 export interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -13,51 +13,14 @@ export interface CommandContext {
   tags?: Record<string, any>;
 }
 
-function getCacheDir() {
-  return path.resolve(__dirname, "../../cache");
-}
-
-async function getTransitionSuffix(): Promise<string> {
-  try {
-    const raw = await fs.readFile(path.resolve(__dirname, "../../cache/meta.json"), "utf8");
-    const meta = JSON.parse(raw);
-    if (meta?.transitioning) return ` [S${meta.season} API not found - waiting on Embark]`;
-  } catch {
-    // meta.json missing - no suffix
-  }
-  return "";
-}
-
+// Thin wrappers keep these assignable on this module's exports (tests stub
+// `getLatestLeaderboardData`, and callers resolve it through this module).
 export async function getLatestCacheFile(prefix: string): Promise<string | null> {
-  try {
-    const files = await fs.readdir(getCacheDir());
-    const matched = files
-      .filter(f => f.startsWith(prefix) && f.endsWith(".json"))
-      .map(f => {
-        const num = parseInt(f.match(/\d+/)?.[0] ?? "0", 10);
-        return { file: f, season: num };
-      })
-      .filter(x => x.season > 0)
-      .sort((a, b) => b.season - a.season);
-
-    return matched.length > 0 ? path.join(getCacheDir(), matched[0].file) : null;
-  } catch (err) {
-    logger.error(`Failed to list cache files for ${prefix}:`, err);
-    return null;
-  }
+  return leaderboardCache.getLatestCacheFile(prefix);
 }
 
 export async function getLatestLeaderboardData() {
-  const file = await getLatestCacheFile("regular_s");
-  if (!file) return null;
-  try {
-    const raw = await fs.readFile(file, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : null;
-  } catch (err) {
-    logger.error("[record] Failed to read leaderboard cache:", err);
-    return null;
-  }
+  return leaderboardCache.getLatestLeaderboardData();
 }
 
 export async function getLatestWorldTourData() {

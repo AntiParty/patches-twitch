@@ -204,6 +204,7 @@ export function Overlays() {
               ['hideRank', 'Hide Rank'],
               ['hideScore', 'Hide Score'],
               ['hideSession', 'Hide Session'],
+              ...(config.theme === 'goal' ? ([['hideLastGame', 'Hide Last Game']] as const) : []),
             ] as const).map(([key, label]) => (
               <label key={key} className={styles.toggle}>
                 <input

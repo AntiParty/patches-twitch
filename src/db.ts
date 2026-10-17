@@ -529,11 +529,59 @@ RankGoal.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    // 'league' | 'rs' | 'rank'; null on rows written before goal types (see util/rankGoal.ts)
+    goal_type: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    target_label: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize,
     modelName: 'RankGoal',
     tableName: 'RankGoals',
+    timestamps: false,
+  }
+);
+
+// RankProgress model - last observed RS per channel, for "gained X RS last game"
+class RankProgress extends Model { }
+RankProgress.init(
+  {
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    season: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    last_rs: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    last_change: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    last_change_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: 'RankProgress',
+    tableName: 'RankProgress',
     timestamps: false,
   }
 );
@@ -595,6 +643,17 @@ CommandUsage.init(
     ]
   }
 );
+
+async function migrateRankGoals(queryInterface: any) {
+  const table = await queryInterface.describeTable('RankGoals').catch(() => null);
+  if (!table) return;
+  for (const column of ['goal_type', 'target_label']) {
+    if (!table[column]) {
+      logger.info(`[Migration] Adding ${column} column to RankGoals table...`);
+      await queryInterface.addColumn('RankGoals', column, { type: DataTypes.STRING, allowNull: true });
+    }
+  }
+}
 
 /**
  * Simple migration runner to add missing columns without wiping the DB.
@@ -805,6 +864,7 @@ async function runMigrations() {
       });
     }
 
+    await migrateRankGoals(queryInterface);
     await migratePredictionPresets(queryInterface);
     await migratePredictionAutomation(queryInterface);
     await migrateGiveaways(queryInterface);
@@ -1204,4 +1264,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse, deleteCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, RankProgress, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse, deleteCustomResponse };

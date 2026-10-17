@@ -13,15 +13,17 @@ import { useToast } from '@/hooks/useToast'
 import { COMMANDS_KEY, useCommands } from './hooks'
 import styles from './Commands.module.css'
 
-type CommandId = 'rank' | 'record' | 'peak'
+type CommandId = 'rank' | 'record' | 'peak' | 'goal'
 
-const EDITABLE_COMMANDS = new Set<string>(['rank', 'record', 'peak'])
+const EDITABLE_COMMANDS = new Set<string>(['rank', 'record', 'peak', 'goal'])
+const RESPONSE_MAX_LENGTH: Record<CommandId, number> = { rank: 50, record: 50, peak: 50, goal: 200 }
 const COMMAND_CONTROLS_KEY = ['dashboard', 'command-controls'] as const
 
 const COMMAND_DEFAULTS: Record<CommandId, string> = {
   rank: '@{username}, current rank is {score} RS in {league}',
   record: '@{username}, session RS: {sessionRS} ({currentRS} RS)',
   peak: 'Peak rank: #{rank} {league} ({score} RS) in {season}',
+  goal: '{channel} is at {rs} RS in {league} (#{rank}). {gainedLost} {lastChangeAbs} RS last game. {rsAway} RS away from {goal} ({progress} there).',
 }
 
 const COMMAND_VARIABLES: Record<CommandId, Array<{ token: string; description: string }>> = {
@@ -45,6 +47,22 @@ const COMMAND_VARIABLES: Record<CommandId, Array<{ token: string; description: s
     { token: '{score}', description: 'RS at peak' },
     { token: '{season}', description: 'Peak season' },
   ],
+  goal: [
+    { token: '{channel}', description: 'Channel name' },
+    { token: '{username}', description: "Viewer's display name" },
+    { token: '{rs}', description: 'Current RS' },
+    { token: '{league}', description: 'Current league' },
+    { token: '{rank}', description: 'Leaderboard position' },
+    { token: '{gainedLost}', description: '"Gained" or "Lost" (last game)' },
+    { token: '{lastChangeAbs}', description: 'Last game RS, unsigned' },
+    { token: '{lastChange}', description: 'Last game RS, signed (+17)' },
+    { token: '{session}', description: 'Session RS change' },
+    { token: '{goal}', description: 'Goal name (Ruby, Diamond 1…)' },
+    { token: '{goalRS}', description: 'RS the goal needs' },
+    { token: '{rsAway}', description: 'RS left to the goal' },
+    { token: '{ranksAway}', description: 'Positions left (rank goals)' },
+    { token: '{progress}', description: 'Percent of the way there' },
+  ],
 }
 
 function isEditableCommand(name: string): name is CommandId {
@@ -62,7 +80,7 @@ export function Commands() {
   })
 
   const [search, setSearch] = useState('')
-  const [values, setValues] = useState<Record<CommandId, string>>({ rank: '', record: '', peak: '' })
+  const [values, setValues] = useState<Record<CommandId, string>>({ rank: '', record: '', peak: '', goal: '' })
   const [editing, setEditing] = useState<CommandId | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -72,6 +90,7 @@ export function Commands() {
       rank: responses.commands.find((command) => command.name === 'rank')?.response ?? '',
       record: responses.commands.find((command) => command.name === 'record')?.response ?? '',
       peak: responses.commands.find((command) => command.name === 'peak')?.response ?? '',
+      goal: responses.commands.find((command) => command.name === 'goal')?.response ?? '',
     })
   }, [responses])
 
@@ -253,12 +272,12 @@ export function Commands() {
               ref={textareaRef}
               id="command-response"
               rows={5}
-              maxLength={50}
+              maxLength={RESPONSE_MAX_LENGTH[editing]}
               value={values[editing]}
               placeholder={COMMAND_DEFAULTS[editing]}
               onChange={(event) => setValues((current) => ({ ...current, [editing]: event.target.value }))}
             />
-            <div className={styles.characterCount}>{values[editing].length} / 50</div>
+            <div className={styles.characterCount}>{values[editing].length} / {RESPONSE_MAX_LENGTH[editing]}</div>
 
             <div className={styles.variableHeader}>
               <span>Variables</span>

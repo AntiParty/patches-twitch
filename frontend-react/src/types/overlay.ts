@@ -5,6 +5,8 @@ export interface OverlayVisibility {
   hideRank?: boolean
   hideScore?: boolean
   hideSession?: boolean
+  /** Goal overlay only. */
+  hideLastGame?: boolean
 }
 
 export interface OverlayLayout {

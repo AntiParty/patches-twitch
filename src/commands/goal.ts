@@ -1,6 +1,7 @@
 import logger from "../util/logger";
-import { Channel, RankGoal } from "../db";
-import { getLatestLeaderboardData } from "../util/leaderboardCache";
+import { Channel, RankGoal, getCustomResponse } from "../db";
+import { getGoalSnapshot, saveGoal } from "../services/rankGoal.service";
+import { applyTemplate, buildGoalVars, formatDefaultGoalMessage, parseGoalInput } from "../util/rankGoal";
 
 export interface CommandContext {
     say: (message: string, replyToId?: string) => Promise<void>;
@@ -11,215 +12,111 @@ export interface CommandContext {
     tags?: Record<string, any>;
 }
 
+export const name = "goal";
+export const description = "Shows rank goal progress. Broadcaster/mods: !goal <ruby | diamond 1 | 50000rs | #100 | remove>";
+
+const USAGE = "!goal ruby, !goal diamond 1, !goal 50000rs or !goal #100";
+
+function canManageGoal(username: string, channel: string, tags: Record<string, any> | undefined) {
+    const user = username.toLowerCase();
+    return (
+        user === channel.toLowerCase() ||
+        tags?.badges?.broadcaster === "1" ||
+        Boolean(tags?.badges?.moderator) ||
+        tags?.mod === "1" ||
+        user === "antiparty"
+    );
+}
+
 export const execute = async (
     ctx: CommandContext,
     _channel: string,
-    message: string,
+    _message: string,
     tags: Record<string, any>,
     args: string[]
 ) => {
     const username = tags?.["display-name"] || ctx.user || "user";
     const sanitizedChannel = ctx.channel.replace(/^#/, "");
+    const messageId = ctx.tags?.["id"];
 
     try {
-        // Check if user has linked account
-        const channelInstance = (await Channel.findOne({
-            where: { username: sanitizedChannel },
-        })) as any;
-
-        const playerId = channelInstance?.player_id;
+        const channelInstance = (await Channel.findOne({ where: { username: sanitizedChannel } })) as any;
+        const playerId = channelInstance?.player_id?.trim();
         if (!playerId) {
-            await ctx.say(
-                `@${username}, you need to link your THE FINALS account first. Use !link FinalsName#1234`,
-                ctx.tags?.["id"]
-            );
+            await ctx.say(`@${username}, no THE FINALS account linked. Use !link FinalsName#1234`, messageId);
             return;
         }
 
-        // If no arguments, show current goal
-        if (args.length === 0) {
-            const existingGoal = await RankGoal.findOne({
-                where: { channel: sanitizedChannel },
-            }) as any;
+        const action = args[0]?.toLowerCase();
 
-            if (!existingGoal) {
-                await ctx.say(
-                    `@${username}, you don't have a rank goal set. Use !goal <rank> to set one (e.g., !goal 100)`,
-                    ctx.tags?.["id"]
-                );
+        if (action === "remove" || action === "delete" || action === "clear") {
+            if (!canManageGoal(username, sanitizedChannel, tags)) {
+                await ctx.say(`@${username}, only the broadcaster or mods can change the goal.`, messageId);
                 return;
             }
-
-            // Get current rank
-            const cachedData = await getLatestLeaderboardData();
-            if (!cachedData) {
-                await ctx.say(
-                    `@${username}, leaderboard data is temporarily unavailable.`,
-                    ctx.tags?.["id"]
-                );
-                return;
-            }
-
-            const finalsName = playerId.toLowerCase();
-            let player = cachedData.find((p: any) => p.name.toLowerCase() === finalsName);
-
-            if (!player && finalsName.includes("#")) {
-                const baseName = finalsName.split("#")[0];
-                player = cachedData.find((p: any) => p.name.toLowerCase().startsWith(baseName));
-            }
-
-            if (!player) {
-                await ctx.say(
-                    `@${username}, you're not currently in the Top 1000 leaderboard.`,
-                    ctx.tags?.["id"]
-                );
-                return;
-            }
-
-            const currentRank = player.rank;
-            const currentRS = player.rankScore;
-            const currentLeague = player.league; // Use league from cache data
-            const targetRank = existingGoal.target_rank;
-            const targetRS = existingGoal.target_rank_score || 0;
-            const startingRank = existingGoal.starting_rank;
-            const startingRS = existingGoal.starting_rank_score;
-
-            // Find target player to get their league
-            const targetPlayer = cachedData.find((p: any) => p.rank === targetRank);
-            const targetLeague = targetPlayer?.league || "";
-
-            // Calculate progress
-            const rankDiff = currentRank - targetRank;
-            const rsDiff = targetRS - currentRS;
-            const progressFromStart = startingRank ? ((startingRank - currentRank) / (startingRank - targetRank) * 100).toFixed(1) : 0;
-
-            let response = `@${username}, Goal: Rank #${targetRank}`;
-
-            if (targetLeague) {
-                response += ` (${targetLeague})`;
-            }
-
-            response += ` | Current: #${currentRank} (${currentLeague}, ${currentRS.toLocaleString()} RS)`;
-
-            if (rankDiff > 0) {
-                response += ` | ${rankDiff} ranks to go`;
-                if (rsDiff > 0) {
-                    response += `, need ${rsDiff.toLocaleString()} RS`;
-                }
-            }
-
-            if (startingRank && Number(progressFromStart) > 0) {
-                response += ` | Progress: ${progressFromStart}%`;
-            }
-
-            await ctx.say(response, ctx.tags?.["id"]);
+            const deleted = await RankGoal.destroy({ where: { channel: sanitizedChannel } });
+            await ctx.say(deleted ? `@${username}, rank goal removed.` : `@${username}, no rank goal is set.`, messageId);
             return;
         }
 
-        // Remove goal
-        if (args[0]?.toLowerCase() === "remove" || args[0]?.toLowerCase() === "delete") {
-            const deleted = await RankGoal.destroy({
-                where: { channel: sanitizedChannel },
-            });
-
-            if (deleted) {
-                await ctx.say(
-                    `@${username}, your rank goal has been removed.`,
-                    ctx.tags?.["id"]
-                );
+        // Set a new goal
+        if (args.length > 0) {
+            if (!canManageGoal(username, sanitizedChannel, tags)) {
+                // Viewers typing "!goal something" just get the current progress.
+                args = [];
             } else {
-                await ctx.say(
-                    `@${username}, you don't have a rank goal set.`,
-                    ctx.tags?.["id"]
-                );
+                const parsed = parseGoalInput(args);
+                if (!parsed) {
+                    await ctx.say(`@${username}, couldn't read that goal. Try ${USAGE}`, messageId);
+                    return;
+                }
+
+                const snapshot = await getGoalSnapshot(sanitizedChannel, playerId);
+                const progress = await saveGoal(sanitizedChannel, parsed, snapshot.player, snapshot.leaderboard);
+                logger.info(`[goal] ${sanitizedChannel} set goal to ${parsed.type}:${parsed.label}`);
+
+                let response = `@${username}, goal set: ${parsed.label}`;
+                if (progress?.target.targetRS != null) response += ` (${progress.target.targetRS.toLocaleString("en-US")} RS)`;
+                if (progress?.achieved) {
+                    response += `. Already there!`;
+                } else if (progress?.rsAway != null) {
+                    response += `. ${progress.rsAway.toLocaleString("en-US")} RS to go`;
+                } else if (!snapshot.player) {
+                    response += `. Progress starts once you're on the Top 10k leaderboard`;
+                }
+                await ctx.say(response + ".", messageId);
+                return;
             }
+        }
+
+        // Show progress
+        const snapshot = await getGoalSnapshot(sanitizedChannel, playerId);
+        if (!snapshot.player) {
+            await ctx.say(`@${username}, ${sanitizedChannel} isn't on the ranked leaderboard (Top 10k) right now.`, messageId);
             return;
         }
 
-        // Set new goal
-        const targetRankInput = args[0];
-        const targetRank = parseInt(targetRankInput, 10);
-
-        if (isNaN(targetRank) || targetRank < 1 || targetRank > 10000) {
-            await ctx.say(
-                `@${username}, please provide a valid rank between 1 and 10000 (e.g., !goal 100)`,
-                ctx.tags?.["id"]
-            );
-            return;
-        }
-
-        // Get current rank
-        const cachedData = await getLatestLeaderboardData();
-        if (!cachedData) {
-            await ctx.say(
-                `@${username}, leaderboard data is temporarily unavailable.`,
-                ctx.tags?.["id"]
-            );
-            return;
-        }
-
-        const finalsName = playerId.toLowerCase();
-        let currentPlayer = cachedData.find((p: any) => p.name.toLowerCase() === finalsName);
-
-        if (!currentPlayer && finalsName.includes("#")) {
-            const baseName = finalsName.split("#")[0];
-            currentPlayer = cachedData.find((p: any) => p.name.toLowerCase().startsWith(baseName));
-        }
-
-        if (!currentPlayer) {
-            await ctx.say(
-                `@${username}, you're not currently in the Top 1000 leaderboard.`,
-                ctx.tags?.["id"]
-            );
-            return;
-        }
-
-        // Find target rank's RS requirement and league
-        const targetPlayer = cachedData.find((p: any) => p.rank === targetRank);
-        const targetRS = targetPlayer?.rankScore || null;
-        const targetLeague = targetPlayer?.league || "";
-
-        // Create or update goal
-        await RankGoal.upsert({
+        const vars = buildGoalVars({
+            username,
             channel: sanitizedChannel,
-            target_rank: targetRank,
-            target_rank_score: targetRS,
-            starting_rank: currentPlayer.rank,
-            starting_rank_score: currentPlayer.rankScore,
-            created_at: new Date(),
-            achieved: false,
-            achieved_at: null,
+            player: snapshot.player,
+            progress: snapshot.progress,
+            lastGame: snapshot.lastGame,
+            sessionChange: snapshot.sessionChange,
         });
 
-        const rankDiff = currentPlayer.rank - targetRank;
-        const rsDiff = targetRS ? targetRS - currentPlayer.rankScore : 0;
-
-        let response = `@${username}, goal set to rank #${targetRank}`;
-
-        if (targetLeague) {
-            response += ` (${targetLeague})`;
+        const custom = await getCustomResponse(sanitizedChannel, "goal");
+        if (custom) {
+            await ctx.say(applyTemplate(custom, vars), messageId);
+            return;
         }
 
-        if (rankDiff > 0) {
-            response += `! You need to climb ${rankDiff} ranks`;
-            if (rsDiff > 0) {
-                response += ` and gain ${rsDiff.toLocaleString()} RS`;
-            }
-        } else if (rankDiff < 0) {
-            response += `! You're already rank #${currentPlayer.rank} (${currentPlayer.league}), keep it up! 🔥`;
-        } else {
-            response += `! You're already there! 🎉`;
-        }
-
-        await ctx.say(response, ctx.tags?.["id"]);
-        logger.info(`[goal] ${sanitizedChannel} set goal to rank #${targetRank}`);
-
+        let response = formatDefaultGoalMessage(vars, snapshot.progress, snapshot.lastGame);
+        if (!snapshot.goal) response += ` No goal set yet (${USAGE}).`;
+        await ctx.say(response, messageId);
     } catch (error) {
         logger.error("[goal] Error executing command:", error);
-        await ctx.say(
-            `@${username}, there was an error setting your goal. Please try again.`,
-            ctx.tags?.["id"]
-        );
+        await ctx.say(`@${username}, couldn't load goal progress right now. Try again shortly.`, messageId);
     }
 };
 

@@ -1,7 +1,10 @@
 /** Rank tracker shapes. */
 
 export interface RankGoal {
+  /** Dashboard tier 1–6, or 0 when the goal was set from chat with a finer target. */
   targetRank: number
+  goalType?: 'league' | 'rs' | 'rank'
+  label?: string
   targetRankScore: number | null
   startingRank: number | null
   startingRankScore: number | null

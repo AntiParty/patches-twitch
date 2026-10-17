@@ -2,6 +2,7 @@ import { Channel, getCustomResponse, RankGoal } from "../db";
 import logger from "../util/logger";
 import { searchPlayer } from "../util/leaderboardSearch";
 import { getLatestLeaderboardData, getTransitionSuffix } from "../util/leaderboardCache";
+import { computeGoalProgress, normalizeStoredGoal } from "../util/rankGoal";
 
 interface CommandContext {
   say: (message: string, replyToId?: string) => Promise<void>;
@@ -167,15 +168,10 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
         response += `current rank is #${player.rank} (${player.league}) - ${player.rankScore.toLocaleString()} RS`;
 
         // Add goal information if exists
-        if (goal && !goal.achieved && player.rank > goal.target_rank) {
-          const targetPlayer = regularData?.find((p: any) => p.rank === goal.target_rank);
-          const rsAway = (goal.target_rank_score || 0) - player.rankScore;
-
-          if (rsAway > 0) {
-            response += `. ${rsAway.toLocaleString()} RS away from rank #${goal.target_rank}`;
-            if (targetPlayer?.league) {
-              response += ` (${targetPlayer.league})`;
-            }
+        if (goal) {
+          const progress = computeGoalProgress(normalizeStoredGoal(goal), goal.starting_rank_score, player, regularData);
+          if (!progress.achieved && progress.rsAway) {
+            response += `. ${progress.rsAway.toLocaleString()} RS away from ${progress.target.label}`;
           }
         }
       }

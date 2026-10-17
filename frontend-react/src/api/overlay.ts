@@ -25,6 +25,7 @@ export const OVERLAY_THEMES = [
   { value: 'dark', label: 'Dark Rail' },
   { value: 'dark-slim', label: 'Dark Rail Slim' },
   { value: 'rank-focus', label: 'Rank Focus' },
+  { value: 'goal', label: 'Goal Progress' },
   { value: 'neon', label: 'Neon Glow' },
   { value: 'glass', label: 'Glass Morphism' },
   { value: 'terminal', label: 'Retro Terminal' },

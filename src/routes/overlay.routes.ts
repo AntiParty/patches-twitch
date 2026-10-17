@@ -7,6 +7,7 @@ import { Channel, StreamSession } from '../db';
 import logger from '../util/logger';
 import { requireUserAPI } from '@/middleware/auth.middleware';
 import { rateLimitRegenerate } from '@/middleware/security';
+import { getGoalSnapshot } from '@/services/rankGoal.service';
 
 const router = Router();
 
@@ -171,9 +172,20 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
             logger.error(`[Overlay] Error reading regular leaderboard for ${finalsName}:`, err);
         }
 
-        // Get rank goal if exists
-        const { RankGoal } = await import('../db');
-        const goal: any = await RankGoal.findOne({ where: { channel: user.get('username') } });
+        // Goal progress + last game delta (shared with !goal)
+        const snapshot = await getGoalSnapshot(user.get('username'), finalsName);
+        const progress = snapshot.progress;
+        const goal = progress ? {
+            label: progress.target.label,
+            type: progress.target.type,
+            targetRS: progress.target.targetRS,
+            targetRank: progress.target.targetRank,
+            startRS: progress.startRS,
+            rsAway: progress.rsAway,
+            ranksAway: progress.ranksAway,
+            progress: progress.progress,
+            achieved: progress.achieved,
+        } : null;
 
         // Calculate session change
         let startRS = user.get('session_start_rs');
@@ -215,7 +227,9 @@ router.get('/api/overlay/data/:token', async (req: any, res: any) => {
             
             sessionChange: sessionChange, // flattened for overlays
             
-            goal: null,
+            goal,
+            lastChange: snapshot.lastGame.change,
+            lastChangeAt: snapshot.lastGame.at,
             session: {
                 startRS: startRS || 0,
                 currentRS: stats.rankScore || 0,

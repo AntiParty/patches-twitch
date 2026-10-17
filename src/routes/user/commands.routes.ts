@@ -18,7 +18,9 @@ import {
 const router = Router();
 
 // List of commands allowed to be customized
-const ALLOWED_CUSTOM_COMMANDS = ['rank', 'record', 'peak'];
+const ALLOWED_CUSTOM_COMMANDS = ['rank', 'record', 'peak', 'goal'];
+// !goal templates carry several placeholders, so they get more room.
+const RESPONSE_MAX_LENGTH: Record<string, number> = { goal: 200 };
 
 type CommandControlsDependencies = {
     getSettings: typeof getViewerCommandSettings;
@@ -118,7 +120,7 @@ router.post('/api/my-commands', requireUserAPI, async (req: any, res: any) => {
         }
 
         // Validate command response
-        if (!isValidCommandResponse(response)) {
+        if (!isValidCommandResponse(response, RESPONSE_MAX_LENGTH[name] ?? 50)) {
             return res.status(400).json({ error: 'Invalid or too long response.' });
         }
 

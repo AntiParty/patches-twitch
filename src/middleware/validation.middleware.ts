@@ -29,11 +29,11 @@ export function isValidCommandName(name: any): boolean {
 /**
  * Validate command response format
  */
-export function isValidCommandResponse(response: any): boolean {
+export function isValidCommandResponse(response: any, maxLength = 50): boolean {
     return (
-        // lock down response to 50 characters, and allow 0 characters
+        // lock down response to 50 characters by default, and allow 0 characters
         typeof response === 'string' &&
-        response.length <= 50 &&
+        response.length <= maxLength &&
         response.length >= 0
     );
 }

@@ -9,6 +9,7 @@ import logger from '@/util/logger';
 import { Channel } from '@/db';
 import { requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidRank, isValidRankScore } from '@/middleware/validation.middleware';
+import { DASHBOARD_TIER_LABELS, normalizeStoredGoal } from '@/util/rankGoal';
 
 const router = Router();
 
@@ -91,9 +92,16 @@ router.get('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
             return res.json({ goal: null });
         }
 
+        // The dashboard picker only knows tiers 1–6; chat goals (Diamond 2, 50k RS, #100)
+        // come back as targetRank 0 with their label so the picker doesn't misread them.
+        const parsed = normalizeStoredGoal(goal.get() as any);
+        const tierEntry = Object.entries(DASHBOARD_TIER_LABELS).find(([, label]) => parsed.type === 'league' && label === parsed.label);
+
         res.json({
             goal: {
-                targetRank: goal.get('target_rank'),
+                targetRank: tierEntry ? Number(tierEntry[0]) : 0,
+                goalType: parsed.type,
+                label: parsed.label,
                 targetRankScore: goal.get('target_rank_score'),
                 startingRank: goal.get('starting_rank'),
                 startingRankScore: goal.get('starting_rank_score'),
@@ -193,6 +201,8 @@ router.post('/api/my-rank-goal', requireUserAPI, async (req: any, res: any) => {
         // Upsert the rank goal
         await RankGoal.upsert({
             channel: username,
+            goal_type: 'league',
+            target_label: DASHBOARD_TIER_LABELS[Number(targetRank)],
             target_rank: targetRank,
             target_rank_score: targetRS,
             starting_rank: null, // Can be derived from current game stats if available

@@ -43,10 +43,10 @@ export const execute = async (
 
     let cmd = String(args[0]).toLowerCase();
     if (cmd.startsWith('!')) cmd = cmd.slice(1);
-    const allowedCommands = ['rank', 'record', 'peak', 'enter', 'tracker'];
+    const allowedCommands = ['rank', 'record', 'peak', 'enter', 'tracker', 'goal'];
 
     if (!allowedCommands.includes(cmd)) {
-      await ctx.say(`@${username}, you can only edit !rank, !record, !peak, !enter, and !tracker commands.`, messageId);
+      await ctx.say(`@${username}, you can only edit !rank, !record, !peak, !goal, !enter, and !tracker commands.`, messageId);
       return;
     }
 

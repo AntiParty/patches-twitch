@@ -7,6 +7,7 @@ import { sendInfoToDiscord } from '@/handlers/discordHandler';
 import logger from '@/util/logger';
 import { updateRSHistory } from '@/util/rsPredictor';
 import { updatePeakRanks } from '@/jobs/peakUpdater';
+import { updateRankProgress } from '@/services/rankGoal.service';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
 import { syncConfiguredOwnerWidget } from '@/services/discordOwnerWidget.service';
 
@@ -112,6 +113,7 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
     // Post-update hooks
     try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }
     try { await updatePeakRanks();  } catch (e) { logger.error('[CacheUpdater] updatePeakRanks error:', e); }
+    try { await updateRankProgress(normalized, currentRegularSeason); } catch (e) { logger.error('[CacheUpdater] updateRankProgress error:', e); }
     void syncConfiguredOwnerWidget(normalized)
       .then((result) => {
         if (result.ok) {

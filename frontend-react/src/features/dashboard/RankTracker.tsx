@@ -224,6 +224,13 @@ export function RankTracker() {
             </Select>
           </Field>
 
+          {goalQuery.data?.goal && !goalQuery.data.goal.targetRank && goalQuery.data.goal.label && (
+            <div className={styles.rubyInfo}>
+              <i className="fas fa-info-circle" /> Current goal set from chat: <strong>{goalQuery.data.goal.label}</strong>.
+              Saving here replaces it.
+            </div>
+          )}
+
           {targetRank === 6 && (
             <div className={styles.rubyInfo}>
               <i className="fas fa-info-circle" style={{ color: '#ffc107' }} />{' '}

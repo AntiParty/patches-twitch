@@ -248,7 +248,7 @@ function SystemTab({ data }: { data: StatisticsResponse }) {
   const perf = data.performanceHistory.map((p) => ({
     t: new Date(p.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
     cpu: p.cpuUsage,
-    mem: p.memoryUsed,
+    mem: p.memoryUsed == null ? null : Math.round(p.memoryUsed / 1_048_576),
     latency: p.botLatencyMs,
     channels: p.connectedChannels,
   }))
@@ -274,12 +274,12 @@ function SystemTab({ data }: { data: StatisticsResponse }) {
   return (
     <>
       <div className={styles.chartGrid}>
-        {line('cpu', 'CPU usage (%)', '#e62038')}
-        {line('mem', 'Memory used (MB)', '#7ab8ff')}
+        {line('cpu', 'Bot CPU (% of one core)', '#e62038')}
+        {line('mem', 'Bot memory, RSS (MB)', '#7ab8ff')}
       </div>
       <div className={styles.chartGrid}>
-        {line('latency', 'Bot latency (ms)', '#f3c247')}
-        {line('channels', 'Connected channels', '#42d483')}
+        {line('latency', 'Event-loop delay (ms)', '#f3c247')}
+        {line('channels', 'Connected IRC channels', '#42d483')}
       </div>
       <div className={styles.chartCard}>
         <div className={styles.chartTitle}>Top referral sources (30d)</div>

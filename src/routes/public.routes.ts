@@ -19,7 +19,7 @@ import { Op } from 'sequelize';
 import { createEmbarkStatsHandler } from '@/services/embarkStats.service';
 import { platformCommandStats } from '@/services/platformCommandStats.service';
 import { createDropsStreamersService } from '@/services/dropsStreamers.service';
-import { getBotLiveStatus } from '@/services/operationsAnalytics.service';
+import { getBotLiveStatus, getPerformanceHistory } from '@/services/operationsAnalytics.service';
 import { getLiveStreamsForUsers, refreshToken } from '@/util/twitchUtils';
 
 const router = Router();
@@ -631,18 +631,8 @@ router.get('/api/statistics', async (req: any, res: any) => {
                     });
                 })(),
 
-                // 8. Performance History
-                (async () => {
-                   const { PerformanceMetric } = await import('@/dbMetrics');
-                   return PerformanceMetric.findAll({
-                        attributes: ['timestamp', 'cpuUsage', 'memoryUsed', 'botLatencyMs', 'connectedChannels'],
-                        where: {
-                            timestamp: { [Op.gte]: last24h }
-                        },
-                        order: [['timestamp', 'ASC']],
-                        raw: true
-                    });
-                })()
+                // 8. Performance History (bot process, 5-minute buckets)
+                getPerformanceHistory('24h')
             ]);
 
             res.json({

@@ -18,6 +18,7 @@ import { clients, loadChatReadinessCache } from "./util/ircBot";
 import { Op } from "sequelize";
 import { restoreGiveawayRedemptionSubscriptions } from "./services/giveawaySubscriptionRestore.service";
 import { startGiveawayRedemptionReconciler } from "./jobs/giveawayRedemptionReconciler";
+import { startProcessMetricsRecorder } from "./jobs/processMetricsRecorder";
 
 const botControlSecret = process.env.BOT_CONTROL_SECRET ?? '';
 if (!botControlSecret) {
@@ -106,6 +107,12 @@ dbReady.then(async () => {
     process.on('SIGINT', stopGiveawayReconciler);
     process.on('SIGTERM', stopGiveawayReconciler);
     process.on('exit', stopGiveawayReconciler);
+
+    const stopProcessMetrics = startProcessMetricsRecorder({
+      getConnectedChannels: () => Object.values(clients).filter((client) => client.connected).length,
+    });
+    process.on('SIGINT', stopProcessMetrics);
+    process.on('SIGTERM', stopProcessMetrics);
 
     // --- Control API ---
     const controlApp = express();

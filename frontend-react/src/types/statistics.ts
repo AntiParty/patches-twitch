@@ -43,12 +43,17 @@ export interface Referral {
   count: number
 }
 
+/** Bot process sample, averaged per 5-minute bucket. Null = no reading. */
 export interface PerformancePoint {
   timestamp: string
-  cpuUsage: number
-  memoryUsed: number
-  botLatencyMs: number
-  connectedChannels: number
+  /** Process CPU, % of one core. */
+  cpuUsage: number | null
+  /** Process RSS, bytes. */
+  memoryUsed: number | null
+  heapUsed: number | null
+  /** Mean event-loop delay, ms. */
+  botLatencyMs: number | null
+  connectedChannels: number | null
 }
 
 export interface StatisticsResponse {

@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { Op, QueryTypes } from 'sequelize';
 import { Channel, CommandUsage, sequelize } from '@/db';
-import { PerformanceMetric, metricsDbReady } from '@/dbMetrics';
+import { metricsDbReady, sequelizeMetrics } from '@/dbMetrics';
 import { listOperationalEvents } from './operationalEvents.service';
 import { botControlHeaders, botControlUrl } from '@/util/botControl';
 
@@ -246,18 +246,71 @@ export async function getOperationsOverview(range: OperationsRange) {
     };
 }
 
-export async function getBotHealth(range: OperationsRange) {
+// Chart bucket per range: ~300 points each. Rows are kept 30 days, so 'all' matches '30d'.
+const PERF_BUCKET_SECONDS: Record<OperationsRange, number> = {
+    '24h': 5 * 60,
+    '7d': 30 * 60,
+    '30d': 2 * 60 * 60,
+    all: 2 * 60 * 60,
+};
+
+export function perfBucketSeconds(range: OperationsRange): number {
+    return PERF_BUCKET_SECONDS[range];
+}
+
+/** Sequelize's SQLite DATE text format, so string comparison against stored rows works. */
+export function toSqliteTimestamp(date: Date): string {
+    return date.toISOString().replace('T', ' ').replace('Z', ' +00:00');
+}
+
+export interface PerformancePoint {
+    timestamp: string;
+    cpuUsage: number | null;
+    memoryUsed: number | null;
+    heapUsed: number | null;
+    botLatencyMs: number | null;
+    connectedChannels: number | null;
+}
+
+export function toPerformancePoints(rows: any[]): PerformancePoint[] {
+    const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+    return rows.map((row) => ({
+        timestamp: new Date(Number(row.bucket) * 1000).toISOString(),
+        cpuUsage: num(row.cpuUsage),
+        memoryUsed: num(row.memoryUsed),
+        heapUsed: num(row.heapUsed),
+        botLatencyMs: num(row.botLatencyMs),
+        connectedChannels: row.connectedChannels == null ? null : Math.round(Number(row.connectedChannels)),
+    }));
+}
+
+/** Bot process history, averaged into fixed buckets so every range spans its full window. */
+export async function getPerformanceHistory(range: OperationsRange): Promise<PerformancePoint[]> {
     await metricsDbReady;
-    const start = rangeStart(range) || new Date(0);
+    const start = rangeStart(range) || new Date(Date.now() - RANGE_MS['30d']);
+    const rows = await sequelizeMetrics.query(
+        `SELECT (CAST(strftime('%s', substr(timestamp, 1, 19)) AS INTEGER) / :bucket) * :bucket AS bucket,
+                AVG(cpuUsage) AS cpuUsage,
+                AVG(memoryUsed) AS memoryUsed,
+                AVG(heapUsed) AS heapUsed,
+                AVG(botLatencyMs) AS botLatencyMs,
+                AVG(connectedChannels) AS connectedChannels
+         FROM PerformanceMetrics
+         WHERE timestamp >= :start
+         GROUP BY bucket
+         ORDER BY bucket ASC`,
+        {
+            replacements: { bucket: perfBucketSeconds(range), start: toSqliteTimestamp(start) },
+            type: QueryTypes.SELECT,
+        },
+    );
+    return toPerformancePoints(rows as any[]);
+}
+
+export async function getBotHealth(range: OperationsRange) {
     const [overview, performanceHistory] = await Promise.all([
         getOperationsOverview(range),
-        PerformanceMetric.findAll({
-            attributes: ['timestamp', 'cpuUsage', 'memoryUsed', 'heapUsed', 'botLatencyMs', 'connectedChannels'],
-            where: { timestamp: { [Op.gte]: start } },
-            order: [['timestamp', 'ASC']],
-            limit: 720,
-            raw: true,
-        }),
+        getPerformanceHistory(range),
     ]);
     return { ...overview, performanceHistory };
 }

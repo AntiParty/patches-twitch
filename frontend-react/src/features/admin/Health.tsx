@@ -27,12 +27,25 @@ const RANGES = [
   { value: '30d', label: '30 days' },
 ]
 
+// Bot process samples (one per minute), averaged per bucket by the backend.
 const CHARTS: { key: keyof PerformancePoint; label: string; color: DitherColor; transform?: (n: number) => number }[] = [
-  { key: 'cpuUsage', label: 'CPU usage (%)', color: 'purple' },
-  { key: 'memoryUsed', label: 'Memory used (MB)', color: 'blue', transform: (n) => Math.round(n / 1024 / 1024) },
-  { key: 'botLatencyMs', label: 'Bot latency (ms)', color: 'orange' },
-  { key: 'connectedChannels', label: 'Connected channels', color: 'green' },
+  { key: 'cpuUsage', label: 'CPU (% of one core)', color: 'purple' },
+  { key: 'memoryUsed', label: 'Memory, RSS (MB)', color: 'blue', transform: (n) => Math.round(n / 1024 / 1024) },
+  { key: 'botLatencyMs', label: 'Event-loop delay (ms)', color: 'orange' },
+  { key: 'connectedChannels', label: 'Connected IRC channels', color: 'green' },
 ]
+
+// Axis: clock time for 24h, the day for longer ranges. Tooltip: full date + time.
+function axisLabel(timestamp: string, range: string): string {
+  const d = new Date(timestamp)
+  return range === '24h'
+    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
+
+function tooltipLabel(timestamp: string): string {
+  return new Date(timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
 
 export function Health() {
   const [range, setRange] = useState('24h')
@@ -45,7 +58,7 @@ export function Health() {
     <>
       <PageHeader
         title="Bot Health"
-        subtitle="Read-only process, connection, and resource history."
+        subtitle="Bot process resources and IRC connections, sampled every minute."
         actions={
           <div style={{ width: 160 }}>
             <Select value={range} onChange={(e) => setRange(e.target.value)} options={RANGES} />
@@ -66,7 +79,8 @@ export function Health() {
             const series = data.performanceHistory.flatMap((p) => {
               if (p[c.key] == null) return []
               return [{
-                t: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                t: axisLabel(p.timestamp, range),
+                at: tooltipLabel(p.timestamp),
                 v: c.transform ? c.transform(Number(p[c.key])) : Number(p[c.key]),
               }]
             })
@@ -80,7 +94,7 @@ export function Health() {
                       <Grid />
                       <XAxis dataKey="t" maxTicks={5} />
                       <YAxis />
-                      <Tooltip labelKey="t" />
+                      <Tooltip labelKey="at" />
                       <Line dataKey="v" />
                     </LineChart>
                   )}

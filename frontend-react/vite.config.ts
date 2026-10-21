@@ -32,10 +32,11 @@ const proxyPaths = [
   // OBS overlays: legacy static .html files stay on the backend so existing OBS
   // browser-source URLs keep working. React overlay routes live under /overlay/*.
   '/overlays',
-  // Statistics dashboard is React-owned; only the password login stays on the backend.
+  // Statistics and bot metrics dashboards are React-owned; only their password
+  // logins stay on the backend.
   '/statistics/login',
+  '/botmetrics/login',
   // Backend pages not yet migrated to React.
-  '/botmetrics',
   '/analytics-dashboard',
   '/docs-markdown',
 ]

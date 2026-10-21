@@ -38,6 +38,9 @@ import { Drops as AdminDrops } from '@/features/admin/Drops'
 const Statistics = lazy(() =>
   import('@/features/statistics/Statistics').then((m) => ({ default: m.Statistics })),
 )
+const BotMetrics = lazy(() =>
+  import('@/features/botmetrics/BotMetrics').then((m) => ({ default: m.BotMetrics })),
+)
 // Admin Overview/Health pull in Recharts — lazy-load to keep it out of the main bundle.
 const AdminOverview = lazy(() =>
   import('@/features/admin/Overview').then((m) => ({ default: m.Overview })),
@@ -59,6 +62,8 @@ export default function App() {
       <Routes>
         {/* Internal analyst dashboard (own 403 access handling) */}
         <Route path="/statistics" element={<Statistics />} />
+        {/* Internal bot metrics dashboard (own 401 access handling) */}
+        <Route path="/botmetrics" element={<BotMetrics />} />
 
         {/* OBS overlay (transparent, no chrome). Legacy /overlays/*.html stays on backend. */}
         <Route path="/overlay/:theme" element={<Overlay />} />

@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { Channel, CommandUsage, PredictionAutomationRun, StreamSession } from '@/db';
-import { PerformanceMetric } from '@/dbMetrics';
 import { Referral } from '@/dbMetrics';
 import logger from '@/util/logger';
 import { sendMessageToDiscord } from '@/handlers/discordHandler';
@@ -20,6 +19,7 @@ import { Op } from 'sequelize';
 import { createEmbarkStatsHandler } from '@/services/embarkStats.service';
 import { platformCommandStats } from '@/services/platformCommandStats.service';
 import { createDropsStreamersService } from '@/services/dropsStreamers.service';
+import { getBotLiveStatus } from '@/services/operationsAnalytics.service';
 import { getLiveStreamsForUsers, refreshToken } from '@/util/twitchUtils';
 
 const router = Router();
@@ -854,20 +854,9 @@ router.post('/botmetrics/login', (req: any, res: Response) => {
 });
 
 /**
- * GET /botmetrics
- * Internal metrics dashboard.
- */
-router.get('/botmetrics', (req: any, res: Response) => {
-    if (!req.session?.isMetrics) {
-        return res.redirect('/botmetrics/login');
-    }
-    res.render('botmetrics');
-});
-
-/**
  * GET /api/internal/metrics?range=30m|1h|3h|6h
- * Returns live bot metrics data. Requires isMetrics session.
- * Always returns 60 graph buckets regardless of range.
+ * Data for the React /botmetrics page. Requires isMetrics session.
+ * Bot vitals come live from the bot Control API; graphs are bucketed per range.
  */
 router.get('/api/internal/metrics', async (req: any, res: any) => {
     if (!req.session?.isMetrics) {
@@ -905,8 +894,7 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             recentCmdRows,
             topChannels,
             topCommands,
-            latestPerf,
-            perfRows,
+            bot,
         ] = await Promise.all([
             Channel.count({ where: { bot_enabled: true } }),
             Channel.count({ where: { is_live: true } }),
@@ -946,15 +934,7 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
                 raw: true,
             }),
 
-            PerformanceMetric.findOne({ order: [['timestamp', 'DESC']], raw: true }),
-
-            // Perf rows for the selected window
-            PerformanceMetric.findAll({
-                where: { timestamp: { [Op.gte]: windowStart } },
-                attributes: ['timestamp', 'cpuUsage', 'memoryUsed', 'memoryTotal', 'botLatencyMs'],
-                order: [['timestamp', 'ASC']],
-                raw: true,
-            }),
+            getBotLiveStatus(),
         ]);
 
         // ── Helper: build N buckets of bucketMs width going back from now ─────
@@ -987,25 +967,6 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
         }
         const minuteGraph = bucketKeys.map(k => ({ minute: k, count: cmdBuckets[k] }));
 
-        // ── Perf graph ────────────────────────────────────────────────────────
-        const perfBuckets: Record<string, { cpu: number[]; memMB: number[]; latencyMs: number[] }> =
-            Object.fromEntries(bucketKeys.map(k => [k, { cpu: [], memMB: [], latencyMs: [] }]));
-        for (const row of perfRows as any[]) {
-            const key = toBucketKey(new Date(row.timestamp));
-            if (key && key in perfBuckets) {
-                if (row.cpuUsage != null)     perfBuckets[key].cpu.push(row.cpuUsage);
-                if (row.memoryUsed != null)   perfBuckets[key].memMB.push(row.memoryUsed / 1_048_576);
-                if (row.botLatencyMs != null) perfBuckets[key].latencyMs.push(row.botLatencyMs);
-            }
-        }
-        const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-        const perfGraph = bucketKeys.map(k => ({
-            minute:    k,
-            cpu:       avg(perfBuckets[k].cpu),
-            memMB:     avg(perfBuckets[k].memMB),
-            latencyMs: avg(perfBuckets[k].latencyMs),
-        }));
-
         // ── Chat rate graph — fetched from bot process (localhost:4000) ──────
         let chatGraph: { minute: string; in: number; out: number }[] = [];
         try {
@@ -1023,16 +984,16 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             : 100;
 
         res.json({
+            observedAt: now.toISOString(),
+            bot,
             channels,
             liveChannels,
             activeSessions,
             usersSeen,
             commandsToday,
+            commandsFailedToday: commandsToday - commandsSuccessToday,
             successRate,
-            uptime: Math.floor(process.uptime()),
-            latestPerf: latestPerf ?? null,
             minuteGraph,
-            perfGraph,
             chatGraph,
             topChannels,
             topCommands,

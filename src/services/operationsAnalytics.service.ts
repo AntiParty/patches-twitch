@@ -58,7 +58,13 @@ async function getActiveCommandNames(): Promise<Set<string>> {
         .map((file) => path.basename(file, path.extname(file)).toLowerCase()));
 }
 
-async function readBotApi(pathname: string) {
+interface BotApiResult {
+    reachable: boolean;
+    latencyMs: number | null;
+    data: any;
+}
+
+async function readBotApi(pathname: string): Promise<BotApiResult> {
     try {
         const startedAt = Date.now();
         const response = await axios.get(`${botControlUrl}${pathname}`, { timeout: 1500, headers: botControlHeaders() });
@@ -128,6 +134,63 @@ async function getCommandSummary(range: OperationsRange) {
             commands: Number(row.commands) || 0,
         })),
     };
+}
+
+const finiteOrNull = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+};
+
+/**
+ * Live bot vitals for /botmetrics, built from the bot Control API's /health and
+ * /metrics/operations responses. Every field the bot didn't report is null so the
+ * page never shows a guessed value.
+ */
+export function summarizeBotLiveStatus(input: {
+    health: BotApiResult;
+    operations: BotApiResult;
+    cacheAgeSeconds: number | null;
+}) {
+    const { health, operations, cacheAgeSeconds } = input;
+    const checks: any[] = Array.isArray(health.data?.checks) ? health.data.checks : [];
+    const eventSubCheck = checks.find((check) => check?.name === 'eventsub_ws');
+    const databaseCheck = checks.find((check) => check?.name === 'database');
+    const connectedChannels = operations.reachable ? finiteOrNull(operations.data?.connectedChannels) : null;
+    const reconnectingChannels = operations.reachable ? finiteOrNull(operations.data?.reconnectingChannels) : null;
+    const eventSubConnected = eventSubCheck ? eventSubCheck.status === 'ok' : null;
+
+    return {
+        status: computeOperationsStatus({
+            controlApiReachable: health.reachable,
+            reconnecting: reconnectingChannels ?? 0,
+            // The bot reports a disconnected EventSub socket as "optional", so only
+            // an explicit error counts against overall status.
+            eventSubHealthy: eventSubCheck?.status !== 'error',
+            cacheAgeSeconds,
+        }),
+        controlApiReachable: health.reachable,
+        controlApiLatencyMs: health.latencyMs,
+        uptimeSeconds: health.reachable ? finiteOrNull(health.data?.uptime) : null,
+        rssBytes: health.reachable ? finiteOrNull(health.data?.memory?.rss) : null,
+        heapUsedBytes: health.reachable ? finiteOrNull(health.data?.memory?.heapUsed) : null,
+        connectedChannels,
+        reconnectingChannels,
+        eventSubConnected,
+        databaseLatencyMs: databaseCheck?.status === 'ok' ? finiteOrNull(databaseCheck.latencyMs) : null,
+        cacheAgeSeconds,
+    };
+}
+
+export type BotLiveStatus = ReturnType<typeof summarizeBotLiveStatus>;
+
+export async function getBotLiveStatus(): Promise<BotLiveStatus> {
+    const [health, operations, cacheAgeSeconds] = await Promise.all([
+        readBotApi('/health'),
+        readBotApi('/metrics/operations'),
+        readCacheAgeSeconds(),
+    ]);
+    return summarizeBotLiveStatus({ health, operations, cacheAgeSeconds });
 }
 
 export async function getOperationsOverview(range: OperationsRange) {

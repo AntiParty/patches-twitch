@@ -144,7 +144,7 @@ const REACT_BACKEND_PREFIXES = [
   '/health', '/metrics', '/internal', '/overlays',
   '/drops.json', '/privacy.md', '/terms.md', '/sitemap.xml', '/robots.txt',
   '/stats.json', '/force-stats', '/users', '/uploads', '/docs-markdown',
-  '/statistics/login', '/botmetrics', '/analytics-dashboard', '/test-api', '/analyst',
+  '/statistics/login', '/botmetrics/login', '/analytics-dashboard', '/test-api', '/analyst',
 ];
 
 function isReactBackendPath(p: string): boolean {

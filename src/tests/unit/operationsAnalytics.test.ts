@@ -67,4 +67,47 @@ describe('operations analytics', () => {
         assert.equal(operational.rawError, undefined);
         assert.equal(audit.message, undefined);
     });
+
+    it('summarizes live bot vitals from the control API', () => {
+        const summary = analytics.summarizeBotLiveStatus({
+            health: {
+                reachable: true,
+                latencyMs: 12,
+                data: {
+                    uptime: 3600.5,
+                    memory: { rss: 200_000_000, heapUsed: 90_000_000 },
+                    checks: [
+                        { name: 'database', status: 'ok', latencyMs: 3 },
+                        { name: 'eventsub_ws', status: 'optional', detail: 'WS_NOT_CONNECTED' },
+                    ],
+                },
+            },
+            operations: { reachable: true, latencyMs: 5, data: { connectedChannels: 40, reconnectingChannels: 2 } },
+            cacheAgeSeconds: 60,
+        });
+
+        assert.equal(summary.status, 'degraded');
+        assert.equal(summary.uptimeSeconds, 3600.5);
+        assert.equal(summary.rssBytes, 200_000_000);
+        assert.equal(summary.heapUsedBytes, 90_000_000);
+        assert.equal(summary.connectedChannels, 40);
+        assert.equal(summary.reconnectingChannels, 2);
+        assert.equal(summary.eventSubConnected, false);
+        assert.equal(summary.databaseLatencyMs, 3);
+    });
+
+    it('reports an outage with no guessed vitals when the bot is unreachable', () => {
+        const unreachable = { reachable: false, latencyMs: null, data: null };
+        const summary = analytics.summarizeBotLiveStatus({
+            health: unreachable,
+            operations: unreachable,
+            cacheAgeSeconds: null,
+        });
+
+        assert.equal(summary.status, 'outage');
+        assert.equal(summary.uptimeSeconds, null);
+        assert.equal(summary.rssBytes, null);
+        assert.equal(summary.connectedChannels, null);
+        assert.equal(summary.eventSubConnected, null);
+    });
 });

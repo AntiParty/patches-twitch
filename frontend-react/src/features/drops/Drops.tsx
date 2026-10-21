@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '@/api/public'
 import { Spinner } from '@/components/feedback/Spinner'
 import { EmptyState } from '@/components/feedback/EmptyState'
+import { formatWatchTime } from './dropDuration'
 import styles from './Drops.module.css'
 
 const STEPS = [
@@ -80,7 +81,7 @@ export function Drops() {
                     <div className={styles.dropName}>{drop.name}</div>
                     {drop.category && <div className={styles.dropCategory}>{drop.category}</div>}
                   </div>
-                  {drop.duration && <span className={styles.dropTime}><i className="far fa-clock" aria-hidden="true" /> Watch {drop.duration}</span>}
+                  {drop.duration && <span className={styles.dropTime}><i className="far fa-clock" aria-hidden="true" /> {formatWatchTime(drop.duration)}</span>}
                 </li>
               ))}
             </ul>

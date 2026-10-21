@@ -92,13 +92,13 @@ export function Docs() {
             <span>›</span>
             <span style={{ color: 'var(--text-main)' }}>Bot Commands</span>
           </div>
-          <h1 id="overview">Bot Documentation</h1>
+          <h1 id="overview">Bot commands</h1>
           <p className={styles.subtitle}>
-            Comprehensive guide to managing and customizing your FinalsRS Twitch bot experience.
+            Every chat command, who can use it, and the variables you can put in custom responses.
           </p>
         </header>
 
-        <Section id="commands" tag="Reference" title="All Commands">
+        <Section id="commands" title="All Commands">
           <p>
             Every public chat command. Use <code>!help &lt;command&gt;</code> in chat for a quick summary.
           </p>
@@ -132,7 +132,7 @@ export function Docs() {
           </div>
         </Section>
 
-        <Section id="linking" tag="Essentials" title="Account Management">
+        <Section id="linking" title="Account Management">
           <p>
             To start tracking your stats, you must link your <strong>THE FINALS</strong> account.
             Your Twitch account is linked automatically when you log in to the dashboard.
@@ -145,7 +145,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="customizing" tag="Advanced" title="Customizing Commands">
+        <Section id="customizing" title="Customizing Commands">
           <p>
             FinalsRS lets you fully customize how the bot responds to <code>!rank</code>,{' '}
             <code>!record</code>, <code>!peak</code>, <code>!enter</code>, and <code>!tracker</code>. Variables wrapped in curly braces (e.g.{' '}
@@ -165,7 +165,7 @@ export function Docs() {
           </p>
         </Section>
 
-        <Section id="rank-vars" tag="Reference" title="!rank Command">
+        <Section id="rank-vars" title="!rank Command">
           <p>Displays current ranked leaderboard rank, league, and Rank Score.</p>
           <VarGrid
             vars={[
@@ -179,7 +179,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="record-vars" tag="Reference" title="!record Command">
+        <Section id="record-vars" title="!record Command">
           <p>Tracks session progress (RS gained/lost) since you went live.</p>
           <VarGrid
             vars={[
@@ -193,7 +193,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="peak-vars" tag="Reference" title="!peak Command">
+        <Section id="peak-vars" title="!peak Command">
           <p>Displays all-time highest achievements recorded by the system.</p>
           <VarGrid
             vars={[
@@ -206,7 +206,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="enter-vars" tag="Reference" title="!enter Command">
+        <Section id="enter-vars" title="!enter Command">
           <p>Enters the current giveaway. Customize the confirmation with <code>!editcmd enter</code>.</p>
           <VarGrid
             vars={[
@@ -216,7 +216,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="tracker-vars" tag="Reference" title="!tracker Command">
+        <Section id="tracker-vars" title="!tracker Command">
           <p>Links to your tracker profile. Customize the reply with <code>!editcmd tracker</code>.</p>
           <VarGrid
             vars={[
@@ -226,7 +226,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="drops-cmd" tag="Information" title="!drops Command">
+        <Section id="drops-cmd" title="!drops Command">
           <p>Stay updated with active Twitch drops for THE FINALS.</p>
           <VarGrid
             vars={[
@@ -236,7 +236,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="goals" tag="Utility" title="Rank Goals">
+        <Section id="goals" title="Rank Goals">
           <p>The <code>!goal</code> system helps you track progress toward a specific leaderboard position.</p>
           <CmdTable
             rows={[
@@ -247,12 +247,12 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="top500" tag="Information" title="Current Top 500 Cutoff">
+        <Section id="top500" title="Current Top 500 Cutoff">
           <p>Use <code>!top500</code> (or <code>!t500</code>) to see the RS and player at rank #500 in the current season’s latest cached leaderboard. Available to everyone, including before Ruby unlocks. Ties may affect placement.</p>
           <CodeExample lines={[{ cmd: '!top500' }]} />
         </Section>
 
-        <Section id="predict" tag="Premium / Tester" premium title="Predict Cutoff">
+        <Section id="predict" tag="Premium / testers" premium title="Predict Cutoff">
           <p>The <code>!predict</code> command uses historical T500 trends to forecast future leaderboard cutoffs.</p>
           <CodeExample lines={[{ comment: '// Forecast the cutoff in 30 days' }, { cmd: '!predict 30' }]} />
         </Section>
@@ -323,7 +323,7 @@ export function Docs() {
           />
         </Section>
 
-        <Section id="general" tag="Utility" title="Utility Commands">
+        <Section id="general" title="Utility Commands">
           <p>Standard commands for interacting with the bot and discovering available features.</p>
           <CmdTable
             rows={[
@@ -346,10 +346,11 @@ export function Docs() {
   )
 }
 
-function Section({ id, tag, premium, title, children }: { id: string; tag: string; premium?: boolean; title: string; children: ReactNode }) {
+// `tag` is only for access requirements (premium, affiliate), not decoration.
+function Section({ id, tag, premium, title, children }: { id: string; tag?: string; premium?: boolean; title: string; children: ReactNode }) {
   return (
     <section id={id} className={styles.section}>
-      <span className={`${styles.tag} ${premium ? styles.tagPremium : ''}`}>{tag}</span>
+      {tag && <span className={`${styles.tag} ${premium ? styles.tagPremium : ''}`}>{tag}</span>}
       <h2>{title}</h2>
       {children}
     </section>

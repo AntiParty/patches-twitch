@@ -131,6 +131,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-height: 32px;
   padding: 0 12px;
   margin-left: 2px;
@@ -151,9 +152,82 @@
   color: #fff;
 }
 
+/* Mobile menu — button and panel only render visibly below 720px. */
+.menuBtn {
+  display: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: 2px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.menuBtn:hover,
+.menuBtn[aria-expanded='true'] {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+.menuBtn:focus-visible,
+.menuLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.landing .menuBtn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  color: rgba(242, 239, 232, 0.7);
+}
+.landing .menuBtn:hover,
+.landing .menuBtn[aria-expanded='true'] {
+  color: #f2efe8;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  right: 12px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.menuLink:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+}
+
 @media (max-width: 720px) {
   .topnav {
     padding: 0 12px;
+  }
+
+  .menuBtn {
+    display: inline-grid;
   }
 
   .landing {
@@ -175,5 +249,11 @@
 
   .landing .inner {
     max-width: calc(100vw - 20px);
+  }
+}
+
+@media (min-width: 721px) {
+  .menu {
+    display: none;
   }
 }

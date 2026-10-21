@@ -66,12 +66,11 @@ export function Developer() {
           </div>
           <h1 id="overview">Developer API (Beta)</h1>
           <p className={docs.subtitle}>
-            Build community tools with FinalsRS public THE FINALS data endpoints. No API key required.
+            Public THE FINALS ranked data for community tools. No API key required.
           </p>
         </header>
 
         <section id="ratelimits" className={docs.section}>
-          <span className={docs.tag}>Getting Started</span>
           <h2>Rate Limits & CORS</h2>
           <p>The API is public and does not require a key. IP-based rate limiting keeps usage fair.</p>
           <ul style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>
@@ -82,7 +81,6 @@ export function Developer() {
         </section>
 
         <section id="prediction" className={docs.section}>
-          <span className={docs.tag}>Endpoints</span>
           <h2>Get Leaderboard Prediction</h2>
           <p>Returns the estimated Top 500 cutoff Rank Score for a future date, accounting for daily trends and end-of-season rushes.</p>
           <div className={styles.codeBlock}>
@@ -103,7 +101,6 @@ export function Developer() {
         </section>
 
         <section id="player" className={docs.section}>
-          <span className={docs.tag}>Endpoints</span>
           <h2>Get Player Stats</h2>
           <p>Retrieve real-time leaderboard statistics for a specific player. Supports exact name or name#tag.</p>
           <div className={styles.codeBlock}>
@@ -128,7 +125,6 @@ export function Developer() {
         </section>
 
         <section id="terms" className={docs.section}>
-          <span className={docs.tag}>Important</span>
           <h2>Terms of Use</h2>
           <p>By using the FinalsRS Developer API, you agree to the following:</p>
           <ul style={{ color: 'var(--text-muted)', lineHeight: 1.8 }}>

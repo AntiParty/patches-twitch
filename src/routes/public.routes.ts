@@ -1078,10 +1078,23 @@ router.get('/api/leaderboard', async (req: Request, res: Response) => {
         const raw = await fs.promises.readFile(filePath, 'utf8');
         const data = JSON.parse(raw);
 
+        // Check times are written by the bot's cache updater; absent until its first poll.
+        let lastCheckedAt: string | null = null;
+        let nextCheckAt: string | null = null;
+        try {
+            const meta = JSON.parse(await fs.promises.readFile(path.join(cacheDir, 'meta.json'), 'utf8'));
+            lastCheckedAt = typeof meta?.lastCheckedAt === 'string' ? meta.lastCheckedAt : null;
+            nextCheckAt = typeof meta?.nextCheckAt === 'string' ? meta.nextCheckAt : null;
+        } catch {
+            // meta.json missing — leave both null
+        }
+
         res.json({
             season: latest.season,
             mode,
             updated: stat.mtime.toISOString(),
+            lastCheckedAt,
+            nextCheckAt,
             data: Array.isArray(data) ? data : [],
         });
     } catch (err) {

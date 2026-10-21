@@ -3,7 +3,7 @@
  * sortable columns, pagination, stats strip. Ranked mode (the API serves the
  * latest ranked season).
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SearchBar } from '@/components/forms/SearchBar'
@@ -12,7 +12,11 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { leaderboardApi, LEAGUE_FILTERS } from '@/api/leaderboard'
 import type { LeaderboardEntry } from '@/types/leaderboard'
+import { NextCheck } from './NextCheck'
 import styles from './Leaderboard.module.css'
+
+// Give the bot time to finish its fetch before reloading the page's data.
+const REFETCH_AFTER_CHECK_MS = 30_000
 
 type SortKey = 'rank' | 'name' | 'league' | 'rankScore'
 
@@ -33,6 +37,17 @@ export function Leaderboard() {
     queryKey: ['leaderboard'],
     queryFn: leaderboardApi.get,
   })
+
+  // Reload shortly after each scheduled check so new standings appear without a refresh.
+  // Skipped when the check time is already well past (bot not polling), to avoid a loop.
+  const nextCheckAt = data?.nextCheckAt
+  useEffect(() => {
+    if (!nextCheckAt) return
+    const delay = Date.parse(nextCheckAt) + REFETCH_AFTER_CHECK_MS - Date.now()
+    if (Number.isNaN(delay) || delay <= 0) return
+    const id = setTimeout(() => refetch(), delay)
+    return () => clearTimeout(id)
+  }, [nextCheckAt, refetch])
 
   const [league, setLeague] = useState('All')
   const [search, setSearch] = useState('')
@@ -96,6 +111,7 @@ export function Leaderboard() {
             {data?.updated && (
               <span className={styles.updated} style={{ display: 'block' }}>
                 Last updated: {new Date(data.updated).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                {data.nextCheckAt && <> · <NextCheck nextCheckAt={data.nextCheckAt} /></>}
               </span>
             )}
           </>

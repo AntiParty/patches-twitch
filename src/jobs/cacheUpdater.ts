@@ -30,12 +30,40 @@ function getCachePath(type: 'regular', season: number) {
 
 const META_FILE = path.resolve(__dirname, '../../cache/meta.json');
 
-async function writeMeta(season: number, seasonId: string, updatedAt: string | null, transitioning: boolean) {
+interface CacheMeta {
+  season: number;
+  seasonId: string;
+  updatedAt: string | null;      // last time the board actually changed
+  transitioning: boolean;
+  lastCheckedAt?: string | null; // last fetch attempt, changed or not
+  nextCheckAt?: string | null;   // next scheduled poll
+}
+
+let meta: CacheMeta | null = null;
+
+async function saveMeta(next: CacheMeta) {
+  meta = next;
   try {
-    await fs.writeFile(META_FILE, JSON.stringify({ season, seasonId, updatedAt, transitioning }, null, 2), 'utf8');
+    await fs.writeFile(META_FILE, JSON.stringify(next, null, 2), 'utf8');
   } catch (e) {
     logger.error('[CacheUpdater] Failed to write meta.json:', e);
   }
+}
+
+async function writeMeta(season: number, seasonId: string, updatedAt: string | null, transitioning: boolean) {
+  await saveMeta({ ...meta, season, seasonId, updatedAt, transitioning });
+}
+
+// Set when the poll timer starts or ticks; read by the page's "next check" countdown.
+let nextPollAt: number | null = null;
+
+async function recordCheck() {
+  if (!meta) return; // nothing known about the season yet
+  await saveMeta({
+    ...meta,
+    lastCheckedAt: new Date().toISOString(),
+    nextCheckAt: nextPollAt ? new Date(nextPollAt).toISOString() : null,
+  });
 }
 
 function delay(ms: number) {
@@ -69,8 +97,11 @@ async function loadSeasonFromMeta() {
   if (seasonLoaded) return;
   seasonLoaded = true;
   try {
-    const meta = JSON.parse(await fs.readFile(META_FILE, 'utf8'));
-    if (Number.isInteger(meta?.season) && meta.season > 0) currentRegularSeason = meta.season;
+    const saved = JSON.parse(await fs.readFile(META_FILE, 'utf8'));
+    if (Number.isInteger(saved?.season) && saved.season > 0) {
+      currentRegularSeason = saved.season;
+      meta = saved;
+    }
   } catch {
     // meta.json missing — keep the default
   }
@@ -132,6 +163,14 @@ async function fetchBoard(forceWrite: boolean): Promise<FetchedBoard | null> {
 
 // ── Fetch regular leaderboard + write cache ──────────────────────────────────
 export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean> {
+  try {
+    return await refreshRegular(forceWrite);
+  } finally {
+    await recordCheck();
+  }
+}
+
+async function refreshRegular(forceWrite: boolean): Promise<boolean> {
   const startedAt = Date.now();
   try {
     await loadSeasonFromMeta();
@@ -284,6 +323,8 @@ export async function fetchAndWriteBannedPlayers(): Promise<void> {
 let lastUpdate = Date.now();
 
 export function startCacheUpdater() {
+  nextPollAt = Date.now() + POLL_INTERVAL;
+
   // 1. Immediate first fetch (regular leaderboard + banned players)
   Promise.all([
     fetchAndWriteRegular(true),
@@ -300,6 +341,7 @@ export function startCacheUpdater() {
 
   // 3. Embark poll (hash-gated, won't re-write if unchanged)
   setInterval(async () => {
+    nextPollAt = Date.now() + POLL_INTERVAL;
     const updated = await fetchAndWriteRegular();
     if (updated) {
       lastUpdate = Date.now();
@@ -314,7 +356,7 @@ export function startCacheUpdater() {
 
 export function getNextCacheUpdateInfo(intervalMs = POLL_INTERVAL) {
   const now = Date.now();
-  const nextUpdateAt = Math.max(0, lastUpdate + intervalMs);
+  const nextUpdateAt = nextPollAt ?? Math.max(0, lastUpdate + intervalMs);
   const msLeft = Math.max(0, nextUpdateAt - now);
   return { nextUpdateAt, msLeft };
 }

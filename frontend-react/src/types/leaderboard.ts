@@ -16,5 +16,8 @@ export interface LeaderboardResponse {
   season: number
   mode: string
   updated: string
+  /** Bot's last/next leaderboard poll; null until the bot has polled once. */
+  lastCheckedAt: string | null
+  nextCheckAt: string | null
   data: LeaderboardEntry[]
 }

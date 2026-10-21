@@ -11,6 +11,7 @@ import { updateRankProgress } from '@/services/rankGoal.service';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
 import { syncConfiguredOwnerWidget } from '@/services/discordOwnerWidget.service';
 import { fetchEmbarkRanked, hashPlayers, type LeaderboardPlayer } from '@/services/embarkLeaderboard.service';
+import { recordLeaderboardHistory } from '@/services/leaderboardHistory.service';
 
 // ── Sources ──────────────────────────────────────────────────────────────────
 // Primary: Embark's official page (see embarkLeaderboard.service). Fallback and
@@ -181,6 +182,10 @@ export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean>
     await writeMeta(currentRegularSeason, seasonId, new Date().toISOString(), false);
 
     // Post-update hooks
+    try {
+      const recorded = await recordLeaderboardHistory(currentRegularSeason, normalized);
+      logger.info(`[CacheUpdater] Leaderboard history: ${recorded} changed players recorded.`);
+    } catch (e) { logger.error('[CacheUpdater] recordLeaderboardHistory error:', e); }
     try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }
     try { await updatePeakRanks();  } catch (e) { logger.error('[CacheUpdater] updatePeakRanks error:', e); }
     try { await updateRankProgress(normalized, currentRegularSeason); } catch (e) { logger.error('[CacheUpdater] updateRankProgress error:', e); }

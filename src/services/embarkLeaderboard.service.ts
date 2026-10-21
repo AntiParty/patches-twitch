@@ -51,6 +51,7 @@ export interface LeaderboardPlayer {
   leagueNumber: number;
   league: string;
   rankScore: number;
+  playerId?: string; // Embark's stable player uuid; davg25 doesn't provide it
 }
 
 /** Pulls pageProps out of the page's __NEXT_DATA__ script. Throws if the page shape changed. */
@@ -95,6 +96,7 @@ export function normalizeEmbarkEntry(e: Record<string, unknown>): LeaderboardPla
     leagueNumber,
     league:       leagueNameFor(leagueNumber),
     rankScore,
+    ...(typeof e['13'] === 'string' && e['13'] ? { playerId: e['13'] } : {}),
   };
 }
 

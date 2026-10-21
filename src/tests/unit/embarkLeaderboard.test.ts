@@ -45,6 +45,7 @@ describe('Embark leaderboard parser', () => {
       leagueNumber: 20,
       league: 'Diamond 1',
       rankScore: 48488,
+      playerId: 'c1803e8b-2b7d-4532-8b3c-05e7a921c01c',
     });
   });
 

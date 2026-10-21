@@ -111,6 +111,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
     }
 
     // If no valid player ID provided, use the streamer's linked account
+    let linkedName: string | null = null;
     if (!finalsName) {
       const channelInstance = await Channel.findOne({ where: { username: normalizedChannel } }) as any;
       if (!channelInstance?.player_id?.trim()) {
@@ -120,7 +121,8 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
         );
         return;
       }
-      finalsName = channelInstance.player_id.toLowerCase();
+      linkedName = channelInstance.player_id.trim();
+      finalsName = linkedName!.toLowerCase();
     }
 
     const regularData = await getLatestLeaderboardData();
@@ -146,8 +148,9 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       found: player ? "true" : "false",
     };
 
-    // Only use custom response for streamer's own rank, not lookups
-    if (!isLookup) {
+    // Only use custom response for streamer's own rank, not lookups — and only when
+    // ranked, since the template's {rank}/{rankScore}/{league} would render blank.
+    if (!isLookup && player) {
       const usedCustom = await maybeSendCustomResponse("rank", ctx, vars);
       if (usedCustom) return;
     }
@@ -179,7 +182,7 @@ export const execute = async (ctx: CommandContext, _channel?: string, _message?:
       if (isLookup) {
         response += `"${displayName}" not found on ranked leaderboard.`;
       } else {
-        response += `not found on ranked leaderboard.`;
+        response += `${linkedName} isn't on the ranked leaderboard yet (top 10,000 only).`;
       }
     }
 

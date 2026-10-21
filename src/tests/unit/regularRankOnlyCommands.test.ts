@@ -4,7 +4,7 @@ import path from 'path';
 import { execute as rankExecute } from '../../commands/rank';
 import { execute as recordExecute, getLatestWorldTourData } from '../../commands/record';
 import { execute as peakExecute } from '../../commands/peak';
-import { Channel, CustomResponse, RankGoal, StreamSession, PeakRank, dbReady } from '../../db';
+import { Channel, CustomResponse, RankGoal, StreamSession, PeakRank, dbReady, setCustomResponse } from '../../db';
 
 const cacheDir = path.join(process.cwd(), 'cache');
 const regularFile = path.join(cacheDir, 'regular_s9999.json');
@@ -94,6 +94,18 @@ describe('regular-ranked-only command output', () => {
     assert.equal(messages.length, 1);
     assert.match(messages[0], /not found on ranked leaderboard/);
     assert.doesNotMatch(messages[0], /WT rank|World Tour|#13/);
+  });
+
+  it('skips the custom !rank template when the streamer is not ranked', async () => {
+    await Channel.update({ player_id: 'Unranked#0001' }, { where: { username: channel } });
+    await setCustomResponse(channel, 'rank', "Rachel's current RS is {rankScore}, {league}, #{rank}.");
+    const { ctx, messages } = createCtx(channel);
+
+    await rankExecute(ctx);
+
+    assert.equal(messages.length, 1);
+    assert.doesNotMatch(messages[0], /current RS is|N\/A/);
+    assert.match(messages[0], /Unranked#0001 isn't on the ranked leaderboard yet/);
   });
 
   it('treats a Twitch mention as a reply target rather than a player lookup', async () => {

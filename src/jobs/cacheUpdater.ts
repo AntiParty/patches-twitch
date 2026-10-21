@@ -10,13 +10,17 @@ import { updatePeakRanks } from '@/jobs/peakUpdater';
 import { updateRankProgress } from '@/services/rankGoal.service';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
 import { syncConfiguredOwnerWidget } from '@/services/discordOwnerWidget.service';
+import { fetchEmbarkRanked, hashPlayers, type LeaderboardPlayer } from '@/services/embarkLeaderboard.service';
 
-// ── New API ──────────────────────────────────────────────────────────────────
+// ── Sources ──────────────────────────────────────────────────────────────────
+// Primary: Embark's official page (see embarkLeaderboard.service). Fallback and
+// update-event trigger: davg25's tracker, which can lag a season behind Embark.
 const NEW_REGULAR_API_URL  = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/leaderboard/';
 const NEW_EVENTS_URL       = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/events/leaderboard/';
 const BANNED_PLAYERS_URL   = 'https://www.davg25.com/app/the-finals-leaderboard-tracker/api/vaiiya/banned-players/';
 
-
+// Embark's page is regenerated roughly every 15 minutes.
+const POLL_INTERVAL = 15 * 60 * 1000;
 
 function getCachePath(type: 'regular', season: number) {
   const filename = `regular_s${season}.json`;
@@ -38,8 +42,8 @@ function delay(ms: number) {
 }
 
 // ── Field normalizer ─────────────────────────────────────────────────────────
-// Maps new API field names → old cache field names so all consumers work unchanged.
-function normalizePlayer(p: any) {
+// Maps davg25 field names → cache field names so all consumers work unchanged.
+function normalizePlayer(p: any): LeaderboardPlayer {
   return {
     rank:         p.rank,
     change:       p.rankChange ?? 0,
@@ -54,61 +58,127 @@ function normalizePlayer(p: any) {
   };
 }
 
-// ── ETag state (for 2-hour fallback poll) ────────────────────────────────────
-let storedETag = '';
-let currentRegularSeason = 9; // updated from x-seasonid header on each fetch
+// ── Season + change-detection state ──────────────────────────────────────────
+let storedETag = '';               // davg25 ETag, gates the fallback GET
+let lastBoardHash = '';            // skips rewrites when the board hasn't changed
+let currentRegularSeason = 9;      // seeded from meta.json, advanced by Embark's leaderboard list
+let seasonLoaded = false;
+
+async function loadSeasonFromMeta() {
+  if (seasonLoaded) return;
+  seasonLoaded = true;
+  try {
+    const meta = JSON.parse(await fs.readFile(META_FILE, 'utf8'));
+    if (Number.isInteger(meta?.season) && meta.season > 0) currentRegularSeason = meta.season;
+  } catch {
+    // meta.json missing — keep the default
+  }
+}
+
+interface FetchedBoard {
+  season: number;
+  players: LeaderboardPlayer[];
+  source: 'embark' | 'davg25';
+}
+
+// Returns null when the davg25 ETag says nothing changed.
+async function fetchFromDavg(forceWrite: boolean): Promise<FetchedBoard | null> {
+  if (!forceWrite && storedETag) {
+    try {
+      const head = await axios.head(NEW_REGULAR_API_URL, { timeout: 5000 });
+      const newETag = head.headers['etag'];
+      if (newETag && newETag === storedETag) {
+        logger.info('[CacheUpdater] davg25 leaderboard unchanged (ETag match), skipping.');
+        return null;
+      }
+    } catch {
+      // HEAD failed — fall through to full GET
+    }
+  }
+
+  const response = await axios.get(NEW_REGULAR_API_URL, { timeout: 15000 });
+  if (response.status !== 200) {
+    throw new Error(`davg25 API returned status ${response.status}`);
+  }
+
+  let season = currentRegularSeason;
+  const seasonHeader = response.headers['x-seasonid'] as string | undefined;
+  if (seasonHeader) {
+    const parsed = parseInt(seasonHeader.replace('s', ''), 10);
+    if (!isNaN(parsed)) season = parsed;
+  }
+
+  const newETag = response.headers['etag'];
+  if (newETag) storedETag = newETag;
+
+  const raw = response.data;
+  return {
+    season,
+    players: Array.isArray(raw) ? raw.map(normalizePlayer) : [],
+    source: 'davg25',
+  };
+}
+
+async function fetchBoard(forceWrite: boolean): Promise<FetchedBoard | null> {
+  try {
+    const result = await fetchEmbarkRanked(currentRegularSeason);
+    return { season: result.season, players: result.players, source: 'embark' };
+  } catch (embarkError) {
+    logger.warn('[CacheUpdater] Embark fetch failed — falling back to davg25:', embarkError);
+    return fetchFromDavg(forceWrite);
+  }
+}
 
 // ── Fetch regular leaderboard + write cache ──────────────────────────────────
 export async function fetchAndWriteRegular(forceWrite = false): Promise<boolean> {
   const startedAt = Date.now();
   try {
-    // ETag check — skip full GET if leaderboard hasn't changed
-    if (!forceWrite && storedETag) {
-      try {
-        const head = await axios.head(NEW_REGULAR_API_URL, { timeout: 5000 });
-        const newETag = head.headers['etag'];
-        if (newETag && newETag === storedETag) {
-          logger.info('[CacheUpdater] Regular leaderboard unchanged (ETag match), skipping.');
-          return false;
-        }
-      } catch {
-        // HEAD failed — fall through to full GET
-      }
+    await loadSeasonFromMeta();
+
+    const board = await fetchBoard(forceWrite);
+    if (!board) return false;
+
+    // davg25 can still report the previous season after Embark has moved on.
+    if (board.season < currentRegularSeason) {
+      logger.warn(`[CacheUpdater] ${board.source} returned S${board.season} but S${currentRegularSeason} is current, skipping.`);
+      return false;
     }
 
-    const response = await axios.get(NEW_REGULAR_API_URL, { timeout: 15000 });
-
-    if (response.status !== 200) {
-      throw new Error(`New API returned status ${response.status}`);
+    if (board.season > currentRegularSeason) {
+      logger.info(`[CacheUpdater] New season detected via ${board.source}: S${currentRegularSeason} → S${board.season}.`);
+      sendInfoToDiscord(`[Cache] New season detected: S${board.season} (was S${currentRegularSeason}).`);
+      void recordOperationalEvent({
+        type: 'season_change_detected',
+        severity: 'info',
+        reasonCode: `s${currentRegularSeason}_to_s${board.season}`,
+        outcome: 'success',
+      });
+      currentRegularSeason = board.season;
+      lastBoardHash = '';
     }
 
-    const raw: any[] = response.data;
+    const seasonId = `s${currentRegularSeason}`;
 
-    // Read season from header before checking data length
-    const seasonHeader = response.headers['x-seasonid'] as string | undefined;
-    if (seasonHeader) {
-      const parsed = parseInt(seasonHeader.replace('s', ''), 10);
-      if (!isNaN(parsed)) currentRegularSeason = parsed;
-    }
-
-    if (!Array.isArray(raw) || raw.length === 0) {
+    if (board.players.length === 0) {
       // New season just started — leaderboard not populated yet
-      await writeMeta(currentRegularSeason, seasonHeader ?? `s${currentRegularSeason}`, null, true);
-      throw new Error('New API returned empty or non-array response');
+      await writeMeta(currentRegularSeason, seasonId, null, true);
+      throw new Error(`${board.source} returned an empty S${currentRegularSeason} leaderboard`);
     }
 
-    // Store new ETag
-    const newETag = response.headers['etag'];
-    if (newETag) storedETag = newETag;
+    const normalized = board.players;
+    const hash = hashPlayers(normalized);
+    if (hash === lastBoardHash) {
+      logger.info(`[CacheUpdater] S${currentRegularSeason} leaderboard unchanged (${board.source}), skipping.`);
+      return false;
+    }
+    lastBoardHash = hash;
 
-    // Normalize and write
-    const normalized = raw.map(normalizePlayer);
     const cachePath = getCachePath('regular', currentRegularSeason);
     await fs.writeFile(cachePath, JSON.stringify(normalized, null, 2), 'utf8');
-    logger.info(`[CacheUpdater] Regular S${currentRegularSeason} cache updated — ${normalized.length} entries.`);
+    logger.info(`[CacheUpdater] Regular S${currentRegularSeason} cache updated from ${board.source} — ${normalized.length} entries.`);
 
     // Write meta.json so other modules know the current season
-    await writeMeta(currentRegularSeason, seasonHeader ?? `s${currentRegularSeason}`, new Date().toISOString(), false);
+    await writeMeta(currentRegularSeason, seasonId, new Date().toISOString(), false);
 
     // Post-update hooks
     try { await updateRSHistory();  } catch (e) { logger.error('[CacheUpdater] updateRSHistory error:', e); }
@@ -220,25 +290,24 @@ export function startCacheUpdater() {
     })
     .catch(logger.error);
 
-  // 2. Real-time updates via EventSource
+  // 2. davg25 update events — a cue to re-check the board
   startEventSource();
 
-  // 3. 2-hour fallback poll (ETag-gated, won't re-write if unchanged)
-  const FALLBACK_INTERVAL = 2 * 60 * 60 * 1000;
+  // 3. Embark poll (hash-gated, won't re-write if unchanged)
   setInterval(async () => {
     const updated = await fetchAndWriteRegular();
     if (updated) {
       lastUpdate = Date.now();
-      sendInfoToDiscord(`[Cache] Fallback poll updated regular leaderboard (S${currentRegularSeason}).`);
+      sendInfoToDiscord(`[Cache] Poll updated regular leaderboard (S${currentRegularSeason}).`);
     }
-  }, FALLBACK_INTERVAL);
+  }, POLL_INTERVAL);
 
   // 4. Banned players poll — every 10 minutes
   const BANNED_INTERVAL = 10 * 60 * 1000;
   setInterval(fetchAndWriteBannedPlayers, BANNED_INTERVAL);
 }
 
-export function getNextCacheUpdateInfo(intervalMs = 2 * 60 * 60 * 1000) {
+export function getNextCacheUpdateInfo(intervalMs = POLL_INTERVAL) {
   const now = Date.now();
   const nextUpdateAt = Math.max(0, lastUpdate + intervalMs);
   const msLeft = Math.max(0, nextUpdateAt - now);
@@ -258,6 +327,7 @@ async function loadRegularSeasonData(season: number) {
 
 export async function getRubyRankThreshold() {
   try {
+    await loadSeasonFromMeta();
     const data = await loadRegularSeasonData(currentRegularSeason);
 
     if (!data || data.length < 500) {

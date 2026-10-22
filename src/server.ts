@@ -22,6 +22,7 @@ import { csrfProtection } from "@/middleware/csrf.middleware";
 import { startCacheUpdater } from "@/jobs/cacheUpdater";  
 
 import { blockSuspiciousRequests, rateLimitByIP } from "@/middleware/security";
+import { trackProbes } from '@/services/probeTracker.service';
 import { platformStatsPersistence } from '@/services/platformStatsPersistence.service';
 
 // Import all routes
@@ -180,7 +181,9 @@ export const setupServer = () => {
   app.set("view engine", "ejs"); // Use EJS for rendering views
   app.set("views", viewsPath);
 
-  // Security middleware (before logging to reduce spam)
+  // Security middleware (before logging to reduce spam). Probe tracking runs
+  // first so requests blocked below are still counted (watch-only).
+  app.use(trackProbes);
   app.use(blockSuspiciousRequests);
   app.use(rateLimitByIP);
 

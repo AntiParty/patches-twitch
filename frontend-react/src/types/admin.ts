@@ -87,3 +87,37 @@ export interface AuditEvent {
   outcome?: string
   [key: string]: unknown
 }
+
+/* Vulnerability-scanner probes (/admin/api/operations/probes). */
+export type ProbeRange = '7d' | '30d' | '365d'
+
+export interface ProbeReport {
+  range: ProbeRange
+  days: number
+  /** Paths/sources/unique counts cover at most this many days (detail retention). */
+  detailDays: number
+  generatedAt: string
+  totals: { requests: number; today: number; sources: number }
+  series: { day: string; total: number; byCategory: Record<string, number> }[]
+  categories: { category: string; label: string; reference?: string; count: number; sources: number }[]
+  topPaths: { path: string; category: string; count: number; lastDay: string }[]
+  topSources: {
+    sourceHash: string
+    sourcePrefix: string | null
+    count: number
+    categories: string[]
+    firstDay: string
+    lastDay: string
+  }[]
+  recent: {
+    timestamp: string
+    category: string
+    rule: string
+    method: string
+    url: string
+    statusCode: number | null
+    sourcePrefix: string | null
+    sourceHash: string
+    userAgent: string | null
+  }[]
+}

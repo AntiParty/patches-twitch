@@ -6,6 +6,7 @@ import {
     parseOperationsRange,
 } from '@/services/operationsAnalytics.service';
 import { listAdminAuditEvents } from '@/services/operationalEvents.service';
+import { getProbeReport, parseProbeRange } from '@/services/probeTracker.service';
 import logger from '@/util/logger';
 
 const router = Router();
@@ -25,6 +26,15 @@ router.get('/api/operations/health', requireAdminAPI, async (req: any, res: any)
     } catch (error) {
         logger.error('[Operations] Failed to build health data:', error);
         res.status(500).json({ error: 'Failed to load bot health' });
+    }
+});
+
+router.get('/api/operations/probes', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        res.json(await getProbeReport(parseProbeRange(req.query.range)));
+    } catch (error) {
+        logger.error('[Operations] Failed to build probe report:', error);
+        res.status(500).json({ error: 'Failed to load probe report' });
     }
 });
 

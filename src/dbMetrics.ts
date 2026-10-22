@@ -225,6 +225,61 @@ AdminAuditEvent.init(
   }
 );
 
+/**
+ * Vulnerability-scanner probe rollups (see services/probeTracker.service.ts).
+ * Written in batches once a minute, never per request. Sources are a keyed hash
+ * plus a truncated IP for display; full IPs are never stored.
+ */
+export class ProbeDaily extends Model {}
+ProbeDaily.init(
+  {
+    day: { type: DataTypes.STRING(10), primaryKey: true },
+    category: { type: DataTypes.STRING(32), primaryKey: true },
+    count: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  },
+  { sequelize: sequelizeMetrics, modelName: "ProbeDaily", tableName: "ProbeDaily", timestamps: false }
+);
+
+export class ProbeSourceDaily extends Model {}
+ProbeSourceDaily.init(
+  {
+    day: { type: DataTypes.STRING(10), primaryKey: true },
+    category: { type: DataTypes.STRING(32), primaryKey: true },
+    sourceHash: { type: DataTypes.STRING(16), primaryKey: true },
+    sourcePrefix: { type: DataTypes.STRING(48), allowNull: true },
+    count: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  },
+  { sequelize: sequelizeMetrics, modelName: "ProbeSourceDaily", tableName: "ProbeSourceDaily", timestamps: false }
+);
+
+export class ProbePathDaily extends Model {}
+ProbePathDaily.init(
+  {
+    day: { type: DataTypes.STRING(10), primaryKey: true },
+    category: { type: DataTypes.STRING(32), primaryKey: true },
+    path: { type: DataTypes.STRING(160), primaryKey: true },
+    count: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  },
+  { sequelize: sequelizeMetrics, modelName: "ProbePathDaily", tableName: "ProbePathDaily", timestamps: false }
+);
+
+export class ProbeSample extends Model {}
+ProbeSample.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    timestamp: { type: DataTypes.DATE, allowNull: false },
+    category: { type: DataTypes.STRING(32), allowNull: false },
+    rule: { type: DataTypes.STRING(40), allowNull: false },
+    method: { type: DataTypes.STRING(10), allowNull: false },
+    url: { type: DataTypes.STRING(300), allowNull: false },
+    statusCode: { type: DataTypes.INTEGER, allowNull: true },
+    sourceHash: { type: DataTypes.STRING(16), allowNull: false },
+    sourcePrefix: { type: DataTypes.STRING(48), allowNull: true },
+    userAgent: { type: DataTypes.STRING(200), allowNull: true },
+  },
+  { sequelize: sequelizeMetrics, modelName: "ProbeSample", tableName: "ProbeSamples", timestamps: false }
+);
+
 export const metricsDbReady = sequelizeMetrics
   .sync()
   .then(async () => {
@@ -285,6 +340,13 @@ export const metricsDbReady = sequelizeMetrics
         const deletedIGN = await IGNVisit.destroy({
           where: { timestamp: { [Op.lt]: sevenDaysAgo } }
         });
+        // Probe detail rows: 30 days. Per-category daily totals: 1 year.
+        const probeDetailCutoff = thirtyDaysAgo.toISOString().slice(0, 10);
+        const probeTotalsCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        await ProbeSourceDaily.destroy({ where: { day: { [Op.lt]: probeDetailCutoff } } });
+        await ProbePathDaily.destroy({ where: { day: { [Op.lt]: probeDetailCutoff } } });
+        await ProbeSample.destroy({ where: { timestamp: { [Op.lt]: thirtyDaysAgo } } });
+        await ProbeDaily.destroy({ where: { day: { [Op.lt]: probeTotalsCutoff } } });
         if (deletedRequests > 0 || deletedPerf > 0 || deletedIGN > 0) {
           logger.info(`[metrics-db] Cleaned up ${deletedRequests} reqs (60d), ${deletedPerf} perf (30d), and ${deletedIGN} IGN logs (7d).`);
         }

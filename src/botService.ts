@@ -150,7 +150,6 @@ dbReady.then(async () => {
           sendMessageToDiscord(user.username);
           logger.info(`[ControlAPI] Sent Discord notification for new channel: ${user.username}`);
         }
-        logger.info(`[ControlAPI] Sent Discord notification for new channel: ${user.username}`);
         //Where the event fires to discord
       } catch (err) {
         logger.error("Failed to add channel via control API:", err);

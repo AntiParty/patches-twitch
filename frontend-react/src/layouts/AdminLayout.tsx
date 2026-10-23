@@ -19,6 +19,7 @@ const ADMIN_ITEMS: SidebarItem[] = [
   { label: 'Message Bot', icon: 'fas fa-paper-plane', to: '/admin/message' },
   { label: 'Drops', icon: 'fas fa-gift', to: '/admin/drops' },
   { label: 'Probes', icon: 'fas fa-bug', to: '/admin/probes' },
+  { label: 'Live Players', icon: 'fas fa-signal', to: '/admin/live-players' },
   { label: 'Audit', icon: 'fas fa-shield-halved', to: '/admin/audit' },
   { label: 'Exit to Dashboard', icon: 'fas fa-arrow-left', to: '/dashboard', variant: 'accent' },
 ]

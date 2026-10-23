@@ -7,6 +7,7 @@ import {
 } from '@/services/operationsAnalytics.service';
 import { listAdminAuditEvents } from '@/services/operationalEvents.service';
 import { getProbeReport, parseProbeRange } from '@/services/probeTracker.service';
+import { getLivePlayers, parseLiveTop, parseLiveWindow } from '@/services/leaderboardHistory.service';
 import logger from '@/util/logger';
 
 const router = Router();
@@ -35,6 +36,15 @@ router.get('/api/operations/probes', requireAdminAPI, async (req: any, res: any)
     } catch (error) {
         logger.error('[Operations] Failed to build probe report:', error);
         res.status(500).json({ error: 'Failed to load probe report' });
+    }
+});
+
+router.get('/api/operations/live-players', requireAdminAPI, async (req: any, res: any) => {
+    try {
+        res.json(await getLivePlayers(parseLiveWindow(req.query.window), parseLiveTop(req.query.top)));
+    } catch (error) {
+        logger.error('[Operations] Failed to load live players:', error);
+        res.status(500).json({ error: 'Failed to load live players' });
     }
 });
 

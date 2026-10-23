@@ -124,6 +124,11 @@ export function latestRankedSeason(leaderboards: EmbarkLeaderboardRef[]): number
   return seasons.length > 0 ? Math.max(...seasons) : null;
 }
 
+/** True when `incoming` is older than a board we've already taken. Unknown times never count as stale. */
+export function isStaleBoard(incoming: number | null, newestSeen: number | null): boolean {
+  return incoming !== null && newestSeen !== null && incoming < newestSeen;
+}
+
 /** Stable fingerprint of the board, used to skip rewrites when nothing changed. */
 export function hashPlayers(players: LeaderboardPlayer[]): string {
   return crypto.createHash('sha1').update(JSON.stringify(players)).digest('hex');

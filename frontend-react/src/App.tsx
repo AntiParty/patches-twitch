@@ -51,6 +51,9 @@ const AdminHealth = lazy(() =>
 const AdminProbes = lazy(() =>
   import('@/features/admin/Probes').then((m) => ({ default: m.Probes })),
 )
+const AdminLivePlayers = lazy(() =>
+  import('@/features/admin/LivePlayers').then((m) => ({ default: m.LivePlayers })),
+)
 
 export default function App() {
   return (
@@ -133,6 +136,7 @@ export default function App() {
           <Route path="message" element={<AdminMessageBot />} />
           <Route path="drops" element={<AdminDrops />} />
           <Route path="probes" element={<AdminProbes />} />
+          <Route path="live-players" element={<AdminLivePlayers />} />
           <Route path="audit" element={<AdminAudit />} />
         </Route>
 

@@ -121,3 +121,29 @@ export interface ProbeReport {
     userAgent: string | null
   }[]
 }
+
+/* Ranked players whose RS moved recently (/admin/api/operations/live-players). */
+export interface LivePlayer {
+  name: string
+  clubTag: string
+  rank: number
+  rankScore: number
+  leagueNumber: number
+  league: string
+  /** RS now minus RS just before the window. */
+  delta: number
+  /** Board refreshes in the window where the player's RS changed. */
+  moves: number
+  firstMoveAt: string
+  lastMoveAt: string
+}
+
+export interface LivePlayersReport {
+  season: number | null
+  windowMinutes: number
+  top: number
+  generatedAt: string
+  lastSnapshotAt: string | null
+  totals: { active: number; top100: number; top500: number }
+  players: LivePlayer[]
+}

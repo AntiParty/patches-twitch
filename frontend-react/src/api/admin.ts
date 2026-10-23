@@ -9,6 +9,7 @@ import type {
   BotHealth,
   DropsConfig,
   ProbeReport,
+  LivePlayersReport,
 } from '@/types/admin'
 
 export const adminApi = {
@@ -36,6 +37,8 @@ export const adminApi = {
     api.get<BotHealth>('/admin/api/operations/health', { params: { range } }),
   getProbes: (range = '7d') =>
     api.get<ProbeReport>('/admin/api/operations/probes', { params: { range } }),
+  getLivePlayers: (window = 30, top = 500) =>
+    api.get<LivePlayersReport>('/admin/api/operations/live-players', { params: { window, top } }),
 
   getDrops: () => api.get<DropsConfig>('/admin/api/drops'),
   saveDrops: (config: DropsConfig) => api.post<{ success: boolean; config: DropsConfig }>('/admin/api/drops', config),

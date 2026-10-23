@@ -237,6 +237,19 @@
   font-size: 12px;
 }
 
+.gain {
+  color: var(--success);
+}
+.loss {
+  color: var(--danger);
+}
+.liveFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 @media (max-width: 960px) {
   .probeGrid {
     grid-template-columns: 1fr;

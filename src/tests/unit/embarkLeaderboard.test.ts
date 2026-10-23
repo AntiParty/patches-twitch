@@ -2,6 +2,7 @@ import { strict as assert } from 'assert';
 import {
   extractPageProps,
   hashPlayers,
+  isStaleBoard,
   latestRankedSeason,
   leagueNameFor,
   normalizeEmbarkEntry,
@@ -97,5 +98,16 @@ describe('Embark leaderboard parser', () => {
     assert.equal(hashPlayers(a), hashPlayers(b));
     const changed = parseEmbarkEntries([{ ...apollo, '5': 48600 }, normalize]);
     assert.notEqual(hashPlayers(a), hashPlayers(changed));
+  });
+
+  it('flags a board older than the newest one taken, and nothing else', () => {
+    // Seen live 2026-10-23: back-to-back fetches returned 21:40:45 then 21:46:52.
+    const older = Date.parse('2026-10-23T21:40:45.738Z');
+    const newer = Date.parse('2026-10-23T21:46:52.221Z');
+    assert.equal(isStaleBoard(older, newer), true);
+    assert.equal(isStaleBoard(newer, older), false);
+    assert.equal(isStaleBoard(newer, newer), false);
+    assert.equal(isStaleBoard(null, newer), false);
+    assert.equal(isStaleBoard(older, null), false);
   });
 });

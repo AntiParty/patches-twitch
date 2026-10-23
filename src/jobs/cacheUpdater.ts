@@ -10,7 +10,7 @@ import { updatePeakRanks } from '@/jobs/peakUpdater';
 import { updateRankProgress } from '@/services/rankGoal.service';
 import { recordOperationalEvent } from '@/services/operationalEvents.service';
 import { syncConfiguredOwnerWidget } from '@/services/discordOwnerWidget.service';
-import { fetchEmbarkRanked, hashPlayers, type LeaderboardPlayer } from '@/services/embarkLeaderboard.service';
+import { fetchEmbarkRanked, hashPlayers, isStaleBoard, type LeaderboardPlayer } from '@/services/embarkLeaderboard.service';
 import { recordLeaderboardHistory } from '@/services/leaderboardHistory.service';
 
 // ── Sources ──────────────────────────────────────────────────────────────────
@@ -37,6 +37,7 @@ interface CacheMeta {
   transitioning: boolean;
   lastCheckedAt?: string | null; // last fetch attempt, changed or not
   nextCheckAt?: string | null;   // next scheduled poll
+  sourceUpdatedAt?: number | null; // Embark's lastUpdatedAt for the board we hold
 }
 
 let meta: CacheMeta | null = null;
@@ -50,8 +51,14 @@ async function saveMeta(next: CacheMeta) {
   }
 }
 
-async function writeMeta(season: number, seasonId: string, updatedAt: string | null, transitioning: boolean) {
-  await saveMeta({ ...meta, season, seasonId, updatedAt, transitioning });
+async function writeMeta(
+  season: number,
+  seasonId: string,
+  updatedAt: string | null,
+  transitioning: boolean,
+  sourceUpdatedAt = meta?.sourceUpdatedAt ?? null
+) {
+  await saveMeta({ ...meta, season, seasonId, updatedAt, transitioning, sourceUpdatedAt });
 }
 
 // Set when the poll timer starts or ticks; read by the page's "next check" countdown.
@@ -111,6 +118,7 @@ interface FetchedBoard {
   season: number;
   players: LeaderboardPlayer[];
   source: 'embark' | 'davg25';
+  sourceUpdatedAt: number | null; // davg25 has no equivalent
 }
 
 // Returns null when the davg25 ETag says nothing changed.
@@ -148,13 +156,14 @@ async function fetchFromDavg(forceWrite: boolean): Promise<FetchedBoard | null> 
     season,
     players: Array.isArray(raw) ? raw.map(normalizePlayer) : [],
     source: 'davg25',
+    sourceUpdatedAt: null,
   };
 }
 
 async function fetchBoard(forceWrite: boolean): Promise<FetchedBoard | null> {
   try {
     const result = await fetchEmbarkRanked(currentRegularSeason);
-    return { season: result.season, players: result.players, source: 'embark' };
+    return { season: result.season, players: result.players, source: 'embark', sourceUpdatedAt: result.lastUpdatedAt };
   } catch (embarkError) {
     logger.warn('[CacheUpdater] Embark fetch failed — falling back to davg25:', embarkError);
     return fetchFromDavg(forceWrite);
@@ -205,6 +214,14 @@ async function refreshRegular(forceWrite: boolean): Promise<boolean> {
       throw new Error(`${board.source} returned an empty S${currentRegularSeason} leaderboard`);
     }
 
+    // Embark's CDN sometimes hands back an older copy of the page. Taking it would
+    // roll everyone who played since back to their old RS (and record it twice).
+    const newestSeen = meta?.season === currentRegularSeason ? meta.sourceUpdatedAt ?? null : null;
+    if (isStaleBoard(board.sourceUpdatedAt, newestSeen)) {
+      logger.info(`[CacheUpdater] Ignoring stale S${currentRegularSeason} board from ${board.source} (updated ${new Date(board.sourceUpdatedAt!).toISOString()}, already have ${new Date(newestSeen!).toISOString()}).`);
+      return false;
+    }
+
     const normalized = board.players;
     const hash = hashPlayers(normalized);
     if (hash === lastBoardHash) {
@@ -218,7 +235,7 @@ async function refreshRegular(forceWrite: boolean): Promise<boolean> {
     logger.info(`[CacheUpdater] Regular S${currentRegularSeason} cache updated from ${board.source} — ${normalized.length} entries.`);
 
     // Write meta.json so other modules know the current season
-    await writeMeta(currentRegularSeason, seasonId, new Date().toISOString(), false);
+    await writeMeta(currentRegularSeason, seasonId, new Date().toISOString(), false, board.sourceUpdatedAt ?? newestSeen);
 
     // Post-update hooks
     try {

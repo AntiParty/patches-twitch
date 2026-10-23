@@ -217,6 +217,7 @@ router.get("/callback", async (req: any, res: any) => {
         }
 
         // --- Normal Login Flow ---
+        const isNewChannel = !(await Channel.findOne({ where: { twitch_user_id: twitchUserId } }));
         // Upsert user in DB with tokens
         await Channel.upsert({
             username: twitchUsername,
@@ -295,6 +296,7 @@ router.get("/callback", async (req: any, res: any) => {
             await axios.post(`${botControlUrl}/add-channel`, {
                 twitch_user_id: twitchUserId,
                 username: twitchUsername,
+                is_new: isNewChannel,
             }, { headers: botControlHeaders() });
             logger.info(`[Callback] Bot notified to add channel: ${twitchUsername} (${twitchUserId})`);
         } catch (notifyError) {

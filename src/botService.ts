@@ -128,7 +128,7 @@ dbReady.then(async () => {
 
     // Add channel after auth
     controlApp.post("/add-channel", async (req: any, res: any) => {
-      const { twitch_user_id } = req.body;
+      const { twitch_user_id, is_new } = req.body;
       if (!twitch_user_id) {
         return res.status(400).send("Missing twitch_user_id");
       }
@@ -145,7 +145,13 @@ dbReady.then(async () => {
         );
         res.send(`Channel ${user.username} added to bot`);
         logger.info(`[ControlAPI] Added channel: ${user.username}`);
-        sendMessageToDiscord(user.username);
+        // check if already in db, if so dont send discord message, if not send discord message
+        if (is_new) {
+          sendMessageToDiscord(user.username);
+          logger.info(`[ControlAPI] Sent Discord notification for new channel: ${user.username}`);
+        }
+        logger.info(`[ControlAPI] Sent Discord notification for new channel: ${user.username}`);
+        //Where the event fires to discord
       } catch (err) {
         logger.error("Failed to add channel via control API:", err);
         res.status(500).send("Internal error");

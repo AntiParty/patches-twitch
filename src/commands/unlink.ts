@@ -1,4 +1,4 @@
-import { Channel } from '@/db';
+import { purgeChannelData } from '@/services/channelDataPurge.service';
 import { stopChatBot } from '@/util/ircBot';
 import logger from '@/util/logger';
 
@@ -31,8 +31,8 @@ export const execute = async (ctx: CommandContext) => {
 
     logger.info(`Attempting to unlink channel: ${sanitizedChannel}`);
 
-    // Remove the channel from the database
-    const deleted = await Channel.destroy({ where: { username: sanitizedChannel } });
+    // Remove the channel and all of its data from the database
+    const deleted = await purgeChannelData(sanitizedChannel);
 
     if (deleted) {
       logger.info(`Channel ${sanitizedChannel} unlinked from the database.`);

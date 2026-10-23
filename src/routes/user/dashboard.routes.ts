@@ -10,6 +10,7 @@ import logger from '@/util/logger';
 import { requireUser, requireUserAPI } from '@/middleware/auth.middleware';
 import { isValidPlayerId } from '@/middleware/validation.middleware';
 import { getTierName } from '@/services/twitchSubscription.service';
+import { purgeChannelData } from '@/services/channelDataPurge.service';
 import { csrfProtection } from '@/middleware/csrf.middleware';
 
 const router = Router();
@@ -167,8 +168,6 @@ router.post('/api/link-account', requireUserAPI, csrfProtection, async (req: any
  */
 router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: any, res: any) => {
     const username = req.session.twitchUsername;
-    const channelId = req.session.channelId;
-
     try {
         // Cache user object before deletion
         const user = await Channel.findOne({ where: { username } });
@@ -187,36 +186,6 @@ router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: a
             }
         } catch (botErr) {
             logger.error(`[dashboard] Error notifying bot to remove channel for ${username}:`, botErr);
-        }
-
-        // Remove custom bot account if exists
-        try {
-            if (channelId) {
-                await CustomBotAccount.destroy({ where: { channel_id: channelId } });
-                logger.info(`[dashboard] Deleted custom bot account for ${username}`);
-            }
-        } catch (customBotErr) {
-            logger.error(`[dashboard] Error deleting custom bot for ${username}:`, customBotErr);
-        }
-
-        // Remove subscription record if exists
-        try {
-            if (channelId) {
-                await Subscription.destroy({ where: { channel_id: channelId } });
-                logger.info(`[dashboard] Deleted subscription record for ${username}`);
-            }
-        } catch (subErr) {
-            logger.error(`[dashboard] Error deleting subscription for ${username}:`, subErr);
-        }
-
-        // Remove all custom responses for this user
-        try {
-            const { CustomResponse, RankGoal } = await import('@/db');
-            await RankGoal.destroy({ where: { channel: username } });
-            await CustomResponse.destroy({ where: { channel: username } });
-            logger.info(`[dashboard] Deleted custom responses and rank goals for ${username}`);
-        } catch (customErr) {
-            logger.error(`[dashboard] Error deleting custom data for ${username}:`, customErr);
         }
 
         // Delete all EventSub subscriptions for this user
@@ -249,8 +218,8 @@ router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: a
             logger.error(`[dashboard] Error deleting EventSub subscriptions for ${username}:`, eventsubErr);
         }
 
-        // NOW Remove channel from DB (do this last since other deletions depend on it)
-        await Channel.destroy({ where: { username } });
+        // NOW remove the channel and everything tied to it (last, since the steps above need its tokens)
+        await purgeChannelData(username);
 
         logger.info(`[dashboard] ${username} disconnected and deleted their bot/service.`);
 

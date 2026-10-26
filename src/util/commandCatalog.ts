@@ -32,7 +32,7 @@ export const COMMAND_CATALOG: CommandInfo[] = [
   { name: 'part', aliases: ['leave'], usage: '!part', description: 'Makes the bot leave this channel.', audience: 'broadcaster' },
   { name: 'peak', aliases: [], usage: '!peak', description: 'Shows your all-time peak rank and Rank Score.', audience: 'everyone' },
   { name: 'ping', aliases: ['status'], usage: '!ping', description: 'Checks that the bot is responsive and shows latency.', audience: 'everyone' },
-  { name: 'predict', aliases: ['cutoff', 'safe'], usage: '!predict <days>', description: 'Forecasts a future Top 500 cutoff from historical trends.', audience: 'tester' },
+  { name: 'predict', aliases: ['cutoff', 'safe'], usage: '!predict <days>', description: 'Forecasts a future Top 500 cutoff from historical trends.', audience: 'everyone' },
   { name: 'preset', aliases: [], usage: '!preset p <add|list|show|delete> ...', description: 'Manages channel points prediction presets.', audience: 'broadcaster' },
   { name: 'rank', aliases: ['r', 'rs', 'rankscore'], usage: '!rank [PlayerName#1234]', description: 'Shows current ranked leaderboard rank, league, and Rank Score.', audience: 'everyone' },
   { name: 'rankpred', aliases: [], usage: '!rankpred <start|status|cancel>', description: 'Manages automatic ranked predictions.', audience: 'mods' },

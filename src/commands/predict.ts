@@ -1,4 +1,3 @@
-import { Channel } from "../db";
 import { getRSPrediction, type PredictionResult } from "../util/rsPredictor";
 import logger from "../util/logger";
 import fs from "fs/promises";
@@ -46,8 +45,6 @@ async function isSeasonTransitioning(): Promise<{ transitioning: boolean; season
   }
 }
 
-const ALLOWED_ROLES = ["tester", "admin", "staff", "owner"];
-
 export const execute = async (
   ctx: any,
   channel: string,
@@ -55,17 +52,9 @@ export const execute = async (
   tags: Record<string, any>,
   args: string[]
 ) => {
-  const username = tags["display-name"] || ctx.user;
   const messageId = tags["id"];
-  const sanitizedChannel = channel.replace(/^#/, "");
 
   try {
-    const channelRecord = await Channel.findOne({ where: { username: sanitizedChannel } });
-    if (!channelRecord) return;
-
-    const role = channelRecord.role?.toLowerCase() || "basic user";
-    if (!ALLOWED_ROLES.includes(role)) return;
-
     // Parse optional days argument
     let days: number | undefined;
     if (args[0]) {

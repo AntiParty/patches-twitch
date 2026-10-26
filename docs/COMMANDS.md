@@ -255,7 +255,7 @@ Get help for a specific command.
 
 ### `!predict` or `!cutoff`
 
-**[TESTER/PREMIUM ONLY]** Predicts the T500 leaderboard cutoff. If no days are provided, it automatically predicts the cutoff for the end of the current season. Accounts for end-of-season "rushes".
+Predicts the T500 leaderboard cutoff. If no days are provided, it automatically predicts the cutoff for the end of the current season. Accounts for end-of-season "rushes".
 
 **Usage:**
 

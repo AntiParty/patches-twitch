@@ -10,6 +10,9 @@ import type {
   DropsConfig,
   ProbeReport,
   LivePlayersReport,
+  TrollResponse,
+  TrollsConfig,
+  NewTroll,
 } from '@/types/admin'
 
 export const adminApi = {
@@ -39,6 +42,16 @@ export const adminApi = {
     api.get<ProbeReport>('/admin/api/operations/probes', { params: { range } }),
   getLivePlayers: (window = 30, top = 500) =>
     api.get<LivePlayersReport>('/admin/api/operations/live-players', { params: { window, top } }),
+
+  getTrolls: () => api.get<TrollsConfig>('/admin/api/trolls'),
+  createTroll: (troll: NewTroll) => api.post<{ troll: TrollResponse }>('/admin/api/trolls', troll),
+  updateTroll: (id: number, patch: Partial<Pick<TrollResponse, 'enabled' | 'chance' | 'followUp'>>) =>
+    api.patch<{ troll: TrollResponse }>(`/admin/api/trolls/${id}`, patch),
+  deleteTroll: (id: number) => api.del(`/admin/api/trolls/${id}`),
+  setTrollChannel: (channel: string, armed: boolean) =>
+    api.post(`/admin/api/trolls/channels/${encodeURIComponent(channel)}`, { armed }),
+  previewTroll: (response: string, command: string, channel?: string) =>
+    api.post<{ text: string }>('/admin/api/trolls/preview', { response, command, channel }),
 
   getDrops: () => api.get<DropsConfig>('/admin/api/drops'),
   saveDrops: (config: DropsConfig) => api.post<{ success: boolean; config: DropsConfig }>('/admin/api/drops', config),

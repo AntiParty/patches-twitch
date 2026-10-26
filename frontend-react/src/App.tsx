@@ -34,6 +34,7 @@ import { Channels as AdminChannels } from '@/features/admin/Channels'
 import { Audit as AdminAudit } from '@/features/admin/Audit'
 import { MessageBot as AdminMessageBot } from '@/features/admin/MessageBot'
 import { Drops as AdminDrops } from '@/features/admin/Drops'
+import { Trolls as AdminTrolls } from '@/features/admin/Trolls'
 // Statistics pulls in Recharts (~heavy) — lazy-load so it stays out of the main bundle.
 const Statistics = lazy(() =>
   import('@/features/statistics/Statistics').then((m) => ({ default: m.Statistics })),
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="message" element={<AdminMessageBot />} />
           <Route path="drops" element={<AdminDrops />} />
+          <Route path="trolls" element={<AdminTrolls />} />
           <Route path="probes" element={<AdminProbes />} />
           <Route path="live-players" element={<AdminLivePlayers />} />
           <Route path="audit" element={<AdminAudit />} />

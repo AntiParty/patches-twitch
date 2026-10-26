@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { recordOperationalEvent } from "../services/operationalEvents.service";
 import { devModeChannels, isCommandSilenced } from "./devModeState";
 import { shouldSkipDisabledViewerCommand } from "../services/commandDispatchPolicy.service";
+import { rollTroll } from "../services/trollResponses.service";
 import {
   chooseReplyTarget,
   extractMentionedUsername,
@@ -818,47 +819,48 @@ export const startChatBot = async (
         let errorMessage: string | undefined;
 
         try {
-          await commandEntry(
-            {
-              say: async (msg: string, replyToId?: string, bypassFilter: boolean = false) => {
-                if (!broadcasterId) {
-                  logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
-                  return;
-                }
-                const client = clients[username.replace(/^#/, "")];
-                let customCreds;
-                if (client?.customBotId && client?.customBotToken) {
-                  customCreds = {
-                    botUserId: client.customBotId,
-                    accessToken: client.customBotToken,
-                  };
-                }
-                const outgoingMessage = retargetLeadingMention(
-                  msg,
-                  tags["display-name"] || user,
-                  mentionedUsername
-                );
-                logger.info(`[DEBUG] Sending message from bot to ${channelName}: ${outgoingMessage}`);
-                await sendChatMessage(
-                  broadcasterId,
-                  outgoingMessage,
-                  chooseReplyTarget(mentionedReplyTarget, replyToId),
-                  bypassFilter,
-                  customCreds
-                );
-              },
-              raw: (line: string) =>
-                socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
-              user,
-              channel: channelName,
-              message,
-              tags,
+          const commandCtx = {
+            say: async (msg: string, replyToId?: string, bypassFilter: boolean = false) => {
+              if (!broadcasterId) {
+                logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
+                return;
+              }
+              const client = clients[username.replace(/^#/, "")];
+              let customCreds;
+              if (client?.customBotId && client?.customBotToken) {
+                customCreds = {
+                  botUserId: client.customBotId,
+                  accessToken: client.customBotToken,
+                };
+              }
+              const outgoingMessage = retargetLeadingMention(
+                msg,
+                tags["display-name"] || user,
+                mentionedUsername
+              );
+              logger.info(`[DEBUG] Sending message from bot to ${channelName}: ${outgoingMessage}`);
+              await sendChatMessage(
+                broadcasterId,
+                outgoingMessage,
+                chooseReplyTarget(mentionedReplyTarget, replyToId),
+                bypassFilter,
+                customCreds
+              );
             },
-            `#${channelName}`,
+            raw: (line: string) =>
+              socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
+            user,
+            channel: channelName,
             message,
             tags,
-            args
-          );
+          };
+
+          // Rare admin-configured joke reply; it replaces the command unless follow_up is set.
+          const troll = await rollTroll(channelName, rawCommand, tags["display-name"] || user);
+          if (troll) await commandCtx.say(troll.text, tags["id"]);
+          if (!troll || troll.followUp) {
+            await commandEntry(commandCtx, `#${channelName}`, message, tags, args);
+          }
         } catch (err: any) {
           commandSuccess = false;
           errorMessage = err?.message || 'Unknown error';

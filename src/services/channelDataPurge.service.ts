@@ -15,6 +15,8 @@ import {
   RankProgress,
   StreamSession,
   Subscription,
+  TrollChannel,
+  TrollResponse,
 } from '@/db';
 import logger from '@/util/logger';
 
@@ -47,6 +49,8 @@ export async function purgeChannelData(username: string): Promise<boolean> {
     await RankProgress.destroy(byName);
     await PeakRank.destroy(byName);
     await CommandUsage.destroy(byName);
+    await TrollChannel.destroy(byName);
+    await TrollResponse.destroy(byName);
 
     await PredictionPreset.destroy({ where: { channel_id: channelId }, transaction });
     await PredictionAutomationRun.destroy({ where: { broadcaster_id: channelId }, transaction });

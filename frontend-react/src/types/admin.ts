@@ -12,6 +12,8 @@ export interface AdminUser {
   banReason: string | null
   hasSubscription: boolean
   subscriptionTier: string | null
+  /** Linked THE FINALS Embark id (Channel.player_id), e.g. "Name#1234". */
+  finalsAccount: string | null
 }
 
 export interface AdminChannel {
@@ -146,4 +148,33 @@ export interface LivePlayersReport {
   lastSnapshotAt: string | null
   totals: { active: number; top100: number; top500: number }
   players: LivePlayer[]
+}
+
+export interface TrollResponse {
+  id: number
+  /** Command name without '!', or '*' for any command. */
+  command: string
+  /** null = every armed channel. */
+  channel: string | null
+  response: string
+  chance: number
+  followUp: boolean
+  enabled: boolean
+  createdBy: string | null
+  createdAt: string
+}
+
+export interface TrollsConfig {
+  trolls: TrollResponse[]
+  armedChannels: string[]
+  commands: string[]
+  placeholders: string[]
+}
+
+export interface NewTroll {
+  command: string
+  channel: string | null
+  response: string
+  chance: number
+  followUp: boolean
 }

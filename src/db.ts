@@ -1253,6 +1253,59 @@ GiveawayEntry.init(
 Giveaway.hasMany(GiveawayEntry, { foreignKey: 'giveaway_id' });
 GiveawayEntry.belongsTo(Giveaway, { foreignKey: 'giveaway_id' });
 
+// Rare joke replies an admin can arm per channel (see services/trollResponses.service.ts).
+// New tables only, so sequelize.sync() creates them; no migration needed.
+class TrollResponse extends Model {
+  declare id: number;
+  declare command: string;          // command name without '!', or '*' for any command
+  declare channel: string | null;   // null = every armed channel
+  declare response: string;
+  declare chance: number;           // percent, 0.1-100
+  declare follow_up: boolean;       // still run the real command after the troll
+  declare enabled: boolean;
+  declare created_by: string | null;
+  declare created_at: Date;
+}
+
+TrollResponse.init(
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    command: { type: DataTypes.STRING, allowNull: false },
+    channel: { type: DataTypes.STRING, allowNull: true, defaultValue: null },
+    response: { type: DataTypes.TEXT, allowNull: false },
+    chance: { type: DataTypes.FLOAT, allowNull: false, defaultValue: 5 },
+    follow_up: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    enabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+    created_by: { type: DataTypes.STRING, allowNull: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize,
+    modelName: 'TrollResponse',
+    tableName: 'TrollResponses',
+    timestamps: false,
+  }
+);
+
+// Channels where trolls are armed. No row = trolls never fire there.
+class TrollChannel extends Model {
+  declare channel: string;
+  declare created_at: Date;
+}
+
+TrollChannel.init(
+  {
+    channel: { type: DataTypes.STRING, allowNull: false, primaryKey: true },
+    created_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  },
+  {
+    sequelize,
+    modelName: 'TrollChannel',
+    tableName: 'TrollChannels',
+    timestamps: false,
+  }
+);
+
 export async function getActiveSessions() {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   return await StreamSession.findAll({
@@ -1264,4 +1317,4 @@ export async function getActiveSessions() {
   });
 }
 
-export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, RankProgress, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, dbReady, getCustomResponse, setCustomResponse, deleteCustomResponse };
+export { sequelize, Channel, StreamSession, PredictionPreset, PredictionAutomationConfig, PredictionAutomationRun, CustomResponse, DisabledChannelCommand, RankGoal, RankProgress, CommandUsage, Feedback, Subscription, CustomBotAccount, PeakRank, Giveaway, GiveawayEntry, TrollResponse, TrollChannel, dbReady, getCustomResponse, setCustomResponse, deleteCustomResponse };

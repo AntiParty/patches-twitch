@@ -73,6 +73,7 @@ router.get('/api/users', requireAdminAPI, async (req: any, res: any) => {
                 'ban_reason',
                 'has_subscription',
                 'subscription_tier',
+                'player_id',
             ],
             order: [['username', 'ASC']],
         });
@@ -87,8 +88,11 @@ router.get('/api/users', requireAdminAPI, async (req: any, res: any) => {
                 banReason: user.ban_reason || null,
                 hasSubscription: Boolean(user.has_subscription),
                 subscriptionTier: user.subscription_tier || null,
+                finalsAccount: user.player_id?.trim() || null,
             }))
-            .filter((user: any) => !search || user.username.toLowerCase().includes(search));
+            .filter((user: any) => !search
+                || user.username.toLowerCase().includes(search)
+                || user.finalsAccount?.toLowerCase().includes(search));
 
         res.json({ users: safeUsers });
     } catch (error) {

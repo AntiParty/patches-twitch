@@ -4,6 +4,7 @@ import apiRoutes from './api.routes';
 import dropsRoutes from './drops.routes';
 import messagingRoutes from './messaging.routes';
 import operationsRoutes from './operations.routes';
+import trollsRoutes from './trolls.routes';
 import { csrfErrorHandler, csrfProtection } from '@/middleware/csrf.middleware';
 
 const router = Router();
@@ -14,6 +15,7 @@ router.use(apiRoutes);
 router.use(dropsRoutes);
 router.use(messagingRoutes);
 router.use(operationsRoutes);
+router.use(trollsRoutes);
 router.use(csrfErrorHandler);
 
 export default router;

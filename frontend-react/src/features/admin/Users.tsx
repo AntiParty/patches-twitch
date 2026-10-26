@@ -1,5 +1,6 @@
 /*
- * Admin → Users. Search, change role, ban/unban, grant/revoke subscription.
+ * Admin → Users. Search, change role, ban/unban, grant/revoke subscription,
+ * and see which THE FINALS account each channel has linked.
  * Ported from the legacy admin users view. Admin-role gated (route guard).
  */
 import { useState } from 'react'
@@ -64,7 +65,10 @@ export function Users() {
     if (ok) ban.mutate({ id: u.id, reason: 'Banned by admin' })
   }
 
-  const filtered = (data?.users ?? []).filter((u) => !search || u.username.toLowerCase().includes(search.toLowerCase()))
+  const q = search.toLowerCase()
+  const filtered = (data?.users ?? []).filter(
+    (u) => !q || u.username.toLowerCase().includes(q) || u.finalsAccount?.toLowerCase().includes(q),
+  )
 
   return (
     <>
@@ -72,7 +76,7 @@ export function Users() {
 
       <div className={styles.toolbar}>
         <div className={styles.search}>
-          <SearchBar value={search} onChange={setSearch} placeholder="Search username…" />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search username or FINALS name…" />
         </div>
         {data && <span className={styles.count}>{filtered.length} users</span>}
       </div>
@@ -87,6 +91,7 @@ export function Users() {
             <thead>
               <tr>
                 <th>User</th>
+                <th>FINALS account</th>
                 <th>Role</th>
                 <th>Premium</th>
                 <th>Status</th>
@@ -97,6 +102,21 @@ export function Users() {
               {filtered.map((u) => (
                 <tr key={u.id}>
                   <td className={styles.username}>{u.username}</td>
+                  <td>
+                    {u.finalsAccount ? (
+                      <a
+                        className={styles.mono}
+                        href={`https://www.davg25.com/app/the-finals-leaderboard-tracker/player-stats/?id=${encodeURIComponent(u.finalsAccount)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Open tracker profile"
+                      >
+                        {u.finalsAccount}
+                      </a>
+                    ) : (
+                      <span className={styles.subtle}>Not linked</span>
+                    )}
+                  </td>
                   <td>
                     <select
                       className={styles.roleSelect}

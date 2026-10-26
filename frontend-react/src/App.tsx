@@ -3,7 +3,7 @@
  * chart-heavy routes (Statistics, Admin Overview/Health) are lazy-loaded.
  */
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { Spinner } from '@/components/feedback/Spinner'
 import { AppLayout } from '@/layouts/AppLayout'
 import { DashboardLayout } from '@/layouts/DashboardLayout'
@@ -125,21 +125,30 @@ export default function App() {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute requireAdmin>
+            <ProtectedRoute requireStaff>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<AdminOverview />} />
-          <Route path="health" element={<AdminHealth />} />
-          <Route path="channels" element={<AdminChannels />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="message" element={<AdminMessageBot />} />
-          <Route path="drops" element={<AdminDrops />} />
+          {/* Staff only get Trolls; everything else bounces them there. */}
           <Route path="trolls" element={<AdminTrolls />} />
-          <Route path="probes" element={<AdminProbes />} />
-          <Route path="live-players" element={<AdminLivePlayers />} />
-          <Route path="audit" element={<AdminAudit />} />
+          <Route
+            element={
+              <ProtectedRoute requireAdmin fallback="/admin/trolls">
+                <Outlet />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdminOverview />} />
+            <Route path="health" element={<AdminHealth />} />
+            <Route path="channels" element={<AdminChannels />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="message" element={<AdminMessageBot />} />
+            <Route path="drops" element={<AdminDrops />} />
+            <Route path="probes" element={<AdminProbes />} />
+            <Route path="live-players" element={<AdminLivePlayers />} />
+            <Route path="audit" element={<AdminAudit />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFound />} />

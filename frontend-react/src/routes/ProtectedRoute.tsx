@@ -1,5 +1,5 @@
 /*
- * Route guard. Mirrors the backend's requireUser / requireAdmin / requireSubscription
+ * Route guard. Mirrors the backend's requireUser / requireAdmin / requireStaff / requireSubscription
  * gates on the client for UX (the backend remains the real authority).
  *
  *  - Not authenticated  -> redirect to Twitch login (full page, backend-owned)
@@ -14,6 +14,8 @@ interface ProtectedRouteProps {
   children: ReactNode
   /** Require admin role. */
   requireAdmin?: boolean
+  /** Require Staff or admin role. */
+  requireStaff?: boolean
   /** Require premium (subscription or bypass role). */
   requireSubscription?: boolean
   /** Where to send users who are logged in but lack permission. */
@@ -23,10 +25,11 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({
   children,
   requireAdmin = false,
+  requireStaff = false,
   requireSubscription = false,
   fallback = '/',
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, isAdmin, hasSubscription } = useAuth()
+  const { isAuthenticated, isLoading, isAdmin, role, hasSubscription } = useAuth()
   const location = useLocation()
 
   if (isLoading) {
@@ -42,6 +45,7 @@ export function ProtectedRoute({
   }
 
   if (requireAdmin && !isAdmin) return <Navigate to={fallback} replace />
+  if (requireStaff && !isAdmin && role !== 'Staff') return <Navigate to={fallback} replace />
   if (requireSubscription && !hasSubscription) return <Navigate to="/subscribe" replace />
 
   return <>{children}</>

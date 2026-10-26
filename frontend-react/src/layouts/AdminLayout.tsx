@@ -25,13 +25,16 @@ const ADMIN_ITEMS: SidebarItem[] = [
   { label: 'Exit to Dashboard', icon: 'fas fa-arrow-left', to: '/dashboard', variant: 'accent' },
 ]
 
+// Staff can only reach the Trolls page (see App.tsx routes).
+const STAFF_ITEMS = ADMIN_ITEMS.filter((item) => item.to === '/admin/trolls' || item.to === '/dashboard')
+
 export function AdminLayout() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   return (
     <div className={styles.container}>
       <Sidebar
-        items={ADMIN_ITEMS}
-        logo={<Logo to="/admin" />}
+        items={isAdmin ? ADMIN_ITEMS : STAFF_ITEMS}
+        logo={<Logo to={isAdmin ? '/admin' : '/admin/trolls'} />}
         footer={user && <UserProfile name={user.username} role={user.role} />}
       />
       <main className={styles.main}>

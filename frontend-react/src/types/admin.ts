@@ -167,6 +167,7 @@ export interface TrollResponse {
 export interface TrollsConfig {
   trolls: TrollResponse[]
   armedChannels: string[]
+  channels: string[]
   commands: string[]
   placeholders: string[]
 }

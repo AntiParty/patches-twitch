@@ -2,6 +2,7 @@
  * Admin → Trolls. Rare joke replies that fire instead of (or before) a real
  * command, only in channels an admin has armed. The bot picks up changes
  * within ~30s (its troll cache TTL) and trolls at most once a minute per channel.
+ * Open to Staff as well as admins; it's the only admin page Staff can reach.
  */
 import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -54,7 +55,6 @@ export function Trolls() {
   const [preview, setPreview] = useState<string | null>(null)
 
   const trolls = useQuery({ queryKey: TROLLS_KEY, queryFn: adminApi.getTrolls })
-  const channels = useQuery({ queryKey: ['admin', 'channels'], queryFn: adminApi.getChannels })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: TROLLS_KEY })
   const onError = (err: unknown) => toast.error(err instanceof ApiError ? err.message : 'Action failed')
@@ -62,10 +62,10 @@ export function Trolls() {
   const armed = useMemo(() => new Set(trolls.data?.armedChannels ?? []), [trolls.data])
   const channelList = useMemo(
     () =>
-      (channels.data?.channels ?? [])
-        .filter((c) => !search || c.username.toLowerCase().includes(search.toLowerCase()))
-        .sort((a, b) => Number(armed.has(b.username)) - Number(armed.has(a.username))),
-    [channels.data, search, armed],
+      (trolls.data?.channels ?? [])
+        .filter((c) => !search || c.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => Number(armed.has(b)) - Number(armed.has(a))),
+    [trolls.data, search, armed],
   )
 
   const setArmed = useMutation({
@@ -239,25 +239,19 @@ export function Trolls() {
           <div style={{ marginBottom: 12 }}>
             <SearchBar value={search} onChange={setSearch} placeholder="Filter channels…" />
           </div>
-          {channels.isLoading ? (
-            <div style={{ display: 'grid', placeItems: 'center', padding: 30 }}><Spinner /></div>
-          ) : channels.isError ? (
-            <ErrorState message="Failed to load channels." onRetry={() => channels.refetch()} />
-          ) : (
-            <div className={styles.channelPicker}>
-              {channelList.map((c) => (
-                <label key={c.id} className={styles.channelRow}>
-                  <input
-                    type="checkbox"
-                    checked={armed.has(c.username)}
-                    disabled={setArmed.isPending}
-                    onChange={(e) => setArmed.mutate({ channel: c.username, value: e.target.checked })}
-                  />
-                  <span>{c.username}</span>
-                </label>
-              ))}
-            </div>
-          )}
+          <div className={styles.channelPicker}>
+            {channelList.map((c) => (
+              <label key={c} className={styles.channelRow}>
+                <input
+                  type="checkbox"
+                  checked={armed.has(c)}
+                  disabled={setArmed.isPending}
+                  onChange={(e) => setArmed.mutate({ channel: c, value: e.target.checked })}
+                />
+                <span>{c}</span>
+              </label>
+            ))}
+          </div>
         </Card>
       </div>
 

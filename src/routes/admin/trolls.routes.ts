@@ -41,6 +41,21 @@ async function resolveChannel(value: unknown): Promise<string | null | undefined
     return exists ? channel : undefined;
 }
 
+type TrollFields = { command: string; response: string; channel: string | null };
+
+// Validates command/response/channel for create and edit; returns an error message on failure.
+async function parseTrollFields(body: any): Promise<TrollFields | string> {
+    const command = normalizeTrollCommand(String(body.command || ''));
+    const response = String(body.response || '').trim();
+    if (!command || !/^[a-z0-9_*]+$/.test(command)) return 'Pick a command';
+    if (!response || response.length > MAX_RESPONSE_LENGTH) {
+        return `Response must be 1-${MAX_RESPONSE_LENGTH} characters`;
+    }
+    const channel = await resolveChannel(body.channel);
+    if (channel === undefined) return 'Unknown channel';
+    return { command, response, channel };
+}
+
 router.get('/api/trolls', requireStaffAPI, async (_req: any, res: any) => {
     try {
         const [trolls, armed, channels] = await Promise.all([
@@ -64,19 +79,12 @@ router.get('/api/trolls', requireStaffAPI, async (_req: any, res: any) => {
 
 router.post('/api/trolls', requireStaffAPI, async (req: any, res: any) => {
     try {
-        const command = normalizeTrollCommand(String(req.body.command || ''));
-        const response = String(req.body.response || '').trim();
-        if (!command || !/^[a-z0-9_*]+$/.test(command)) return res.status(400).json({ error: 'Pick a command' });
-        if (!response || response.length > MAX_RESPONSE_LENGTH) {
-            return res.status(400).json({ error: `Response must be 1-${MAX_RESPONSE_LENGTH} characters` });
-        }
-        const channel = await resolveChannel(req.body.channel);
-        if (channel === undefined) return res.status(400).json({ error: 'Unknown channel' });
+        const fields = await parseTrollFields(req.body);
+        if (typeof fields === 'string') return res.status(400).json({ error: fields });
+        const { channel } = fields;
 
         const troll = await TrollResponse.create({
-            command,
-            channel,
-            response,
+            ...fields,
             chance: clampChance(req.body.chance),
             follow_up: Boolean(req.body.followUp),
             created_by: actorName(req),
@@ -97,10 +105,25 @@ router.patch('/api/trolls/:id', requireStaffAPI, async (req: any, res: any) => {
         const troll: any = await TrollResponse.findByPk(req.params.id);
         if (!troll) return res.status(404).json({ error: 'Troll not found' });
 
+        // A full edit sends command + response (+ channel); quick toggles from the table don't.
+        const isEdit = req.body.command !== undefined || req.body.response !== undefined;
+        if (isEdit) {
+            const fields = await parseTrollFields(req.body);
+            if (typeof fields === 'string') return res.status(400).json({ error: fields });
+            troll.command = fields.command;
+            troll.response = fields.response;
+            troll.channel = fields.channel;
+        }
         if (req.body.enabled !== undefined) troll.enabled = Boolean(req.body.enabled);
         if (req.body.followUp !== undefined) troll.follow_up = Boolean(req.body.followUp);
         if (req.body.chance !== undefined) troll.chance = clampChance(req.body.chance);
         await troll.save();
+        if (isEdit) {
+            await logAdminAction(actorName(req), req.session?.role || 'admin', 'TROLL_EDITED', {
+                target: String(troll.id),
+                outcome: 'success',
+            });
+        }
         res.json({ troll: serialize(troll) });
     } catch (error) {
         logger.error('[Admin] Failed to update troll:', error);

@@ -52,7 +52,9 @@ export function Trolls() {
   const responseRef = useRef<HTMLTextAreaElement>(null)
   const [search, setSearch] = useState('')
   const [form, setForm] = useState<NewTroll>(EMPTY_FORM)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const trolls = useQuery({ queryKey: TROLLS_KEY, queryFn: adminApi.getTrolls })
 
@@ -114,9 +116,36 @@ export function Trolls() {
     setPreview(null)
   }
 
+  const startEdit = (t: TrollResponse) => {
+    setEditingId(t.id)
+    setForm({ command: t.command, channel: t.channel, response: t.response, chance: t.chance, followUp: t.followUp })
+    setPreview(null)
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    requestAnimationFrame(() => responseRef.current?.focus())
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setForm((f) => ({ ...EMPTY_FORM, command: f.command, channel: f.channel }))
+    setPreview(null)
+  }
+
+  const handleSave = async () => {
+    if (editingId === null) return
+    if (!form.response.trim()) return toast.warning('Write the troll first.')
+    const saved = await update
+      .mutateAsync({ id: editingId, patch: { ...form, response: form.response.trim() } })
+      .then(() => true, () => false)
+    if (!saved) return
+    toast.success('Troll updated.')
+    cancelEdit()
+  }
+
   const handleDelete = async (t: TrollResponse) => {
     const ok = await confirm({ title: 'Delete troll', body: `"${t.response}"`, confirmLabel: 'Delete', danger: true })
-    if (ok) remove.mutate(t.id)
+    if (!ok) return
+    remove.mutate(t.id)
+    if (t.id === editingId) cancelEdit()
   }
 
   if (trolls.isLoading) {
@@ -127,6 +156,8 @@ export function Trolls() {
   }
 
   const { commands, placeholders } = trolls.data
+  // Keep an edited troll's channel selectable even if it has since been disarmed.
+  const channelOptions = [...new Set([...armed, ...(form.channel ? [form.channel] : [])])].sort()
 
   return (
     <>
@@ -135,8 +166,8 @@ export function Trolls() {
         subtitle="Rare joke replies that fire on commands in armed channels. At most one per channel per minute."
       />
 
-      <div className={styles.opGrid}>
-        <Card title="New troll">
+      <div className={styles.opGrid} ref={formRef}>
+        <Card title={editingId === null ? 'New troll' : 'Edit troll'}>
           <div className={styles.trollForm}>
             <Field label="Command">
               <Select value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })}>
@@ -149,7 +180,7 @@ export function Trolls() {
                 onChange={(e) => setForm({ ...form, channel: e.target.value || null })}
               >
                 <option value="">All armed channels</option>
-                {[...armed].sort().map((c) => <option key={c} value={c}>{c}</option>)}
+                {channelOptions.map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </Field>
             <Field label="Chance %" hint="Per use of the command">
@@ -209,10 +240,17 @@ export function Trolls() {
             >
               Preview
             </Button>
-            <Button icon="fas fa-plus" loading={create.isPending} onClick={handleCreate}>Add troll</Button>
+            {editingId === null ? (
+              <Button icon="fas fa-plus" loading={create.isPending} onClick={handleCreate}>Add troll</Button>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={cancelEdit}>Cancel</Button>
+                <Button icon="fas fa-check" loading={update.isPending} onClick={handleSave}>Save changes</Button>
+              </>
+            )}
           </div>
 
-          <div className={styles.starterPack}>
+          {editingId === null && <div className={styles.starterPack}>
             <span className={styles.subtle}>Starter pack, click to load into the form:</span>
             <div className={styles.chipRow}>
               {STARTER_PACK.map((s) => (
@@ -228,7 +266,7 @@ export function Trolls() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
         </Card>
 
         <Card
@@ -280,6 +318,7 @@ export function Trolls() {
                     <td className={styles.trollText}>{t.response}</td>
                     <td>
                       <Input
+                        key={t.chance}
                         type="number"
                         min={0.1}
                         max={100}
@@ -311,7 +350,8 @@ export function Trolls() {
                         {t.enabled ? <Badge variant="success">On</Badge> : <Badge>Off</Badge>}
                       </button>
                     </td>
-                    <td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <Button variant="ghost" size="sm" icon="fas fa-pen" onClick={() => startEdit(t)} aria-label="Edit troll" />
                       <Button variant="ghost" size="sm" icon="fas fa-trash" onClick={() => handleDelete(t)} aria-label="Delete troll" />
                     </td>
                   </tr>

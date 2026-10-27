@@ -45,7 +45,7 @@ export const adminApi = {
 
   getTrolls: () => api.get<TrollsConfig>('/admin/api/trolls'),
   createTroll: (troll: NewTroll) => api.post<{ troll: TrollResponse }>('/admin/api/trolls', troll),
-  updateTroll: (id: number, patch: Partial<Pick<TrollResponse, 'enabled' | 'chance' | 'followUp'>>) =>
+  updateTroll: (id: number, patch: Partial<NewTroll & Pick<TrollResponse, 'enabled'>>) =>
     api.patch<{ troll: TrollResponse }>(`/admin/api/trolls/${id}`, patch),
   deleteTroll: (id: number) => api.del(`/admin/api/trolls/${id}`),
   setTrollChannel: (channel: string, armed: boolean) =>

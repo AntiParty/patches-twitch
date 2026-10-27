@@ -18,6 +18,7 @@ import {
   RecentChatMessages,
   retargetLeadingMention,
 } from "./chatReplyTargets";
+import { stripInvisibleChars } from "./chatText";
 
 interface IRCClient {
   socket: net.Socket;
@@ -746,7 +747,7 @@ export const startChatBot = async (
 
       const user = match[1];
       const channelName = match[2];
-      const message = match[3];
+      const message = stripInvisibleChars(match[3]);
       tags.username = user;
       if (!tags["display-name"]) tags["display-name"] = user;
 

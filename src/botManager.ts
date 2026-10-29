@@ -13,8 +13,11 @@ import logger from "./util/logger";
 import axios from "axios";
 import { restartBotIdentity } from "./services/botIdentityRestart.service";
 import { clients } from "./util/ircBot";
+import { mapWithConcurrency } from "./util/concurrency";
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
+
+const LOAD_CHANNEL_CONCURRENCY = 5;
 
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 const tokenRefreshFailures: { [key: string]: number } = {};
@@ -46,7 +49,14 @@ export class BotManager {
     return channels;
   }
 
-  public async startBotForUser(username: string, accessToken: string, refreshToken: string, twitchUserId: string) {
+  public async startBotForUser(
+    username: string,
+    accessToken: string,
+    refreshToken: string,
+    twitchUserId: string,
+    // Bulk startup already holds fresh rows; passing them skips two queries per channel.
+    prefetched?: { channel: Channel; customBot: CustomBotAccount | null },
+  ) {
     if (startingBots.has(username)) {
       logger.info(`[${username}] startBotForUser already in progress; skipping concurrent call.`);
       return;
@@ -54,7 +64,7 @@ export class BotManager {
     startingBots.add(username);
     try {
       // Use the cached command handler instead of reloading every time
-      const channel = await Channel.findOne({ where: { username } });
+      const channel = prefetched?.channel ?? await Channel.findOne({ where: { username } });
       if (!channel || !channel.bot_enabled) {
         logger.info(`Bot not enabled for ${username}`);
         return;
@@ -63,9 +73,9 @@ export class BotManager {
         const currentTwitchUserId = (channel as any).twitch_user_id || twitchUserId;
 
         // Check for custom bot account
-        const customBot = await CustomBotAccount.findOne({ 
-          where: { channel_id: channel.id, is_active: true } 
-        });
+        const customBot = prefetched
+          ? prefetched.customBot
+          : await CustomBotAccount.findOne({ where: { channel_id: channel.id, is_active: true } });
 
         const isPrivileged = ['tester', 'Staff', 'admin'].includes(channel.role);
         const hasAccess = channel.has_subscription || isPrivileged;
@@ -210,11 +220,12 @@ export class BotManager {
     }
   }
 
+  /** Returns true when validation failed and a refresh was attempted (the DB row may have changed). */
   public async validateToken(
     username: string,
     accessToken: string,
     refreshToken: string
-  ) {
+  ): Promise<boolean> {
     try {
       const response = await axios.get("https://id.twitch.tv/oauth2/validate", {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -225,9 +236,11 @@ export class BotManager {
         refreshToken,
         expiresIn * 1000 - 5 * 60 * 1000
       );
+      return false;
     } catch (error) {
       logger.error(`[${username}] Token validation failed. Refreshing now...`);
       await this.refreshTokenFunction(username, refreshToken);
+      return true;
     }
   }
 
@@ -316,21 +329,43 @@ export class BotManager {
 
   public async loadChannels(prefetchedChannels?: Channel[]) {
     try {
-      const channels = prefetchedChannels || await this.getChannels();
-      logger.info(`Found ${channels.length} channels to load`);
+      const allChannels = prefetchedChannels || await this.getChannels();
+      // Disabled channels would bail inside startBotForUser anyway; skip their
+      // validate call too. The periodic validateAllTokens pass still covers them.
+      const channels = allChannels.filter((channel) => channel.bot_enabled);
+      logger.info(`Found ${channels.length} enabled channels to load (${allChannels.length} total)`);
 
-      for (const channel of channels) {
+      const customBots = await CustomBotAccount.findAll({ where: { is_active: true } });
+      const customBotByChannelId = new Map<number, CustomBotAccount>();
+      // First match wins, mirroring the findOne this replaces.
+      for (const bot of customBots) {
+        if (!customBotByChannelId.has(bot.channel_id)) customBotByChannelId.set(bot.channel_id, bot);
+      }
+
+      const startedAt = Date.now();
+      // IRC logins are rate limited per bot account inside startChatBot, so
+      // this only bounds how many validate/handshake round trips overlap.
+      await mapWithConcurrency(channels, LOAD_CHANNEL_CONCURRENCY, async (channel) => {
         const chanAny: any = channel as any;
         const username = chanAny.username;
-        const access_token = chanAny.access_token;
-        const refresh_token = chanAny.refresh_token;
-        const twitch_user_id = chanAny.twitch_user_id;
-        if (username && access_token && twitch_user_id) {
+        if (!username || !chanAny.access_token || !chanAny.twitch_user_id) return;
+        try {
           logger.info(`Loading channel: ${username}`);
-          await this.validateToken(username, access_token, refresh_token);
-          await this.startBotForUser(username, access_token, refresh_token, twitch_user_id);
+          const refreshed = await this.validateToken(username, chanAny.access_token, chanAny.refresh_token);
+          // A refresh rewrote the token columns; pick them up before starting.
+          if (refreshed) await channel.reload();
+          await this.startBotForUser(
+            username,
+            chanAny.access_token,
+            chanAny.refresh_token,
+            chanAny.twitch_user_id,
+            { channel, customBot: customBotByChannelId.get(channel.id) ?? null },
+          );
+        } catch (error) {
+          logger.error(`[${username}] Failed to load channel:`, error);
         }
-      }
+      });
+      logger.info(`Loaded ${channels.length} channels in ${Date.now() - startedAt}ms`);
     } catch (error) {
       logger.error('Error loading channels:', error);
       throw error;

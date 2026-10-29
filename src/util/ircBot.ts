@@ -19,6 +19,8 @@ import {
   retargetLeadingMention,
 } from "./chatReplyTargets";
 import { stripInvisibleChars } from "./chatText";
+import { createIrcLineBuffer } from "./ircLineBuffer";
+import { createSlidingWindowLimiter } from "./concurrency";
 
 interface IRCClient {
   socket: net.Socket;
@@ -106,6 +108,23 @@ async function clearChatReadinessAfterSuccessfulSend(broadcasterId: string, send
   } catch (err) {
     logger.warn(`[ircBot] Failed to clear chat readiness for ${broadcasterId}:`, err);
   }
+}
+
+// Twitch allows 20 IRC logins (and 20 JOINs) per 10s per bot account. Every
+// channel gets its own socket, so startup and reconnect storms would blow
+// past that once channels start in parallel. Stay a little under the cap.
+const IRC_LOGINS_PER_WINDOW = 15;
+const IRC_LOGIN_WINDOW_MS = 10_000;
+const ircLoginLimiters = new Map<string, ReturnType<typeof createSlidingWindowLimiter>>();
+
+function acquireIrcLoginSlot(botUsername: string): Promise<void> {
+  const key = botUsername.toLowerCase();
+  let limiter = ircLoginLimiters.get(key);
+  if (!limiter) {
+    limiter = createSlidingWindowLimiter(IRC_LOGINS_PER_WINDOW, IRC_LOGIN_WINDOW_MS);
+    ircLoginLimiters.set(key, limiter);
+  }
+  return limiter.acquire();
 }
 
 function getReconnectDelay(attempts: number): number {
@@ -549,6 +568,8 @@ export const startChatBot = async (
     return false;
   }
 
+  await acquireIrcLoginSlot(botUsername);
+
   const socket = new net.Socket();
   let authTimeout: NodeJS.Timeout | undefined;
   let authResultSettled = false;
@@ -620,8 +641,14 @@ export const startChatBot = async (
   // Store on client so it can be cleaned up from stopChatBot/reconnect
   clients[sanitizedUsername].heartbeatInterval = heartbeat;
 
+  // utf8 encoding makes Node hold back split multi-byte characters (emoji) between chunks.
+  socket.setEncoding("utf8");
+  const takeLines = createIrcLineBuffer();
+
   socket.on("data", async (data) => {
-    const rawData = data.toString();
+    const completeLines = takeLines(data.toString());
+    if (completeLines.length === 0) return;
+    const rawData = completeLines.join("\r\n");
 
     // Only log PRIVMSG (actual chat) and potential errors, not PING/PONG spam
     if (rawData.includes("PRIVMSG") || rawData.includes("NOTICE") || rawData.includes("Login")) {

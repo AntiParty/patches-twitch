@@ -36,84 +36,6 @@ dbReady.then(async () => {
   logger.info("Database ready, initializing bot services...");
 
   try {
-    await loadChatReadinessCache();
-    await botManager.loadTokensOnStartup();
-    // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
-    startBotTokenAutoRefresher();
-    // Refresh per-channel custom-bot account tokens before they expire.
-    startCustomBotTokenRefresher();
-    startCacheUpdater();
-
-    logger.info("Bot is up and running!");
-
-    // Restore and continue tracking active stream sessions from DB
-    const activeSessions = await StreamSession.findAll();
-    activeSessions.forEach(session => {
-      const channel = session.get('channel');
-      const start_score = session.get('start_score');
-      const started_at = session.get('started_at');
-      activeStreamSessions.set(String(channel), {
-        start_score,
-        started_at
-      });
-      // If you need to resume timers, stats, etc., do it here
-      logger.info(
-        `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}`
-      );
-    });
-
-    // Restore redemption EventSub subscriptions for every non-closed redeem
-    // giveaway so paused/drawn rewards remain connected across bot restarts.
-    try {
-      const redeemGiveaways = await Giveaway.findAll({
-        where: { status: { [Op.ne]: "closed" }, type: "redeem" },
-      });
-      const restoration = await restoreGiveawayRedemptionSubscriptions(
-        redeemGiveaways.map((giveaway) => ({
-          id: giveaway.id,
-          channel: giveaway.channel,
-          type: giveaway.type,
-          status: giveaway.status,
-          rewardId: giveaway.reward_id,
-        })),
-        {
-          resolveChannel: async (username) => {
-            const channel = await Channel.findOne({ where: { username } });
-            const token = channel ? decryptChannelAccessToken(channel) : null;
-            if (!channel?.twitch_user_id || !token) return null;
-            return { broadcasterId: channel.twitch_user_id, accessToken: token };
-          },
-          subscribe: ({ giveawayId, channel, broadcasterId, accessToken, rewardId }) => {
-            addRedemptionSubscription(broadcasterId, accessToken, broadcasterId, rewardId);
-            logger.info(
-              `[Startup] Restored redemption subscription for giveaway ${giveawayId} in ${channel} (reward ${rewardId})`,
-            );
-          },
-          onError: (giveaway, error) => {
-            logger.warn(
-              `[Startup] Could not restore redemption subscription for giveaway ${giveaway.id} in ${giveaway.channel} (reward ${giveaway.rewardId || 'none'}): ${error instanceof Error ? error.message : String(error)}`,
-            );
-          },
-        },
-      );
-      logger.info(
-        `[Startup] Redemption subscription restore complete: ${restoration.restored} restored, ${restoration.failed} failed`,
-      );
-    } catch (err) {
-      logger.error("[Startup] Failed to restore redeem giveaway subscriptions:", err);
-    }
-
-    const stopGiveawayReconciler = startGiveawayRedemptionReconciler();
-    process.on('SIGINT', stopGiveawayReconciler);
-    process.on('SIGTERM', stopGiveawayReconciler);
-    process.on('exit', stopGiveawayReconciler);
-
-    const stopProcessMetrics = startProcessMetricsRecorder({
-      getConnectedChannels: () => Object.values(clients).filter((client) => client.connected).length,
-    });
-    process.on('SIGINT', stopProcessMetrics);
-    process.on('SIGTERM', stopProcessMetrics);
-
     // --- Control API ---
     const controlApp = express();
     controlApp.use(express.json());
@@ -578,6 +500,87 @@ dbReady.then(async () => {
       logger.info("Bot control API running on http://127.0.0.1:4000");
     });
     // --- end Control API ---
+
+    // Channels load after the Control API is listening so the dashboard can
+    // reach /health, /add-channel, etc. while startup is still joining chats.
+    await loadChatReadinessCache();
+    await botManager.loadTokensOnStartup();
+    // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
+    startBotTokenAutoRefresher();
+    // Refresh per-channel custom-bot account tokens before they expire.
+    startCustomBotTokenRefresher();
+    startCacheUpdater();
+
+    logger.info("Bot is up and running!");
+
+    // Restore and continue tracking active stream sessions from DB
+    const activeSessions = await StreamSession.findAll();
+    activeSessions.forEach(session => {
+      const channel = session.get('channel');
+      const start_score = session.get('start_score');
+      const started_at = session.get('started_at');
+      activeStreamSessions.set(String(channel), {
+        start_score,
+        started_at
+      });
+      // If you need to resume timers, stats, etc., do it here
+      logger.info(
+        `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}`
+      );
+    });
+
+    // Restore redemption EventSub subscriptions for every non-closed redeem
+    // giveaway so paused/drawn rewards remain connected across bot restarts.
+    try {
+      const redeemGiveaways = await Giveaway.findAll({
+        where: { status: { [Op.ne]: "closed" }, type: "redeem" },
+      });
+      const restoration = await restoreGiveawayRedemptionSubscriptions(
+        redeemGiveaways.map((giveaway) => ({
+          id: giveaway.id,
+          channel: giveaway.channel,
+          type: giveaway.type,
+          status: giveaway.status,
+          rewardId: giveaway.reward_id,
+        })),
+        {
+          resolveChannel: async (username) => {
+            const channel = await Channel.findOne({ where: { username } });
+            const token = channel ? decryptChannelAccessToken(channel) : null;
+            if (!channel?.twitch_user_id || !token) return null;
+            return { broadcasterId: channel.twitch_user_id, accessToken: token };
+          },
+          subscribe: ({ giveawayId, channel, broadcasterId, accessToken, rewardId }) => {
+            addRedemptionSubscription(broadcasterId, accessToken, broadcasterId, rewardId);
+            logger.info(
+              `[Startup] Restored redemption subscription for giveaway ${giveawayId} in ${channel} (reward ${rewardId})`,
+            );
+          },
+          onError: (giveaway, error) => {
+            logger.warn(
+              `[Startup] Could not restore redemption subscription for giveaway ${giveaway.id} in ${giveaway.channel} (reward ${giveaway.rewardId || 'none'}): ${error instanceof Error ? error.message : String(error)}`,
+            );
+          },
+        },
+      );
+      logger.info(
+        `[Startup] Redemption subscription restore complete: ${restoration.restored} restored, ${restoration.failed} failed`,
+      );
+    } catch (err) {
+      logger.error("[Startup] Failed to restore redeem giveaway subscriptions:", err);
+    }
+
+    const stopGiveawayReconciler = startGiveawayRedemptionReconciler();
+    process.on('SIGINT', stopGiveawayReconciler);
+    process.on('SIGTERM', stopGiveawayReconciler);
+    process.on('exit', stopGiveawayReconciler);
+
+    const stopProcessMetrics = startProcessMetricsRecorder({
+      getConnectedChannels: () => Object.values(clients).filter((client) => client.connected).length,
+    });
+    process.on('SIGINT', stopProcessMetrics);
+    process.on('SIGTERM', stopProcessMetrics);
+
 
   } catch (error) {
     logger.error("Failed to initialize bot services:", error);

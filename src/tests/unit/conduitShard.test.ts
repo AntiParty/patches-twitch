@@ -277,4 +277,47 @@ describe('conduitShard', () => {
     assert.equal(sockets.length, 2);
     assert.equal(timers.pendingCount(), 0);
   });
+
+  it('does not report unassigned during a session_reconnect handoff', async () => {
+    const { sockets, states, shard } = setup();
+    sockets[0].welcome('sess1');
+    await flush();
+    sockets[0].send('session_reconnect', { session: { reconnect_url: 'wss://r/ws' } });
+    assert.equal(shard.isAssigned(), true);
+    sockets[1].welcome('sess2');
+    assert.equal(shard.isAssigned(), true);
+    await flush();
+    assert.equal(shard.isAssigned(), true);
+    assert.deepEqual(states, ['assigned']);
+  });
+
+  it('promotes the reconnect socket if the old one closes before the new welcome', async () => {
+    const { sockets, states, assigns, shard } = setup();
+    sockets[0].welcome('sess1');
+    await flush();
+    sockets[0].send('session_reconnect', { session: { reconnect_url: 'wss://r/ws' } });
+    sockets[0].emit('close');
+    assert.equal(shard.isAssigned(), true);
+    sockets[1].welcome('sess2');
+    await flush();
+    assert.equal(sockets.length, 2);
+    assert.deepEqual(assigns[1], ['c1', '0', 'sess2']);
+    assert.deepEqual(states, ['assigned']);
+  });
+
+  it('drops to unassigned if the promoted socket never welcomes', async () => {
+    const { sockets, states, timers, shard } = setup();
+    sockets[0].welcome('sess1');
+    await flush();
+    sockets[0].send('session_reconnect', { session: { reconnect_url: 'wss://r/ws' } });
+    sockets[0].emit('close');
+    timers.advance(14999);
+    assert.equal(shard.isAssigned(), true);
+    timers.advance(1);
+    assert.equal(shard.isAssigned(), false);
+    assert.deepEqual(states, ['assigned', 'unassigned']);
+    assert.equal(sockets.length, 2);
+    timers.advance(1000);
+    assert.equal(sockets.length, 3);
+  });
 });

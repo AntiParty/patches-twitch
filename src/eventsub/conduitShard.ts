@@ -160,6 +160,14 @@ export function startConduitShard(opts: ConduitShardOptions): {
       return;
     }
     if (sock !== current) return;
+    if (pending) {
+      logger.info(`[Conduit] Shard ${opts.shardId}: old socket closed during handoff; promoting reconnect socket`);
+      current = pending;
+      pending = null;
+      sessionId = null;
+      armWatchdog(WELCOME_TIMEOUT_MS, 'no session_welcome received');
+      return;
+    }
     logger.warn(`[Conduit] Shard ${opts.shardId}: socket closed`);
     dropCurrent('socket closed');
   }
@@ -220,7 +228,6 @@ export function startConduitShard(opts: ConduitShardOptions): {
       discard(old);
     }
     sessionId = id;
-    setAssigned(false);
     armWatchdog(keepaliveMs, 'keepalive missed');
 
     // Reassign on every welcome (including a reconnect socket); the PATCH is idempotent.

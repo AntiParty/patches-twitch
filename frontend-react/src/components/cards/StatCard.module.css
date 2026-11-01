@@ -2,10 +2,10 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg, var(--radius));
-  padding: 14px 16px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .top {
@@ -14,20 +14,18 @@
   justify-content: space-between;
 }
 .label {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--text-muted);
 }
 .icon {
-  color: var(--primary);
-  font-size: 16px;
+  color: var(--text-subtle);
+  font-size: 14px;
 }
 
 .value {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--text-main);
   line-height: 1;
@@ -41,7 +39,7 @@
 }
 .delta {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 .up {

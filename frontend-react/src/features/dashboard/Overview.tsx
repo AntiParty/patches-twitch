@@ -1,18 +1,23 @@
 /*
- * Dashboard Overview tab. Ported from the legacy overview view: status strip
- * with bot toggle, metric cards, latest updates + docs CTA.
+ * Dashboard Overview tab — "Control room". One status strip owns the bot
+ * toggle; below it the Rank now panel (live RS, league, goal progress, Top 500
+ * cutoff) is the one rich element, next to a narrow column of channel facts.
  */
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Card } from '@/components/cards/Card'
 import { Button } from '@/components/buttons/Button'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { useToast } from '@/hooks/useToast'
 import { ApiError } from '@/api/errors'
-import { useProfile, useToggleBot } from './hooks'
+import { rankApi, RANK_MILESTONES, RANK_NAMES, RANK_THRESHOLDS } from '@/api/rank'
+import type { CurrentRank, RankGoal } from '@/types/rank'
+import { useCommands, useProfile, useToggleBot } from './hooks'
 import { ChatReadinessNotice } from './ChatReadinessNotice'
 import styles from './Overview.module.css'
+
+const fmt = (n: number) => n.toLocaleString('en-US')
 
 export function Overview() {
   const { data: profile, isLoading, isError, refetch } = useProfile()
@@ -31,10 +36,10 @@ export function Overview() {
   const header = (
     <PageHeader
       title="Control room"
-      subtitle={`Manage the bot, ranked commands, overlays, and channel setup${profile ? ` for ${profile.username}` : ''}.`}
+      subtitle={`Bot, ranked commands, overlays and channel setup${profile ? ` for ${profile.username}` : ''}`}
       actions={
         <a className="btn btn-ghost" href="/">
-          <i className="fas fa-external-link-alt" /> Home Page
+          Home page
         </a>
       }
     />
@@ -44,9 +49,9 @@ export function Overview() {
     return (
       <>
         {header}
-        <Skeleton height={70} radius={8} />
-        <div style={{ marginTop: 18 }}>
-          <Skeleton height={132} lines={1} />
+        <Skeleton height={72} radius={12} />
+        <div style={{ marginTop: 16 }}>
+          <Skeleton height={240} lines={1} />
         </div>
       </>
     )
@@ -67,118 +72,191 @@ export function Overview() {
     <>
       {header}
 
-      {/* Status strip */}
-      <section className={styles.strip} aria-label="Dashboard status overview">
+      <section className={styles.strip} aria-label="Bot status">
         <div className={styles.stripMain}>
-          <div className={`${styles.stripIcon} ${botOn ? '' : styles.offline}`}>
-            <i className={`fas ${botOn ? 'fa-signal' : 'fa-pause'}`} />
-          </div>
+          <span className={`${styles.dot} ${botOn ? styles.dotOn : ''}`} aria-hidden="true" />
           <div>
             <h3 className={styles.stripTitle}>{botOn ? 'Bot is live' : 'Bot is offline'}</h3>
             <p className={styles.stripCopy}>
               {botOn
-                ? `Rank commands are available in chat for ${profile.username}.`
-                : 'Turn the bot on when you are ready for chat commands.'}
+                ? `Rank commands are answering in ${profile.username}'s chat`
+                : 'Turn the bot on when you are ready for chat commands'}
             </p>
           </div>
         </div>
-        <div className={styles.stripActions}>
-          <div className={`${styles.pill} ${botOn ? styles.good : styles.warning}`}>
-            {botOn ? 'Connected' : 'Offline'} <strong>{botOn ? 'Live' : 'Off'}</strong>
-          </div>
-          <div className={`${styles.pill} ${profile.playerId ? styles.good : styles.warning}`}>
-            IGN <strong>{profile.playerId ? 'Linked' : 'Needed'}</strong>
-          </div>
-          <Button
-            variant={botOn ? 'danger' : 'primary'}
-            size="sm"
-            icon={botOn ? 'fas fa-power-off' : 'fas fa-play'}
-            loading={toggle.isPending}
-            onClick={handleToggle}
-          >
-            {botOn ? 'Turn off' : 'Turn on'}
-          </Button>
-        </div>
+        <Button
+          variant={botOn ? 'ghost' : 'primary'}
+          size="sm"
+          loading={toggle.isPending}
+          onClick={handleToggle}
+        >
+          {botOn ? 'Turn off' : 'Turn on'}
+        </Button>
       </section>
 
       <ChatReadinessNotice issue={profile.chatReadiness} />
 
-      {/* Metric cards */}
-      <div className={styles.metrics}>
-        <Card title="Bot Status" headerActions={<i className="fas fa-robot" style={{ color: 'var(--text-muted)' }} />}>
-          <div className={styles.metricValue}>
-            {botOn ? 'Active' : 'Inactive'}
-            <span className={`${styles.indicator} ${botOn ? styles.indicatorOn : styles.indicatorOff}`} />
-          </div>
-          <p className="card-subtitle" style={{ color: 'var(--text-muted)', fontSize: 12, margin: '4px 0 0' }}>
-            {botOn ? 'Connected to chat' : 'Bot is currently offline'}
-          </p>
-          <Button
-            variant={botOn ? 'danger' : 'primary'}
-            fullWidth
-            loading={toggle.isPending}
-            icon={botOn ? 'fas fa-power-off' : 'fas fa-play'}
-            onClick={handleToggle}
-            style={{ marginTop: 20 }}
-          >
-            {botOn ? 'Turn Off' : 'Turn On'}
-          </Button>
-        </Card>
+      <div className={styles.grid}>
+        <RankNow linked={Boolean(profile.playerId)} />
 
-        <Card title="Linked Account" headerActions={<i className="fas fa-link" style={{ color: 'var(--text-muted)' }} />}>
-          {profile.playerId ? (
-            <>
-              <div style={{ fontSize: 18, fontWeight: 600, wordBreak: 'break-all' }}>{profile.playerId}</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '4px 0 0' }}>Tracking stats</p>
-            </>
-          ) : (
-            <>
-              <div style={{ color: 'var(--warning)', fontWeight: 600, marginBottom: 10 }}>No Account Linked</div>
-              <Link className="btn btn-primary btn-sm" to="/dashboard/settings">
-                Link Now
-              </Link>
-            </>
-          )}
-        </Card>
-
-        <Card title="Commands" headerActions={<i className="fas fa-terminal" style={{ color: 'var(--text-muted)' }} />}>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>
-            3 <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>active</span>
+        <aside className={styles.facts} aria-label="Channel">
+          <div className={styles.fact}>
+            <span className={styles.factLabel}>In-game name</span>
+            {profile.playerId ? (
+              <code className={styles.factMono}>{profile.playerId}</code>
+            ) : (
+              <span className={styles.factMuted}>Not linked</span>
+            )}
           </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '4px 0 0' }}>Customizable responses</p>
-        </Card>
-      </div>
-
-      {/* Updates + docs CTA */}
-      <div className={styles.split}>
-        <Card title="Latest Updates">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div className={styles.updateItem}>
-              <div className={styles.updateTag} style={{ color: 'var(--primary)' }}>NEW</div>
-              <h3>Rank Tracker Beta</h3>
-              <p>Set a goal and track your progress visually.</p>
-            </div>
-            <div className={styles.updateItem}>
-              <div className={styles.updateTag} style={{ color: 'var(--text-muted)' }}>COMING SOON</div>
-              <h3>Twitch Drops</h3>
-              <p>Auto-post drop links in chat.</p>
-            </div>
+          <CommandsFact />
+          <div className={styles.fact}>
+            <span className={styles.factLabel}>Command reference</span>
+            <a href="/docs" target="_blank" rel="noreferrer" className={styles.factLink}>
+              Open docs
+            </a>
           </div>
-        </Card>
-
-        <Card className={styles.ctaCard}>
-          <div className={styles.ctaIcon}>
-            <i className="fas fa-rocket" />
-          </div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Want to change commands?</h3>
-          <p style={{ color: 'var(--text-muted)', maxWidth: 300, margin: 0 }}>
-            Check out the documentation to learn about advanced commands and features.
-          </p>
-          <a className="btn btn-ghost" href="/docs" target="_blank" rel="noreferrer">
-            View Documentation
-          </a>
-        </Card>
+        </aside>
       </div>
     </>
+  )
+}
+
+function CommandsFact() {
+  const { data } = useCommands()
+  const count = data?.commands.length
+  return (
+    <div className={styles.fact}>
+      <span className={styles.factLabel}>Custom responses</span>
+      <span className={styles.factValue}>
+        {count == null ? '—' : count}
+        <Link to="/dashboard/commands" className={styles.factLink}>
+          Edit
+        </Link>
+      </span>
+    </div>
+  )
+}
+
+/** Goal target in RS: an explicit chat target, a dashboard tier, or the next league. */
+function resolveGoal(goal: RankGoal | null | undefined, rs: number, rubyRS: number | null) {
+  if (goal) {
+    const target =
+      goal.targetRankScore ??
+      (goal.targetRank === 6 ? rubyRS : RANK_THRESHOLDS[goal.targetRank] ?? null)
+    return {
+      label: goal.label ?? RANK_NAMES[goal.targetRank] ?? 'Goal',
+      target,
+      achieved: goal.achieved,
+      explicit: true,
+    }
+  }
+  const next = RANK_MILESTONES.find((m) => rs < m.threshold)
+  return next
+    ? { label: next.label, target: next.threshold, achieved: false, explicit: false }
+    : null
+}
+
+function RankNow({ linked }: { linked: boolean }) {
+  const current = useQuery({
+    queryKey: ['rank', 'current'],
+    queryFn: rankApi.getCurrentRank,
+    retry: false, // 404 when no IGN linked
+    enabled: linked,
+  })
+  const goalQuery = useQuery({ queryKey: ['rank', 'goal'], queryFn: rankApi.getGoal, enabled: linked })
+  const ruby = useQuery({ queryKey: ['rank', 'ruby'], queryFn: rankApi.getRubyStatus })
+
+  const cutoff = ruby.data?.rubyRankThreshold?.threshold ?? null
+
+  if (!linked) {
+    return (
+      <section className={`${styles.rank} ${styles.rankEmpty}`}>
+        <p className={styles.rankLabel}>Rank now</p>
+        <p className={styles.emptyCopy}>Link your in-game name to see your live RS and goal here</p>
+        <Link className="btn btn-primary btn-sm" to="/dashboard/settings">
+          Link IGN
+        </Link>
+      </section>
+    )
+  }
+
+  if (current.isLoading) {
+    return <Skeleton height={240} lines={1} />
+  }
+
+  const data: CurrentRank | undefined = current.data
+  if (!data) {
+    return (
+      <section className={`${styles.rank} ${styles.rankEmpty}`}>
+        <p className={styles.rankLabel}>Rank now</p>
+        <p className={styles.emptyCopy}>
+          {current.error instanceof ApiError
+            ? current.error.message
+            : 'Not on the ranked leaderboard yet (top 10,000 only)'}
+        </p>
+      </section>
+    )
+  }
+
+  const goal = resolveGoal(goalQuery.data?.goal, data.rankScore, cutoff)
+  const toGo = goal?.target != null ? Math.max(0, goal.target - data.rankScore) : null
+  const pct =
+    goal?.achieved || toGo === 0
+      ? 100
+      : goal?.target
+        ? Math.min(100, Math.max(0, (data.rankScore / goal.target) * 100))
+        : 0
+
+  return (
+    <section className={styles.rank} aria-label="Rank now">
+      <div className={styles.rankHead}>
+        <p className={styles.rankLabel}>Rank now</p>
+        <Link to="/dashboard/rank-tracker" className={styles.factLink}>
+          Rank tracker
+        </Link>
+      </div>
+
+      <p className={styles.rankFigure}>
+        {fmt(data.rankScore)}
+        <span>RS</span>
+      </p>
+      <p className={styles.rankMeta}>
+        {data.rank != null ? `#${fmt(data.rank)}` : 'Unranked'}
+        {data.league ? ` · ${data.league}` : ''}
+      </p>
+
+      {goal && (
+        <div className={styles.goal}>
+          <div className={styles.goalRow}>
+            <span>
+              {goal.explicit ? 'Goal' : 'Next league'} <strong>{goal.label}</strong>
+            </span>
+            <span className={styles.goalToGo}>
+              {goal.achieved || toGo === 0
+                ? 'Reached'
+                : toGo != null
+                  ? `${fmt(toGo)} RS to go`
+                  : 'Target unavailable'}
+            </span>
+          </div>
+          <div
+            className={styles.bar}
+            role="progressbar"
+            aria-valuenow={Math.round(pct)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Progress to ${goal.label}`}
+          >
+            <span style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      )}
+
+      {cutoff != null && (
+        <p className={styles.cutoff}>
+          Top 500 cutoff <span>{fmt(cutoff)} RS</span>
+        </p>
+      )}
+    </section>
   )
 }

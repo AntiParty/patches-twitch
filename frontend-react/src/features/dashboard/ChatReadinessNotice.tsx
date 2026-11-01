@@ -9,17 +9,8 @@ interface ChatReadinessNoticeProps {
 export function ChatReadinessNotice({ issue, compact = false }: ChatReadinessNoticeProps) {
   const blockedByFollowersOnly = issue?.code === 'followers_only_mode'
 
-  if (!issue) {
-    return (
-      <div className={`${styles.notice} ${styles.ready} ${compact ? styles.compact : ''}`}>
-        <i className="fas fa-shield-heart" aria-hidden="true" />
-        <div>
-          <strong>Chat readiness</strong>
-          <p>No recent chat restriction has blocked the bot.</p>
-        </div>
-      </div>
-    )
-  }
+  // All clear: say nothing (the onboarding wizard shows its own mod/VIP tip).
+  if (!issue) return null
 
   return (
     <div className={`${styles.notice} ${styles.blocked} ${compact ? styles.compact : ''}`} role="alert">

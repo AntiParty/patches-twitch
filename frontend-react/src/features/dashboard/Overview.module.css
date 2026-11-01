@@ -1,13 +1,13 @@
-/* Overview tab — ported from the legacy overview-strip / metric grid. */
+/* Overview tab — status strip, Rank now panel, channel facts. */
 .strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin: 0 0 18px;
-  padding: 14px 16px;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 16px 20px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   flex-wrap: wrap;
 }
@@ -17,145 +17,186 @@
   gap: 12px;
   min-width: 0;
 }
-.stripIcon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.dot {
+  width: 8px;
+  height: 8px;
   flex: 0 0 auto;
-  color: var(--success);
-  background: rgba(66, 212, 131, 0.1);
-  border: 1px solid rgba(66, 212, 131, 0.18);
+  border-radius: 50%;
+  background: var(--text-subtle);
 }
-.stripIcon.offline {
-  color: var(--warning);
-  background: rgba(243, 194, 71, 0.1);
-  border-color: rgba(243, 194, 71, 0.18);
+.dotOn {
+  background: var(--success);
 }
 .stripTitle {
   margin: 0;
   font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+  font-weight: 500;
+  line-height: 20px;
 }
 .stripCopy {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--text-muted);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 20px;
 }
-.stripActions {
+
+/* Wide Rank now panel next to a narrow column of facts. */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.rank {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  min-width: 0;
+}
+.rankEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rankHead {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
+  justify-content: space-between;
 }
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 30px;
-  padding: 0 10px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+.rankLabel {
+  margin: 0;
+  font-size: 13px;
   color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
 }
-.pill strong {
+.emptyCopy {
+  margin: 0;
+  max-width: 36ch;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--text-main);
+}
+
+.rankFigure {
+  margin: 16px 0 0;
+  font-size: 48px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.rankFigure span {
+  margin-left: 8px;
+  font-size: 16px;
+  letter-spacing: 0;
+  color: var(--text-subtle);
+}
+.rankMeta {
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal {
+  margin-top: 24px;
+}
+.goalRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.goalRow strong {
+  font-weight: 500;
+  color: var(--text-main);
+}
+.goalToGo {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--primary);
+  transition: transform 300ms var(--ease);
+}
+
+.cutoff {
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.cutoff span {
+  float: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--text-main);
   font-variant-numeric: tabular-nums;
 }
-.pill.good strong {
-  color: var(--success);
-}
-.pill.warning strong {
-  color: var(--warning);
-}
 
-/* Grids */
-.metrics {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
-}
-.split {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 10px;
-}
-
-.metricValue {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-main);
-}
-.indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-.indicatorOn {
-  background: var(--success);
-}
-.indicatorOff {
-  background: var(--danger);
-}
-
-.updateItem {
-  padding: 12px;
-  background: var(--bg-card);
-  border-radius: var(--radius);
+.facts {
   border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  min-width: 0;
 }
-.updateTag {
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 4px;
+.fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
 }
-.updateItem h3 {
-  font-size: 14px;
-  margin: 0;
+.fact + .fact {
+  border-top: 1px solid var(--border);
 }
-.updateItem p {
-  font-size: 12px;
-  margin: 4px 0 0;
+.factLabel {
+  font-size: 13px;
   color: var(--text-muted);
 }
-
-.ctaCard {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 200px;
-  gap: 14px;
-}
-.ctaIcon {
-  background: var(--bg-hover);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+.factValue {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-  font-size: 24px;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 20px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.factMono {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+.factMuted {
+  font-size: 14px;
+  color: var(--text-subtle);
+}
+.factLink {
+  font-size: 13px;
+  font-weight: 500;
 }
 
 @media (max-width: 860px) {
-  .metrics {
+  .grid {
     grid-template-columns: 1fr;
   }
-  .split {
-    grid-template-columns: 1fr;
+  .rankFigure {
+    font-size: 40px;
   }
 }

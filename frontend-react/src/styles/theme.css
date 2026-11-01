@@ -1,7 +1,8 @@
 /*
  * FinalsRS design tokens — "Cinematic" theme (2026-07), aligned with the
  * landing page: near-black canvas, hairline white borders, cream primary
- * actions. Purple remains an accent for links, focus, and key data.
+ * actions. FinalsRS red is the one accent for links, focus, and key data;
+ * Twitch purple is reserved for Twitch-specific UI.
  */
 :root {
   /* Surfaces — flat, separated by hairline borders, not shadows */
@@ -22,22 +23,22 @@
   --cream-hover: #f7f2ea;
   --on-cream: #141414;
 
-  /* Brand accent — links, active nav, focus rings, key data */
-  --primary: #a37bff;
-  --primary-hover: #8e62ff;
-  --primary-soft: rgba(163, 123, 255, 0.12);
-  --primary-ring: rgba(163, 123, 255, 0.35);
+  /* Brand accent (FinalsRS red) — links, active nav, focus rings, key data */
+  --primary: #f2554d;
+  --primary-hover: #ff6f68;
+  --primary-soft: rgba(242, 85, 77, 0.12);
+  --primary-ring: rgba(242, 85, 77, 0.35);
 
-  /* Text */
+  /* Text — primary, secondary, muted (muted stays ≥4.5:1 on the canvas) */
   --text-main: #f4f4f5;
-  --text-muted: rgba(244, 244, 245, 0.58);
-  --text-subtle: rgba(244, 244, 245, 0.32);
+  --text-muted: rgba(244, 244, 245, 0.66);
+  --text-subtle: rgba(244, 244, 245, 0.5);
 
   /* Status */
   --success: #3dd598;
   --success-soft: rgba(61, 213, 152, 0.12);
-  --danger: #ff5a57;
-  --danger-soft: rgba(255, 90, 87, 0.12);
+  --danger: #e5484d;
+  --danger-soft: rgba(229, 72, 77, 0.12);
   --warning: #f5a524;
   --warning-soft: rgba(245, 165, 36, 0.14);
   --info: #5aa7ff;

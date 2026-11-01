@@ -14,8 +14,8 @@ import logger from "./util/logger";
 import axios from "axios";
 import { restartBotIdentity } from "./services/botIdentityRestart.service";
 import { mapWithConcurrency } from "./util/concurrency";
-import { chooseChatStart, chatBotUserIdFor } from "./chat/chatTransportSwitch";
-import { clearActiveTransport, setActiveTransport } from "./chat/activeTransport";
+import { chooseChatStart, chatBotUserIdFor, switchChatTransport } from "./chat/chatTransportSwitch";
+import { clearActiveTransport, getActiveTransport, setActiveTransport } from "./chat/activeTransport";
 import { forgetBroadcaster, hasChat, hasIrcClient, isChatActive, rememberBroadcaster, stopChat } from "./chat/chatPresence";
 import { channelEvents, getConduitRuntime } from "./eventsub/conduitRuntime";
 import { hasCustomBotAccess } from "./chat/customBotAccess";
@@ -369,6 +369,24 @@ export class BotManager {
     });
   }
 
+  /** Switches a channel's chat transport without stopping it first (activate new, then retire old). */
+  public async switchChatTransport(username: string, transport: string) {
+    return switchChatTransport(username, transport, {
+      findChannel: async (name) => {
+        const channel: any = await Channel.findOne({ where: { username: name } });
+        return channel
+          ? { access_token: channel.access_token, refresh_token: channel.refresh_token, twitch_user_id: channel.twitch_user_id }
+          : null;
+      },
+      saveTransport: async (name, value) => {
+        await Channel.update({ chat_transport: value }, { where: { username: name } });
+      },
+      startBot: (name, accessToken, refreshToken, twitchUserId) =>
+        this.startBotForUser(name, accessToken, refreshToken, twitchUserId),
+      getActiveTransport,
+    });
+  }
+
   /** Reconciles all conduit channels in one pass; channels whose chat sub did not come up fall back to IRC. */
   private async reconcileConduitChannels(
     registry: NonNullable<ReturnType<typeof getConduitRuntime>>['registry'],
@@ -389,6 +407,9 @@ export class BotManager {
       rememberBroadcaster(channel.username, channel.twitch_user_id!);
       setActiveTransport(channel.username, 'eventsub');
     }
+    // A dev machine pointed at the prod conduit must never delete subscriptions it doesn't own.
+    const skipRemovals = process.env.NODE_ENV === 'development' && Boolean(process.env.DEV_CHANNELS);
+    if (skipRemovals) logger.warn('[Conduit] DEV_CHANNELS set: skipping subscription removals');
     try {
       const result = await registry.reconcileAll(
         channels.map((channel) => ({
@@ -396,6 +417,7 @@ export class BotManager {
           chatBotUserId: chatBotUserIdFor(this.customBotWithAccess(channel, customBotByChannelId.get(channel.id) ?? null)),
           rewardIds: rewardsByChannel.get(channel.username) ?? [],
         })),
+        { skipRemovals },
       );
       logger.info(`[Conduit] Reconciled ${channels.length} channels: ${result.created} created, ${result.removed} removed, ${result.failed.length} failed`);
     } catch (error) {
@@ -436,14 +458,14 @@ export class BotManager {
       // With the runtime off they stay on the normal path, which falls back to IRC with a warning.
       const registry = getConduitRuntime()?.registry ?? null;
       const conduitChannels = registry
-        ? channels.filter((channel) => channel.chat_transport === 'eventsub' && channel.twitch_user_id)
+        ? channels.filter((channel) => channel.chat_transport === 'eventsub' && channel.twitch_user_id && (channel as any).access_token)
         : [];
       const conduitChannelIds = new Set(conduitChannels.map((channel) => channel.id));
 
       const startedAt = Date.now();
       // IRC logins are rate limited per bot account inside startChatBot, so
       // this only bounds how many validate/handshake round trips overlap.
-      await mapWithConcurrency(channels, LOAD_CHANNEL_CONCURRENCY, async (channel) => {
+      const ircLoop = mapWithConcurrency(channels, LOAD_CHANNEL_CONCURRENCY, async (channel) => {
         const chanAny: any = channel as any;
         const username = chanAny.username;
         if (!username || !chanAny.access_token || !chanAny.twitch_user_id) return;
@@ -465,9 +487,13 @@ export class BotManager {
           logger.error(`[${username}] Failed to load channel:`, error);
         }
       });
-      if (registry && conduitChannels.length) {
-        await this.reconcileConduitChannels(registry, conduitChannels, customBotByChannelId);
-      }
+      // Conduit chat can arrive as soon as the shards are up, so the reconcile (which flips the gate)
+      // runs alongside the IRC loop instead of waiting behind it.
+      const conduitReconcile =
+        registry && conduitChannels.length
+          ? this.reconcileConduitChannels(registry, conduitChannels, customBotByChannelId)
+          : Promise.resolve();
+      await Promise.all([ircLoop, conduitReconcile]);
       logger.info(`Loaded ${channels.length} channels in ${Date.now() - startedAt}ms`);
     } catch (error) {
       logger.error('Error loading channels:', error);

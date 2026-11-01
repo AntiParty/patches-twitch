@@ -72,7 +72,11 @@ function fakeTimers() {
 
 const flush = () => new Promise((r) => setImmediate(r));
 
-function setup(assign?: (c: string, s: string, sid: string) => Promise<void>, onRevocation?: (sub: any) => void) {
+function setup(
+  assign?: (c: string, s: string, sid: string) => Promise<void>,
+  onRevocation?: (sub: any) => void,
+  isDuplicate?: (id: string) => boolean,
+) {
   const sockets: FakeSocket[] = [];
   const assigns: string[][] = [];
   const notes: any[][] = [];
@@ -98,6 +102,7 @@ function setup(assign?: (c: string, s: string, sid: string) => Promise<void>, on
     },
     onStateChange: (s) => states.push(s),
     onRevocation,
+    isDuplicate,
     timers,
     recordEvent: async (e) => {
       events.push(e);
@@ -139,6 +144,17 @@ describe('conduitShard', () => {
     assert.equal(notes.length, 1002);
     n('f999');
     assert.equal(notes.length, 1002);
+  });
+
+  it('uses the injected isDuplicate instead of its own set', async () => {
+    const shared = new Set(['seen-elsewhere']);
+    const { sockets, notes } = setup(undefined, undefined, (id) => shared.has(id));
+    sockets[0].welcome('sess1');
+    const n = (id: string) => sockets[0].send('notification', { subscription: { type: 't' }, event: {} }, { id });
+    n('seen-elsewhere');
+    n('fresh');
+    n('fresh'); // the injected function never records it, so it is not dropped
+    assert.equal(notes.length, 2);
   });
 
   it('reconnects with backoff and reassigns after close', async () => {

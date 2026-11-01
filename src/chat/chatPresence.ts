@@ -1,3 +1,4 @@
+import logger from '../util/logger';
 import { channelsOnTransport, clearActiveTransport, getActiveTransport } from './activeTransport';
 
 // username (lowercase) -> broadcaster id, for channels whose chat runs on the conduit.
@@ -27,6 +28,9 @@ export function usernameForBroadcaster(broadcasterId: string): string | null {
 const irc = () => require('../util/ircBot') as typeof import('../util/ircBot');
 const conduitRegistry = () =>
   (require('../eventsub/conduitRuntime') as typeof import('../eventsub/conduitRuntime')).getConduitRuntime()?.registry ?? null;
+
+const conduitOutageMonitor = () =>
+  (require('../eventsub/conduitRuntime') as typeof import('../eventsub/conduitRuntime')).getConduitRuntime()?.outageMonitor ?? null;
 
 /** True when an IRC client entry exists for the channel (connected or not). */
 export function hasIrcClient(username: string): boolean {
@@ -66,11 +70,19 @@ export function activeChatUsernames(): string[] {
 
 /** Stops whichever transport carries the channel's chat, then forgets the transport choice. */
 export async function stopChat(username: string, intentional = false): Promise<void> {
-  if (getActiveTransport(username) === 'eventsub') {
-    const id = broadcasterIdFor(username);
-    const registry = conduitRegistry();
-    if (id && registry) await registry.removeChat(id);
+  // The chat sub can outlive an IRC fallback (the monitor flips the gate but leaves the sub), so remove it
+  // whenever a broadcaster id is known, whatever the active transport.
+  const id = broadcasterIdFor(username);
+  const registry = conduitRegistry();
+  if (id && registry) {
+    try {
+      await registry.removeChat(id);
+      logger.info(`[EventSubChat] Removed the conduit chat subscription for ${username}.`);
+    } catch (err: any) {
+      logger.warn(`[EventSubChat] Could not remove the conduit chat subscription for ${username}: ${err?.message || err}`);
+    }
   }
+  conduitOutageMonitor()?.forgetChannel(username);
   // No-op without an IRC client; also clears one that lingers after a transport switch.
   await irc().stopChatBot(username, intentional);
   forgetBroadcaster(username);

@@ -23,6 +23,8 @@ export interface ShardEvent {
 }
 
 export interface ConduitShardOptions {
+  /** Shared dedupe across shards; when given it replaces the shard's own seen-set. Returns true for a repeat. */
+  isDuplicate?: (messageId: string) => boolean;
   conduitId: string;
   shardId: string;
   api: Pick<ConduitApi, 'assignWebSocketShard'>;
@@ -68,6 +70,12 @@ export function startConduitShard(opts: ConduitShardOptions): {
   let keepaliveTimer: any = null;
   let reconnectTimer: any = null;
   const seen = new Set<string>();
+  function isOwnDuplicate(id: string): boolean {
+    if (seen.has(id)) return true;
+    seen.add(id);
+    if (seen.size > DEDUPE_LIMIT) seen.delete(seen.values().next().value as string);
+    return false;
+  }
 
   const record = (event: ShardEvent) => {
     recordEvent(event).catch((err) => logger.warn(`[Conduit] Failed to record event ${event.type}: ${err?.message || err}`));
@@ -262,12 +270,7 @@ export function startConduitShard(opts: ConduitShardOptions): {
   function onNotification(meta: any, payload: any) {
     const id: string = meta.message_id;
     if (id) {
-      if (seen.has(id)) return;
-      seen.add(id);
-      if (seen.size > DEDUPE_LIMIT) {
-        const oldest = seen.values().next().value as string;
-        seen.delete(oldest);
-      }
+      if (opts.isDuplicate ? opts.isDuplicate(id) : isOwnDuplicate(id)) return;
     }
     const type = payload?.subscription?.type ?? meta.subscription_type;
     const fail = (err: any) =>

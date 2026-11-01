@@ -156,6 +156,25 @@ dbReady.then(async () => {
       }
     });
 
+    // Switch a channel's chat transport without a gap: the new transport is activated before the old is retired.
+    controlApp.post("/switch-chat-transport", async (req: any, res: any) => {
+      const channel = String(req.body?.channel || "").trim().toLowerCase();
+      const transport = String(req.body?.transport || "");
+      if (!channel || (transport !== "irc" && transport !== "eventsub")) {
+        return res.status(400).json({ success: false, error: "Need channel and transport ('irc' or 'eventsub')" });
+      }
+      try {
+        const result = await botManager.switchChatTransport(channel, transport);
+        if (result.status === "not_found") return res.status(404).json({ success: false, error: "Unknown channel" });
+        if (result.status === "invalid") return res.status(400).json({ success: false, error: "Invalid input" });
+        logger.info(`[ControlAPI] Switched ${channel} to ${transport}; active transport is ${result.active}`);
+        return res.json({ success: true, active: result.active });
+      } catch (error) {
+        logger.error(`[ControlAPI] Failed to switch ${channel} to ${transport}:`, error);
+        return res.status(500).json({ success: false, error: "Internal error" });
+      }
+    });
+
     // Remove channel and disconnect EventSub WebSocket
     controlApp.post("/remove-channel", async (req: any, res: any) => {
       const { twitch_user_id, username } = req.body;
@@ -550,9 +569,13 @@ dbReady.then(async () => {
       const allRedeemGiveaways = await Giveaway.findAll({
         where: { status: { [Op.ne]: "closed" }, type: "redeem" },
       });
-      // Conduit channels were already covered by the startup reconcile.
+      // Only enabled conduit channels were covered by the startup reconcile; disabled ones still restore per user.
       const conduitUsernames = getConduitRuntime()
-        ? new Set((await Channel.findAll({ where: { chat_transport: "eventsub" } })).map((c) => c.username))
+        ? new Set(
+            (await Channel.findAll({ where: { chat_transport: "eventsub", bot_enabled: true } }))
+              .filter((c: any) => c.twitch_user_id && c.access_token)
+              .map((c) => c.username),
+          )
         : new Set<string>();
       const redeemGiveaways = allRedeemGiveaways.filter((giveaway) => !conduitUsernames.has(giveaway.channel));
       const restoredChannels = new Map<string, Channel>();

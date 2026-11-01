@@ -1,6 +1,7 @@
 import logger from '../util/logger';
 import { toInboundChatMessage } from '../chat/eventSubChatAdapter';
-import { channelsOnTransport, setActiveTransport } from '../chat/activeTransport';
+import { channelsOnTransport, getActiveTransport, setActiveTransport } from '../chat/activeTransport';
+import { broadcasterIdFor } from '../chat/chatPresence';
 import { createChatRevocationHandler } from '../chat/chatTransportSwitch';
 import type { InboundChatMessage } from '../chat/inboundChatMessage';
 import type { Channel } from '../db';
@@ -11,6 +12,26 @@ import { createSubscriptionRegistry } from './subscriptionRegistry';
 import type { NotificationHandler } from './types';
 
 const SHARD_IDS = ['0', '1'];
+const DEDUPE_LIMIT = 1000;
+const DEFAULT_FALLBACK_AFTER_MS = 300000;
+
+/** A bounded seen-set of message ids, shared by every shard so a redelivery on the other shard is dropped. */
+export function createMessageDeduper(limit = DEDUPE_LIMIT): (messageId: string) => boolean {
+  const seen = new Set<string>();
+  return (id) => {
+    if (seen.has(id)) return true;
+    seen.add(id);
+    if (seen.size > limit) seen.delete(seen.values().next().value as string);
+    return false;
+  };
+}
+
+/** Unset or empty means the 5 minute default; only an explicit '0' disables the fallback. */
+export function parseFallbackAfterMs(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === '') return DEFAULT_FALLBACK_AFTER_MS;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_FALLBACK_AFTER_MS;
+}
 
 type Registry = ReturnType<typeof createSubscriptionRegistry>;
 
@@ -88,6 +109,7 @@ export function createConduitRuntime(deps: {
   const startShard = deps.startShard ?? startConduitShard;
   const shards: Array<ReturnType<typeof startConduitShard>> = [];
   const listeners: Array<(assigned: number) => void> = [];
+  const isDuplicate = createMessageDeduper();
   const shardsAssigned = () => shards.filter((s) => s.isAssigned()).length;
 
   const started = (async () => {
@@ -104,6 +126,7 @@ export function createConduitRuntime(deps: {
           api: deps.api,
           onNotification: deps.onNotification,
           onRevocation: deps.onRevocation,
+          isDuplicate,
           onStateChange: () => {
             const assigned = shardsAssigned();
             for (const cb of listeners) cb(assigned);
@@ -173,7 +196,6 @@ export function startConduitRuntime(): ConduitRuntime | null {
     },
   });
 
-  const parsedFallback = Number(process.env.EVENTSUB_FALLBACK_AFTER_MS ?? 300000);
   const outageMonitor = createConduitOutageMonitor({
     shardsAssigned: () => runtime!.shardsAssigned(),
     eventsubChannels: () => channelsOnTransport('eventsub'),
@@ -182,7 +204,11 @@ export function startConduitRuntime(): ConduitRuntime | null {
     setActiveTransport,
     warn: (t, b) => lazy.discord().sendWarningToDiscord(t, b),
     now: Date.now,
-    fallbackAfterMs: Number.isFinite(parsedFallback) ? parsedFallback : 300000,
+    refreshChatState: () => registry.refresh(),
+    broadcasterIdFor,
+    isChatSubActive: (_username, id) => Boolean(id && registry.isChatActive(id)),
+    getActiveTransport,
+    fallbackAfterMs: parseFallbackAfterMs(process.env.EVENTSUB_FALLBACK_AFTER_MS),
   });
   runtime.outageMonitor = outageMonitor;
   let ticking = false;

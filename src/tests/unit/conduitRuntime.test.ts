@@ -1,5 +1,5 @@
 import { strict as assert } from 'assert';
-import { createConduitRuntime, createNotificationRouter } from '@/eventsub/conduitRuntime';
+import { createConduitRuntime, createMessageDeduper, createNotificationRouter, parseFallbackAfterMs } from '@/eventsub/conduitRuntime';
 import type { InboundChatMessage } from '@/chat/inboundChatMessage';
 
 const chatEvent = (overrides: Record<string, any> = {}) => ({
@@ -127,6 +127,16 @@ describe('conduit runtime', () => {
       assert.ok(warnings.some((w) => w.includes('[Conduit]') && w.includes('nope')));
     });
 
+    it('shares one dedupe across both shards', async () => {
+      const { runtime, started } = runtimeSetup(async () => {});
+      await runtime.started;
+      const [s0, s1] = [started[0].opts.isDuplicate, started[1].opts.isDuplicate];
+      assert.equal(typeof s0, 'function');
+      assert.equal(s0('n1'), false);
+      assert.equal(s1('n1'), true);
+      assert.equal(s0('n1'), true);
+    });
+
     it('counts assigned shards and reconnects and reports state changes', async () => {
       const { runtime, started } = runtimeSetup(async () => {});
       await runtime.started;
@@ -140,6 +150,33 @@ describe('conduit runtime', () => {
       assert.equal(runtime.shardsAssigned(), 2);
       assert.equal(runtime.reconnects(), 3);
       assert.deepEqual(seen, [1, 2]);
+    });
+  });
+
+  describe('message dedupe', () => {
+    it('keeps only the last 1000 ids', () => {
+      const dup = createMessageDeduper();
+      assert.equal(dup('x'), false);
+      for (let i = 0; i < 1000; i++) dup('f' + i);
+      assert.equal(dup('x'), false); // evicted, so seen as new again
+      assert.equal(dup('f999'), true);
+    });
+  });
+
+  describe('fallback delay setting', () => {
+    it('treats unset and empty as the 5 minute default', () => {
+      assert.equal(parseFallbackAfterMs(undefined), 300000);
+      assert.equal(parseFallbackAfterMs(''), 300000);
+      assert.equal(parseFallbackAfterMs('  '), 300000);
+    });
+
+    it('disables the fallback only for an explicit 0', () => {
+      assert.equal(parseFallbackAfterMs('0'), 0);
+      assert.equal(parseFallbackAfterMs('60000'), 60000);
+    });
+
+    it('falls back to the default for junk', () => {
+      assert.equal(parseFallbackAfterMs('abc'), 300000);
     });
   });
 });

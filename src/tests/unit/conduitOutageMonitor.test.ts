@@ -4,6 +4,8 @@ import { createConduitOutageMonitor } from '@/eventsub/conduitOutageMonitor';
 const SEC = 1000;
 
 function setup(opts: { fallbackAfterMs?: number; failIrc?: string[] } = {}) {
+  const transports = new Map<string, 'irc' | 'eventsub'>();
+  const subActive = new Set(['a', 'b', 'c']);
   const calls: string[] = [];
   const clock = { t: 0 };
   const fake = { assigned: 2, channels: ['a', 'b'] };
@@ -19,7 +21,17 @@ function setup(opts: { fallbackAfterMs?: number; failIrc?: string[] } = {}) {
     },
     setActiveTransport: (u, t) => {
       calls.push(`gate:${u}:${t}`);
+      transports.set(u, t);
     },
+    refreshChatState: async () => {
+      calls.push('refresh');
+    },
+    broadcasterIdFor: (u) => `id-${u}`,
+    isChatSubActive: (u, id) => {
+      calls.push(`subActive:${u}:${id}`);
+      return subActive.has(u);
+    },
+    getActiveTransport: (u) => transports.get(u) ?? 'eventsub',
     warn: async (title) => {
       calls.push(`warn:${title}`);
     },
@@ -30,7 +42,7 @@ function setup(opts: { fallbackAfterMs?: number; failIrc?: string[] } = {}) {
     clock.t = sec * SEC;
     await monitor.tick();
   };
-  return { monitor, calls, fake, at };
+  return { monitor, calls, fake, at, transports, subActive };
 }
 
 describe('conduit outage monitor', () => {
@@ -139,5 +151,81 @@ describe('conduit outage monitor', () => {
     assert.equal(monitor.state(), 'fallen_back');
     await at(500);
     assert.equal(monitor.state(), 'healthy');
+  });
+
+  describe('recovery re-checks state', () => {
+    async function fallenBack() {
+      const ctx = setup();
+      ctx.fake.assigned = 0;
+      await ctx.at(0);
+      await ctx.at(300);
+      ctx.calls.length = 0;
+      ctx.fake.assigned = 1;
+      await ctx.at(400);
+      return ctx;
+    }
+
+    it('refreshes the chat state before flipping anything', async () => {
+      const { calls, at } = await fallenBack();
+      await at(460);
+      assert.equal(calls[0], 'refresh');
+      assert(calls.indexOf('refresh') < calls.indexOf('gate:a:eventsub'));
+    });
+
+    it('does not restore a channel stopped during the fallback', async () => {
+      const { monitor, calls, at, transports } = await fallenBack();
+      monitor.forgetChannel('a');
+      transports.set('a', 'irc');
+      await at(460);
+      assert(!calls.includes('gate:a:eventsub'));
+      assert(!calls.includes('stopIrc:a'));
+      assert(calls.includes('gate:b:eventsub'));
+    });
+
+    it('does not restore a channel whose active transport is no longer irc', async () => {
+      const { calls, at, transports } = await fallenBack();
+      transports.set('a', 'eventsub');
+      await at(460);
+      assert(!calls.includes('stopIrc:a'));
+      assert(!calls.includes('subActive:a:id-a'));
+      assert(calls.includes('stopIrc:b'));
+    });
+
+    it('keeps a channel on IRC when its chat subscription is gone', async () => {
+      const { calls, at, subActive } = await fallenBack();
+      subActive.delete('a');
+      await at(460);
+      assert(calls.includes('subActive:a:id-a'));
+      assert(!calls.includes('gate:a:eventsub'));
+      assert(!calls.includes('stopIrc:a'));
+      assert(calls.includes('gate:b:eventsub'));
+    });
+  });
+
+  describe('fallback retries', () => {
+    it('moves channels that land on eventsub mid-outage and retries failed starts', async () => {
+      const { monitor, calls, fake, at } = setup({ failIrc: ['b'] });
+      fake.assigned = 0;
+      await at(0);
+      await at(300);
+      assert(!calls.includes('gate:b:irc'));
+      calls.length = 0;
+      fake.channels = ['b', 'c'];
+      await at(315);
+      assert(calls.includes('startIrc:b'));
+      assert(calls.includes('gate:c:irc'));
+      assert(!calls.includes('startIrc:a'));
+      assert.equal(monitor.fallbackCount(), 1);
+    });
+
+    it('does not retry channels it already moved', async () => {
+      const { calls, fake, at } = setup();
+      fake.assigned = 0;
+      await at(0);
+      await at(300);
+      calls.length = 0;
+      await at(315);
+      assert.deepEqual([...calls], []);
+    });
   });
 });

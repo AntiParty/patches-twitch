@@ -38,6 +38,9 @@ describe('EventSub chat adapter', () => {
       'user-id': '55',
       'room-id': '123',
       badges: 'broadcaster/1,moderator/1',
+      mod: '1',
+      subscriber: '0',
+      color: '',
       'tmi-sent-ts': String(Date.parse(TS)),
     });
   });
@@ -56,5 +59,20 @@ describe('EventSub chat adapter', () => {
     const result = toInboundChatMessage(makeEvent({ badges: [] }), TS);
     assert.ok(result);
     assert.equal(result.tags.badges, '');
+  });
+
+  it('sets mod, subscriber and color tags from badges and the event color', () => {
+    const plain = toInboundChatMessage(makeEvent({ badges: [{ set_id: 'vip', id: '1', info: '' }] }), TS)!;
+    assert.equal(plain.tags.mod, '0');
+    assert.equal(plain.tags.subscriber, '0');
+    const sub = toInboundChatMessage(
+      makeEvent({ badges: [{ set_id: 'subscriber', id: '3', info: '' }], color: '#FF0000' }),
+      TS,
+    )!;
+    assert.equal(sub.tags.mod, '0');
+    assert.equal(sub.tags.subscriber, '1');
+    assert.equal(sub.tags.color, '#FF0000');
+    const founder = toInboundChatMessage(makeEvent({ badges: [{ set_id: 'founder', id: '0', info: '' }] }), TS)!;
+    assert.equal(founder.tags.subscriber, '1');
   });
 });

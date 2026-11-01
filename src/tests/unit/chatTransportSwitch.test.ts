@@ -1,5 +1,5 @@
 import { strict as assert } from 'assert';
-import { chooseChatStart, createChatRevocationHandler } from '@/chat/chatTransportSwitch';
+import { chooseChatStart, createChatRevocationHandler, switchChatTransport } from '@/chat/chatTransportSwitch';
 import { forgetBroadcaster, rememberBroadcaster } from '@/chat/chatPresence';
 
 function setup(opts: {
@@ -143,8 +143,24 @@ describe('chat transport switch', () => {
     const { channel, deps, calls } = setup({ transport: 'irc', authenticated: false });
     const live = await chooseChatStart(channel, deps);
     assert.equal(live, false);
-    assert.ok(calls.includes('addUserSubscription'));
+    // With the runtime on, a per-user socket would double-source events until the IRC login works.
+    assert.ok(!calls.includes('addUserSubscription'));
     assert.ok(!calls.some((c) => c.startsWith('setActiveTransport')));
+  });
+
+  it('keeps the conduit subs and opens no per-user socket when the IRC login fails while leaving the conduit', async () => {
+    const { channel, deps, calls, warnings } = setup({ transport: 'irc', authenticated: false });
+    const live = await chooseChatStart(channel, deps);
+    assert.equal(live, false);
+    assert.ok(!calls.some((c) => c.startsWith('removeChannel')));
+    assert.ok(!calls.includes('addUserSubscription'));
+    assert.ok(warnings.some((w) => w.includes('[EventSubChat]') && w.includes('IRC login failed while leaving the conduit')));
+  });
+
+  it('still adds the per-user socket when the runtime is off and IRC does not authenticate', async () => {
+    const { channel, deps, calls } = setup({ transport: 'irc', authenticated: false, registry: false });
+    await chooseChatStart(channel, deps);
+    assert.ok(calls.includes('addUserSubscription'));
   });
 
   it('custom-bot channels subscribe chat as the custom bot', async () => {
@@ -198,5 +214,44 @@ describe('chat transport switch', () => {
       assert.deepEqual(calls, []);
       assert.deepEqual(discord, []);
     });
+  });
+});
+
+describe('switchChatTransport', () => {
+  function switchSetup(row: any = { access_token: 'at', refresh_token: 'rt', twitch_user_id: 'b1' }) {
+    const calls: string[] = [];
+    const deps = {
+      findChannel: async (u: string) => {
+        calls.push(`find:${u}`);
+        return row;
+      },
+      saveTransport: async (u: string, t: string) => {
+        calls.push(`save:${u}:${t}`);
+      },
+      startBot: async (u: string, a: string, r: string, id: string) => {
+        calls.push(`start:${u}:${a}:${r}:${id}`);
+      },
+      getActiveTransport: () => 'eventsub' as const,
+    };
+    return { deps, calls };
+  }
+
+  it('saves the transport then starts the bot without stopping it first', async () => {
+    const { deps, calls } = switchSetup();
+    const result = await switchChatTransport('Streamer', 'eventsub', deps);
+    assert.deepEqual(result, { status: 'ok', active: 'eventsub' });
+    assert.deepEqual(calls, ['find:streamer', 'save:streamer:eventsub', 'start:streamer:at:rt:b1']);
+  });
+
+  it('rejects an invalid transport without touching the channel', async () => {
+    const { deps, calls } = switchSetup();
+    assert.deepEqual(await switchChatTransport('streamer', 'carrier-pigeon', deps), { status: 'invalid' });
+    assert.deepEqual(calls, []);
+  });
+
+  it('reports an unknown channel without saving or starting', async () => {
+    const { deps, calls } = switchSetup(null);
+    assert.deepEqual(await switchChatTransport('nobody', 'irc', deps), { status: 'not_found' });
+    assert.deepEqual(calls, ['find:nobody']);
   });
 });

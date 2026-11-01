@@ -161,7 +161,14 @@ export function createSubscriptionRegistry(deps: { api: ConduitApi; conduitId: s
     (cache.get(id) ?? []).some((s) => s.type === CHAT && s.status === 'enabled');
 
   return {
-    async reconcileAll(channels: ConduitChannel[]) {
+    /** Re-reads the conduit's subscriptions and rebuilds the enabled cache. No creates or deletes. */
+    async refresh(): Promise<void> {
+      const existing = await api.listSubscriptions(conduitId);
+      cache.clear();
+      addToCache(existing.filter((e) => e.status === 'enabled'));
+    },
+
+    async reconcileAll(channels: ConduitChannel[], opts: { skipRemovals?: boolean } = {}) {
       const existing = await api.listSubscriptions(conduitId);
       const shardSpec: EventSubSpec = {
         type: SHARD_DISABLED,
@@ -176,7 +183,7 @@ export function createSubscriptionRegistry(deps: { api: ConduitApi; conduitId: s
       const staleShard = existing.filter(
         (e) => e.type === SHARD_DISABLED && subscriptionKey(e) === shardKey && e.status !== 'enabled',
       );
-      const toDelete = [...remove, ...staleShard];
+      const toDelete = opts.skipRemovals ? [] : [...remove, ...staleShard];
 
       const removed = await deleteSubs(toDelete);
       const result = await createSpecs(create);

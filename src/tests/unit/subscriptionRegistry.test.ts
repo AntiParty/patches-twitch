@@ -179,6 +179,35 @@ describe('subscription registry', () => {
     assert.equal(log.maxActive <= 5, true);
   });
 
+  it('reconcileAll with skipRemovals creates what is missing and deletes nothing', async () => {
+    const d = desiredSubscriptionsFor(CH);
+    const stale = asExisting(desiredSubscriptionsFor({ ...CH, broadcasterId: 'old' })).map((s, i) => ({ ...s, id: `stale${i}` }));
+    const { api, log } = makeApi({ list: [...asExisting(d.slice(0, 2)), ...stale] });
+    const reg = mk(api);
+    const res = await reg.reconcileAll([CH], { skipRemovals: true });
+    assert.deepEqual(log.deletes, []);
+    assert.equal(res.removed, 0);
+    assert.equal(res.created, 3);
+    assert.equal(reg.isChatActive('old'), true);
+  });
+
+  it('refresh rebuilds the cache from one list call with no creates or deletes', async () => {
+    const d = desiredSubscriptionsFor(CH);
+    let list = asExisting(d);
+    const { api, log } = makeApi({ list: () => list });
+    const reg = mk(api);
+    await reg.reconcileAll([CH]);
+    assert.equal(reg.isChatActive('b1'), true);
+    const createsBefore = log.creates.length;
+    const listsBefore = log.lists;
+    list = asExisting(d.filter((s) => s.type !== 'channel.chat.message'));
+    await reg.refresh();
+    assert.equal(log.lists, listsBefore + 1);
+    assert.equal(log.creates.length, createsBefore);
+    assert.deepEqual(log.deletes, []);
+    assert.equal(reg.isChatActive('b1'), false);
+  });
+
   it('reconcileAll leaves an existing enabled shard.disabled alone', async () => {
     const shard: ConduitSubscription = {
       type: 'conduit.shard.disabled', version: '1', condition: { client_id: 'cid', conduit_id: 'cd' }, id: 's', status: 'enabled',

@@ -78,6 +78,11 @@ export async function chooseChatStart(channel: ChatStartChannel, deps: ChatStart
       // Moving back to IRC: take everything off the conduit before the per-user path takes over.
       if (deps.registry && broadcasterId) await deps.registry.removeChannel(broadcasterId);
     }
+    if (deps.registry && !authenticated) {
+      // The conduit subs are still live, so a per-user socket would double-source stream events.
+      log.warn(`[EventSubChat] ${username} IRC login failed while leaving the conduit; events stay on the conduit`);
+      return false;
+    }
     deps.addUserSubscription();
     if (authenticated && deps.registry && deps.resubscribeRedemptions) await deps.resubscribeRedemptions();
     return authenticated;
@@ -116,6 +121,39 @@ export async function chooseChatStart(channel: ChatStartChannel, deps: ChatStart
   deps.removeUserWebSocket(broadcasterId);
   log.info(`[EventSubChat] ${username} chat is on the conduit.`);
   return true;
+}
+
+export interface ChatTransportSwitchDeps {
+  /** The channel row's start values, or null for an unknown channel. */
+  findChannel(username: string): Promise<{ access_token: string | null; refresh_token: string | null; twitch_user_id: string | null } | null>;
+  saveTransport(username: string, transport: ChatTransport): Promise<void>;
+  /** startBotForUser: activates the new transport, then retires the old one (see chooseChatStart). */
+  startBot(username: string, accessToken: string, refreshToken: string, twitchUserId: string): Promise<void>;
+  getActiveTransport(username: string): ChatTransport;
+}
+
+export type ChatTransportSwitchResult =
+  | { status: 'ok'; active: ChatTransport }
+  | { status: 'invalid' }
+  | { status: 'not_found' };
+
+/**
+ * Deliberate transport switch with no gap: persist the preference, then start the channel without
+ * stopping it first, so chooseChatStart activates the new transport before retiring the old one.
+ */
+export async function switchChatTransport(
+  username: string,
+  transport: string,
+  deps: ChatTransportSwitchDeps,
+): Promise<ChatTransportSwitchResult> {
+  if (transport !== 'irc' && transport !== 'eventsub') return { status: 'invalid' };
+  const name = username.trim().toLowerCase();
+  if (!name) return { status: 'invalid' };
+  const row = await deps.findChannel(name);
+  if (!row) return { status: 'not_found' };
+  await deps.saveTransport(name, transport);
+  await deps.startBot(name, row.access_token || '', row.refresh_token || '', row.twitch_user_id || '');
+  return { status: 'ok', active: deps.getActiveTransport(name) };
 }
 
 export interface ChatRevocationDeps {

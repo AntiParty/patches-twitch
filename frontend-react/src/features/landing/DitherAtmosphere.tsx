@@ -7,7 +7,7 @@
  * reads as atmosphere, not a light show. Mirrors the footer wash so the page
  * opens and closes on the same texture.
  *
- * Perf, same discipline as HeroAtmosphere:
+ * Perf:
  * - Low-res backing store (one cell per dither pixel, ~7k cells on phones,
  *   capped at ~64k on desktop) written through a reused ImageData buffer —
  *   one putImageData per frame, zero allocations in the loop.

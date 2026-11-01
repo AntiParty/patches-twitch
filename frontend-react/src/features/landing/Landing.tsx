@@ -1,12 +1,13 @@
 /*
- * Landing — cinematic centered hero with canvas atmosphere.
- * Clean sans type; product details below the fold.
+ * Landing — split hero (copy left, live chat preview right) over the dither
+ * field. Quiet chrome; the chat panel is the one product visual.
  */
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { publicApi } from '@/api/public'
-import { HeroAtmosphere } from './HeroAtmosphere'
+import { DashboardShowcase } from './DashboardShowcase'
 import { DitherAtmosphere } from './DitherAtmosphere'
+import { HeroChat } from './HeroChat'
 import { StreamerMarquee } from './StreamerMarquee'
 import styles from './Landing.module.css'
 
@@ -28,65 +29,62 @@ export function Landing() {
   })
 
   const primaryHref = isAuthenticated ? '/dashboard' : '/login'
-  const primaryLabel = isAuthenticated ? 'Open dashboard' : 'Add to Twitch'
 
+  // Only real platform totals; below the threshold the row is left out.
   const metrics =
     stats && stats.userCount >= 500 && stats.commandsProcessed >= 100_000
       ? [
           { value: formatStat(stats.userCount), label: 'Channels' },
-          { value: formatStat(stats.commandsProcessed), label: 'Commands' },
-          { value: '10k+', label: 'Players' },
+          { value: formatStat(stats.commandsProcessed), label: 'Commands answered' },
         ]
-      : [
-          { value: '30s', label: 'Setup' },
-          { value: 'Live', label: 'Lookups' },
-          { value: 'Free', label: 'Channels' },
-        ]
+      : null
 
   return (
     <div className={styles.root}>
       <section className={styles.hero} aria-labelledby="landing-h1">
         <div className={styles.atmosphere} aria-hidden="true">
           <DitherAtmosphere color="red" />
-          <HeroAtmosphere />
           <div className={styles.heroFade} />
         </div>
 
         <div className={styles.heroInner}>
-          <p className={styles.eyebrow}>Twitch tools for THE FINALS</p>
-          <h1 id="landing-h1" className={styles.headline}>
-            Make every ranked moment
-            <br />
-            part of the stream.
-          </h1>
-          <p className={styles.sub}>
-            Live RS, session movement, and viewer predictions—ready in chat while you stay in the match.
-          </p>
-          <a href={primaryHref} className={styles.cta}>
-            {isAuthenticated ? primaryLabel : 'Add FinalsRS to Twitch'}
-          </a>
+          <div className={styles.heroCopy}>
+            <h1 id="landing-h1" className={styles.headline}>
+              Your rank in THE&nbsp;FINALS, live in Twitch chat
+            </h1>
+            <p className={styles.sub}>
+              Viewers type <code>!rank</code>, <code>!record</code> or <code>!predict</code> and get
+              your RS, session movement and the T500 cutoff while you stay in the match
+            </p>
+            <a href={primaryHref} className={styles.cta}>
+              {isAuthenticated ? 'Open dashboard' : 'Add FinalsRS to Twitch'}
+            </a>
+          </div>
+          <HeroChat />
         </div>
 
         <StreamerMarquee />
       </section>
 
       <div className={styles.below}>
-        <section className={styles.metrics} aria-label="Highlights">
-          {metrics.map((m) => (
-            <div key={m.label} className={styles.metric}>
-              <span className={styles.metricValue}>{m.value}</span>
-              <span className={styles.metricLabel}>{m.label}</span>
-            </div>
-          ))}
-        </section>
+        {metrics && (
+          <section className={styles.metrics} aria-label="Platform totals">
+            {metrics.map((m) => (
+              <div key={m.label} className={styles.metric}>
+                <span className={styles.metricValue}>{m.value}</span>
+                <span className={styles.metricLabel}>{m.label}</span>
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className={styles.section} id="commands">
           <p className={styles.sectionLabel}>Live product</p>
           <h2 className={styles.sectionTitle}>What FinalsRS does while you stream</h2>
           <ul className={styles.cmdList}>
             {COMMANDS.map((c) => (
-              <li key={c.cmd}>
-                <code>{c.cmd}</code>
+              <li key={c.title}>
+                <strong>{c.title}</strong>
                 <span>{c.desc}</span>
               </li>
             ))}
@@ -96,6 +94,7 @@ export function Landing() {
         <section className={styles.section} id="more">
           <p className={styles.sectionLabel}>Run the channel</p>
           <h2 className={styles.sectionTitle}>Everything else your stream needs</h2>
+          <DashboardShowcase />
           <div className={styles.featureRow}>
             {FEATURES.map((f) => (
               <div key={f.title} className={styles.feature}>
@@ -117,7 +116,7 @@ export function Landing() {
               <span>01</span>
               <div>
                 <strong>Connect Twitch</strong>
-                <p>The bot joins your channel.</p>
+                <p>The bot joins your channel</p>
               </div>
             </li>
             <li>
@@ -133,7 +132,7 @@ export function Landing() {
               <span>03</span>
               <div>
                 <strong>Let chat ask</strong>
-                <p>You stay in queue.</p>
+                <p>You stay in queue</p>
               </div>
             </li>
           </ol>
@@ -157,15 +156,15 @@ export function Landing() {
 }
 
 const COMMANDS = [
-  { cmd: 'Chat asks', desc: 'Viewers get the ranked context they want without leaving the stream.' },
-  { cmd: 'Your session moves', desc: 'Every live gain and loss becomes a clear story for chat to follow.' },
-  { cmd: 'Predictions open', desc: 'Turn the next ranked milestone into a shared viewer moment.' },
-  { cmd: 'You keep playing', desc: 'FinalsRS handles the context while you stay focused on the match.' },
+  { title: 'Chat asks', desc: 'Viewers get the ranked context they want without leaving the stream' },
+  { title: 'Your session moves', desc: 'Every live gain and loss becomes a clear story for chat to follow' },
+  { title: 'Predictions open', desc: 'Turn the next ranked milestone into a shared viewer moment' },
+  { title: 'You keep playing', desc: 'FinalsRS handles the context while you stay focused on the match' },
 ]
 
 const FEATURES = [
-  { title: 'OBS overlays', desc: 'Token-secured rank panels for your scene.' },
-  { title: 'Custom responses', desc: 'Edit every command to match your channel.' },
-  { title: 'Predictions', desc: 'Free presets, plus automated ranked runs.', premium: true },
-  { title: 'Custom bot', desc: 'Reply from your own bot account.', premium: true },
+  { title: 'OBS overlays', desc: 'Token-secured rank panels for your scene' },
+  { title: 'Custom responses', desc: 'Edit every command to match your channel' },
+  { title: 'Predictions', desc: 'Free presets, plus automated ranked runs', premium: true },
+  { title: 'Custom bot', desc: 'Reply from your own bot account', premium: true },
 ]

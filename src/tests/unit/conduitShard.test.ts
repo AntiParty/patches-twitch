@@ -72,7 +72,7 @@ function fakeTimers() {
 
 const flush = () => new Promise((r) => setImmediate(r));
 
-function setup(assign?: (c: string, s: string, sid: string) => Promise<void>) {
+function setup(assign?: (c: string, s: string, sid: string) => Promise<void>, onRevocation?: (sub: any) => void) {
   const sockets: FakeSocket[] = [];
   const assigns: string[][] = [];
   const notes: any[][] = [];
@@ -97,6 +97,7 @@ function setup(assign?: (c: string, s: string, sid: string) => Promise<void>) {
       return s;
     },
     onStateChange: (s) => states.push(s),
+    onRevocation,
     timers,
     recordEvent: async (e) => {
       events.push(e);
@@ -319,5 +320,30 @@ describe('conduitShard', () => {
     assert.equal(sockets.length, 2);
     timers.advance(1000);
     assert.equal(sockets.length, 3);
+  });
+
+  it('passes a revoked subscription to onRevocation', async () => {
+    const revoked: any[] = [];
+    const { sockets } = setup(undefined, (sub) => revoked.push(sub));
+    sockets[0].welcome('sess1');
+    await flush();
+    const subscription = {
+      id: 'sub1',
+      type: 'channel.chat.message',
+      status: 'authorization_revoked',
+      condition: { broadcaster_user_id: 'b1', user_id: 'bot' },
+    };
+    sockets[0].send('revocation', { subscription });
+    assert.deepEqual(revoked, [subscription]);
+  });
+
+  it('keeps running when onRevocation throws', async () => {
+    const { sockets, shard } = setup(undefined, () => {
+      throw new Error('boom');
+    });
+    sockets[0].welcome('sess1');
+    await flush();
+    sockets[0].send('revocation', { subscription: { id: 's', type: 'stream.online', status: 'user_removed', condition: {} } });
+    assert.equal(shard.isAssigned(), true);
   });
 });

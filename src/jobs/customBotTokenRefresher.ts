@@ -1,6 +1,7 @@
 import { CustomBotAccount, Channel } from "../db";
 import { refreshCustomBotAccessToken, decryptCustomBotAccessToken, decryptCustomBotRefreshToken } from "../util/twitchUtils";
-import { reconnectChatBot, clients } from "../util/ircBot";
+import { reconnectChatBot } from "../util/ircBot";
+import { ircClientFor, isEventSubChat } from "../chat/chatPresence";
 import { loadCommands } from "../handlers/commands";
 import logger from "../util/logger";
 
@@ -52,13 +53,16 @@ async function tick(): Promise<void> {
           continue;
         }
         const channelUsername = (channel as any).username;
-        const existingClient = clients[channelUsername];
+        const existingClient = ircClientFor(channelUsername);
 
         // Update the in-memory IRC client's stored credentials so reconnect picks up the new token.
         if (existingClient) {
           existingClient.customBotToken = result.accessToken;
           existingClient.customRefreshToken = result.refreshToken;
         }
+
+        // Conduit chat has no IRC socket to reconnect; the subscription does not use the bot token.
+        if (isEventSubChat(channelUsername)) continue;
 
         await new Promise((r) => setTimeout(r, i * STAGGER_MS));
         try {
@@ -93,7 +97,7 @@ export async function refreshCustomBotForChannel(channelUsername: string): Promi
   if (!result) return null;
 
   // Refresh the in-memory client's stored credentials so the next reconnect uses the new token.
-  const client = clients[channelUsername];
+  const client = ircClientFor(channelUsername);
   if (client) {
     client.customBotToken = result.accessToken;
     client.customRefreshToken = result.refreshToken;

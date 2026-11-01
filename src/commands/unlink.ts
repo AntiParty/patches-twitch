@@ -1,5 +1,5 @@
 import { purgeChannelData } from '@/services/channelDataPurge.service';
-import { stopChatBot } from '@/util/ircBot';
+import { stopChat } from '@/chat/chatPresence';
 import logger from '@/util/logger';
 
 interface CommandContext {
@@ -37,11 +37,11 @@ export const execute = async (ctx: CommandContext) => {
     if (deleted) {
       logger.info(`Channel ${sanitizedChannel} unlinked from the database.`);
 
-      // Reply first: stopChatBot tears down the connection for this channel
+      // Reply first: stopChat tears down the connection for this channel
       await ctx.say(`@${username}, your account has been unlinked and the bot has left the channel.`, messageId);
 
       // Part the bot from the channel
-      await stopChatBot(sanitizedChannel);
+      await stopChat(sanitizedChannel);
       logger.info(`Unlinked and parted from ${sanitizedChannel}`);
     } else {
       logger.info(`Channel ${sanitizedChannel} not found in the database.`);

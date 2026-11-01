@@ -26,6 +26,12 @@ export interface ChatDispatcherDeps {
   countCommand?(rawCommand: string): void | Promise<void>;
 }
 
+let dispatchErrors = 0;
+/** Commands that threw since the process started. */
+export function chatDispatchErrorCount(): number {
+  return dispatchErrors;
+}
+
 export function createChatDispatcher(deps: ChatDispatcherDeps) {
   const recentChatMessages = new RecentChatMessages();
 
@@ -135,6 +141,7 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
         }
       } catch (err: any) {
         commandSuccess = false;
+        dispatchErrors++;
         errorMessage = err?.message || 'Unknown error';
         logger.error(`[ERROR] Command execution failed for ${commandKey}:`, err);
       } finally {

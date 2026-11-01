@@ -31,6 +31,8 @@ export interface ConduitShardOptions {
   onStateChange?: (state: 'assigned' | 'unassigned') => void;
   timers?: ShardTimers;
   recordEvent?: (event: ShardEvent) => Promise<void>;
+  /** Called with the revoked subscription from a `revocation` message. */
+  onRevocation?: (subscription: { id: string; type: string; status: string; condition: Record<string, string> }) => void;
 }
 
 const defaultTimers: ShardTimers = {
@@ -206,6 +208,13 @@ export function startConduitShard(opts: ConduitShardOptions): {
         logger.warn(
           `[Conduit] Subscription revoked: type=${payload?.subscription?.type} id=${payload?.subscription?.id} status=${payload?.subscription?.status}`
         );
+        if (payload?.subscription && opts.onRevocation) {
+          try {
+            opts.onRevocation(payload.subscription);
+          } catch (err: any) {
+            logger.error(`[Conduit] onRevocation handler failed: ${err?.message || err}`);
+          }
+        }
         break;
       default:
         break;

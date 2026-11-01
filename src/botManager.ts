@@ -1,6 +1,7 @@
-import { Channel, CustomBotAccount } from "./db";
+import { Channel, CustomBotAccount, Giveaway } from "./db";
+import { Op } from "sequelize";
 import { startChatBot, stopChatBot } from "./util/ircBot";
-import { addUserSubscription } from "./util/twitchEventSubWs";
+import { addUserSubscription, removeUserWebSocket } from "./util/twitchEventSubWs";
 import { loadCommands } from "./handlers/commands";
 import { sendChatMessage } from "./util/ircBot"
 import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
@@ -12,8 +13,14 @@ import {
 import logger from "./util/logger";
 import axios from "axios";
 import { restartBotIdentity } from "./services/botIdentityRestart.service";
-import { clients } from "./util/ircBot";
 import { mapWithConcurrency } from "./util/concurrency";
+import { chooseChatStart, chatBotUserIdFor, switchChatTransport } from "./chat/chatTransportSwitch";
+import { clearActiveTransport, getActiveTransport, setActiveTransport } from "./chat/activeTransport";
+import { forgetBroadcaster, hasChat, hasIrcClient, isChatActive, rememberBroadcaster, stopChat } from "./chat/chatPresence";
+import { channelEvents, getConduitRuntime } from "./eventsub/conduitRuntime";
+import { hasCustomBotAccess } from "./chat/customBotAccess";
+
+export { chooseChatStart };
 const clientId = process.env.TWITCH_CLIENT_ID!;
 const clientSecret = process.env.TWITCH_CLIENT_SECRET!;
 
@@ -36,6 +43,10 @@ export class BotManager {
     this.commandHandler = loadCommands();
     // Start polling for missing stream sessions when BotManager is instantiated
     startStreamSessionPolling();
+  }
+
+  public getCommandHandler(): Record<string, any> {
+    return this.commandHandler;
   }
 
   private async getChannels(): Promise<Channel[]> {
@@ -77,48 +88,24 @@ export class BotManager {
           ? prefetched.customBot
           : await CustomBotAccount.findOne({ where: { channel_id: channel.id, is_active: true } });
 
-        const isPrivileged = ['tester', 'Staff', 'admin'].includes(channel.role);
-        const hasAccess = channel.has_subscription || isPrivileged;
+        const activeCustomBot = this.customBotWithAccess(channel, customBot);
 
-        let authenticated = false;
-
-        if (customBot && hasAccess) {
-          logger.info(`Starting custom bot ${customBot.bot_username} for channel ${username}`);
-
-          // Tokens in CustomBotAccount may be encrypted (post-rotation) or
-          // plaintext (legacy rows from before encryption was wired up).
-          // Decrypt before handing to IRC, and proactively refresh if expired.
-          let accessPlain = decryptCustomBotAccessToken(customBot);
-          let refreshPlain = decryptCustomBotRefreshToken(customBot);
-          const expiresAt = (customBot as any).bot_token_expires_at
-            ? new Date((customBot as any).bot_token_expires_at).getTime()
-            : 0;
-          const expired = expiresAt && expiresAt - Date.now() <= 60 * 1000;
-
-          if (expired || !accessPlain) {
-            const refreshed = await refreshCustomBotAccessToken(customBot);
-            if (refreshed) {
-              accessPlain = refreshed.accessToken;
-              refreshPlain = refreshed.refreshToken;
+        const authenticated = await chooseChatStart(channel, {
+          stopChatBot,
+          startChatBot: () => this.startIrcChat(username, activeCustomBot),
+          hasIrcClient,
+          addUserSubscription: () => addUserSubscription(currentTwitchUserId, currentAccessToken, currentTwitchUserId),
+          removeUserWebSocket,
+          setActiveTransport,
+          getRewardIds: () => this.openRewardIds(username),
+          resubscribeRedemptions: async () => {
+            for (const rewardId of await this.openRewardIds(username)) {
+              await channelEvents.subscribeRedemption(channel, rewardId);
             }
-          }
-
-          if (!accessPlain) {
-            logger.warn(`[${username}] Custom bot token unavailable after refresh attempt — falling back to default bot.`);
-            authenticated = await startChatBot(username, this.commandHandler);
-          } else {
-            authenticated = await startChatBot(username, this.commandHandler, {
-              botUsername: customBot.bot_username,
-              botToken: accessPlain,
-              botUserId: customBot.bot_twitch_user_id,
-              refreshToken: refreshPlain || ''
-            });
-          }
-        } else {
-          authenticated = await startChatBot(username, this.commandHandler);
-        }
-        
-        addUserSubscription(currentTwitchUserId, currentAccessToken, currentTwitchUserId);
+          },
+          registry: getConduitRuntime()?.registry ?? null,
+          customBot: activeCustomBot,
+        });
 
         if (!authenticated) {
           logger.warn(`Bot start did not authenticate for ${username}`);
@@ -134,9 +121,64 @@ export class BotManager {
     }
   }
 
+  /** The channel's custom bot, or null when it has none or the channel may not use one. */
+  private customBotWithAccess(channel: Channel, customBot: CustomBotAccount | null): CustomBotAccount | null {
+    return customBot && hasCustomBotAccess(channel) ? customBot : null;
+  }
+
+  /** Starts IRC chat with the custom bot identity when given, else the default bot. */
+  private async startIrcChat(username: string, customBot: CustomBotAccount | null): Promise<boolean> {
+    if (!customBot) return startChatBot(username, this.commandHandler);
+
+    logger.info(`Starting custom bot ${customBot.bot_username} for channel ${username}`);
+
+    // Tokens in CustomBotAccount may be encrypted (post-rotation) or
+    // plaintext (legacy rows from before encryption was wired up).
+    // Decrypt before handing to IRC, and proactively refresh if expired.
+    let accessPlain = decryptCustomBotAccessToken(customBot);
+    let refreshPlain = decryptCustomBotRefreshToken(customBot);
+    const expiresAt = (customBot as any).bot_token_expires_at
+      ? new Date((customBot as any).bot_token_expires_at).getTime()
+      : 0;
+    const expired = expiresAt && expiresAt - Date.now() <= 60 * 1000;
+
+    if (expired || !accessPlain) {
+      const refreshed = await refreshCustomBotAccessToken(customBot);
+      if (refreshed) {
+        accessPlain = refreshed.accessToken;
+        refreshPlain = refreshed.refreshToken;
+      }
+    }
+
+    if (!accessPlain) {
+      logger.warn(`[${username}] Custom bot token unavailable after refresh attempt — falling back to default bot.`);
+      return startChatBot(username, this.commandHandler);
+    }
+    return startChatBot(username, this.commandHandler, {
+      botUsername: customBot.bot_username,
+      botToken: accessPlain,
+      botUserId: customBot.bot_twitch_user_id,
+      refreshToken: refreshPlain || ''
+    });
+  }
+
+  /** Moves a channel whose conduit chat subscription was lost onto IRC. */
+  public async startIrcFallback(username: string): Promise<boolean> {
+    const channel = await Channel.findOne({ where: { username } });
+    if (!channel) return false;
+    const customBot = await CustomBotAccount.findOne({ where: { channel_id: channel.id, is_active: true } });
+    return this.startIrcChat(username, this.customBotWithAccess(channel, customBot));
+  }
+
+  /** Reward ids of the channel's open channel-point giveaways. */
+  private async openRewardIds(username: string): Promise<string[]> {
+    const rows = await Giveaway.findAll({ where: { channel: username, type: "redeem", status: { [Op.ne]: "closed" } } });
+    return rows.map((row) => row.reward_id).filter((id): id is string => Boolean(id));
+  }
+
   public async stopBotForUser(username: string, intentional: boolean = true) {
     try {
-      await stopChatBot(username, intentional);
+      await stopChat(username, intentional);
       logger.info(`Bot stopped for ${username}`);
     } catch (error) {
       logger.error(`Failed to stop bot for ${username}:`, error);
@@ -321,9 +363,79 @@ export class BotManager {
         channel.refresh_token || "",
         channel.twitch_user_id || "",
       ),
-      hasClient: (channelUsername) => Boolean(clients[channelUsername]),
-      isAuthenticated: (channelUsername) => Boolean(clients[channelUsername]?.connected),
+      hasClient: (channelUsername) => hasChat(channelUsername),
+      isAuthenticated: (channelUsername) => isChatActive(channelUsername),
       sleep: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+    });
+  }
+
+  /** Switches a channel's chat transport without stopping it first (activate new, then retire old). */
+  public async switchChatTransport(username: string, transport: string) {
+    return switchChatTransport(username, transport, {
+      findChannel: async (name) => {
+        const channel: any = await Channel.findOne({ where: { username: name } });
+        return channel
+          ? { access_token: channel.access_token, refresh_token: channel.refresh_token, twitch_user_id: channel.twitch_user_id }
+          : null;
+      },
+      saveTransport: async (name, value) => {
+        await Channel.update({ chat_transport: value }, { where: { username: name } });
+      },
+      startBot: (name, accessToken, refreshToken, twitchUserId) =>
+        this.startBotForUser(name, accessToken, refreshToken, twitchUserId),
+      getActiveTransport,
+    });
+  }
+
+  /** Reconciles all conduit channels in one pass; channels whose chat sub did not come up fall back to IRC. */
+  private async reconcileConduitChannels(
+    registry: NonNullable<ReturnType<typeof getConduitRuntime>>['registry'],
+    channels: Channel[],
+    customBotByChannelId: Map<number, CustomBotAccount>,
+  ) {
+    const openGiveaways = await Giveaway.findAll({ where: { type: "redeem", status: { [Op.ne]: "closed" } } });
+    const rewardsByChannel = new Map<string, string[]>();
+    for (const giveaway of openGiveaways) {
+      if (!giveaway.reward_id) continue;
+      const list = rewardsByChannel.get(giveaway.channel) ?? [];
+      list.push(giveaway.reward_id);
+      rewardsByChannel.set(giveaway.channel, list);
+    }
+
+    // Chat messages can arrive as soon as the shards are up, so the transport flips first.
+    for (const channel of channels) {
+      rememberBroadcaster(channel.username, channel.twitch_user_id!);
+      setActiveTransport(channel.username, 'eventsub');
+    }
+    // A dev machine pointed at the prod conduit must never delete subscriptions it doesn't own.
+    const skipRemovals = process.env.NODE_ENV === 'development' && Boolean(process.env.DEV_CHANNELS);
+    if (skipRemovals) logger.warn('[Conduit] DEV_CHANNELS set: skipping subscription removals');
+    try {
+      const result = await registry.reconcileAll(
+        channels.map((channel) => ({
+          broadcasterId: channel.twitch_user_id!,
+          chatBotUserId: chatBotUserIdFor(this.customBotWithAccess(channel, customBotByChannelId.get(channel.id) ?? null)),
+          rewardIds: rewardsByChannel.get(channel.username) ?? [],
+        })),
+        { skipRemovals },
+      );
+      logger.info(`[Conduit] Reconciled ${channels.length} channels: ${result.created} created, ${result.removed} removed, ${result.failed.length} failed`);
+    } catch (error) {
+      logger.error('[Conduit] Reconcile failed:', error);
+    }
+
+    const dark = channels.filter((channel) => !registry.isChatActive(channel.twitch_user_id!));
+    await mapWithConcurrency(dark, LOAD_CHANNEL_CONCURRENCY, async (channel) => {
+      // startBotForUser retries the chat subscription, then falls back to IRC.
+      forgetBroadcaster(channel.username);
+      clearActiveTransport(channel.username);
+      await this.startBotForUser(
+        channel.username,
+        channel.access_token || "",
+        channel.refresh_token || "",
+        channel.twitch_user_id || "",
+        { channel, customBot: customBotByChannelId.get(channel.id) ?? null },
+      );
     });
   }
 
@@ -342,18 +454,28 @@ export class BotManager {
         if (!customBotByChannelId.has(bot.channel_id)) customBotByChannelId.set(bot.channel_id, bot);
       }
 
+      // Channels on the conduit skip startBotForUser: one reconcile below covers all of them.
+      // With the runtime off they stay on the normal path, which falls back to IRC with a warning.
+      const registry = getConduitRuntime()?.registry ?? null;
+      const conduitChannels = registry
+        ? channels.filter((channel) => channel.chat_transport === 'eventsub' && channel.twitch_user_id && (channel as any).access_token)
+        : [];
+      const conduitChannelIds = new Set(conduitChannels.map((channel) => channel.id));
+
       const startedAt = Date.now();
       // IRC logins are rate limited per bot account inside startChatBot, so
       // this only bounds how many validate/handshake round trips overlap.
-      await mapWithConcurrency(channels, LOAD_CHANNEL_CONCURRENCY, async (channel) => {
+      const ircLoop = mapWithConcurrency(channels, LOAD_CHANNEL_CONCURRENCY, async (channel) => {
         const chanAny: any = channel as any;
         const username = chanAny.username;
         if (!username || !chanAny.access_token || !chanAny.twitch_user_id) return;
         try {
           logger.info(`Loading channel: ${username}`);
+          // Broadcaster tokens are still used for predictions and rewards on every transport.
           const refreshed = await this.validateToken(username, chanAny.access_token, chanAny.refresh_token);
           // A refresh rewrote the token columns; pick them up before starting.
           if (refreshed) await channel.reload();
+          if (conduitChannelIds.has(channel.id)) return;
           await this.startBotForUser(
             username,
             chanAny.access_token,
@@ -365,6 +487,13 @@ export class BotManager {
           logger.error(`[${username}] Failed to load channel:`, error);
         }
       });
+      // Conduit chat can arrive as soon as the shards are up, so the reconcile (which flips the gate)
+      // runs alongside the IRC loop instead of waiting behind it.
+      const conduitReconcile =
+        registry && conduitChannels.length
+          ? this.reconcileConduitChannels(registry, conduitChannels, customBotByChannelId)
+          : Promise.resolve();
+      await Promise.all([ircLoop, conduitReconcile]);
       logger.info(`Loaded ${channels.length} channels in ${Date.now() - startedAt}ms`);
     } catch (error) {
       logger.error('Error loading channels:', error);

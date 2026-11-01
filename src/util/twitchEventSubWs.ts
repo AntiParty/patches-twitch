@@ -136,7 +136,7 @@ export async function removeRedemptionSubscription(userId: string, rewardId: str
 }
 
 
-async function handleStreamOffline(broadcasterName: string, broadcasterId: string) {
+export async function handleStreamOffline(broadcasterName: string, broadcasterId: string) {
   try {
     let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } });
     if (!channel) {
@@ -158,7 +158,7 @@ async function handleStreamOffline(broadcasterName: string, broadcasterId: strin
   }
 }
 
-async function handleStreamOnline(broadcasterName: string, broadcasterId: string) {
+export async function handleStreamOnline(broadcasterName: string, broadcasterId: string) {
   try {
     let channel = await Channel.findOne({ where: { twitch_user_id: broadcasterId } });
     if (!channel) {
@@ -201,7 +201,7 @@ async function handleStreamOnline(broadcasterName: string, broadcasterId: string
   }
 }
 
-async function handleRedemptionAdd(event: any) {
+export async function handleRedemptionAdd(event: any) {
   try {
     const channel = String(event?.broadcaster_user_login || '').toLowerCase();
     const rewardId = String(event?.reward?.id || '');

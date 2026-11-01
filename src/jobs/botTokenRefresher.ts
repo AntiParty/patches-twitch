@@ -1,7 +1,7 @@
 import axios from "axios";
 import logger from "../util/logger";
 import { refreshBotToken } from "../util/botAuth";
-import { clients } from "../util/ircBot";
+import { activeChatUsernames } from "../chat/chatPresence";
 import { loadCommands } from "../handlers/commands";
 import { shouldReconnectActiveIrcClientsAfterBotTokenRefresh } from "../util/botTokenRefreshPolicy";
 
@@ -129,7 +129,7 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
             const enabledChannels: any[] = await Channel.findAll({ where: { bot_enabled: true } });
             const activeCustomBots: any[] = await CustomBotAccount.findAll({ where: { is_active: true } });
             const customChannelIds = new Set(activeCustomBots.map((cb: any) => cb.channel_id));
-            const active = new Set(Object.keys(clients));
+            const active = new Set(activeChatUsernames());
             const toRescue = enabledChannels.filter(
               (c: any) =>
                 !active.has(c.username) &&

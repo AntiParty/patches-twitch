@@ -3,7 +3,11 @@ import { dbReady, Channel, StreamSession, Giveaway, CustomBotAccount } from "./d
 const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
-import { addUserSubscription, removeUserWebSocket, addRedemptionSubscription, removeRedemptionSubscription } from "./util/twitchEventSubWs";
+import { removeUserWebSocket } from "./util/twitchEventSubWs";
+import { channelEvents, getConduitRuntime, startConduitRuntime } from "./eventsub/conduitRuntime";
+import { channelsOnTransport } from "./chat/activeTransport";
+import { chatDispatchErrorCount } from "./chat/chatDispatcher";
+import { eventsubFallbackCount } from "./chat/chatTransportSwitch";
 import { createReward, deleteReward, getRewardDiagnostics, getRewardSnapshot, setRewardPaused, updateReward, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway, resetEntries } from "./services/giveaway.service";
 import { replaceRewardForNextRound } from "./services/giveawayRoundReward.service";
@@ -152,6 +156,25 @@ dbReady.then(async () => {
       }
     });
 
+    // Switch a channel's chat transport without a gap: the new transport is activated before the old is retired.
+    controlApp.post("/switch-chat-transport", async (req: any, res: any) => {
+      const channel = String(req.body?.channel || "").trim().toLowerCase();
+      const transport = String(req.body?.transport || "");
+      if (!channel || (transport !== "irc" && transport !== "eventsub")) {
+        return res.status(400).json({ success: false, error: "Need channel and transport ('irc' or 'eventsub')" });
+      }
+      try {
+        const result = await botManager.switchChatTransport(channel, transport);
+        if (result.status === "not_found") return res.status(404).json({ success: false, error: "Unknown channel" });
+        if (result.status === "invalid") return res.status(400).json({ success: false, error: "Invalid input" });
+        logger.info(`[ControlAPI] Switched ${channel} to ${transport}; active transport is ${result.active}`);
+        return res.json({ success: true, active: result.active });
+      } catch (error) {
+        logger.error(`[ControlAPI] Failed to switch ${channel} to ${transport}:`, error);
+        return res.status(500).json({ success: false, error: "Internal error" });
+      }
+    });
+
     // Remove channel and disconnect EventSub WebSocket
     controlApp.post("/remove-channel", async (req: any, res: any) => {
       const { twitch_user_id, username } = req.body;
@@ -174,8 +197,9 @@ dbReady.then(async () => {
         if (uname) {
           await botManager.stopBotForUser(uname);
 
-          // Optionally: disconnect EventSub WebSocket here if needed
-          removeUserWebSocket(user?.twitch_user_id || twitch_user_id);
+          // Drops the conduit subscriptions and any per-user EventSub socket.
+          if (user) await channelEvents.removeAll(user);
+          else removeUserWebSocket(twitch_user_id);
           logger.info(`[ControlAPI] Removed channel and disconnected bot/EventSub for ${uname}`);
           return res.json({ success: true });
         } else {
@@ -327,10 +351,21 @@ dbReady.then(async () => {
 
     controlApp.get("/metrics/operations", (_req: any, res: any) => {
       const entries = Object.values(clients);
+      const runtime = getConduitRuntime();
       res.json({
         observedAt: new Date().toISOString(),
         connectedChannels: entries.filter((client) => client.connected).length,
         reconnectingChannels: entries.filter((client) => !client.connected && !client.intentionalDisconnect).length,
+        conduitShardsAssigned: runtime?.shardsAssigned() ?? 0,
+        channelsByActiveTransport: {
+          irc: channelsOnTransport('irc').length,
+          eventsub: channelsOnTransport('eventsub').length,
+        },
+        conduitSubscriptionsEnabled: runtime?.registry.enabledCount() ?? 0,
+        conduitSubscriptionsFailed: runtime?.registry.failedCount() ?? 0,
+        conduitReconnects: runtime?.reconnects() ?? 0,
+        eventsubFallbacks: eventsubFallbackCount(),
+        chatDispatchErrors: chatDispatchErrorCount(),
       });
     });
 
@@ -397,10 +432,7 @@ dbReady.then(async () => {
 
         await created.giveaway.update({ reward_id: reward.rewardId });
 
-        const token = decryptChannelAccessToken(channel);
-        if (token) {
-          addRedemptionSubscription(channel.twitch_user_id, token, channel.twitch_user_id, reward.rewardId);
-        }
+        await channelEvents.subscribeRedemption(channel, reward.rewardId);
 
         logger.info(`[ControlAPI] Started redeem giveaway for ${channelName} (reward ${reward.rewardId})`);
         return res.json({ success: true, rewardId: reward.rewardId });
@@ -418,7 +450,7 @@ dbReady.then(async () => {
         const channel = await Channel.findOne({ where: { username: channelName } });
         const giveaway = await getActiveGiveaway(channelName);
         if (giveaway?.reward_id && channel?.twitch_user_id) {
-          await removeRedemptionSubscription(channel.twitch_user_id, giveaway.reward_id);
+          await channelEvents.unsubscribeRedemption(channel, giveaway.reward_id);
           // Remove the reward from the channel entirely when the giveaway ends.
           await deleteReward(channel.id, giveaway.reward_id);
         }
@@ -468,15 +500,15 @@ dbReady.then(async () => {
           },
           {
             snapshotReward: getRewardSnapshot,
-            removeSubscription: removeRedemptionSubscription,
+            removeSubscription: (_broadcasterId, oldRewardId) => channelEvents.unsubscribeRedemption(channel, oldRewardId),
             deleteReward,
             createReward,
             updateReward,
             storeRewardId: async (nextRewardId) => {
               await giveaway.update({ reward_id: nextRewardId });
             },
-            addSubscription: (broadcasterId, token, nextRewardId) => {
-              addRedemptionSubscription(broadcasterId, token, broadcasterId, nextRewardId);
+            addSubscription: (_broadcasterId, _token, nextRewardId) => {
+              void channelEvents.subscribeRedemption(channel, nextRewardId);
             },
             setRewardPaused,
             getRewardPausedState: async (channelId, nextRewardId) => {
@@ -504,6 +536,8 @@ dbReady.then(async () => {
     // Channels load after the Control API is listening so the dashboard can
     // reach /health, /add-channel, etc. while startup is still joining chats.
     await loadChatReadinessCache();
+    // Start the shards first so conduit chat flows as channels reconcile.
+    startConduitRuntime();
     await botManager.loadTokensOnStartup();
     // Start bot token auto refresher (checks every 5 minutes; refreshes when <=10 minutes left)
     startBotTokenAutoRefresher();
@@ -532,9 +566,19 @@ dbReady.then(async () => {
     // Restore redemption EventSub subscriptions for every non-closed redeem
     // giveaway so paused/drawn rewards remain connected across bot restarts.
     try {
-      const redeemGiveaways = await Giveaway.findAll({
+      const allRedeemGiveaways = await Giveaway.findAll({
         where: { status: { [Op.ne]: "closed" }, type: "redeem" },
       });
+      // Only enabled conduit channels were covered by the startup reconcile; disabled ones still restore per user.
+      const conduitUsernames = getConduitRuntime()
+        ? new Set(
+            (await Channel.findAll({ where: { chat_transport: "eventsub", bot_enabled: true } }))
+              .filter((c: any) => c.twitch_user_id && c.access_token)
+              .map((c) => c.username),
+          )
+        : new Set<string>();
+      const redeemGiveaways = allRedeemGiveaways.filter((giveaway) => !conduitUsernames.has(giveaway.channel));
+      const restoredChannels = new Map<string, Channel>();
       const restoration = await restoreGiveawayRedemptionSubscriptions(
         redeemGiveaways.map((giveaway) => ({
           id: giveaway.id,
@@ -548,10 +592,11 @@ dbReady.then(async () => {
             const channel = await Channel.findOne({ where: { username } });
             const token = channel ? decryptChannelAccessToken(channel) : null;
             if (!channel?.twitch_user_id || !token) return null;
+            restoredChannels.set(username, channel);
             return { broadcasterId: channel.twitch_user_id, accessToken: token };
           },
-          subscribe: ({ giveawayId, channel, broadcasterId, accessToken, rewardId }) => {
-            addRedemptionSubscription(broadcasterId, accessToken, broadcasterId, rewardId);
+          subscribe: ({ giveawayId, channel, rewardId }) => {
+            void channelEvents.subscribeRedemption(restoredChannels.get(channel)!, rewardId);
             logger.info(
               `[Startup] Restored redemption subscription for giveaway ${giveawayId} in ${channel} (reward ${rewardId})`,
             );

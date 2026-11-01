@@ -1,5 +1,7 @@
 import { purgeChannelData } from '@/services/channelDataPurge.service';
-import { stopChatBot } from '@/util/ircBot';
+import { broadcasterIdFor, stopChat } from '@/chat/chatPresence';
+import { getConduitRuntime } from '@/eventsub/conduitRuntime';
+import { Channel } from '@/db';
 import logger from '@/util/logger';
 
 interface CommandContext {
@@ -31,17 +33,24 @@ export const execute = async (ctx: CommandContext) => {
 
     logger.info(`Attempting to unlink channel: ${sanitizedChannel}`);
 
+    // The purge deletes the row, so capture the broadcaster id for the conduit cleanup first.
+    const row: any = await Channel.findOne({ where: { username: sanitizedChannel } });
+    const broadcasterId = String(row?.twitch_user_id || broadcasterIdFor(sanitizedChannel) || '');
+
     // Remove the channel and all of its data from the database
     const deleted = await purgeChannelData(sanitizedChannel);
 
     if (deleted) {
       logger.info(`Channel ${sanitizedChannel} unlinked from the database.`);
 
-      // Reply first: stopChatBot tears down the connection for this channel
+      // Reply first: stopChat tears down the connection for this channel
       await ctx.say(`@${username}, your account has been unlinked and the bot has left the channel.`, messageId);
 
       // Part the bot from the channel
-      await stopChatBot(sanitizedChannel);
+      await stopChat(sanitizedChannel);
+      // Chat is gone; drop the stream and redemption subscriptions too, so a later re-link starts clean.
+      const registry = getConduitRuntime()?.registry;
+      if (registry && broadcasterId) await registry.removeChannel(broadcasterId);
       logger.info(`Unlinked and parted from ${sanitizedChannel}`);
     } else {
       logger.info(`Channel ${sanitizedChannel} not found in the database.`);

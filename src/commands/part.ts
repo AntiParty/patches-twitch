@@ -1,4 +1,4 @@
-import { stopChatBot, clients } from '../util/ircBot';
+import { hasChat, stopChat } from '../chat/chatPresence';
 import logger from '../util/logger';
 
 interface CommandContext {
@@ -30,8 +30,8 @@ export const execute = async (
     }
 
     // Stop the bot for this channel
-    if (clients[sanitizedChannel]) {
-      await stopChatBot(sanitizedChannel);
+    if (hasChat(sanitizedChannel)) {
+      await stopChat(sanitizedChannel);
       logger.info(`Bot left channel: ${sanitizedChannel}`);
       await ctx.say(`@${username}, the bot has left #${sanitizedChannel}.`);
     } else {

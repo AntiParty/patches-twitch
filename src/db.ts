@@ -55,6 +55,7 @@ class Channel extends Model {
   declare onboarding_completed_at: Date | null;
   declare ign_not_found_notified_at: Date | null;
   declare chat_readiness_code: string | null;
+  declare chat_transport: string;
   declare chat_readiness_message: string | null;
   declare chat_readiness_detected_at: Date | null;
 }
@@ -301,6 +302,12 @@ Channel.init(
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    // Which transport carries this channel's chat: 'irc' (default) or 'eventsub' (conduit).
+    chat_transport: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'irc',
     },
     chat_readiness_message: {
       type: DataTypes.STRING,
@@ -837,6 +844,14 @@ async function runMigrations() {
         type: DataTypes.STRING,
         allowNull: true,
         defaultValue: null,
+      });
+    }
+    if (!tableInfo.chat_transport) {
+      logger.info('[Migration] Adding chat_transport column to Channels table...');
+      await queryInterface.addColumn('Channels', 'chat_transport', {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'irc',
       });
     }
     if (!tableInfo.chat_readiness_message) {

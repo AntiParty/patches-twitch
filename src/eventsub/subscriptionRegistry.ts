@@ -250,6 +250,9 @@ export function createSubscriptionRegistry(deps: { api: ConduitApi; conduitId: s
 
     isChatActive: (broadcasterId: string) => isEnabledChat(broadcasterId),
 
+    /** True when the cache holds any subscription for the broadcaster. */
+    hasSubscriptions: (broadcasterId: string) => (cache.get(broadcasterId)?.length ?? 0) > 0,
+
     enabledCount(): number {
       let n = 0;
       for (const subs of cache.values()) n += subs.filter((s) => s.status === 'enabled').length;

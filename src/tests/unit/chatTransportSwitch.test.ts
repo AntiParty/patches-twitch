@@ -9,6 +9,7 @@ function setup(opts: {
   ircClient?: boolean;
   customBot?: { bot_twitch_user_id: string } | null;
   authenticated?: boolean;
+  hasSubscriptions?: boolean;
 } = {}) {
   const calls: string[] = [];
   const warnings: string[] = [];
@@ -31,6 +32,7 @@ function setup(opts: {
             calls.push(`removeChannel:${id}`);
           },
           isChatActive: () => false,
+          hasSubscriptions: () => opts.hasSubscriptions ?? true,
         };
   const deps = {
     stopChatBot: async (u: string, intentional?: boolean) => {
@@ -140,7 +142,7 @@ describe('chat transport switch', () => {
   });
 
   it('reports not live when IRC does not authenticate', async () => {
-    const { channel, deps, calls } = setup({ transport: 'irc', authenticated: false });
+    const { channel, deps, calls } = setup({ transport: 'irc', authenticated: false, hasSubscriptions: true });
     const live = await chooseChatStart(channel, deps);
     assert.equal(live, false);
     // With the runtime on, a per-user socket would double-source events until the IRC login works.
@@ -148,8 +150,16 @@ describe('chat transport switch', () => {
     assert.ok(!calls.some((c) => c.startsWith('setActiveTransport')));
   });
 
+  it('plain irc channel with a failed login still opens the per-user socket', async () => {
+    const { channel, deps, calls } = setup({ transport: 'irc', authenticated: false, hasSubscriptions: false });
+    const live = await chooseChatStart(channel, deps);
+    assert.equal(live, false);
+    assert.ok(calls.includes('addUserSubscription'));
+    assert.ok(!calls.some((c) => c.startsWith('removeChannel')));
+  });
+
   it('keeps the conduit subs and opens no per-user socket when the IRC login fails while leaving the conduit', async () => {
-    const { channel, deps, calls, warnings } = setup({ transport: 'irc', authenticated: false });
+    const { channel, deps, calls, warnings } = setup({ transport: 'irc', authenticated: false, hasSubscriptions: true });
     const live = await chooseChatStart(channel, deps);
     assert.equal(live, false);
     assert.ok(!calls.some((c) => c.startsWith('removeChannel')));

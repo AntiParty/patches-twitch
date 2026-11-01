@@ -38,7 +38,7 @@ export interface ChatStartDeps {
   getRewardIds?(): Promise<string[]>;
   /** Re-adds the channel's open redemption subscriptions on the per-user path after leaving the conduit. */
   resubscribeRedemptions?(): Promise<void>;
-  registry: Pick<Registry, 'ensureChannel' | 'removeChannel'> | null;
+  registry: Pick<Registry, 'ensureChannel' | 'removeChannel' | 'hasSubscriptions'> | null;
   customBot: { bot_twitch_user_id: string } | null;
   log?: Log;
 }
@@ -63,6 +63,8 @@ export async function chooseChatStart(channel: ChatStartChannel, deps: ChatStart
   const eventsOnConduit = channel.chat_transport === 'eventsub' && Boolean(deps.registry);
 
   async function startIrc(reuseExisting: boolean): Promise<boolean> {
+    // Only a channel that has conduit subscriptions is "leaving the conduit"; a plain IRC channel never was on it.
+    const leavingConduit = Boolean(deps.registry && broadcasterId && deps.registry.hasSubscriptions(broadcasterId));
     const authenticated = reuseExisting && deps.hasIrcClient(username) ? true : await deps.startChatBot();
     if (eventsOnConduit) {
       // Fallback: chat is on IRC, events stay on the conduit, so no per-user socket.
@@ -76,9 +78,9 @@ export async function chooseChatStart(channel: ChatStartChannel, deps: ChatStart
       deps.setActiveTransport(username, 'irc');
       forgetBroadcaster(username);
       // Moving back to IRC: take everything off the conduit before the per-user path takes over.
-      if (deps.registry && broadcasterId) await deps.registry.removeChannel(broadcasterId);
+      if (leavingConduit) await deps.registry!.removeChannel(broadcasterId);
     }
-    if (deps.registry && !authenticated) {
+    if (leavingConduit && !authenticated) {
       // The conduit subs are still live, so a per-user socket would double-source stream events.
       log.warn(`[EventSubChat] ${username} IRC login failed while leaving the conduit; events stay on the conduit`);
       return false;

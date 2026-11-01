@@ -179,6 +179,17 @@ describe('subscription registry', () => {
     assert.equal(log.maxActive <= 5, true);
   });
 
+  it('hasSubscriptions reflects the cache', async () => {
+    const { api } = makeApi({ list: asExisting(desiredSubscriptionsFor(CH)) });
+    const reg = mk(api);
+    assert.equal(reg.hasSubscriptions('b1'), false);
+    await reg.reconcileAll([CH]);
+    assert.equal(reg.hasSubscriptions('b1'), true);
+    assert.equal(reg.hasSubscriptions('other'), false);
+    await reg.removeChannel('b1');
+    assert.equal(reg.hasSubscriptions('b1'), false);
+  });
+
   it('reconcileAll with skipRemovals creates what is missing and deletes nothing', async () => {
     const d = desiredSubscriptionsFor(CH);
     const stale = asExisting(desiredSubscriptionsFor({ ...CH, broadcasterId: 'old' })).map((s, i) => ({ ...s, id: `stale${i}` }));

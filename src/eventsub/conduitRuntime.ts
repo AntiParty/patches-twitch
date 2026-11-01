@@ -1,11 +1,12 @@
 import logger from '../util/logger';
 import { toInboundChatMessage } from '../chat/eventSubChatAdapter';
-import { setActiveTransport } from '../chat/activeTransport';
+import { channelsOnTransport, setActiveTransport } from '../chat/activeTransport';
 import { createChatRevocationHandler } from '../chat/chatTransportSwitch';
 import type { InboundChatMessage } from '../chat/inboundChatMessage';
 import type { Channel } from '../db';
 import type { ConduitApi } from './conduitApi';
 import { startConduitShard, type ConduitShardOptions } from './conduitShard';
+import { createConduitOutageMonitor, type ConduitOutageMonitor } from './conduitOutageMonitor';
 import { createSubscriptionRegistry } from './subscriptionRegistry';
 import type { NotificationHandler } from './types';
 
@@ -26,6 +27,7 @@ const lazy = {
   eventSubWs: () => require('../util/twitchEventSubWs') as typeof import('../util/twitchEventSubWs'),
   discord: () => require('../handlers/discordHandler') as typeof import('../handlers/discordHandler'),
   dispatch: () => require('../chat/dispatchChatMessage') as typeof import('../chat/dispatchChatMessage'),
+  ircBot: () => require('../util/ircBot') as typeof import('../util/ircBot'),
   twitchUtils: () => require('../util/twitchUtils') as typeof import('../util/twitchUtils'),
 };
 
@@ -69,6 +71,8 @@ export interface ConduitRuntime {
   onShardStateChange(cb: (assigned: number) => void): void;
   /** Resolves once the shard count is set and the shards are started. */
   started: Promise<void>;
+  /** Set by startConduitRuntime; absent on bare runtimes. */
+  outageMonitor?: ConduitOutageMonitor;
 }
 
 export function createConduitRuntime(deps: {
@@ -168,6 +172,30 @@ export function startConduitRuntime(): ConduitRuntime | null {
       );
     },
   });
+
+  const parsedFallback = Number(process.env.EVENTSUB_FALLBACK_AFTER_MS ?? 300000);
+  const outageMonitor = createConduitOutageMonitor({
+    shardsAssigned: () => runtime!.shardsAssigned(),
+    eventsubChannels: () => channelsOnTransport('eventsub'),
+    startIrc: (u) => lazy.botManager().startIrcFallback(u),
+    stopIrc: (u) => lazy.ircBot().stopChatBot(u, true),
+    setActiveTransport,
+    warn: (t, b) => lazy.discord().sendWarningToDiscord(t, b),
+    now: Date.now,
+    fallbackAfterMs: Number.isFinite(parsedFallback) ? parsedFallback : 300000,
+  });
+  runtime.outageMonitor = outageMonitor;
+  let ticking = false;
+  setInterval(() => {
+    if (ticking) return;
+    ticking = true;
+    outageMonitor
+      .tick()
+      .catch((err) => logger.error(`[Conduit] Outage monitor tick failed: ${err?.message || err}`))
+      .finally(() => {
+        ticking = false;
+      });
+  }, 15000);
   return runtime;
 }
 

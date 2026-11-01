@@ -120,6 +120,18 @@ describe('conduitShard', () => {
     assert.deepEqual(assigns, [['c1', '0', 'sess1']]);
   });
 
+  it('uses EVENTSUB_WS_URL for fresh connections when set', async () => {
+    const prev = process.env.EVENTSUB_WS_URL;
+    process.env.EVENTSUB_WS_URL = 'ws://127.0.0.1:9999/ws';
+    try {
+      const { sockets } = setup();
+      assert.equal(sockets[0].url, 'ws://127.0.0.1:9999/ws');
+    } finally {
+      if (prev === undefined) delete process.env.EVENTSUB_WS_URL;
+      else process.env.EVENTSUB_WS_URL = prev;
+    }
+  });
+
   it('routes notifications to onNotification', async () => {
     const { sockets, notes } = setup();
     sockets[0].welcome('sess1');

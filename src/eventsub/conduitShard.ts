@@ -154,7 +154,8 @@ export function startConduitShard(opts: ConduitShardOptions): {
   }
 
   function connectFresh() {
-    const sock = createSocket(DEFAULT_URL);
+    // EVENTSUB_WS_URL lets local outage tests route the shards through a relay they can kill.
+    const sock = createSocket(process.env.EVENTSUB_WS_URL || DEFAULT_URL);
     current = sock;
     sessionId = null;
     wire(sock);

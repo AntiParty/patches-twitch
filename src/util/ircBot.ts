@@ -12,7 +12,7 @@ import { devModeChannels } from "./devModeState";
 import { stripInvisibleChars } from "./chatText";
 import { createIrcLineBuffer } from "./ircLineBuffer";
 import { createSlidingWindowLimiter } from "./concurrency";
-import { dispatchChatMessage } from "../chat/chatDispatcher";
+import { dispatchChatMessage } from "../chat/dispatchChatMessage";
 
 interface IRCClient {
   socket: net.Socket;

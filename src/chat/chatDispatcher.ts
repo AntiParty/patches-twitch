@@ -1,8 +1,6 @@
 import logger from '../util/logger';
 import { trackMessageIn } from '../util/messageRateTracker';
-import { isCommandSilenced } from '../util/devModeState';
 import { chooseReplyTarget, extractMentionedUsername, RecentChatMessages, retargetLeadingMention } from '../util/chatReplyTargets';
-import { getActiveTransport } from './activeTransport';
 import type { InboundChatMessage } from './inboundChatMessage';
 
 type SendCredentials = { botUserId: string; accessToken: string };
@@ -160,50 +158,3 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
     }
   };
 }
-
-// Production wiring. Heavy modules (DB, IRC client, server metrics) are loaded lazily so
-// importing this file (e.g. from unit tests) never opens the DB, and so the
-// ircBot <-> chatDispatcher import cycle cannot leave anything undefined at load time.
-export const dispatchChatMessage = createChatDispatcher({
-  isActiveTransport: (channel, transport) => getActiveTransport(channel) === transport,
-  async resolveBroadcasterId(channel) {
-    const { Channel } = await import('../db');
-    const channelRow = await Channel.findOne({ where: { username: channel } });
-    return String(channelRow?.get('twitch_user_id') || '');
-  },
-  async getSendCredentials(channel) {
-    const { clients } = await import('../util/ircBot');
-    const client = clients[channel.replace(/^#/, '')];
-    if (client) {
-      if (client.customBotId && client.customBotToken) {
-        return { botUserId: client.customBotId, accessToken: client.customBotToken };
-      }
-      return undefined;
-    }
-    const { getCustomBotTokenForChannel } = await import('../jobs/customBotTokenRefresher');
-    const creds = await getCustomBotTokenForChannel(channel);
-    return creds ? { botUserId: creds.botUserId, accessToken: creds.accessToken } : undefined;
-  },
-  async send(broadcasterId, message, replyParentId, bypassFilter, creds) {
-    const { sendChatMessage } = await import('../util/ircBot');
-    await sendChatMessage(broadcasterId, message, replyParentId, bypassFilter, creds);
-  },
-  isCommandSilenced,
-  async shouldSkipDisabledViewerCommand(channel, rawCommand) {
-    const { shouldSkipDisabledViewerCommand } = await import('../services/commandDispatchPolicy.service');
-    return shouldSkipDisabledViewerCommand(channel, rawCommand);
-  },
-  async rollTroll(channel, rawCommand, displayName) {
-    const { rollTroll } = await import('../services/trollResponses.service');
-    return rollTroll(channel, rawCommand, displayName);
-  },
-  async trackCommandUsage(row) {
-    const { trackCommandUsage } = await import('../util/commandAnalytics');
-    return trackCommandUsage(row);
-  },
-  async countCommand(rawCommand) {
-    const { commandCounter, incrementCommandsProcessed } = await import('../server');
-    if (commandCounter?.inc) commandCounter.inc({ command: rawCommand });
-    if (incrementCommandsProcessed) incrementCommandsProcessed();
-  },
-});

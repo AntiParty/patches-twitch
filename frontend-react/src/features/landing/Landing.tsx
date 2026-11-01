@@ -1,13 +1,12 @@
 /*
- * Landing — split hero (copy left, live chat preview right) over the dither
- * field. Quiet chrome; the chat panel is the one product visual.
+ * Landing — short centered hero over the dither field. Quiet chrome; the
+ * dashboard showcase below the fold is the one product visual.
  */
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { publicApi } from '@/api/public'
 import { DashboardShowcase } from './DashboardShowcase'
 import { DitherAtmosphere } from './DitherAtmosphere'
-import { HeroChat } from './HeroChat'
 import { StreamerMarquee } from './StreamerMarquee'
 import styles from './Landing.module.css'
 
@@ -48,19 +47,16 @@ export function Landing() {
         </div>
 
         <div className={styles.heroInner}>
-          <div className={styles.heroCopy}>
-            <h1 id="landing-h1" className={styles.headline}>
-              Your rank in THE&nbsp;FINALS, live in Twitch chat
-            </h1>
-            <p className={styles.sub}>
-              Viewers type <code>!rank</code>, <code>!record</code> or <code>!predict</code> and get
-              your RS, session movement and the T500 cutoff while you stay in the match
-            </p>
-            <a href={primaryHref} className={styles.cta}>
-              {isAuthenticated ? 'Open dashboard' : 'Add FinalsRS to Twitch'}
-            </a>
-          </div>
-          <HeroChat />
+          <h1 id="landing-h1" className={styles.headline}>
+            Your rank in THE&nbsp;FINALS, live in Twitch chat
+          </h1>
+          <p className={styles.sub}>
+            Viewers type <code>!rank</code>, <code>!record</code> or <code>!predict</code> and get
+            your RS, session movement and the T500 cutoff while you stay in the match
+          </p>
+          <a href={primaryHref} className={styles.cta}>
+            {isAuthenticated ? 'Open dashboard' : 'Add FinalsRS to Twitch'}
+          </a>
         </div>
 
         <StreamerMarquee />

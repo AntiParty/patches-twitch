@@ -12,6 +12,7 @@ import { createSubscriptionRegistry } from './subscriptionRegistry';
 import type { NotificationHandler } from './types';
 
 const SHARD_IDS = ['0', '1'];
+export const CONDUIT_SHARD_COUNT = SHARD_IDS.length;
 const DEDUPE_LIMIT = 1000;
 const DEFAULT_FALLBACK_AFTER_MS = 300000;
 

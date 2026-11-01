@@ -2,6 +2,9 @@
 import os from "os";
 import fs from "fs/promises";
 import { Channel } from "../db";
+import { getActiveTransport } from "../chat/activeTransport";
+import { describeChatTransport } from "../chat/chatStatus";
+import { getConduitRuntime, CONDUIT_SHARD_COUNT } from "../eventsub/conduitRuntime";
 
 export const execute = async (ctx: any, channel: string, str: string, tags: Record<string, any>) => {
   const start = Date.now();
@@ -38,6 +41,24 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
     dbHealth = "ERR";
   }
 
+  // Chat transport
+  const username = channel.replace(/^#/, '');
+  let preferred: string | undefined;
+  try {
+    const row = await Channel.findOne({ where: { username }, attributes: ['chat_transport'] });
+    preferred = row?.chat_transport;
+  } catch {
+    preferred = undefined;
+  }
+  const runtime = getConduitRuntime();
+  const chat = describeChatTransport({
+    active: getActiveTransport(username),
+    preferred,
+    runtimeOn: Boolean(runtime),
+    shardsAssigned: runtime ? runtime.shardsAssigned() : 0,
+    shardCount: CONDUIT_SHARD_COUNT,
+  });
+
   // Latency
   let latency = "0ms";
   if (tags && tags['tmi-sent-ts']) {
@@ -49,7 +70,8 @@ export const execute = async (ctx: any, channel: string, str: string, tags: Reco
     `Uptime: ${uptime}`,
     `Latency: ${latency}`,
     `Mem: ${usedMB}/${totalMB}MB (${percent}%)`,
-    `DB: ${dbHealth}`
+    `DB: ${dbHealth}`,
+    `Chat: ${chat}`
   ];
 
   if (temp !== "N/A") parts.push(`Temp: ${temp}`);

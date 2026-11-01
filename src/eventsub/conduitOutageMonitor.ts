@@ -57,6 +57,15 @@ export function createConduitOutageMonitor(deps: OutageMonitorDeps) {
     // and channels whose IRC start failed earlier.
     const channels = deps.eventsubChannels().filter((u) => !moved.has(u));
     if (firstPass) {
+      // The fallback can come before the warning delay; make sure the outage is still announced.
+      if (!warned) {
+        warned = true;
+        const down = downSince === null ? 0 : deps.now() - downSince;
+        await safeWarn(
+          'EventSub conduit down',
+          `No conduit shard has been connected for ${Math.round(down / 1000)}s; moving ${channels.length} channel(s) to IRC.`,
+        );
+      }
       fallbacks++;
       state = 'fallen_back';
       upSince = null;

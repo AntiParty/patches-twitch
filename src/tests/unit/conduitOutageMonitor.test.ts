@@ -101,6 +101,29 @@ describe('conduit outage monitor', () => {
     assert.deepEqual([...calls], ['warn:EventSub conduit down']);
   });
 
+  it('warns at fallback time when the fallback delay is shorter than the warning delay', async () => {
+    const { calls, fake, at } = setup({ fallbackAfterMs: 60 * SEC });
+    fake.assigned = 0;
+    await at(0);
+    await at(59);
+    assert.equal(calls.filter((c) => c.startsWith('warn:')).length, 0);
+    await at(60);
+    assert.deepEqual(calls.filter((c) => c.startsWith('warn:')), ['warn:EventSub conduit down']);
+    await at(120);
+    await at(180);
+    assert.deepEqual(calls.filter((c) => c.startsWith('warn:')), ['warn:EventSub conduit down']);
+  });
+
+  it('does not warn twice when the warning already fired before the fallback', async () => {
+    const { calls, fake, at } = setup({ fallbackAfterMs: 300 * SEC });
+    fake.assigned = 0;
+    await at(0);
+    await at(120);
+    assert.equal(calls.filter((c) => c.startsWith('warn:')).length, 1);
+    await at(300);
+    assert.equal(calls.filter((c) => c.startsWith('warn:')).length, 1);
+  });
+
   it('restores eventsub after 60s of a stable shard', async () => {
     const { monitor, calls, fake, at } = setup();
     fake.assigned = 0;

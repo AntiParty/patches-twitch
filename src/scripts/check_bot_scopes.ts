@@ -23,6 +23,7 @@ async function main() {
     expected_bot_user_id: process.env.TWITCH_BOT_USER_ID || null,
     has_chat_read: scopes.includes('chat:read'),
     has_user_write_chat: scopes.includes('user:write:chat'),
+    has_user_read_chat: scopes.includes('user:read:chat'),
     has_user_bot: scopes.includes('user:bot'),
     scopes,
   }, null, 2));

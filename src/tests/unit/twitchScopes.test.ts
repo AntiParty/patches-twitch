@@ -21,6 +21,7 @@ describe('Twitch OAuth scopes', () => {
       'chat:edit',
       'user:read:email',
       'user:write:chat',
+      'user:read:chat',
       'user:bot',
     ]);
   });

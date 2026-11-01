@@ -1,26 +1,18 @@
 import net from "net";
 import axios from "axios";
 import { Channel } from "../db";
-import { commandCounter, incrementCommandsProcessed } from "../server";
 import logger from "./logger";
-import { trackMessageIn, trackMessageOut } from "./messageRateTracker";
+import { trackMessageOut } from "./messageRateTracker";
 import { refreshToken as getAppAccessToken } from "./twitchUtils";
 import { sendWarningToDiscord } from "../handlers/discordHandler";
 import { createChatReadinessTracker, getChatDropResolution, getChatReadinessUpdateForSend } from "./chatDropResolution";
 import { Op } from "sequelize";
 import { recordOperationalEvent } from "../services/operationalEvents.service";
-import { devModeChannels, isCommandSilenced } from "./devModeState";
-import { shouldSkipDisabledViewerCommand } from "../services/commandDispatchPolicy.service";
-import { rollTroll } from "../services/trollResponses.service";
-import {
-  chooseReplyTarget,
-  extractMentionedUsername,
-  RecentChatMessages,
-  retargetLeadingMention,
-} from "./chatReplyTargets";
+import { devModeChannels } from "./devModeState";
 import { stripInvisibleChars } from "./chatText";
 import { createIrcLineBuffer } from "./ircLineBuffer";
 import { createSlidingWindowLimiter } from "./concurrency";
+import { dispatchChatMessage } from "../chat/chatDispatcher";
 
 interface IRCClient {
   socket: net.Socket;
@@ -37,7 +29,6 @@ interface IRCClient {
 }
 
 const clients: { [username: string]: IRCClient } = {};
-const recentChatMessages = new RecentChatMessages();
 // Per-channel guard: a username is in this set from the moment we begin a
 // startChatBot/reconnect for it until the IRC handshake either completes or
 // fails. Prevents two concurrent paths (token-refresher reconnect loop +
@@ -786,133 +777,17 @@ export const startChatBot = async (
         continue;
       }
 
-      // Count every incoming message for the metrics dashboard
-      trackMessageIn();
-
-      const mentionedReplyTarget = recentChatMessages.replyTarget(channelName, message);
-      const mentionedUsername = extractMentionedUsername(message);
-      recentChatMessages.remember(channelName, user, tags["id"]);
-
-      // Only process messages that start with '!'
-      if (!message.trim().startsWith("!")) {
-        continue;
-      }
-
-      const rawCommand = message.trim().split(" ")[0].toLowerCase();
-      const argsStr = message.trim().slice(rawCommand.length).trim();
-      const args = argsStr ? argsStr.split(/\s+/) : [];
-      const commandKey = rawCommand.startsWith("!") ? rawCommand : "!" + rawCommand;
-
-      logger.info(`[DEBUG] Command detected: ${commandKey} from ${user} in #${channelName}`);
-
-      if (!commandHandler || typeof commandHandler !== "object") {
-        logger.error("[ERROR] commandHandler is undefined or not an object. Cannot process command:", { commandKey, rawCommand, message });
-        continue;
-      }
-
-      let commandEntry = commandHandler[commandKey];
-      if (!commandEntry) {
-        // Try with ! prefix if not found
-        commandEntry = commandHandler["!" + rawCommand];
-      }
-
-      // -----------------------------------------------------------------------
-      // Development Mode Silencing
-      // When a channel is in devModeChannels, suppress every command except the
-      // !devmode/!dev toggle so a locally-run dev bot can answer instead.
-      // -----------------------------------------------------------------------
-      if (isCommandSilenced(channelName, commandKey)) {
-        logger.info(`[DevMode] Silencing command ${commandKey} in #${channelName}`);
-        continue;
-      }
-
-      if (await shouldSkipDisabledViewerCommand(channelName, rawCommand)) {
-        logger.info(`[commands] Disabled ${commandKey} ignored in #${channelName}`);
-        continue;
-      }
-
-      if (commandEntry && typeof commandEntry === "function") {
-        logger.info(`[DEBUG] Executing command: ${commandKey}`);
-        if (commandCounter?.inc) commandCounter.inc({ command: rawCommand });
-        if (incrementCommandsProcessed) incrementCommandsProcessed();
-
-        const channelRow = await Channel.findOne({
-          where: { username: channelName },
-        });
-        const broadcasterId = String(channelRow?.get("twitch_user_id") || "");
-
-        // Track command execution for analytics
-        const startTime = Date.now();
-        let commandSuccess = true;
-        let errorMessage: string | undefined;
-
-        try {
-          const commandCtx = {
-            say: async (msg: string, replyToId?: string, bypassFilter: boolean = false) => {
-              if (!broadcasterId) {
-                logger.error(`[DEBUG] No broadcaster info for ${channelName}`);
-                return;
-              }
-              const client = clients[username.replace(/^#/, "")];
-              let customCreds;
-              if (client?.customBotId && client?.customBotToken) {
-                customCreds = {
-                  botUserId: client.customBotId,
-                  accessToken: client.customBotToken,
-                };
-              }
-              const outgoingMessage = retargetLeadingMention(
-                msg,
-                tags["display-name"] || user,
-                mentionedUsername
-              );
-              logger.info(`[DEBUG] Sending message from bot to ${channelName}: ${outgoingMessage}`);
-              await sendChatMessage(
-                broadcasterId,
-                outgoingMessage,
-                chooseReplyTarget(mentionedReplyTarget, replyToId),
-                bypassFilter,
-                customCreds
-              );
-            },
-            raw: (line: string) =>
-              socket.write(line.endsWith("\r\n") ? line : line + "\r\n"),
-            user,
-            channel: channelName,
-            message,
-            tags,
-          };
-
-          // Rare admin-configured joke reply; it replaces the command unless follow_up is set.
-          const troll = await rollTroll(channelName, rawCommand, tags["display-name"] || user);
-          if (troll) await commandCtx.say(troll.text, tags["id"]);
-          if (!troll || troll.followUp) {
-            await commandEntry(commandCtx, `#${channelName}`, message, tags, args);
-          }
-        } catch (err: any) {
-          commandSuccess = false;
-          errorMessage = err?.message || 'Unknown error';
-          logger.error(`[ERROR] Command execution failed for ${commandKey}:`, err);
-        } finally {
-          // Track command usage asynchronously (don't block command execution)
-          const responseTime = Date.now() - startTime;
-          const { trackCommandUsage } = await import('./commandAnalytics');
-          trackCommandUsage({
-            channel: channelName,
-            command: rawCommand,
-            user: user,
-            user_id: tags?.['user-id'] || undefined,
-            success: commandSuccess,
-            response_time_ms: responseTime,
-            error_message: errorMessage,
-          }).catch((err) => {
-            // Silently fail analytics tracking
-            logger.debug('Failed to track command usage:', err);
-          });
-        }
-      } else {
-        logger.warn(`[DEBUG] Command not found or not a function: ${commandKey}`);
-      }
+      await dispatchChatMessage(
+        {
+          channel: channelName,
+          user,
+          text: message,
+          tags,
+          transport: "irc",
+          raw: (l) => socket.write(l.endsWith("\r\n") ? l : l + "\r\n"),
+        },
+        commandHandler
+      );
     }
   });
 

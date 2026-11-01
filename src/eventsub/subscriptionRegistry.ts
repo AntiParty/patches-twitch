@@ -228,6 +228,19 @@ export function createSubscriptionRegistry(deps: { api: ConduitApi; conduitId: s
       );
     },
 
+    markRevoked(subscriptionId: string): { broadcasterId: string; type: string } | null {
+      for (const [broadcasterId, subs] of cache) {
+        const hit = subs.find((s) => s.id === subscriptionId);
+        if (!hit) continue;
+        const rest = subs.filter((s) => s.id !== subscriptionId);
+        if (rest.length) cache.set(broadcasterId, rest);
+        else cache.delete(broadcasterId);
+        logger.warn(`[Conduit] Subscription revoked: ${hit.type} broadcaster=${broadcasterId} (${subscriptionId})`);
+        return { broadcasterId, type: hit.type };
+      }
+      return null;
+    },
+
     isChatActive: (broadcasterId: string) => isEnabledChat(broadcasterId),
 
     enabledCount(): number {

@@ -231,4 +231,49 @@ describe('subscription registry', () => {
     assert.equal(await reg.addRedemption('b1', 'r9'), false);
     assert.equal(reg.failedCount(), 1);
   });
+
+  describe('revocation', () => {
+    const RCH: ConduitChannel = { broadcasterId: '123', chatBotUserId: 'bot', rewardIds: [] };
+    const setup = () => {
+      const ids = new Map<string, string>();
+      let seq = 0;
+      const { api, log } = makeApi({
+        create: async (spec) => {
+          const id = `sub-${seq++}`;
+          ids.set(spec.type, id);
+          return { id };
+        },
+      });
+      return { reg: mk(api), log, ids };
+    };
+
+    it('markRevoked drops a revoked chat subscription', async () => {
+      const { reg, ids } = setup();
+      await reg.ensureChannel(RCH);
+      const before = reg.enabledCount();
+      assert.deepEqual(reg.markRevoked(ids.get('channel.chat.message')!), {
+        broadcasterId: '123',
+        type: 'channel.chat.message',
+      });
+      assert.equal(reg.isChatActive('123'), false);
+      assert.equal(reg.enabledCount(), before - 1);
+      assert.equal(reg.failedCount(), 0);
+    });
+
+    it('markRevoked returns null for an unknown id', async () => {
+      const { reg } = setup();
+      await reg.ensureChannel(RCH);
+      assert.equal(reg.markRevoked('nope'), null);
+    });
+
+    it('ensureChannel recreates a chat subscription after it was revoked', async () => {
+      const { reg, log, ids } = setup();
+      await reg.ensureChannel(RCH);
+      reg.markRevoked(ids.get('channel.chat.message')!);
+      log.creates.length = 0;
+      const res = await reg.ensureChannel(RCH);
+      assert.deepEqual(log.creates.map((c) => c.type), ['channel.chat.message']);
+      assert.equal(res.chatOk, true);
+    });
+  });
 });

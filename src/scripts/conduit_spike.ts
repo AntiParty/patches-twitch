@@ -1,12 +1,23 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
 import WebSocket from 'ws';
-import { refreshToken } from '../util/twitchUtils';
 
 dotenv.config();
 
 const HELIX = 'https://api.twitch.tv/helix';
 const EVENTSUB_WS_URL = 'wss://eventsub.wss.twitch.tv/ws';
+
+async function getAppAccessToken(clientId: string, clientSecret: string): Promise<string> {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'client_credentials',
+  });
+  const res = await axios.post('https://id.twitch.tv/oauth2/token', params, { timeout: 10000 });
+  const accessToken = res.data?.access_token;
+  if (!accessToken) throw new Error('No access_token returned from Twitch');
+  return accessToken;
+}
 
 function argValue(name: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -19,12 +30,13 @@ function log(...args: unknown[]) {
 
 async function main() {
   const clientId = process.env.TWITCH_CLIENT_ID;
-  if (!clientId) {
-    console.error('[conduit-spike] Missing TWITCH_CLIENT_ID');
+  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    console.error('[conduit-spike] Missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET');
     process.exit(1);
   }
 
-  const token = await refreshToken();
+  const token = await getAppAccessToken(clientId, clientSecret);
   const headers = {
     Authorization: `Bearer ${token}`,
     'Client-Id': clientId,

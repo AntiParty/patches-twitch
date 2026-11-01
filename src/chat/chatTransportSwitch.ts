@@ -36,7 +36,9 @@ export interface ChatStartDeps {
   setActiveTransport(username: string, transport: ChatTransport): void;
   /** Reward ids of the channel's open redeem giveaways; defaults to none. */
   getRewardIds?(): Promise<string[]>;
-  registry: Pick<Registry, 'ensureChannel' | 'removeChat' | 'isChatActive'> | null;
+  /** Re-adds the channel's open redemption subscriptions on the per-user path after leaving the conduit. */
+  resubscribeRedemptions?(): Promise<void>;
+  registry: Pick<Registry, 'ensureChannel' | 'removeChannel'> | null;
   customBot: { bot_twitch_user_id: string } | null;
   log?: Log;
 }
@@ -57,17 +59,27 @@ export async function chooseChatStart(channel: ChatStartChannel, deps: ChatStart
   const username = channel.username;
   const broadcasterId = String(channel.twitch_user_id || '');
 
+  // The conduit carries stream and redemption events exactly when the runtime is on and the row prefers eventsub.
+  const eventsOnConduit = channel.chat_transport === 'eventsub' && Boolean(deps.registry);
+
   async function startIrc(reuseExisting: boolean): Promise<boolean> {
     const authenticated = reuseExisting && deps.hasIrcClient(username) ? true : await deps.startChatBot();
-    // Stream/redemption events keep their per-user socket path while IRC carries chat.
-    deps.addUserSubscription();
+    if (eventsOnConduit) {
+      // Fallback: chat is on IRC, events stay on the conduit, so no per-user socket.
+      if (authenticated) {
+        deps.setActiveTransport(username, 'irc');
+        forgetBroadcaster(username);
+      }
+      return authenticated;
+    }
     if (authenticated) {
       deps.setActiveTransport(username, 'irc');
       forgetBroadcaster(username);
-      if (deps.registry && broadcasterId && deps.registry.isChatActive(broadcasterId)) {
-        await deps.registry.removeChat(broadcasterId);
-      }
+      // Moving back to IRC: take everything off the conduit before the per-user path takes over.
+      if (deps.registry && broadcasterId) await deps.registry.removeChannel(broadcasterId);
     }
+    deps.addUserSubscription();
+    if (authenticated && deps.registry && deps.resubscribeRedemptions) await deps.resubscribeRedemptions();
     return authenticated;
   }
 

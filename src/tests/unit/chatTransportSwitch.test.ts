@@ -27,6 +27,9 @@ function setup(opts: {
           removeChat: async () => {
             calls.push('removeChat');
           },
+          removeChannel: async (id: string) => {
+            calls.push(`removeChannel:${id}`);
+          },
           isChatActive: () => false,
         };
   const deps = {
@@ -40,6 +43,9 @@ function setup(opts: {
     hasIrcClient: () => opts.ircClient ?? false,
     addUserSubscription: () => {
       calls.push('addUserSubscription');
+    },
+    resubscribeRedemptions: async () => {
+      calls.push('resubscribeRedemptions');
     },
     removeUserWebSocket: (id: string) => {
       calls.push(`removeUserWebSocket:${id}`);
@@ -84,7 +90,7 @@ describe('chat transport switch', () => {
     const { channel, deps, calls, active } = setup({ chatOk: false, ircClient: false });
     await chooseChatStart(channel, deps);
     assert.ok(calls.includes('startChatBot'));
-    assert.ok(calls.includes('addUserSubscription'));
+    assert.ok(!calls.includes('addUserSubscription'));
     assert.equal(active.get('streamer'), 'irc');
   });
 
@@ -96,6 +102,31 @@ describe('chat transport switch', () => {
     assert.ok(!calls.includes('ensureChannel'));
     assert.equal(active.get('streamer'), 'irc');
     assert.ok(warnings.some((w) => w.includes('[EventSubChat]')));
+  });
+
+  it('fallback keeps stream events on the conduit', async () => {
+    const { channel, deps, calls } = setup({ chatOk: false });
+    await chooseChatStart(channel, deps);
+    assert.ok(calls.includes('startChatBot'));
+    assert.ok(!calls.includes('addUserSubscription'));
+  });
+
+  it('fallback with the runtime off opens the per-user socket', async () => {
+    const { channel, deps, calls } = setup({ registry: false });
+    await chooseChatStart(channel, deps);
+    assert.ok(calls.includes('addUserSubscription'));
+  });
+
+  it('switching back to irc moves everything off the conduit', async () => {
+    const { channel, deps, calls } = setup({ transport: 'irc' });
+    await chooseChatStart(channel, deps);
+    assert.deepEqual(calls, [
+      'startChatBot',
+      'setActiveTransport:streamer:irc',
+      'removeChannel:b1',
+      'addUserSubscription',
+      'resubscribeRedemptions',
+    ]);
   });
 
   it('irc channels keep the existing path', async () => {

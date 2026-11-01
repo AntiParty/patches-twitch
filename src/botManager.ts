@@ -17,7 +17,8 @@ import { mapWithConcurrency } from "./util/concurrency";
 import { chooseChatStart, chatBotUserIdFor } from "./chat/chatTransportSwitch";
 import { clearActiveTransport, setActiveTransport } from "./chat/activeTransport";
 import { forgetBroadcaster, hasChat, hasIrcClient, isChatActive, rememberBroadcaster, stopChat } from "./chat/chatPresence";
-import { getConduitRuntime } from "./eventsub/conduitRuntime";
+import { channelEvents, getConduitRuntime } from "./eventsub/conduitRuntime";
+import { hasCustomBotAccess } from "./chat/customBotAccess";
 
 export { chooseChatStart };
 const clientId = process.env.TWITCH_CLIENT_ID!;
@@ -97,6 +98,11 @@ export class BotManager {
           removeUserWebSocket,
           setActiveTransport,
           getRewardIds: () => this.openRewardIds(username),
+          resubscribeRedemptions: async () => {
+            for (const rewardId of await this.openRewardIds(username)) {
+              await channelEvents.subscribeRedemption(channel, rewardId);
+            }
+          },
           registry: getConduitRuntime()?.registry ?? null,
           customBot: activeCustomBot,
         });
@@ -117,8 +123,7 @@ export class BotManager {
 
   /** The channel's custom bot, or null when it has none or the channel may not use one. */
   private customBotWithAccess(channel: Channel, customBot: CustomBotAccount | null): CustomBotAccount | null {
-    const isPrivileged = ['tester', 'Staff', 'admin'].includes(channel.role);
-    return customBot && (channel.has_subscription || isPrivileged) ? customBot : null;
+    return customBot && hasCustomBotAccess(channel) ? customBot : null;
   }
 
   /** Starts IRC chat with the custom bot identity when given, else the default bot. */

@@ -6,6 +6,7 @@ import { isCommandSilenced } from '../util/devModeState';
 import { shouldSkipDisabledViewerCommand } from '../services/commandDispatchPolicy.service';
 import { rollTroll } from '../services/trollResponses.service';
 import { trackCommandUsage } from '../util/commandAnalytics';
+import { hasCustomBotAccess } from './customBotAccess';
 import { getActiveTransport } from './activeTransport';
 import { createChatDispatcher } from './chatDispatcher';
 
@@ -25,6 +26,8 @@ export const dispatchChatMessage = createChatDispatcher({
       }
       return undefined;
     }
+    const row = await Channel.findOne({ where: { username: channel.replace(/^#/, '') } });
+    if (!row || !hasCustomBotAccess(row)) return undefined;
     const creds = await getCustomBotTokenForChannel(channel);
     return creds ? { botUserId: creds.botUserId, accessToken: creds.accessToken } : undefined;
   },

@@ -13,6 +13,7 @@ import { stripInvisibleChars } from "./chatText";
 import { createIrcLineBuffer } from "./ircLineBuffer";
 import { createSlidingWindowLimiter } from "./concurrency";
 import { dispatchChatMessage } from "../chat/dispatchChatMessage";
+import { chatSendLimiter, ChatQueueFullError } from "./chatSendLimiter";
 
 interface IRCClient {
   socket: net.Socket;
@@ -436,16 +437,18 @@ export async function sendChatMessage(
   }
 
   const postChatMessage = async (payload: any, label: string) => {
-    const resp = await axios.post(
-      "https://api.twitch.tv/helix/chat/messages",
-      payload,
-      {
-        headers: {
-          Authorization: `Bearer ${appAccessToken}`,
-          "Client-Id": clientId,
-          "Content-Type": "application/json",
-        },
-      }
+    const resp = await chatSendLimiter.run(broadcasterId, botUserId, () =>
+      axios.post(
+        "https://api.twitch.tv/helix/chat/messages",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${appAccessToken}`,
+            "Client-Id": clientId,
+            "Content-Type": "application/json",
+          },
+        }
+      )
     );
     const result = resp.data?.data?.[0];
     logger.info(`[DEBUG] Helix chat send ${label}: ${JSON.stringify(resp.data)}`);
@@ -477,6 +480,10 @@ export async function sendChatMessage(
       }
     }
   } catch (err: any) {
+    if (err instanceof ChatQueueFullError) {
+      logger.warn(`[ircBot] Dropped chat message for broadcaster ${broadcasterId}: send queue is full`);
+      return;
+    }
     // If 401 Unauthorized, try refreshing the token once
     if (err.response && err.response.status === 401) {
       logger.warn("[DEBUG] App Access Token expired or invalid (401). Refreshing...");

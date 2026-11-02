@@ -59,6 +59,9 @@ export const loadCommands = () => {
                     return command.execute(ctx, _channel, message, tags, args);
                 };
 
+                // Read by the chat dispatcher; undefined means the default cooldowns.
+                (wrappedExecute as any).cooldown = command.cooldown;
+
                 if (seenKeys.has(mainKey)) {
                     duplicateKeys.push(mainKey);
                 } else {

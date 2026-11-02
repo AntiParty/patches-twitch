@@ -17,6 +17,7 @@ export interface SpecFailure {
 const CHAT = 'channel.chat.message';
 const REDEMPTION = 'channel.channel_points_custom_reward_redemption.add';
 const SHARD_DISABLED = 'conduit.shard.disabled';
+const AUTH_REVOKE = 'user.authorization.revoke';
 const CREATE_CONCURRENCY = 5;
 
 export function desiredSubscriptionsFor(ch: ConduitChannel): EventSubSpec[] {
@@ -175,7 +176,9 @@ export function createSubscriptionRegistry(deps: { api: ConduitApi; conduitId: s
         version: '1',
         condition: { client_id: deps.clientId, conduit_id: conduitId },
       };
-      const desired = [...channels.flatMap(desiredSubscriptionsFor), shardSpec];
+      // App-wide: tells us when anyone disconnects the app, so we stop acting for them immediately.
+      const revokeSpec: EventSubSpec = { type: AUTH_REVOKE, version: '1', condition: { client_id: deps.clientId } };
+      const desired = [...channels.flatMap(desiredSubscriptionsFor), shardSpec, revokeSpec];
       const { create, remove } = diffSubscriptions(desired, existing);
 
       // A shard.disabled sub that isn't enabled has to be replaced, but diff never removes it.

@@ -2,6 +2,8 @@ import logger from '../util/logger';
 import { trackMessageIn } from '../util/messageRateTracker';
 import { chooseReplyTarget, extractMentionedUsername, RecentChatMessages, retargetLeadingMention } from '../util/chatReplyTargets';
 import type { InboundChatMessage } from './inboundChatMessage';
+import { createCommandCooldowns, type CommandCooldowns } from './commandCooldowns';
+import { hasElevatedBadge } from '../util/chatSendLimiter';
 
 type SendCredentials = { botUserId: string; accessToken: string };
 
@@ -24,6 +26,10 @@ export interface ChatDispatcherDeps {
   }): Promise<void>;
   /** Bumps the command metrics counters. Optional so tests don't need the server module. */
   countCommand?(rawCommand: string): void | Promise<void>;
+  /** Called for every message on the active transport, before command parsing. */
+  observeMessage?(msg: InboundChatMessage): void;
+  /** Defaults to a fresh in-memory cooldown tracker per dispatcher. */
+  cooldowns?: CommandCooldowns;
 }
 
 let dispatchErrors = 0;
@@ -34,6 +40,7 @@ export function chatDispatchErrorCount(): number {
 
 export function createChatDispatcher(deps: ChatDispatcherDeps) {
   const recentChatMessages = new RecentChatMessages();
+  const cooldowns = deps.cooldowns ?? createCommandCooldowns();
 
   return async function dispatch(msg: InboundChatMessage, commandHandler: Record<string, any>): Promise<void> {
     const channelName = msg.channel;
@@ -46,6 +53,7 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
 
     // Count every incoming message for the metrics dashboard
     trackMessageIn();
+    deps.observeMessage?.(msg);
 
     const mentionedReplyTarget = recentChatMessages.replyTarget(channelName, message);
     const mentionedUsername = extractMentionedUsername(message);
@@ -90,6 +98,11 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
     }
 
     if (commandEntry && typeof commandEntry === "function") {
+      const cooldownUser = String(tags["user-id"] || user);
+      if (!hasElevatedBadge(tags) && !cooldowns.tryUse(channelName, commandKey, cooldownUser, commandEntry.cooldown)) {
+        logger.debug(`[commands] ${commandKey} on cooldown for ${user} in #${channelName}`);
+        return;
+      }
       logger.info(`[DEBUG] Executing command: ${commandKey}`);
       if (deps.countCommand) await deps.countCommand(rawCommand);
 

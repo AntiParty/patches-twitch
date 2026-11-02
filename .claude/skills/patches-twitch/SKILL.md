@@ -64,6 +64,7 @@ The two processes never share memory — they only talk through the DB and the C
 3. Optional exports:
    - `export const aliases = ["foo", "bar"]` — extra `!foo`, `!bar` keys. Don't include the main name; it's deduped.
    - `export const minRole = "tester" | "admin" | "staff" | "owner"` — anything not set defaults to `"basic user"`. The wrapper replies "You do not have permission..." automatically.
+   - `export const cooldown = { userMs, globalMs }` — overrides the dispatcher's default (10s per user, no global window; 0 disables a window). Mods, VIPs and the broadcaster skip cooldowns.
    - `export const name` / `export const description` — purely informational (used by `!help`).
 4. **Always** strip the leading `#` from `channel` before DB lookups: `const sanitizedChannel = channel.replace(/^#/, '')`. `Channel.username` is stored without `#`.
 5. Reply via `ctx.say(text, ctx.tags?.["id"])`. Passing the message id makes Twitch render it as a threaded reply. Pass `bypassFilter = true` only for internal/admin messages that should skip `messageFilter`.

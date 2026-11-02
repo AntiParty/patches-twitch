@@ -9,6 +9,7 @@ import type { ConduitApi } from './conduitApi';
 import { startConduitShard, type ConduitShardOptions } from './conduitShard';
 import { createConduitOutageMonitor, type ConduitOutageMonitor } from './conduitOutageMonitor';
 import { createSubscriptionRegistry } from './subscriptionRegistry';
+import { createAuthorizationRevokeHandler } from '../handlers/authorizationRevoke';
 import type { NotificationHandler } from './types';
 
 const SHARD_IDS = ['0', '1'];
@@ -60,6 +61,7 @@ export function createNotificationRouter(deps: {
   onStreamOffline(name: string, id: string): Promise<void>;
   onRedemption(event: any): Promise<void>;
   onShardDisabled(event: any): Promise<void>;
+  onAuthorizationRevoke?(event: any): Promise<void>;
 }): NotificationHandler {
   return async (type, event, meta) => {
     switch (type) {
@@ -79,6 +81,9 @@ export function createNotificationRouter(deps: {
         break;
       case 'conduit.shard.disabled':
         await deps.onShardDisabled(event);
+        break;
+      case 'user.authorization.revoke':
+        if (deps.onAuthorizationRevoke) await deps.onAuthorizationRevoke(event);
         break;
       default:
         break;
@@ -164,6 +169,29 @@ export function startConduitRuntime(): ConduitRuntime | null {
     clientId: process.env.TWITCH_CLIENT_ID || '',
   });
 
+  const onAuthorizationRevoke = createAuthorizationRevokeHandler({
+    defaultBotUserId: process.env.TWITCH_BOT_USER_ID,
+    async findChannelByTwitchId(id) {
+      const { Channel } = require('../db') as typeof import('../db');
+      return Channel.findOne({ where: { twitch_user_id: id } });
+    },
+    async isCustomBot(id) {
+      const { CustomBotAccount } = require('../db') as typeof import('../db');
+      return (await CustomBotAccount.count({ where: { bot_twitch_user_id: id } })) > 0;
+    },
+    async markChannelRevoked(id) {
+      const { Channel } = require('../db') as typeof import('../db');
+      await Channel.update({ auth_revoked: true } as any, { where: { twitch_user_id: id } });
+    },
+    stopBot: (username) => lazy.botManager().stopBotForUser(username),
+    async removeSubscriptions(id) {
+      const { Channel } = require('../db') as typeof import('../db');
+      const channel = await Channel.findOne({ where: { twitch_user_id: id } });
+      if (channel) await channelEvents.removeAll(channel);
+    },
+    warn: (title, details) => lazy.discord().sendWarningToDiscord(title, details),
+  });
+
   const onNotification = createNotificationRouter({
     dispatch: (msg, handler) => lazy.dispatch().dispatchChatMessage(msg, handler),
     getCommandHandler: () => lazy.botManager().getCommandHandler(),
@@ -176,6 +204,7 @@ export function startConduitRuntime(): ConduitRuntime | null {
         .discord()
         .sendWarningToDiscord('EventSub conduit shard disabled', `shard ${event?.shard_id}: ${event?.status}`);
     },
+    onAuthorizationRevoke: (event) => onAuthorizationRevoke(event),
   });
 
   const revocationHandler = createChatRevocationHandler({

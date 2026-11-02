@@ -161,7 +161,7 @@ describe('subscription registry', () => {
     assert.equal(res.chatOk, true);
   });
 
-  it('reconcileAll creates the diff, removes stale, and adds shard.disabled', async () => {
+  it('reconcileAll creates the diff, removes stale, and adds shard.disabled and authorization.revoke', async () => {
     const d = desiredSubscriptionsFor(CH);
     const stale = asExisting(desiredSubscriptionsFor({ ...CH, broadcasterId: 'old' })).map((s, i) => ({ ...s, id: `stale${i}` }));
     const { api, log } = makeApi({ list: [...asExisting(d.slice(0, 2)), ...stale] });
@@ -170,10 +170,12 @@ describe('subscription registry', () => {
     assert.equal(log.lists, 1);
     assert.deepEqual(log.deletes.sort(), ['stale0', 'stale1', 'stale2', 'stale3']);
     assert.equal(res.removed, 4);
-    assert.equal(res.created, 3); // 2 missing + shard.disabled
+    assert.equal(res.created, 4); // 2 missing + shard.disabled + user.authorization.revoke
     assert.deepEqual(res.failed, []);
     const shard = log.creates.find((s) => s.type === 'conduit.shard.disabled')!;
     assert.deepEqual(shard.condition, { client_id: 'cid', conduit_id: 'cd' });
+    const revoke = log.creates.find((s) => s.type === 'user.authorization.revoke')!;
+    assert.deepEqual(revoke.condition, { client_id: 'cid' });
     assert.equal(reg.enabledCount(), 4);
     assert.equal(reg.isChatActive('b1'), true);
     assert.equal(log.maxActive <= 5, true);
@@ -198,7 +200,7 @@ describe('subscription registry', () => {
     const res = await reg.reconcileAll([CH], { skipRemovals: true });
     assert.deepEqual(log.deletes, []);
     assert.equal(res.removed, 0);
-    assert.equal(res.created, 3);
+    assert.equal(res.created, 4);
     assert.equal(reg.isChatActive('old'), true);
   });
 
@@ -219,11 +221,14 @@ describe('subscription registry', () => {
     assert.equal(reg.isChatActive('b1'), false);
   });
 
-  it('reconcileAll leaves an existing enabled shard.disabled alone', async () => {
+  it('reconcileAll leaves existing enabled app-wide subscriptions alone', async () => {
     const shard: ConduitSubscription = {
       type: 'conduit.shard.disabled', version: '1', condition: { client_id: 'cid', conduit_id: 'cd' }, id: 's', status: 'enabled',
     };
-    const { api, log } = makeApi({ list: [...asExisting(desiredSubscriptionsFor(CH)), shard] });
+    const revoke: ConduitSubscription = {
+      type: 'user.authorization.revoke', version: '1', condition: { client_id: 'cid' }, id: 'r', status: 'enabled',
+    };
+    const { api, log } = makeApi({ list: [...asExisting(desiredSubscriptionsFor(CH)), shard, revoke] });
     const res = await mk(api).reconcileAll([CH]);
     assert.equal(res.created, 0);
     assert.equal(res.removed, 0);

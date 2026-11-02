@@ -9,6 +9,7 @@ import { trackCommandUsage } from '../util/commandAnalytics';
 import { hasCustomBotAccess } from './customBotAccess';
 import { getActiveTransport } from './activeTransport';
 import { createChatDispatcher } from './chatDispatcher';
+import { chatSendLimiter, hasElevatedBadge } from '../util/chatSendLimiter';
 
 // Production wiring. ircBot imports this file and this file imports ircBot, so ircBot
 // exports must only be used inside the functions below, never at module top level.
@@ -33,6 +34,15 @@ export const dispatchChatMessage = createChatDispatcher({
   },
   async send(broadcasterId, message, replyParentId, bypassFilter, creds) {
     await sendChatMessage(broadcasterId, message, replyParentId, bypassFilter, creds);
+  },
+  observeMessage(msg) {
+    // The bot's own messages carry its badges in the channel, which sets its send limit (20 vs 100 per 30s).
+    const senderId = String(msg.tags["user-id"] || '');
+    const broadcasterId = String(msg.broadcasterId || msg.tags["room-id"] || '');
+    if (!senderId || !broadcasterId) return;
+    const customBotId = clients[msg.channel]?.customBotId;
+    if (senderId !== process.env.TWITCH_BOT_USER_ID && senderId !== customBotId) return;
+    chatSendLimiter.setElevated(broadcasterId, senderId, hasElevatedBadge(msg.tags));
   },
   isCommandSilenced,
   shouldSkipDisabledViewerCommand,

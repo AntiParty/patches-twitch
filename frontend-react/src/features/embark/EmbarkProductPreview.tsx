@@ -1,4 +1,9 @@
+import { Sparkline } from '@/components/dither-kit/sparkline'
 import styles from './Embark.module.css'
+
+// Illustrative RS gained over a session for the tracker mockup (42,798 → 43,280).
+// Plotted as change from session start so the chart's zero baseline shows the climb.
+const sessionRsGain = [0, 32, 14, 107, 82, 192, 162, 272, 242, 352, 322, 432, 482]
 
 export type EmbarkPreviewKind = 'dashboard' | 'chat' | 'tracking' | 'predictions'
 
@@ -55,7 +60,12 @@ function TrackingPreview() {
       <div><small>Current RS</small><b>43,280</b></div>
       <div className={styles.sessionChange}><small>Session change</small><b>+482 RS</b></div>
     </div>
-    <div className={styles.chart}><svg viewBox="0 0 300 82" preserveAspectRatio="none" aria-hidden="true"><path d="M0 66 C26 58 34 65 56 49 S86 61 108 40 S139 50 157 32 S189 44 208 24 S242 33 260 17 S284 20 300 5" /><path className={styles.chartFill} d="M0 66 C26 58 34 65 56 49 S86 61 108 40 S139 50 157 32 S189 44 208 24 S242 33 260 17 S284 20 300 5 V82 H0Z" /></svg><div><span>Match 1</span><span>Match 3</span><span>Match 5</span><span>Live</span></div></div>
+    <div className={styles.chart}>
+      <div className={styles.chartBox}>
+        <Sparkline data={sessionRsGain} color="green" />
+      </div>
+      <div className={styles.chartAxis}><span>Match 1</span><span>Match 3</span><span>Match 5</span><span>Live</span></div>
+    </div>
   </>
 }
 

@@ -10,7 +10,6 @@ import { DashboardLayout } from '@/layouts/DashboardLayout'
 import { AdminLayout } from '@/layouts/AdminLayout'
 import { ProtectedRoute } from '@/routes/ProtectedRoute'
 import { Landing } from '@/features/landing/Landing'
-import { Embark } from '@/features/embark/Embark'
 import { NotFound } from '@/pages/NotFound'
 import { Overview } from '@/features/dashboard/Overview'
 import { Commands } from '@/features/dashboard/Commands'
@@ -38,6 +37,10 @@ import { Trolls as AdminTrolls } from '@/features/admin/Trolls'
 // Statistics pulls in Recharts (~heavy) — lazy-load so it stays out of the main bundle.
 const Statistics = lazy(() =>
   import('@/features/statistics/Statistics').then((m) => ({ default: m.Statistics })),
+)
+// Embark renders a dither-kit sparkline — lazy-load to keep it out of the main bundle.
+const Embark = lazy(() =>
+  import('@/features/embark/Embark').then((m) => ({ default: m.Embark })),
 )
 const BotMetrics = lazy(() =>
   import('@/features/botmetrics/BotMetrics').then((m) => ({ default: m.BotMetrics })),

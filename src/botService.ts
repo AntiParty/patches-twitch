@@ -7,6 +7,7 @@ import { removeUserWebSocket } from "./util/twitchEventSubWs";
 import { CONDUIT_SHARD_COUNT, channelEvents, getConduitRuntime, startConduitRuntime } from "./eventsub/conduitRuntime";
 import { conduitHealthCheck } from "./eventsub/conduitHealth";
 import { channelsOnTransport } from "./chat/activeTransport";
+import { countConnectedChannels } from "./chat/connectedChannels";
 import { chatDispatchErrorCount, commandCooldownHitCount } from "./chat/chatDispatcher";
 import { chatSendLimiter } from "./util/chatSendLimiter";
 import { eventsubFallbackCount } from "./chat/chatTransportSwitch";
@@ -340,7 +341,11 @@ dbReady.then(async () => {
       const runtime = getConduitRuntime();
       res.json({
         observedAt: new Date().toISOString(),
-        connectedChannels: entries.filter((client) => client.connected).length,
+        connectedChannels: countConnectedChannels({
+          ircClients: entries,
+          eventsubChannels: channelsOnTransport('eventsub'),
+          conduitShardsAssigned: runtime?.shardsAssigned() ?? 0,
+        }),
         reconnectingChannels: entries.filter((client) => !client.connected && !client.intentionalDisconnect).length,
         conduitEnabled: Boolean(runtime),
         conduitShardsAssigned: runtime?.shardsAssigned() ?? 0,
@@ -611,7 +616,11 @@ dbReady.then(async () => {
     process.on('exit', stopGiveawayReconciler);
 
     const stopProcessMetrics = startProcessMetricsRecorder({
-      getConnectedChannels: () => Object.values(clients).filter((client) => client.connected).length,
+      getConnectedChannels: () => countConnectedChannels({
+        ircClients: Object.values(clients),
+        eventsubChannels: channelsOnTransport('eventsub'),
+        conduitShardsAssigned: getConduitRuntime()?.shardsAssigned() ?? 0,
+      }),
     });
     process.on('SIGINT', stopProcessMetrics);
     process.on('SIGTERM', stopProcessMetrics);

@@ -8,7 +8,7 @@
  *   memoryUsed        process RSS bytes (memoryTotal = machine RAM)
  *   heapUsed/Total    V8 heap bytes
  *   botLatencyMs      mean event-loop delay over the interval, ms
- *   connectedChannels IRC clients currently connected
+ *   connectedChannels channels live on IRC or the conduit
  * Old rows are pruned after 30 days by the cleanup in dbMetrics.ts.
  */
 import os from 'os';

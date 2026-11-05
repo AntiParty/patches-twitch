@@ -1,5 +1,5 @@
 import { strict as assert } from 'assert';
-import { computeTtk, falloffMultiplierAt, shotsToKill, shotTime, timeToKill, type AttackMode } from '@/services/weaponTtk';
+import { computeTtk, falloffMultiplierAt, rangeConfidence, shotsToKill, shotTime, timeToKill, type AttackMode } from '@/services/weaponTtk';
 
 const mode = (over: Partial<AttackMode> = {}): AttackMode => ({
   label: 'Primary', damage: 25, projectiles: 1, headshotMult: null, rpm: 500, burstSize: 1, burstRpm: null, ...over,
@@ -126,6 +126,31 @@ describe('weaponTtk', () => {
       const flame = { falloffMinM: 7.4, falloffMaxM: 7.4, falloffMult: 0 };
       assert.deepEqual(timeToKill(175, 20, mode(), { ...noReload, ...flame }, 7.5), { shots: Infinity, seconds: null });
       assert.equal(timeToKill(175, 20, mode(), { ...noReload, ...flame }, 7.4).shots, 9);
+    });
+  });
+
+  describe('rangeConfidence', () => {
+    const f = { falloffMinM: 30, falloffMaxM: 50, falloffMult: 0.5 };
+    const one = { projectiles: 1 };
+    const pellets = { projectiles: 12 };
+
+    it('solid with no falloff data, no distance, or at/inside the falloff start', () => {
+      assert.equal(rangeConfidence(80, { falloffMinM: null, falloffMaxM: null, falloffMult: null }, one), 'solid');
+      assert.equal(rangeConfidence(0, f, one), 'solid');
+      assert.equal(rangeConfidence(undefined, f, pellets), 'solid');
+      assert.equal(rangeConfidence(30, f, one), 'solid');
+      assert.equal(rangeConfidence(30, f, pellets), 'solid');
+    });
+
+    it('estimate inside and past the falloff band for single-projectile weapons', () => {
+      assert.equal(rangeConfidence(30.5, f, one), 'estimate');
+      assert.equal(rangeConfidence(40, f, one), 'estimate');
+      assert.equal(rangeConfidence(80, f, one), 'estimate');
+    });
+
+    it('rough for pellet weapons past the falloff start', () => {
+      assert.equal(rangeConfidence(31, f, pellets), 'rough');
+      assert.equal(rangeConfidence(80, f, { projectiles: 2 }), 'rough');
     });
   });
 });

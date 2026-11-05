@@ -56,6 +56,10 @@ export function TtkRangeChart({ series, hp, hit, narrow }: { series: TtkPoint[];
       samples.forEach((s, i) => {
         r[`s${i}`] = s[d].seconds
         r[`n${i}`] = Number.isFinite(s[d].shots) ? s[d].shots : null
+        // Solid up to the falloff start, dashed (estimated) after; the dashed run starts on the last solid point so the line joins.
+        const solid = s[d].confidence === 'solid'
+        r[`a${i}`] = solid ? s[d].seconds : null
+        r[`b${i}`] = !solid || (d < MAX_RANGE_M && s[d + 1].confidence !== 'solid') ? s[d].seconds : null
       })
       rows.push(r)
     }
@@ -107,33 +111,37 @@ export function TtkRangeChart({ series, hp, hit, narrow }: { series: TtkPoint[];
             cursor={{ stroke: 'var(--viz-axis)', strokeWidth: 1 }}
             isAnimationActive={false}
           />
-          {series.map((p, i) => (
-            <Line
-              key={p.key}
-              dataKey={`s${i}`}
-              type="stepAfter"
-              stroke={SERIES_COLORS[i]}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              dot={false}
-              activeDot={{ r: 4, stroke: 'var(--bg-card)', strokeWidth: 2, fill: SERIES_COLORS[i] }}
-              connectNulls={false}
-              isAnimationActive={false}
-              label={
-                labelsFit
-                  ? (props: { x?: number | string; y?: number | string; index?: number }) =>
-                      props.index === ends[i]?.d ? (
-                        <text key={p.key} x={Number(props.x) + 8} y={Number(props.y)} dy="0.35em" fill="var(--text-muted)" fontSize={12}>
-                          {p.label.length > 16 ? `${p.label.slice(0, 15)}…` : p.label}
-                        </text>
-                      ) : (
-                        <g key={`${p.key}-${props.index}`} />
-                      )
-                  : false
-              }
-            />
-          ))}
+          {series.flatMap((p, i) => {
+            const hasDashed = rows.some((r) => r[`b${i}`] != null)
+            const lineProps = {
+              type: 'stepAfter' as const,
+              stroke: SERIES_COLORS[i],
+              strokeWidth: 2,
+              strokeLinecap: 'round' as const,
+              strokeLinejoin: 'round' as const,
+              dot: false,
+              activeDot: { r: 4, stroke: 'var(--bg-card)', strokeWidth: 2, fill: SERIES_COLORS[i] },
+              connectNulls: false,
+              isAnimationActive: false,
+            }
+            const label =
+              labelsFit
+                ? (props: { x?: number | string; y?: number | string; index?: number }) =>
+                    props.index === ends[i]?.d ? (
+                      <text key={p.key} x={Number(props.x) + 8} y={Number(props.y)} dy="0.35em" fill="var(--text-muted)" fontSize={12}>
+                        {p.label.length > 16 ? `${p.label.slice(0, 15)}…` : p.label}
+                      </text>
+                    ) : (
+                      <g key={`${p.key}-${props.index}`} />
+                    )
+                : false
+            return [
+              <Line key={`${p.key}-a`} dataKey={`a${i}`} {...lineProps} label={hasDashed ? false : label} />,
+              hasDashed ? (
+                <Line key={`${p.key}-b`} dataKey={`b${i}`} {...lineProps} strokeDasharray="6 5" label={label} />
+              ) : null,
+            ]
+          })}
         </LineChart>
       </ResponsiveContainer>
     </div>

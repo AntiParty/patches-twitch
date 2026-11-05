@@ -85,6 +85,18 @@ describe('patchNotes', () => {
       assert.equal(mapStat('reload time', 'weapon'), 'reloadS');
       assert.equal(mapStat('cooldown', 'weapon'), null);
     });
+    it('maps the falloff wordings Embark uses', () => {
+      assert.equal(mapStat('damage falloff minimum range', 'weapon'), 'falloffMinM');
+      assert.equal(mapStat('damage fall-off end range', 'weapon'), 'falloffMaxM');
+      assert.equal(mapStat('damage falloff multiplier', 'weapon'), 'falloffMult');
+      // FCAR, real line: "Decreased damage falloff modifier at max range from 67% to 55%"
+      assert.equal(mapStat('damage falloff modifier at max range', 'weapon'), 'falloffMult');
+    });
+    it('turns a percentage falloff modifier into a multiplier', () => {
+      const notes = '[h2]BALANCE CHANGES[/h2][h3]Weapon[/h3][p][b]FCAR[/b][/p][list][*][p]Decreased damage falloff modifier at max range from 67% to 55%[/p][/*][/list]';
+      const [c] = parsePatchNotes(notes, WEAPONS).changes;
+      assert.deepEqual([c.field, c.from, c.to], ['falloffMult', 0.67, 0.55]);
+    });
     it('only understands health for classes', () => {
       assert.equal(mapStat('health', 'class'), 'health');
       assert.equal(mapStat('damage', 'class'), null);

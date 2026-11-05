@@ -414,3 +414,27 @@
 .falloffCell {
   color: var(--text-muted);
 }
+
+.accuracyKey {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+.swatchHatch {
+  background: repeating-linear-gradient(45deg, var(--text-muted) 0 2px, rgba(255, 255, 255, 0.12) 2px 4px) !important;
+  margin-left: 8px;
+}
+.rangeNote {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  /* Sits inside the filter label, which is uppercase + tracked. */
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-subtle);
+}

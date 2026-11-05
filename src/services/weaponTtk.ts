@@ -74,6 +74,26 @@ export function falloffMultiplierAt(distanceM: number | null | undefined, fallof
   return 1 + ((distanceM - min) / (max - min)) * (mult - 1);
 }
 
+/** How much to trust the numbers at a range. */
+export type RangeConfidence = 'solid' | 'estimate' | 'rough';
+
+/**
+ * solid: no falloff data, or at/inside the falloff start (wiki values apply directly).
+ * estimate: past the falloff start, where the straight-line drop is assumed (the real curve isn't published).
+ * rough: as estimate, but a multi-projectile weapon, which also assumes every pellet hits.
+ * KEEP IN SYNC with frontend-react/src/features/ttk/ttkData.ts.
+ */
+export function rangeConfidence(
+  distanceM: number | null | undefined,
+  weapon: Falloff,
+  mode: Pick<AttackMode, 'projectiles'>,
+): RangeConfidence {
+  const { falloffMinM: min, falloffMaxM: max, falloffMult: mult } = weapon;
+  if (min == null || max == null || mult == null) return 'solid';
+  if (!distanceM || distanceM <= min) return 'solid';
+  return mode.projectiles > 1 ? 'rough' : 'estimate';
+}
+
 /** Shots needed to deal `hp` damage at `perShot` damage per shot. */
 export function shotsToKill(hp: number, perShot: number): number {
   if (!(perShot > 0) || !(hp > 0)) return Infinity;

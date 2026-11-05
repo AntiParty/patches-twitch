@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Build } from '@/types/ttk'
-import type { TtkPoint } from './ttkData'
+import { CONFIDENCE_LABEL, confidenceReason, type TtkPoint } from './ttkData'
 import styles from './Ttk.module.css'
 
 export const CLASS_COLORS: Record<Build, string> = {
@@ -11,6 +11,24 @@ export const CLASS_COLORS: Record<Build, string> = {
   Heavy: 'var(--viz-heavy)',
 }
 const UNKNOWN_COLOR = 'var(--text-subtle)'
+const HATCH_ID = (c: string) => `ttk-hatch-${c}`
+
+/** 45-degree hatch in the class hue over a light wash of it: a texture cue, not a colour-only one. */
+function HatchDefs() {
+  const entries: Array<[string, string]> = [...(Object.entries(CLASS_COLORS) as Array<[string, string]>), ['Unknown', UNKNOWN_COLOR]]
+  return (
+    <defs>
+      {entries.map(([name, color]) => (
+        <pattern key={name} id={HATCH_ID(name)} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" style={{ fill: color }} fillOpacity={0.28} />
+          <rect width="2.5" height="6" style={{ fill: color }} />
+        </pattern>
+      ))}
+    </defs>
+  )
+}
+
+export const hatchFill = (cls: string | null) => `url(#${HATCH_ID(cls ?? 'Unknown')})`
 const ROW_PX = 28
 const AXIS_PX = 32
 const LABELLED = 3
@@ -47,6 +65,9 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
         {d.cls ?? 'Unknown class'}
         {d.wtype ? ` · ${d.wtype}` : ''} · {d.mode}
       </div>
+      <div className={styles.tipNote}>
+        <strong>{CONFIDENCE_LABEL[d.confidence]}.</strong> {confidenceReason(d.confidence, d.source)}
+      </div>
       {d.falloff && (
         <div className={styles.tipNote}>
           Falloff {d.falloff}
@@ -78,6 +99,7 @@ export function TtkChart({ points, onPick }: { points: TtkPoint[]; onPick?: (key
           barCategoryGap={ROW_PX - 18}
           accessibilityLayer
         >
+          <HatchDefs />
           <CartesianGrid horizontal={false} stroke="var(--viz-grid)" strokeWidth={1} />
           <XAxis
             type="number"
@@ -108,7 +130,12 @@ export function TtkChart({ points, onPick }: { points: TtkPoint[]; onPick?: (key
             onClick={(d: unknown) => onPick?.((d as Datum).key)}
           >
             {data.map((d) => (
-              <Cell key={d.key} fill={d.cls ? CLASS_COLORS[d.cls] : UNKNOWN_COLOR} />
+              <Cell
+                key={d.key}
+                fill={d.confidence === 'solid' ? (d.cls ? CLASS_COLORS[d.cls] : UNKNOWN_COLOR) : hatchFill(d.cls)}
+                stroke={d.confidence === 'solid' ? undefined : d.cls ? CLASS_COLORS[d.cls] : UNKNOWN_COLOR}
+                strokeWidth={d.confidence === 'solid' ? 0 : 1}
+              />
             ))}
             <LabelList
               dataKey="plotted"

@@ -88,7 +88,8 @@ export function mapStat(stat: string, kind: ChangeKind): string | null {
   if (/burst/.test(s) && /(rate|rpm|delay)/.test(s)) return /rate|rpm/.test(s) ? 'burstRpm' : null;
   if (/rate of fire|fire rate|firing rate|\brpm\b|rounds per minute/.test(s)) return 'rpm';
   if (/falloff|fall-off/.test(s)) {
-    if (/multiplier|minimum damage|min damage|percent/.test(s)) return 'falloffMult';
+    // "falloff modifier at max range from 67% to 55%" is the multiplier, not the range.
+    if (/multiplier|modifier|minimum damage|min damage|percent/.test(s)) return 'falloffMult';
     if (/\b(start|min|minimum|begin)/.test(s)) return 'falloffMinM';
     if (/\b(end|max|maximum)/.test(s)) return 'falloffMaxM';
     return null;

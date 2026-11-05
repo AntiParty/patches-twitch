@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ttkApi } from '@/api/ttk'
 import type { Build } from '@/types/ttk'
 import { Badge } from '@/components/data-display/Badge'
-import { MAX_RANGE_M, bySeconds, selectPoints, type ClassFilter, type Hit, type TtkPoint } from './ttkData'
+import { CONFIDENCE_LABEL, MAX_RANGE_M, bySeconds, selectPoints, type ClassFilter, type Hit, confidenceReason, type TtkPoint } from './ttkData'
 import { CLASS_COLORS, TtkChart, useIsNarrow } from './TtkChart'
 import { SERIES_COLORS, TtkRangeChart } from './TtkRangeChart'
 import styles from './Ttk.module.css'
@@ -21,7 +21,7 @@ import styles from './Ttk.module.css'
 const BUILDS: Build[] = ['Light', 'Medium', 'Heavy']
 const CLASS_FILTERS: ClassFilter[] = ['All', ...BUILDS]
 
-type SortKey = 'weapon' | 'cls' | 'wtype' | 'mode' | 'falloff' | 'shots' | 'seconds'
+type SortKey = 'weapon' | 'cls' | 'wtype' | 'mode' | 'falloff' | 'confidence' | 'shots' | 'seconds'
 
 const pick = <T extends string>(v: string | null, allowed: readonly T[], fallback: T): T =>
   allowed.includes(v as T) ? (v as T) : fallback
@@ -218,6 +218,7 @@ export function Ttk() {
                 aria-label="Range in metres"
                 onChange={(e) => setParam('range', e.target.value, '0')}
               />
+              {range > 0 && <span className={styles.rangeNote}>Past each weapon&rsquo;s falloff start, numbers are estimates.</span>}
             </label>
           </div>
 
@@ -239,6 +240,12 @@ export function Ttk() {
                       </li>
                     ))}
                   </ul>
+                  <p className={styles.accuracyKey}>
+                    <span className={styles.swatch} style={{ background: 'var(--text-muted)' }} />
+                    solid = wiki values
+                    <span className={`${styles.swatch} ${styles.swatchHatch}`} />
+                    hatched = estimate past falloff start
+                  </p>
                 </div>
                 {points.some((p) => p.seconds != null) && <TtkChart points={points} onPick={togglePick} />}
                 {outOfRange.length > 0 && (
@@ -310,8 +317,9 @@ export function Ttk() {
                   <p className={styles.untimed}>Pick up to {MAX_LINES} weapons to compare. Click a table row or a bar to add one.</p>
                 )}
                 <p className={styles.assumption}>
-                  Assumes damage falls off linearly from a weapon&rsquo;s falloff start to its falloff end, then stays at the end
-                  multiplier. Headshot bonuses apply on top. Melee, explosives and weapons without falloff data aren&rsquo;t affected by range.
+                  Dashed = estimated (damage falloff curve isn&rsquo;t published). Lines are solid up to a weapon&rsquo;s falloff start; after
+                  that we assume damage falls off linearly to its falloff end, then stays at the end multiplier. Headshot bonuses apply on
+                  top. Melee, explosives and weapons without falloff data aren&rsquo;t affected by range.
                 </p>
               </section>
 
@@ -325,6 +333,7 @@ export function Ttk() {
                         {th('wtype', 'Type')}
                         {th('mode', 'Mode')}
                         {th('falloff', 'Falloff')}
+                        {th('confidence', 'Accuracy')}
                         {th('shots', 'Shots', true)}
                         {th('seconds', 'Seconds', true)}
                       </tr>
@@ -353,6 +362,9 @@ export function Ttk() {
                             {p.noHeadshot && <span className={styles.flag}> no headshot bonus</span>}
                           </td>
                           <td className={styles.falloffCell}>{p.falloff ?? '—'}</td>
+                          <td title={confidenceReason(p.confidence, p.source)}>
+                            <span className={p.confidence === 'solid' ? undefined : styles.flag}>{CONFIDENCE_LABEL[p.confidence]}</span>
+                          </td>
                           <td className={styles.num}>{p.outOfRange ? 'out of range' : p.shots}</td>
                           <td className={styles.num}>{p.outOfRange ? '—' : p.seconds == null ? 'no data' : fmtNum(p.seconds)}</td>
                         </tr>

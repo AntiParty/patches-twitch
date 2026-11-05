@@ -27,6 +27,27 @@ export function falloffMultiplierAt(distanceM: number, f: Falloff): number {
   return 1 + ((distanceM - min) / (max - min)) * (mult - 1)
 }
 
+export type RangeConfidence = 'solid' | 'estimate' | 'rough'
+
+/**
+ * solid: no falloff data or at/inside the falloff start; estimate: past it (straight-line drop assumed);
+ * rough: a multi-projectile weapon past it (also assumes every pellet hits). Port of rangeConfidence in
+ * src/services/weaponTtk.ts: KEEP IN SYNC.
+ */
+export function rangeConfidence(distanceM: number, f: Falloff, mode: Pick<TtkMode, 'projectiles'>): RangeConfidence {
+  if (f.falloffMinM == null || f.falloffMaxM == null || f.falloffMult == null) return 'solid'
+  if (!distanceM || distanceM <= f.falloffMinM) return 'solid'
+  return mode.projectiles > 1 ? 'rough' : 'estimate'
+}
+
+export const CONFIDENCE_LABEL: Record<RangeConfidence, string> = { solid: 'Solid', estimate: 'Estimate', rough: 'Rough' }
+
+export function confidenceReason(c: RangeConfidence, f: Falloff): string {
+  if (c === 'rough') return 'Assumes every pellet hits; real TTK at this range is likely slower.'
+  if (c === 'estimate') return "Past falloff start: assumes a straight-line damage drop (the real curve isn't published)."
+  return f.falloffMinM == null ? 'No falloff data, so range does not change damage.' : 'Within falloff start: wiki values apply directly.'
+}
+
 export function shotsToKill(hp: number, perShot: number): number {
   if (!(perShot > 0) || !(hp > 0)) return Infinity
   return Math.max(1, Math.ceil(Math.round((hp / perShot) * 1e6) / 1e6 - EPS))
@@ -104,6 +125,8 @@ export interface TtkPoint {
   falloff: string | null
   /** Damage multiplier at the selected range. */
   damageMult: number
+  /** How far to trust the numbers at the selected range. */
+  confidence: RangeConfidence
   notes: string[]
   /** Raw model, used to recompute at other ranges. */
   source: TtkWeapon
@@ -147,6 +170,7 @@ export function selectPoints(
         noHeadshot,
         falloff: falloffLabel(w),
         damageMult: falloffMultiplierAt(distanceM, w),
+        confidence: rangeConfidence(distanceM, w, m),
         notes: w.notes,
         source: w,
         modeData: m,
@@ -165,6 +189,7 @@ export function bySeconds(a: TtkPoint, b: TtkPoint): number {
 
 export interface SeriesSample {
   distance: number
+  confidence: RangeConfidence
   shots: number
   seconds: number | null
 }
@@ -174,7 +199,7 @@ export function ttkOverDistance(p: TtkPoint, hp: number, hit: Hit): SeriesSample
   const out: SeriesSample[] = []
   for (let d = 0; d <= MAX_RANGE_M; d++) {
     const c = cellAt(p, hp, hit, d)
-    out.push({ distance: d, shots: c.shots, seconds: c.seconds })
+    out.push({ distance: d, shots: c.shots, seconds: c.seconds, confidence: rangeConfidence(d, p.source, p.modeData) })
   }
   return out
 }

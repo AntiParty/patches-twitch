@@ -5,6 +5,12 @@ import styles from './Embark.module.css'
 // Plotted as change from session start so the chart's zero baseline shows the climb.
 const sessionRsGain = [0, 32, 14, 107, 82, 192, 162, 272, 242, 352, 322, 432, 482]
 
+const ACTIVITY = [
+  { time: '21:42', command: '!rank', result: 'trev_au · Diamond 3, 43,280 RS' },
+  { time: '21:38', command: '!record', result: 'cassieplays · 7 wins, 2 losses this stream' },
+  { time: '21:31', command: '!predict', result: 'Prediction opened · Break 44k RS?' },
+]
+
 export type EmbarkPreviewKind = 'dashboard' | 'chat' | 'tracking' | 'predictions'
 
 const labels: Record<EmbarkPreviewKind, string> = {
@@ -31,8 +37,13 @@ function DashboardPreview() {
     <div className={styles.previewDashboard}>
       <aside><span>Overview</span><span>Commands</span><span>Overlays</span><span>Settings</span></aside>
       <div className={styles.previewMain}>
-        <p>GOOD EVENING, ANTIPARTY</p><strong>Stream control</strong>
-        <div className={styles.previewStatRow}><div><small>SESSION RS</small><b>43,280</b><em>+482 today</em></div><div><small>CHAT LOOKUPS</small><b>126</b><em>Live now</em></div></div>
+        <p>Good evening, AntiParty</p><strong>Stream control</strong>
+        <div className={styles.previewStatRow}><div><small>Session RS</small><b>43,280</b><em>+482 today</em></div><div><small>Chat lookups</small><b>126</b><em>Live now</em></div></div>
+        <ul className={styles.previewActivity}>
+          {ACTIVITY.map((row) => (
+            <li key={row.time}><span>{row.time}</span><code>{row.command}</code><span>{row.result}</span></li>
+          ))}
+        </ul>
       </div>
     </div>
   </>
@@ -62,7 +73,7 @@ function TrackingPreview() {
     </div>
     <div className={styles.chart}>
       <div className={styles.chartBox}>
-        <Sparkline data={sessionRsGain} color="green" />
+        <Sparkline data={sessionRsGain} color="green" variant="dotted" />
       </div>
       <div className={styles.chartAxis}><span>Match 1</span><span>Match 3</span><span>Match 5</span><span>Live</span></div>
     </div>

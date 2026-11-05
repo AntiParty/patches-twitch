@@ -1,6 +1,4 @@
 import type { EmbarkStats } from '@/api/public'
-import { StatCard } from '@/components/cards/StatCard'
-import { Card } from '@/components/cards/Card'
 import { Spinner } from '@/components/feedback/Spinner'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import styles from './Embark.module.css'
@@ -13,11 +11,11 @@ interface EmbarkMetricsProps {
   onRetry?: () => void
 }
 
-const metricDefinitions: Array<{ key: keyof EmbarkStats; label: string; icon: string }> = [
-  { key: 'streamers', label: 'Streamers', icon: 'fas fa-video' },
-  { key: 'commandsProcessed', label: 'Commands processed', icon: 'fas fa-terminal' },
-  { key: 'predictionsCreated', label: 'Predictions created', icon: 'fas fa-chart-simple' },
-  { key: 'apiRequests', label: 'API requests', icon: 'fas fa-code' },
+const metricDefinitions: Array<{ key: keyof EmbarkStats; label: string }> = [
+  { key: 'streamers', label: 'Streamers' },
+  { key: 'commandsProcessed', label: 'Commands processed' },
+  { key: 'predictionsCreated', label: 'Predictions created' },
+  { key: 'apiRequests', label: 'API requests' },
 ]
 
 function formatMetric(value: number): string {
@@ -27,31 +25,35 @@ function formatMetric(value: number): string {
 export function EmbarkMetrics({ status, stats, onRetry }: EmbarkMetricsProps) {
   if (status === 'error') {
     return (
-      <Card>
+      <div className={styles.metricsState}>
         <ErrorState
           title="Couldn’t load platform totals"
           message="Live totals are temporarily unavailable."
           onRetry={onRetry}
         />
-      </Card>
+      </div>
     )
   }
 
   if (status !== 'success' || !stats) {
     return (
-      <Card>
-        <div className={styles.metricsLoading} role="status" aria-label="Loading live platform totals">
-          <Spinner />
-        </div>
-      </Card>
+      <div className={styles.metricsState} role="status" aria-label="Loading live platform totals">
+        <Spinner />
+      </div>
     )
   }
 
   return (
-    <div className={styles.metrics} aria-label="Lifetime platform totals">
-      {metricDefinitions.map(({ key, label, icon }) => (
-        <StatCard key={key} label={label} icon={icon} value={formatMetric(stats[key])} hint="Lifetime total" />
-      ))}
+    <div className={styles.metricsBand}>
+      <div className={styles.metrics} aria-label="Lifetime platform totals">
+        {metricDefinitions.map(({ key, label }) => (
+          <div className={styles.metric} key={key}>
+            <span className={styles.metricValue}>{formatMetric(stats[key])}</span>
+            <span className={styles.metricLabel}>{label}</span>
+          </div>
+        ))}
+      </div>
+      <p className={styles.metricsNote}>Lifetime platform totals, live from FinalsRS</p>
     </div>
   )
 }

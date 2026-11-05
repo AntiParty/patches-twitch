@@ -3,6 +3,7 @@ import {
   formatAge,
   formatAgo,
   formatBytes,
+  formatConduit,
   formatCount,
   formatMs,
   formatUptime,
@@ -40,5 +41,13 @@ describe('bot metrics formatters', () => {
     expect(formatAge(30)).toBe('30s old')
     expect(formatAge(4 * 60 + 10)).toBe('4m old')
     expect(formatAge(2 * 3600)).toBe('2h old')
+  })
+
+  test('conduit shows shard counts, or Off when not configured', () => {
+    expect(formatConduit(null, null, null)).toBe('—')
+    expect(formatConduit('off', 0, 2)).toBe('Off')
+    expect(formatConduit('connected', 2, 2)).toBe('2/2 shards')
+    expect(formatConduit('partial', 1, 2)).toBe('1/2 shards')
+    expect(formatConduit('down', null, null)).toBe('Down')
   })
 })

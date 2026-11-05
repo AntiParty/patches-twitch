@@ -24,7 +24,7 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ApiError } from '@/api/errors'
 import { botMetricsApi, BOT_METRICS_LOGIN_URL } from '@/api/botMetrics'
 import type { BotLiveStatus, BotMetricsRange, BotMetricsResponse, BotStatus } from '@/types/botMetrics'
-import { formatAge, formatAgo, formatBytes, formatCount, formatMs, formatUptime } from './format'
+import { formatAge, formatAgo, formatBytes, formatConduit, formatCount, formatMs, formatUptime } from './format'
 import styles from './BotMetrics.module.css'
 
 const REFRESH_MS = 30_000
@@ -118,6 +118,7 @@ export function BotMetrics() {
       ) : (
         <>
           <BotStatusPanel bot={data.bot} />
+          <ChatHealthPanel bot={data.bot} revokedChannels={data.revokedChannels} />
           <TodayStats data={data} />
           <Graphs data={data} />
           <TopTables data={data} />
@@ -133,14 +134,15 @@ function BotStatusPanel({ bot }: { bot: BotLiveStatus }) {
     bot.connectedChannels == null
       ? '—'
       : `${formatCount(bot.connectedChannels)} connected${bot.reconnectingChannels ? ` · ${bot.reconnectingChannels} reconnecting` : ''}`
-  const eventSub = bot.eventSubConnected == null ? '—' : bot.eventSubConnected ? 'Connected' : 'Not connected'
+  const conduit = formatConduit(bot.conduitState, bot.conduitShardsAssigned, bot.conduitShardCount)
+  const conduitWarn = bot.conduitState === 'partial' || bot.conduitState === 'down'
 
-  const vitals: { label: string; value: string; tone?: 'warn' }[] = [
+  const vitals: Vital[] = [
     { label: 'Uptime', value: formatUptime(bot.uptimeSeconds) },
     { label: 'Memory (RSS)', value: formatBytes(bot.rssBytes) },
     { label: 'Heap used', value: formatBytes(bot.heapUsedBytes) },
-    { label: 'IRC channels', value: channels, tone: bot.reconnectingChannels ? 'warn' : undefined },
-    { label: 'EventSub', value: eventSub, tone: bot.eventSubConnected === false ? 'warn' : undefined },
+    { label: 'IRC connections', value: channels, tone: bot.reconnectingChannels ? 'warn' : undefined },
+    { label: 'EventSub conduit', value: conduit, tone: conduitWarn ? 'warn' : undefined },
     { label: 'Database', value: formatMs(bot.databaseLatencyMs) },
     { label: 'Leaderboard cache', value: formatAge(bot.cacheAgeSeconds) },
   ]
@@ -155,14 +157,55 @@ function BotStatusPanel({ bot }: { bot: BotLiveStatus }) {
             : 'The bot process did not answer its Control API.'}
         </span>
       </div>
-      <dl className={styles.vitals}>
-        {vitals.map((v) => (
-          <div key={v.label} className={styles.vital}>
-            <dt>{v.label}</dt>
-            <dd className={v.tone === 'warn' ? styles.warn : undefined}>{v.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <VitalList vitals={vitals} />
+    </section>
+  )
+}
+
+type Vital = { label: string; value: string; tone?: 'warn' }
+
+function VitalList({ vitals, className = styles.vitals }: { vitals: Vital[]; className?: string }) {
+  return (
+    <dl className={className}>
+      {vitals.map((v) => (
+        <div key={v.label} className={styles.vital}>
+          <dt>{v.label}</dt>
+          <dd className={v.tone === 'warn' ? styles.warn : undefined}>{v.value}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+/** Warn tone for a counter that should stay at zero. */
+const warnIfAny = (n: number | null) => (n ? 'warn' : undefined)
+
+function ChatHealthPanel({ bot, revokedChannels }: { bot: BotLiveStatus; revokedChannels: number }) {
+  const transport =
+    bot.ircChannels == null || bot.eventsubChannels == null
+      ? '—'
+      : `${formatCount(bot.ircChannels)} IRC · ${formatCount(bot.eventsubChannels)} EventSub`
+
+  const vitals: Vital[] = [
+    { label: 'Chat transport', value: transport },
+    { label: 'Fallbacks to IRC', value: formatCount(bot.eventsubFallbacks), tone: warnIfAny(bot.eventsubFallbacks) },
+    { label: 'Conduit reconnects', value: formatCount(bot.conduitReconnects) },
+    { label: 'Failed subscriptions', value: formatCount(bot.conduitSubscriptionsFailed), tone: warnIfAny(bot.conduitSubscriptionsFailed) },
+    { label: 'Command errors', value: formatCount(bot.chatDispatchErrors), tone: warnIfAny(bot.chatDispatchErrors) },
+    { label: 'Sends queued', value: formatCount(bot.chatSendsQueued) },
+    { label: '429 retries', value: formatCount(bot.chatSendRetries), tone: warnIfAny(bot.chatSendRetries) },
+    { label: 'Sends dropped', value: formatCount(bot.chatSendsDropped), tone: warnIfAny(bot.chatSendsDropped) },
+    { label: 'Cooldown blocks', value: formatCount(bot.commandCooldownHits) },
+    { label: 'Revoked channels', value: formatCount(revokedChannels), tone: warnIfAny(revokedChannels) },
+  ]
+
+  return (
+    <section className={styles.statusPanel} aria-label="Chat health">
+      <div className={styles.statusHead}>
+        <h2 className={styles.panelTitle}>Chat health</h2>
+        <span className={styles.statusNote}>Counts since the bot last started; revoked channels are all time.</span>
+      </div>
+      <VitalList vitals={vitals} className={`${styles.vitals} ${styles.vitalsWide}`} />
     </section>
   )
 }

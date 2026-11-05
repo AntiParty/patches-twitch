@@ -38,6 +38,12 @@ export function chatDispatchErrorCount(): number {
   return dispatchErrors;
 }
 
+let cooldownHits = 0;
+/** Commands ignored because they were on cooldown, since the process started. */
+export function commandCooldownHitCount(): number {
+  return cooldownHits;
+}
+
 export function createChatDispatcher(deps: ChatDispatcherDeps) {
   const recentChatMessages = new RecentChatMessages();
   const cooldowns = deps.cooldowns ?? createCommandCooldowns();
@@ -100,6 +106,7 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
     if (commandEntry && typeof commandEntry === "function") {
       const cooldownUser = String(tags["user-id"] || user);
       if (!hasElevatedBadge(tags) && !cooldowns.tryUse(channelName, commandKey, cooldownUser, commandEntry.cooldown)) {
+        cooldownHits++;
         logger.debug(`[commands] ${commandKey} on cooldown for ${user} in #${channelName}`);
         return;
       }

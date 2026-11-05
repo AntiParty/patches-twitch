@@ -1,4 +1,5 @@
 /* Display formatters for the bot metrics page. A missing value renders as "—". */
+import type { ConduitState } from '@/types/botMetrics'
 
 const DASH = '—'
 
@@ -41,4 +42,12 @@ export function formatAge(seconds: number | null): string {
   if (seconds < 60) return `${Math.round(seconds)}s old`
   if (seconds < 3_600) return `${Math.floor(seconds / 60)}m old`
   return `${Math.floor(seconds / 3_600)}h old`
+}
+
+/** Conduit vital, e.g. "2/2 shards", "1/2 shards", "Off". */
+export function formatConduit(state: ConduitState | null, assigned: number | null, count: number | null): string {
+  if (state == null) return DASH
+  if (state === 'off') return 'Off'
+  if (assigned == null || count == null) return state === 'connected' ? 'Connected' : 'Down'
+  return `${assigned}/${count} shards`
 }

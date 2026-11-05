@@ -78,11 +78,27 @@ describe('operations analytics', () => {
                     memory: { rss: 200_000_000, heapUsed: 90_000_000 },
                     checks: [
                         { name: 'database', status: 'ok', latencyMs: 3 },
-                        { name: 'eventsub_ws', status: 'optional', detail: 'WS_NOT_CONNECTED' },
+                        { name: 'eventsub_conduit', status: 'degraded', shardsAssigned: 1, shardCount: 2 },
                     ],
                 },
             },
-            operations: { reachable: true, latencyMs: 5, data: { connectedChannels: 40, reconnectingChannels: 2 } },
+            operations: {
+                reachable: true,
+                latencyMs: 5,
+                data: {
+                    connectedChannels: 40,
+                    reconnectingChannels: 2,
+                    conduitShardsAssigned: 1,
+                    conduitShardCount: 2,
+                    channelsByActiveTransport: { irc: 30, eventsub: 12 },
+                    conduitSubscriptionsFailed: 1,
+                    conduitReconnects: 4,
+                    eventsubFallbacks: 2,
+                    chatDispatchErrors: 0,
+                    chatSends: { queued: 3, retries: 1, dropped: 0 },
+                    commandCooldownHits: 17,
+                },
+            },
             cacheAgeSeconds: 60,
         });
 
@@ -92,7 +108,16 @@ describe('operations analytics', () => {
         assert.equal(summary.heapUsedBytes, 90_000_000);
         assert.equal(summary.connectedChannels, 40);
         assert.equal(summary.reconnectingChannels, 2);
-        assert.equal(summary.eventSubConnected, false);
+        assert.equal(summary.conduitState, 'partial');
+        assert.equal(summary.conduitShardsAssigned, 1);
+        assert.equal(summary.ircChannels, 30);
+        assert.equal(summary.eventsubChannels, 12);
+        assert.equal(summary.eventsubFallbacks, 2);
+        assert.equal(summary.chatDispatchErrors, 0);
+        assert.equal(summary.chatSendsQueued, 3);
+        assert.equal(summary.chatSendRetries, 1);
+        assert.equal(summary.chatSendsDropped, 0);
+        assert.equal(summary.commandCooldownHits, 17);
         assert.equal(summary.databaseLatencyMs, 3);
     });
 
@@ -108,6 +133,26 @@ describe('operations analytics', () => {
         assert.equal(summary.uptimeSeconds, null);
         assert.equal(summary.rssBytes, null);
         assert.equal(summary.connectedChannels, null);
-        assert.equal(summary.eventSubConnected, null);
+        assert.equal(summary.conduitState, null);
+        assert.equal(summary.chatSendsQueued, null);
+        assert.equal(summary.commandCooldownHits, null);
+    });
+
+    it('maps the conduit health check to a page state', () => {
+        assert.equal(analytics.conduitStateFromCheck(undefined), null);
+        assert.equal(analytics.conduitStateFromCheck({ status: 'optional' }), 'off');
+        assert.equal(analytics.conduitStateFromCheck({ status: 'ok', shardsAssigned: 2 }), 'connected');
+        assert.equal(analytics.conduitStateFromCheck({ status: 'degraded', shardsAssigned: 1 }), 'partial');
+        assert.equal(analytics.conduitStateFromCheck({ status: 'degraded', shardsAssigned: 0 }), 'down');
+    });
+
+    it('stays operational when the conduit is turned off', () => {
+        const summary = analytics.summarizeBotLiveStatus({
+            health: { reachable: true, latencyMs: 4, data: { checks: [{ name: 'eventsub_conduit', status: 'optional' }] } },
+            operations: { reachable: true, latencyMs: 4, data: { connectedChannels: 5, reconnectingChannels: 0 } },
+            cacheAgeSeconds: 60,
+        });
+        assert.equal(summary.status, 'operational');
+        assert.equal(summary.conduitState, 'off');
     });
 });

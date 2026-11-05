@@ -885,6 +885,7 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             topChannels,
             topCommands,
             bot,
+            revokedChannels,
         ] = await Promise.all([
             Channel.count({ where: { bot_enabled: true } }),
             Channel.count({ where: { is_live: true } }),
@@ -925,6 +926,7 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             }),
 
             getBotLiveStatus(),
+            Channel.count({ where: { auth_revoked: true } }),
         ]);
 
         // ── Helper: build N buckets of bucketMs width going back from now ─────
@@ -980,6 +982,7 @@ router.get('/api/internal/metrics', async (req: any, res: any) => {
             liveChannels,
             activeSessions,
             usersSeen,
+            revokedChannels,
             commandsToday,
             commandsFailedToday: commandsToday - commandsSuccessToday,
             successRate,

@@ -57,6 +57,9 @@ export function createChatSendLimiter(opts: ChatSendLimiterOptions = {}) {
   const lanes = new Map<string, Lane>();
   const elevated = new Set<string>();
   const keyOf = (broadcasterId: string, senderId: string) => `${broadcasterId}:${senderId}`;
+  // Since the process started; read by /metrics/operations.
+  let retries = 0;
+  let dropped = 0;
 
   const lane = (key: string): Lane => {
     let l = lanes.get(key);
@@ -85,6 +88,7 @@ export function createChatSendLimiter(opts: ChatSendLimiterOptions = {}) {
     } catch (err) {
       const wait = retryAfterMs(err, now());
       if (wait === null || retried) throw err;
+      retries++;
       logger.warn(`[ChatLimiter] 429 for ${key}, pausing ${wait}ms before one retry`);
       l.pausedUntil = now() + wait;
       return attempt(key, l, send, true);
@@ -96,7 +100,10 @@ export function createChatSendLimiter(opts: ChatSendLimiterOptions = {}) {
     run<T>(broadcasterId: string, senderId: string, send: () => Promise<T>): Promise<T> {
       const key = keyOf(broadcasterId, senderId);
       const l = lane(key);
-      if (l.pending >= maxPending) return Promise.reject(new ChatQueueFullError(key));
+      if (l.pending >= maxPending) {
+        dropped++;
+        return Promise.reject(new ChatQueueFullError(key));
+      }
       l.pending++;
       const result = l.tail.then(() => attempt(key, l, send, false));
       l.tail = result
@@ -117,6 +124,13 @@ export function createChatSendLimiter(opts: ChatSendLimiterOptions = {}) {
 
     isElevated: (broadcasterId: string, senderId: string) => elevated.has(keyOf(broadcasterId, senderId)),
     pending: (broadcasterId: string, senderId: string) => lanes.get(keyOf(broadcasterId, senderId))?.pending ?? 0,
+
+    /** Messages waiting across every channel, plus 429 retries and queue-full drops since start. */
+    stats() {
+      let queued = 0;
+      for (const l of lanes.values()) queued += l.pending;
+      return { queued, retries, dropped };
+    },
   };
 }
 

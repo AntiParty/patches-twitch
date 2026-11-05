@@ -81,6 +81,28 @@ describe('chat send limiter', () => {
     assert.equal(await lim.run('b', 's', async () => 2), 2);
   });
 
+  it('counts queued sends, 429 retries and drops', async () => {
+    const c = fakeClock();
+    const lim = createChatSendLimiter({ maxPending: 1, now: c.now, sleep: c.sleep });
+    // A lane frees its slot a few ticks after the send settles.
+    const settle = () => new Promise((r) => setImmediate(r));
+    let release!: () => void;
+    const held = lim.run('b', 's', () => new Promise<void>((r) => { release = r; }));
+    await assert.rejects(lim.run('b', 's', async () => 1), ChatQueueFullError);
+    assert.deepEqual(lim.stats(), { queued: 1, retries: 0, dropped: 1 });
+    await settle();
+    release();
+    await held;
+    await settle();
+
+    let calls = 0;
+    await lim.run('b', 's', async () => {
+      if (++calls === 1) throw { response: { status: 429, headers: {} } };
+    });
+    await settle();
+    assert.deepEqual(lim.stats(), { queued: 0, retries: 1, dropped: 1 });
+  });
+
   it('reads 429 waits and badges', () => {
     assert.equal(retryAfterMs({ response: { status: 500 } }, 0), null);
     assert.equal(retryAfterMs({ response: { status: 429, headers: {} } }, 0), 1000);

@@ -142,6 +142,16 @@ const finiteOrNull = (value: unknown): number | null => {
     return Number.isFinite(number) ? number : null;
 };
 
+export type ConduitState = 'connected' | 'partial' | 'down' | 'off';
+
+/** The bot's eventsub_conduit health check as a page state; null when the bot didn't report one. */
+export function conduitStateFromCheck(check: any): ConduitState | null {
+    if (!check) return null;
+    if (check.status === 'optional') return 'off';
+    if (check.status === 'ok') return 'connected';
+    return Number(check.shardsAssigned) > 0 ? 'partial' : 'down';
+}
+
 /**
  * Live bot vitals for /botmetrics, built from the bot Control API's /health and
  * /metrics/operations responses. Every field the bot didn't report is null so the
@@ -154,19 +164,19 @@ export function summarizeBotLiveStatus(input: {
 }) {
     const { health, operations, cacheAgeSeconds } = input;
     const checks: any[] = Array.isArray(health.data?.checks) ? health.data.checks : [];
-    const eventSubCheck = checks.find((check) => check?.name === 'eventsub_ws');
+    const conduitCheck = checks.find((check) => check?.name === 'eventsub_conduit');
     const databaseCheck = checks.find((check) => check?.name === 'database');
-    const connectedChannels = operations.reachable ? finiteOrNull(operations.data?.connectedChannels) : null;
-    const reconnectingChannels = operations.reachable ? finiteOrNull(operations.data?.reconnectingChannels) : null;
-    const eventSubConnected = eventSubCheck ? eventSubCheck.status === 'ok' : null;
+    const ops = operations.reachable ? operations.data ?? {} : {};
+    const connectedChannels = finiteOrNull(ops.connectedChannels);
+    const reconnectingChannels = finiteOrNull(ops.reconnectingChannels);
+    const conduitState = conduitStateFromCheck(conduitCheck);
 
     return {
         status: computeOperationsStatus({
             controlApiReachable: health.reachable,
             reconnecting: reconnectingChannels ?? 0,
-            // The bot reports a disconnected EventSub socket as "optional", so only
-            // an explicit error counts against overall status.
-            eventSubHealthy: eventSubCheck?.status !== 'error',
+            // Missing shards are degraded (chat falls back to IRC); a disabled conduit is fine.
+            eventSubHealthy: conduitState !== 'partial' && conduitState !== 'down',
             cacheAgeSeconds,
         }),
         controlApiReachable: health.reachable,
@@ -176,7 +186,19 @@ export function summarizeBotLiveStatus(input: {
         heapUsedBytes: health.reachable ? finiteOrNull(health.data?.memory?.heapUsed) : null,
         connectedChannels,
         reconnectingChannels,
-        eventSubConnected,
+        conduitState,
+        conduitShardsAssigned: finiteOrNull(ops.conduitShardsAssigned),
+        conduitShardCount: finiteOrNull(ops.conduitShardCount),
+        ircChannels: finiteOrNull(ops.channelsByActiveTransport?.irc),
+        eventsubChannels: finiteOrNull(ops.channelsByActiveTransport?.eventsub),
+        conduitSubscriptionsFailed: finiteOrNull(ops.conduitSubscriptionsFailed),
+        conduitReconnects: finiteOrNull(ops.conduitReconnects),
+        eventsubFallbacks: finiteOrNull(ops.eventsubFallbacks),
+        chatDispatchErrors: finiteOrNull(ops.chatDispatchErrors),
+        chatSendsQueued: finiteOrNull(ops.chatSends?.queued),
+        chatSendRetries: finiteOrNull(ops.chatSends?.retries),
+        chatSendsDropped: finiteOrNull(ops.chatSends?.dropped),
+        commandCooldownHits: finiteOrNull(ops.commandCooldownHits),
         databaseLatencyMs: databaseCheck?.status === 'ok' ? finiteOrNull(databaseCheck.latencyMs) : null,
         cacheAgeSeconds,
     };
@@ -215,8 +237,9 @@ export async function getOperationsOverview(range: OperationsRange) {
     const reconnecting = Number.isFinite(reportedReconnecting)
         ? reportedReconnecting
         : Math.max(0, expected - connected);
-    const eventSubHealthy = bot.data?.checks?.some((check: any) =>
-        check.name === 'eventsub_ws' && (check.status === 'ok' || check.status === 'optional'));
+    const conduitState = conduitStateFromCheck(
+        bot.data?.checks?.find((check: any) => check?.name === 'eventsub_conduit'));
+    const eventSubHealthy = conduitState === 'connected' || conduitState === 'off';
     const status = computeOperationsStatus({
         controlApiReachable: bot.reachable,
         reconnecting,

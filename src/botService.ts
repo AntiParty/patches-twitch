@@ -4,9 +4,11 @@ const activeStreamSessions: Map<string, any> = new Map();
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { removeUserWebSocket } from "./util/twitchEventSubWs";
-import { channelEvents, getConduitRuntime, startConduitRuntime } from "./eventsub/conduitRuntime";
+import { CONDUIT_SHARD_COUNT, channelEvents, getConduitRuntime, startConduitRuntime } from "./eventsub/conduitRuntime";
+import { conduitHealthCheck } from "./eventsub/conduitHealth";
 import { channelsOnTransport } from "./chat/activeTransport";
-import { chatDispatchErrorCount } from "./chat/chatDispatcher";
+import { chatDispatchErrorCount, commandCooldownHitCount } from "./chat/chatDispatcher";
+import { chatSendLimiter } from "./util/chatSendLimiter";
 import { eventsubFallbackCount } from "./chat/chatTransportSwitch";
 import { createReward, deleteReward, getRewardDiagnostics, getRewardSnapshot, setRewardPaused, updateReward, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway, resetEntries } from "./services/giveaway.service";
@@ -294,34 +296,16 @@ dbReady.then(async () => {
       }
 
       // -------------------------------------
-      // EVENTSUB WS (OPTIONAL HOOK)
+      // EVENTSUB CONDUIT
       // -------------------------------------
-      let eventsubStatus = {
-        name: "eventsub_ws",
-        status: "ok",
-        latencyMs: 0,
-        detail: "connected"
-      };
-
-      try {
-        if ((global as any).eventsubWs && (global as any).eventsubWs.readyState === 1) {
-          // OPEN
-          eventsubStatus.latencyMs = 1;
-        } else {
-          eventsubStatus.status = "optional";
-          eventsubStatus.detail = "WS_NOT_CONNECTED";
-        }
-      } catch (err: any) {
-        eventsubStatus.status = "error";
-        eventsubStatus.detail = err.message ?? "WS_NOT_CONNECTED";
-        eventsubStatus.latencyMs = 0;
-      }
+      const eventsubStatus = conduitHealthCheck(getConduitRuntime(), CONDUIT_SHARD_COUNT);
 
       // -------------------------------------
       // OVERALL STATUS
       // -------------------------------------
       const checks = [databaseStatus, botStatus, eventsubStatus];
-      const overallOk = checks.every((x) => x.status === "ok" || x.status === "optional");
+      // A degraded conduit still has the IRC fallback, so it doesn't fail /health.
+      const overallOk = checks.every((x) => x.status === "ok" || x.status === "optional" || x.status === "degraded");
 
       const result = {
         status: overallOk ? "ok" : "error",
@@ -356,7 +340,9 @@ dbReady.then(async () => {
         observedAt: new Date().toISOString(),
         connectedChannels: entries.filter((client) => client.connected).length,
         reconnectingChannels: entries.filter((client) => !client.connected && !client.intentionalDisconnect).length,
+        conduitEnabled: Boolean(runtime),
         conduitShardsAssigned: runtime?.shardsAssigned() ?? 0,
+        conduitShardCount: CONDUIT_SHARD_COUNT,
         channelsByActiveTransport: {
           irc: channelsOnTransport('irc').length,
           eventsub: channelsOnTransport('eventsub').length,
@@ -366,6 +352,8 @@ dbReady.then(async () => {
         conduitReconnects: runtime?.reconnects() ?? 0,
         eventsubFallbacks: eventsubFallbackCount(),
         chatDispatchErrors: chatDispatchErrorCount(),
+        chatSends: chatSendLimiter.stats(),
+        commandCooldownHits: commandCooldownHitCount(),
       });
     });
 

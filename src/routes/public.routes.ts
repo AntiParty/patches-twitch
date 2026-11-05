@@ -20,6 +20,7 @@ import { createEmbarkStatsHandler } from '@/services/embarkStats.service';
 import { platformCommandStats } from '@/services/platformCommandStats.service';
 import { createDropsStreamersService } from '@/services/dropsStreamers.service';
 import { getBotLiveStatus, getPerformanceHistory } from '@/services/operationsAnalytics.service';
+import { getPublicTtk } from '@/services/ttkPublic.service';
 import { getLiveStreamsForUsers, refreshToken } from '@/util/twitchUtils';
 
 const router = Router();
@@ -1054,6 +1055,16 @@ router.get('/api/leaderboard', async (req: Request, res: Response) => {
     } catch (err) {
         logger.error('[leaderboard] Error reading cache:', err);
         res.status(500).json({ error: 'Failed to load leaderboard data.' });
+    }
+});
+
+// ── TTK data API (applied stats only) ─────────────────────────
+router.get('/api/ttk', async (_req: Request, res: Response) => {
+    try {
+        res.json(await getPublicTtk());
+    } catch (err) {
+        logger.error('[ttk] Failed to load TTK data:', err);
+        res.status(500).json({ error: 'Failed to load TTK data.' });
     }
 });
 

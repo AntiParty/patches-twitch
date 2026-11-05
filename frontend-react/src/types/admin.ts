@@ -179,3 +179,80 @@ export interface NewTroll {
   chance: number
   followUp: boolean
 }
+
+export interface BalanceChange {
+  id: number
+  source: 'patch' | 'wiki'
+  patchGid: string | null
+  kind: 'weapon' | 'class' | 'other'
+  target: string
+  rawTarget: string | null
+  field: string | null
+  statLabel: string
+  fromValue: number | null
+  toValue: number
+  currentValue: number | null
+  rawLine: string | null
+  status: 'pending' | 'applied' | 'rejected' | 'info'
+  fromMismatch: boolean
+  confirmedByWiki: boolean
+  confirmedByPatch: boolean
+  decidedBy: string | null
+  decidedAt: string | null
+  createdAt: string
+}
+
+export interface BalancePatch {
+  gid: string
+  title: string
+  url: string
+  postedAt: string
+  status: 'baseline' | 'no_balance' | 'pending' | 'reviewed'
+  unparsed: Array<{ category: string; target: string; line: string }>
+}
+
+export interface TtkCell {
+  shots: number
+  seconds: number | null
+}
+
+export interface TtkRow {
+  mode: string
+  hit: 'body' | 'head'
+  byBuild: Record<'Light' | 'Medium' | 'Heavy', TtkCell>
+}
+
+export interface TtkWeapon {
+  name: string
+  build: string | null
+  wtype: string | null
+  notes: string[]
+  rows: TtkRow[]
+}
+
+export interface BalanceData {
+  pending: BalanceChange[]
+  info: BalanceChange[]
+  recent: BalanceChange[]
+  patches: BalancePatch[]
+  weapons: Array<{ name: string; build: string | null; wtype: string | null; fields: string[] }>
+  fieldLabels: Record<string, string>
+  health: Record<'Light' | 'Medium' | 'Heavy', number> | null
+  ttk: TtkWeapon[]
+  wiki: { baseUrl: string; name: string; license: { name: string; url: string } }
+  lastWikiSync: string | null
+  lastSteamPoll: string | null
+  wikiSkipped: string[]
+}
+
+export interface BalanceApproveOverrides {
+  target?: string
+  field?: string
+  toValue?: number
+}
+
+export interface BalanceSyncResult {
+  newPatches: number
+  wiki: { weaponsAdded: number; changesCreated: number; changesConfirmed: number; seeded: boolean } | null
+  errors: string[]
+}

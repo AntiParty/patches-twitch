@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import styles from './PageHeader.module.css'
 
 interface PageHeaderProps {
-  title: string
+  title: ReactNode
   subtitle?: ReactNode
   actions?: ReactNode
 }

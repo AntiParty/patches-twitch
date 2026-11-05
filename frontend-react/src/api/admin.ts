@@ -13,6 +13,10 @@ import type {
   TrollResponse,
   TrollsConfig,
   NewTroll,
+  BalanceData,
+  BalanceChange,
+  BalanceApproveOverrides,
+  BalanceSyncResult,
 } from '@/types/admin'
 
 export const adminApi = {
@@ -52,6 +56,13 @@ export const adminApi = {
     api.post(`/admin/api/trolls/channels/${encodeURIComponent(channel)}`, { armed }),
   previewTroll: (response: string, command: string, channel?: string) =>
     api.post<{ text: string }>('/admin/api/trolls/preview', { response, command, channel }),
+
+  getBalance: () => api.get<BalanceData>('/admin/api/balance'),
+  approveBalanceChange: (id: number, overrides?: BalanceApproveOverrides) =>
+    api.post<{ change: BalanceChange }>(`/admin/api/balance/changes/${id}/approve`, overrides ?? {}),
+  rejectBalanceChange: (id: number) =>
+    api.post<{ change: BalanceChange }>(`/admin/api/balance/changes/${id}/reject`),
+  syncBalance: () => api.post<BalanceSyncResult>('/admin/api/balance/sync'),
 
   getDrops: () => api.get<DropsConfig>('/admin/api/drops'),
   saveDrops: (config: DropsConfig) => api.post<{ success: boolean; config: DropsConfig }>('/admin/api/drops', config),

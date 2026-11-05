@@ -34,6 +34,7 @@ import { Audit as AdminAudit } from '@/features/admin/Audit'
 import { MessageBot as AdminMessageBot } from '@/features/admin/MessageBot'
 import { Drops as AdminDrops } from '@/features/admin/Drops'
 import { Trolls as AdminTrolls } from '@/features/admin/Trolls'
+import { Balance as AdminBalance } from '@/features/admin/Balance'
 // Statistics pulls in Recharts (~heavy) — lazy-load so it stays out of the main bundle.
 const Statistics = lazy(() =>
   import('@/features/statistics/Statistics').then((m) => ({ default: m.Statistics })),
@@ -41,6 +42,10 @@ const Statistics = lazy(() =>
 // Embark renders a dither-kit sparkline — lazy-load to keep it out of the main bundle.
 const Embark = lazy(() =>
   import('@/features/embark/Embark').then((m) => ({ default: m.Embark })),
+)
+// TTK renders a Recharts bar chart — lazy-load to keep it out of the main bundle.
+const Ttk = lazy(() =>
+  import('@/features/ttk/Ttk').then((m) => ({ default: m.Ttk })),
 )
 const BotMetrics = lazy(() =>
   import('@/features/botmetrics/BotMetrics').then((m) => ({ default: m.BotMetrics })),
@@ -87,6 +92,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/embark" element={<Embark />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/ttk" element={<Ttk />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/developer" element={<Developer />} />
           <Route path="/legal" element={<Legal />} />
@@ -150,6 +156,7 @@ export default function App() {
             <Route path="drops" element={<AdminDrops />} />
             <Route path="probes" element={<AdminProbes />} />
             <Route path="live-players" element={<AdminLivePlayers />} />
+            <Route path="balance" element={<AdminBalance />} />
             <Route path="audit" element={<AdminAudit />} />
           </Route>
         </Route>

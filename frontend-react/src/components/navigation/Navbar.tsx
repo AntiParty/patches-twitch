@@ -18,6 +18,7 @@ interface NavLinkDef {
 
 const DEFAULT_LINKS: NavLinkDef[] = [
   { label: 'Leaderboard', to: '/leaderboard', hideOnMobile: true },
+  { label: 'TTK', to: '/ttk', hideOnMobile: true },
   { label: 'Docs', href: '/docs', hideOnMobile: true },
   { label: 'Drops', to: '/twitch-drops', hideOnMobile: true },
 ]

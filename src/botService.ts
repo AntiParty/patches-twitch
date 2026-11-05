@@ -25,6 +25,8 @@ import { Op } from "sequelize";
 import { restoreGiveawayRedemptionSubscriptions } from "./services/giveawaySubscriptionRestore.service";
 import { startGiveawayRedemptionReconciler } from "./jobs/giveawayRedemptionReconciler";
 import { startProcessMetricsRecorder } from "./jobs/processMetricsRecorder";
+import { balanceDbReady } from './dbBalance';
+import { startPatchNotesWatcher } from "./jobs/patchNotesWatcher";
 
 const botControlSecret = process.env.BOT_CONTROL_SECRET ?? '';
 if (!botControlSecret) {
@@ -613,6 +615,11 @@ dbReady.then(async () => {
     });
     process.on('SIGINT', stopProcessMetrics);
     process.on('SIGTERM', stopProcessMetrics);
+
+    await balanceDbReady;
+    const stopPatchNotesWatcher = startPatchNotesWatcher();
+    process.on('SIGINT', stopPatchNotesWatcher);
+    process.on('SIGTERM', stopPatchNotesWatcher);
 
 
   } catch (error) {

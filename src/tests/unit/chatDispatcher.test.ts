@@ -108,6 +108,26 @@ describe('chat dispatcher', () => {
     assert.equal(calls.length, 0);
     assert.equal(usage.length, 0);
   });
+
+  it('ignores the bot\'s own messages but still observes them', async () => {
+    const observed: InboundChatMessage[] = [];
+    const { deps, usage } = makeDeps({
+      isOwnMessage: () => true,
+      observeMessage: (m) => observed.push(m),
+    });
+    const calls: any[] = [];
+    await createChatDispatcher(deps)(makeMsg('!ping'), { '!ping': async () => calls.push(1) });
+    assert.equal(calls.length, 0);
+    assert.equal(usage.length, 0);
+    assert.equal(observed.length, 1);
+  });
+
+  it('runs commands as before when isOwnMessage is not provided', async () => {
+    const { deps } = makeDeps();
+    const calls: any[] = [];
+    await createChatDispatcher(deps)(makeMsg('!ping'), { '!ping': async () => calls.push(1) });
+    assert.equal(calls.length, 1);
+  });
 });
 
 describe('activeTransport', () => {

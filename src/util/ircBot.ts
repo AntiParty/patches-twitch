@@ -1,4 +1,5 @@
 import net from "net";
+import tls from "tls";
 import axios from "axios";
 import { Channel } from "../db";
 import logger from "./logger";
@@ -36,6 +37,10 @@ const clients: { [username: string]: IRCClient } = {};
 // rescue scan, manual reconnect + auto-reconnect, etc.) from racing on the
 // same channel and producing spurious "Login authentication failed" events.
 const connectingChannels = new Set<string>();
+// Reconnect attempt counts survive across client objects: each reconnect builds
+// a brand-new client, so without this the backoff would restart at 0 forever.
+// Cleared on auth success (001), on exhaustion, and in stopChatBot.
+const carriedReconnectAttempts = new Map<string, number>();
 // Re-exported for backward compatibility; the Set itself lives in devModeState.
 export { devModeChannels };
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -121,7 +126,9 @@ function acquireIrcLoginSlot(botUsername: string): Promise<void> {
 
 function getReconnectDelay(attempts: number): number {
   // Exponential backoff with max delay
-  return Math.min(INITIAL_RECONNECT_DELAY * Math.pow(2, attempts), MAX_RECONNECT_DELAY);
+  // Jitter (+/-20%) avoids synchronized reconnect storms across channels.
+  const jitter = 0.8 + Math.random() * 0.4;
+  return Math.min(INITIAL_RECONNECT_DELAY * Math.pow(2, attempts) * jitter, MAX_RECONNECT_DELAY);
 }
 
 // Per-channel guard so we don't ping-pong a refresh+reconnect if Twitch keeps
@@ -280,6 +287,7 @@ async function handleReconnect(username: string, commandHandler: Record<string, 
     } catch (e) {
       logger.warn("[ircBot] Failed to send reconnect-exhausted alert:", e);
     }
+    carriedReconnectAttempts.delete(username);
     return;
   }
 
@@ -310,19 +318,24 @@ async function handleReconnect(username: string, commandHandler: Record<string, 
 
   client.reconnectTimeout = setTimeout(async () => {
     try {
-      await reconnectChatBot(username, commandHandler);
-      const recoveredAttemptCount = client.reconnectAttempts + 1;
-      client.reconnectAttempts = 0; // Reset attempts on successful reconnection
-      logger.info(`[DEBUG] Successfully reconnected bot for ${username}`);
-      void recordOperationalEvent({
-        type: "irc_recovered",
-        severity: "info",
-        channel: username,
-        attemptCount: recoveredAttemptCount,
-        outcome: "success",
-      });
+      // The new client is created fresh, so carry the attempt count via the map.
+      const attempt = client.reconnectAttempts + 1;
+      carriedReconnectAttempts.set(username, attempt);
+      const ok = await reconnectChatBot(username, commandHandler);
+      if (ok === true) {
+        logger.info(`[DEBUG] Successfully reconnected bot for ${username}`);
+        void recordOperationalEvent({
+          type: "irc_recovered",
+          severity: "info",
+          channel: username,
+          attemptCount: attempt,
+          outcome: "success",
+        });
+      } else {
+        // If a new client exists, its socket close handler reschedules.
+        logger.warn(`[ircBot] Reconnect attempt ${attempt} failed for ${username}`);
+      }
     } catch (err) {
-      client.reconnectAttempts++;
       logger.error(`[DEBUG] Reconnection failed for ${username}:`, err);
       // Try again with exponential backoff
       handleReconnect(username, commandHandler);
@@ -568,7 +581,8 @@ export const startChatBot = async (
 
   await acquireIrcLoginSlot(botUsername);
 
-  const socket = new net.Socket();
+  // IRC over TLS (port 6697) so the OAuth token is not sent in plaintext.
+  const socket = tls.connect({ host: "irc.chat.twitch.tv", port: 6697, servername: "irc.chat.twitch.tv" });
   let authTimeout: NodeJS.Timeout | undefined;
   let authResultSettled = false;
   let settleAuthResult: (authenticated: boolean) => void = () => {};
@@ -593,17 +607,17 @@ export const startChatBot = async (
     username: botUsername,
     channel: sanitizedUsername,
     connected: false,
-    reconnectAttempts: 0,
+    reconnectAttempts: carriedReconnectAttempts.get(sanitizedUsername) ?? 0,
     customBotId: customCredentials?.isCustomBot === false ? undefined : customCredentials?.botUserId,
     customBotToken: customCredentials?.isCustomBot === false ? undefined : customCredentials?.botToken,
     customRefreshToken: customCredentials?.isCustomBot === false ? undefined : customCredentials?.refreshToken,
   };
 
-  socket.connect(6667, "irc.chat.twitch.tv", () => {
-    // TCP socket is open. We push PASS/NICK/JOIN here, but Twitch hasn't
+  socket.once("secureConnect", () => {
+    // TLS socket is open. We push PASS/NICK/JOIN here, but Twitch hasn't
     // validated the token yet — do NOT log "connected" at this point. The
     // 001 numeric (welcome) below is the real auth-success signal.
-    logger.info(`[DEBUG] TCP connected to IRC for #${sanitizedUsername} as ${botUsername}; awaiting auth...`);
+    logger.info(`[DEBUG] TLS connected to IRC for #${sanitizedUsername} as ${botUsername}; awaiting auth...`);
     socket.write(`CAP REQ :twitch.tv/tags\r\n`);
     socket.write(`PASS oauth:${botToken}\r\n`);
     socket.write(`NICK ${botUsername}\r\n`);
@@ -655,12 +669,14 @@ export const startChatBot = async (
 
     // Auth success: Twitch sends numeric 001 ("Welcome, GLHF!") only after
     // PASS/NICK have been accepted. This is the real "we're connected" signal
-    // — not the TCP connect callback. Release the per-channel start guard
+    // — not the TLS secureConnect callback. Release the per-channel start guard
     // and flip `connected` on the client record here.
     if (rawData.includes(" 001 ") || rawData.includes("Welcome, GLHF")) {
       if (clients[sanitizedUsername]) {
         clients[sanitizedUsername].connected = true;
+        clients[sanitizedUsername].reconnectAttempts = 0;
       }
+      carriedReconnectAttempts.delete(sanitizedUsername);
       if (connectingChannels.has(sanitizedUsername)) {
         connectingChannels.delete(sanitizedUsername);
       }
@@ -846,6 +862,7 @@ export const startChatBot = async (
 };
 
 export const stopChatBot = async (username: string, intentional = false) => {
+  carriedReconnectAttempts.delete(username);
   const client = clients[username];
   if (!client) return;
   try {

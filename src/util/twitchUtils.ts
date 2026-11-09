@@ -454,9 +454,16 @@ export const refreshAccessToken = async (channel: any) => {
       // Always clear lock on error
       refreshLocks[key] = false;
 
-      // If error is unrecoverable (400), mark as permanently failed and don't retry
-      if (response.status === 400) {
-        logger.error(`[${username}] Received 400 (invalid grant). Refresh token revoked — user needs to re-authenticate.`);
+      // Only treat as a revocation when Twitch says the refresh token itself is
+      // invalid; other 400s (e.g. "invalid client") are config problems.
+      const bodyLower = String(errorDetails || '').toLowerCase();
+      const looksRevoked =
+        bodyLower.includes('invalid refresh token') ||
+        bodyLower.includes('invalid grant') ||
+        bodyLower.includes('refresh token is not valid');
+
+      if ((response.status === 400 || response.status === 401) && looksRevoked) {
+        logger.error(`[${username}] Received ${response.status} (invalid refresh token). Refresh token revoked — user needs to re-authenticate.`);
         refreshPermanentFailed.add(key);
         refreshRetries[key] = MAX_REFRESH_RETRIES;
         delete refreshCooldowns[key];
@@ -469,6 +476,10 @@ export const refreshAccessToken = async (channel: any) => {
         // ircBot will fire the auth-failed alert (in-chat + Discord) when it
         // next attempts to connect and gets rejected, so we don't duplicate it here.
         return null;
+      }
+
+      if (response.status === 400 || response.status === 401) {
+        logger.error(`[${username}] Refresh returned ${response.status} but the body does not indicate an invalid refresh token; NOT treating as a revocation (will retry with backoff).`);
       }
 
       // Schedule retry using exponential backoff if not maxed out

@@ -28,6 +28,12 @@ export interface ChatDispatcherDeps {
   countCommand?(rawCommand: string): void | Promise<void>;
   /** Called for every message on the active transport, before command parsing. */
   observeMessage?(msg: InboundChatMessage): void;
+  /**
+   * True when the message was sent by the bot itself (it comes back over IRC/EventSub).
+   * Such messages are observed but never parsed as commands, so a response starting
+   * with "!" cannot trigger a loop.
+   */
+  isOwnMessage?(msg: InboundChatMessage): boolean;
   /** Defaults to a fresh in-memory cooldown tracker per dispatcher. */
   cooldowns?: CommandCooldowns;
 }
@@ -60,6 +66,9 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
     // Count every incoming message for the metrics dashboard
     trackMessageIn();
     deps.observeMessage?.(msg);
+
+    // Ignore the bot's own messages (observeMessage above still learns its badges).
+    if (deps.isOwnMessage?.(msg)) return;
 
     const mentionedReplyTarget = recentChatMessages.replyTarget(channelName, message);
     const mentionedUsername = extractMentionedUsername(message);

@@ -6,6 +6,7 @@ import { loadCommands } from "./handlers/commands";
 import { sendChatMessage } from "./util/ircBot"
 import { startStreamSessionPolling } from './jobs/streamSessionPoller'; // Import polling job
 import {
+  decryptChannelAccessToken,
   decryptCustomBotAccessToken,
   decryptCustomBotRefreshToken,
   refreshCustomBotAccessToken,
@@ -28,6 +29,10 @@ const LOAD_CHANNEL_CONCURRENCY = 5;
 
 const refreshTimers: { [key: string]: NodeJS.Timeout } = {};
 const tokenRefreshFailures: { [key: string]: number } = {};
+// Last time Twitch gave a definitive answer (200/401) to /oauth2/validate; Twitch
+// requires validating tokens hourly.
+const lastValidatedAt = new Map<string, number>();
+const HOURLY_VALIDATION_MS = 60 * 60 * 1000;
 // Per-username guard so two paths (token-refresher rescue scan + reconnect
 // loop, control-API + auto-reconnect, etc.) can't both be inside
 // startBotForUser for the same channel at once. Without this, the second
@@ -258,7 +263,7 @@ export class BotManager {
         refreshTime
       );
     } else {
-      setTimeout(() => this.refreshTokenFunction(username, refreshToken), 60 * 1000);
+      refreshTimers[username] = setTimeout(() => this.refreshTokenFunction(username, refreshToken), 60 * 1000);
     }
   }
 
@@ -268,10 +273,18 @@ export class BotManager {
     accessToken: string,
     refreshToken: string
   ): Promise<boolean> {
+    // The stored access token is an encrypted envelope after the first refresh.
+    const plain = decryptChannelAccessToken({ access_token: accessToken });
+    if (!plain) {
+      logger.error(`[${username}] Could not decrypt stored access token (check the encryption key); skipping validation without refreshing.`);
+      return false;
+    }
     try {
       const response = await axios.get("https://id.twitch.tv/oauth2/validate", {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { Authorization: `Bearer ${plain}` },
+        timeout: 10000,
       });
+      lastValidatedAt.set(username, Date.now());
       const expiresIn = response.data.expires_in;
       this.scheduleTokenRefresh(
         username,
@@ -279,10 +292,16 @@ export class BotManager {
         expiresIn * 1000 - 5 * 60 * 1000
       );
       return false;
-    } catch (error) {
-      logger.error(`[${username}] Token validation failed. Refreshing now...`);
-      await this.refreshTokenFunction(username, refreshToken);
-      return true;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401) {
+        lastValidatedAt.set(username, Date.now());
+        logger.error(`[${username}] Token validation failed (401). Refreshing now...`);
+        await this.refreshTokenFunction(username, refreshToken);
+        return true;
+      }
+      logger.warn(`[${username}] Token validation request failed (${status ?? error?.message}); will retry on the next pass.`);
+      return false;
     }
   }
 
@@ -325,15 +344,30 @@ export class BotManager {
         logger.info(`Token for ${username} expires soon (in ${Math.round(timeLeft / 1000)}s). Validating.`);
         await this.validateToken(username, access_token, refresh_token);
       } else {
-        // Token healthy and not near expiry; skip to avoid unnecessary API calls
-        logger.debug?.(`Token for ${username} healthy, skipping validation.`);
+        // Healthy and not near expiry; Twitch still requires hourly validation.
+        if (Date.now() - (lastValidatedAt.get(username) ?? 0) >= HOURLY_VALIDATION_MS) {
+          await this.validateToken(username, access_token, refresh_token);
+        } else {
+          logger.debug?.(`Token for ${username} healthy, skipping validation.`);
+        }
       }
     }
   }
 
   public startTokenValidationInterval() {
     const intervalTime = 60 * 1000; // run every 60s; actual validations are skipped for healthy tokens
-    setInterval(() => this.validateAllTokens(), intervalTime);
+    let validating = false;
+    setInterval(async () => {
+      if (validating) return;
+      validating = true;
+      try {
+        await this.validateAllTokens();
+      } catch (error) {
+        logger.error('[BotManager] Periodic token validation failed:', error);
+      } finally {
+        validating = false;
+      }
+    }, intervalTime);
     logger.info(`Started periodic token validation every ${intervalTime / 1000} seconds.`);
   }
 

@@ -20,7 +20,7 @@ Use this skill as a map, not as a substitute for reading the code. Its purpose i
 - The web process starts at `src/index.ts`; the bot process starts at `src/botService.ts`. They do not share runtime memory.
 - Cross-process bot operations go through the authenticated Control API. Web callers use `src/util/botControl.ts`; bot endpoints live in `src/botService.ts`.
 - Persistent state belongs in the appropriate Sequelize database. Do not invent an in-memory bridge between processes.
-- Incoming chat uses raw IRC in `src/util/ircBot.ts`; outgoing chat uses Twitch Helix through `sendChatMessage`.
+- Incoming chat arrives per channel over IRC (`src/util/ircBot.ts`) or the EventSub conduit (`src/eventsub/`) and is handled by the shared dispatcher in `src/chat/`; outgoing chat uses Twitch Helix through `sendChatMessage`.
 - Put reusable domain behavior in `src/services/` or a focused utility. Keep routes, commands, and process entrypoints thin.
 - The production UI is the React app in `frontend-react/`; the legacy EJS/static tree in `frontend/` still serves backend-owned and fallback surfaces.
 
@@ -30,6 +30,8 @@ Use this skill as a map, not as a substitute for reading the code. Its purpose i
 |---|---|---|
 | Add or change `!command` | `src/commands/`, `src/handlers/commands.ts` | [references/bot-and-chat.md](references/bot-and-chat.md) |
 | IRC parsing, reconnects, replies, shared chat | `src/util/ircBot.ts`, `src/util/chatReplyTargets.ts` | [references/bot-and-chat.md](references/bot-and-chat.md) |
+| Command dispatch, cooldowns, chat transport switching | `src/chat/` | [references/bot-and-chat.md](references/bot-and-chat.md) |
+| EventSub conduit, shards, IRC fallback | `src/eventsub/` | [references/bot-and-chat.md](references/bot-and-chat.md) |
 | OAuth, scopes, token refresh, custom bots | `src/botManager.ts`, `src/util/twitchUtils.ts`, `src/util/botAuth.ts` | [references/bot-and-chat.md](references/bot-and-chat.md) |
 | EventSub or channel-point redemptions | `src/util/twitchEventSubWs.ts`, `src/handlers/eventsubStatus.ts` | [references/bot-and-chat.md](references/bot-and-chat.md) |
 | Web route or API | `src/routes/`, `src/server.ts` | [references/web-and-frontend.md](references/web-and-frontend.md) |

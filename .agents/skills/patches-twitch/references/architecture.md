@@ -16,7 +16,7 @@ The backend processes share SQLite data but not memory. The web process requests
 
 **Incoming chat**
 
-`Twitch IRC -> src/util/ircBot.ts -> loaded command -> src/commands/*.ts -> service/DB/cache -> ctx.say -> sendChatMessage -> Twitch Helix`
+`Twitch IRC (src/util/ircBot.ts) or EventSub conduit (src/eventsub/) -> src/chat/chatDispatcher.ts -> src/commands/*.ts -> service/DB/cache -> ctx.say -> sendChatMessage -> chatSendLimiter -> Twitch Helix`
 
 **Dashboard action**
 

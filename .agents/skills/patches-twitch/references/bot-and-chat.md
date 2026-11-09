@@ -4,19 +4,32 @@
 
 `src/botManager.ts` owns the per-channel lifecycle and caches the command handler.
 
-- `startBotForUser` selects the default bot or an active `CustomBotAccount`, starts IRC, and establishes EventSub.
-- `stopBotForUser`, restart helpers, and `reloadCommands` are the supported lifecycle paths.
+- `loadChannels` reconciles every conduit channel in one pass and starts the rest through `startBotForUser`.
+- `startBotForUser` selects the default bot or an active `CustomBotAccount` (gated by `hasCustomBotAccess`) and brings chat up on the channel's transport through `chooseChatStart`.
+- `stopBotForUser` (which calls `stopChat`), restart helpers, `switchChatTransport`, and `reloadCommands` are the supported lifecycle paths.
 - Token work must re-read current persisted credentials when races are possible.
 - `DEV_CHANNELS` limits development connections; preserve that safety boundary.
 
 `src/botService.ts` wires startup, restores durable state, starts refresh/cache jobs, and exposes bot-process operations. Keep domain logic out of it.
 
-## IRC in, Helix out
+## Chat in: IRC or the EventSub conduit
 
-`src/util/ircBot.ts` owns the `clients` map, connection guards, heartbeat, reconnect backoff, IRCv3 parsing, command dispatch, and `sendChatMessage`.
+Each channel reads chat on one transport: `Channel.chat_transport` is `'irc'` (default) or `'eventsub'`. Both feed the same dispatcher.
 
-- Incoming messages arrive over a raw IRC socket.
-- Outgoing messages use `POST /helix/chat/messages` so the chat-bot identity/badge is correct.
+- `src/chat/chatDispatcher.ts` parses commands, applies dev-mode silencing, disabled-command settings and cooldowns, runs the command, and records analytics. It ignores the bot's own messages and messages from the transport that is not active (`src/chat/activeTransport.ts`).
+- `src/chat/dispatchChatMessage.ts` is the production wiring; `src/chat/eventSubChatAdapter.ts` converts EventSub chat events to the IRC-shaped message and tags commands expect.
+- `src/eventsub/` owns the conduit: `conduitRuntime.ts` (2 shards, notification routing, cross-shard dedupe; off unless `EVENTSUB_CONDUIT_ID` is set), `conduitShard.ts` (welcome, keepalive, reconnect handoff, revocation), `subscriptionRegistry.ts`, and `conduitOutageMonitor.ts` (falls back to IRC after `EVENTSUB_FALLBACK_AFTER_MS`).
+- Use `channelEvents` from `conduitRuntime.ts` for redemption subscriptions and channel removal; it picks the conduit or the per-user socket.
+- Dev and prod must use separate conduits. `POST /switch-chat-transport` moves one channel; the new transport is activated before the old one is retired.
+
+## IRC and Helix
+
+`src/util/ircBot.ts` owns the `clients` map, connection guards, heartbeat, reconnect backoff, IRCv3 parsing, and `sendChatMessage`.
+
+- IRC connects over TLS (`irc.chat.twitch.tv:6697`), one socket per channel, with logins rate limited per bot account.
+- Each reconnect builds a new client object; the attempt count is carried separately and reset on the `001` welcome. `reconnectChatBot` resolves `false` on failure rather than throwing.
+- Outgoing messages use `POST /helix/chat/messages` so the chat-bot identity/badge is correct, queued per channel by `src/util/chatSendLimiter.ts` (20 per 30s, 100 when the bot is mod/VIP, one retry after a 429).
+- Check `is_sent` / `drop_reason`; a 200 is not a delivered message.
 - Preserve `for_source_only` behavior for shared-chat replies.
 - Shared-chat messages from another source room are filtered before command execution.
 - Reply selection and recent-message targeting helpers live in `src/util/chatReplyTargets.ts`.
@@ -78,5 +91,11 @@ Add an endpoint only when work must execute in bot-process memory: `botManager`,
 - Scope definitions: `src/util/twitchScopes.ts`
 - Default token refresh: `src/jobs/botTokenRefresher.ts`
 - Per-channel custom-bot refresh: `src/jobs/customBotTokenRefresher.ts`
+
+Token rules:
+
+- `Channel.access_token` / `refresh_token` are encrypted envelopes after the first refresh. Decrypt with `decryptChannelAccessToken` before sending to Twitch; a `null` result is a server key problem, not a revoked user.
+- Mark a channel `auth_revoked` only when Twitch says the refresh token is invalid or on `user.authorization.revoke` (`src/handlers/authorizationRevoke.ts`). Retry other 400/401 responses.
+- `validateToken` refreshes only on a 401; healthy tokens are validated hourly.
 
 Scope or token changes usually require coordinated updates across auth URL generation, callback persistence, runtime consumption, refresh behavior, and tests.

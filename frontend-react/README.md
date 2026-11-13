@@ -25,6 +25,7 @@ npm run dev      # http://localhost:5173
 - `npm run build` — type-check (`tsc -b`) + production build to `dist/`.
 - `npm run preview` — preview the production build.
 - `npm run lint` — oxlint.
+- `bun test` — unit and static-render tests in `tests/` (`bun:test`).
 
 ## Architecture (Phase 1 foundation)
 

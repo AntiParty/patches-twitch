@@ -75,7 +75,7 @@ function TrackingPreview() {
       <div className={styles.chartBox}>
         <Sparkline data={sessionRsGain} color="green" variant="dotted" />
       </div>
-      <div className={styles.chartAxis}><span>Match 1</span><span>Match 3</span><span>Match 5</span><span>Live</span></div>
+      <div className={styles.chartAxis}><span>Stream start</span><span>Now</span></div>
     </div>
   </>
 }

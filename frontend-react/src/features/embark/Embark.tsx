@@ -9,18 +9,13 @@ import { useQuery } from '@tanstack/react-query'
 import { publicApi } from '@/api/public'
 import { Tabs } from '@/components/data-display/Tabs'
 import { DitherAtmosphere } from '@/features/landing/DitherAtmosphere'
-import { embarkCapabilities, embarkContact, embarkGallery } from './embarkBriefing'
+import { embarkContact, embarkGallery } from './embarkBriefing'
 import { EmbarkMetrics } from './EmbarkMetrics'
+import { EmbarkAsk, EmbarkCapabilities } from './EmbarkSections'
 import { EmbarkProductPreview, type EmbarkPreviewKind } from './EmbarkProductPreview'
 import styles from './Embark.module.css'
 
 const mailto = `mailto:${embarkContact.email}?subject=FinalsRS%20partnership%20conversation`
-
-const OPPORTUNITIES = [
-  { title: 'Reliable game context', desc: 'Bring official data to every creator experience.' },
-  { title: 'Creator initiatives', desc: 'Explore how FinalsRS can support community programs.' },
-  { title: 'Next steps', desc: 'Discuss licensing, acquisition, or continued product work.' },
-]
 
 export function Embark() {
   const { data: stats, status, refetch } = useQuery({
@@ -40,13 +35,14 @@ export function Embark() {
           <div className={styles.heroFade} />
         </div>
         <div className={styles.heroInner}>
-          <p className={styles.kicker}>Partnership briefing · FinalsRS × Embark</p>
+          <p className={styles.kicker}>Partnership briefing for Embark Studios</p>
           <h1 id="embark-title" className={styles.headline}>
             Creator infrastructure for THE&nbsp;FINALS
           </h1>
           <p className={styles.sub}>
-            FinalsRS gives THE FINALS creators live ranked context, chat-native tools, and community
-            moments without pulling anyone away from the match.
+            FinalsRS is a Twitch bot and web toolset that answers ranked questions in chat, tracks each
+            stream’s RS movement, and runs viewer predictions for THE FINALS creators. It runs live on
+            Twitch today, and the totals below come straight from production.
           </p>
           <div className={styles.actions}>
             <a className={styles.cta} href={mailto}>Start a partnership conversation</a>
@@ -76,61 +72,25 @@ export function Embark() {
             <div className={styles.showcaseBody}>
               <EmbarkProductPreview kind={active.kind} />
             </div>
-            <figcaption className={styles.showcaseCaption}>{active.detail}</figcaption>
+            <figcaption className={styles.showcaseCaption}>
+              {active.detail}
+              <span className={styles.showcaseNote}>Illustrative data: names and numbers are examples.</span>
+            </figcaption>
           </figure>
         </section>
 
-        <section className={styles.section} aria-labelledby="unlocks-title">
-          <p className={styles.sectionLabel}>What it unlocks</p>
-          <h2 id="unlocks-title" className={styles.sectionTitle}>
-            A practical layer between the match, the stream, and its community
-          </h2>
-          <ul className={styles.capabilities}>
-            {embarkCapabilities.map((capability, index) => (
-              <li key={capability}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                {capability}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <EmbarkCapabilities />
 
-        <section className={styles.statement} aria-labelledby="why-title">
-          <p className={styles.sectionLabel}>Why it matters to Embark</p>
-          <h2 id="why-title" className={styles.statementTitle}>
-            A stronger creator loop around the game, not another destination to maintain
-          </h2>
-          <p>
-            Official data and integrations could make the product more reliable, grow engagement around
-            live play, and give creators a single place to run the community moments that keep viewers
-            involved.
-          </p>
-        </section>
-
-        <section className={styles.section} aria-labelledby="opportunity-title">
-          <p className={styles.sectionLabel}>Opportunity</p>
-          <h2 id="opportunity-title" className={styles.sectionTitle}>
-            Explore an official FinalsRS integration
-          </h2>
-          <div className={styles.featureRow}>
-            {OPPORTUNITIES.map((item) => (
-              <div key={item.title} className={styles.feature}>
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-          <p className={styles.builder}>
-            Designed, built, deployed, and operated independently by AntiParty: frontend and backend,
-            Twitch integrations, APIs, databases, infrastructure, and product design, integrated into one
-            focused creator experience.
-          </p>
-        </section>
+        <EmbarkAsk />
 
         <section className={styles.endCta} aria-labelledby="contact-title">
           <h2 id="contact-title" className={styles.endTitle}>Let’s talk</h2>
           <p className={styles.endSub}>
             <a href={mailto}>{embarkContact.email}</a>
+          </p>
+          <p className={styles.endNote}>
+            Tell us what you would like to see. A short walkthrough of the dashboard and the live pages
+            above is available on request.
           </p>
           <div className={styles.actions}>
             <a className={styles.cta} href={mailto}>Email AntiParty</a>

@@ -11,11 +11,11 @@ interface EmbarkMetricsProps {
   onRetry?: () => void
 }
 
-const metricDefinitions: Array<{ key: keyof EmbarkStats; label: string }> = [
-  { key: 'streamers', label: 'Streamers' },
-  { key: 'commandsProcessed', label: 'Commands processed' },
-  { key: 'predictionsCreated', label: 'Predictions created' },
-  { key: 'apiRequests', label: 'API requests' },
+const metricDefinitions: Array<{ key: keyof EmbarkStats; label: string; desc: string }> = [
+  { key: 'streamers', label: 'Streamers', desc: 'Twitch channels registered with FinalsRS.' },
+  { key: 'commandsProcessed', label: 'Commands processed', desc: 'Chat commands the bot has run, counted once per use.' },
+  { key: 'predictionsCreated', label: 'Predictions created', desc: 'Twitch predictions opened by automatic ranked runs.' },
+  { key: 'apiRequests', label: 'API requests', desc: 'Requests to the public developer API.' },
 ]
 
 function formatMetric(value: number): string {
@@ -46,10 +46,11 @@ export function EmbarkMetrics({ status, stats, onRetry }: EmbarkMetricsProps) {
   return (
     <div className={styles.metricsBand}>
       <div className={styles.metrics} aria-label="Lifetime platform totals">
-        {metricDefinitions.map(({ key, label }) => (
+        {metricDefinitions.map(({ key, label, desc }) => (
           <div className={styles.metric} key={key}>
             <span className={styles.metricValue}>{formatMetric(stats[key])}</span>
             <span className={styles.metricLabel}>{label}</span>
+            <span className={styles.metricDesc}>{desc}</span>
           </div>
         ))}
       </div>

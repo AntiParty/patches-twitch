@@ -6,7 +6,7 @@
  *  - actions (onClick)
  * Markup/classes mirror the legacy dashboard sidebar.
  */
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import styles from './Sidebar.module.css'
 
@@ -24,6 +24,8 @@ export interface SidebarItem {
   variant?: 'default' | 'accent'
   /** Only match the route exactly (for index routes like the overview). */
   end?: boolean
+  /** Optional group label; consecutive items sharing a section render under one heading. */
+  section?: string
 }
 
 interface SidebarProps {
@@ -38,8 +40,13 @@ export function Sidebar({ items, logo, footer }: SidebarProps) {
       {logo}
 
       <ul className={styles.navMenu}>
-        {items.map((item) => (
-          <li key={item.label}>{renderItem(item)}</li>
+        {items.map((item, i) => (
+          <Fragment key={item.label}>
+            {item.section && item.section !== items[i - 1]?.section && (
+              <li className={styles.sectionLabel}>{item.section}</li>
+            )}
+            <li>{renderItem(item)}</li>
+          </Fragment>
         ))}
       </ul>
 

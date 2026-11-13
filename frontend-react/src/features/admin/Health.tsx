@@ -18,7 +18,9 @@ import { Spinner } from '@/components/feedback/Spinner'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { adminApi } from '@/api/admin'
-import type { PerformancePoint } from '@/types/admin'
+import { Badge } from '@/components/data-display/Badge'
+import type { BotHealth, PerformancePoint } from '@/types/admin'
+import { fmt, isCacheStale, statusVariant, uptime } from './adminFormat'
 import styles from './admin.module.css'
 
 const RANGES = [
@@ -32,7 +34,7 @@ const CHARTS: { key: keyof PerformancePoint; label: string; color: DitherColor; 
   { key: 'cpuUsage', label: 'CPU (% of one core)', color: 'purple' },
   { key: 'memoryUsed', label: 'Memory, RSS (MB)', color: 'blue', transform: (n) => Math.round(n / 1024 / 1024) },
   { key: 'botLatencyMs', label: 'Event-loop delay (ms)', color: 'orange' },
-  { key: 'connectedChannels', label: 'Connected IRC channels', color: 'green' },
+  { key: 'connectedChannels', label: 'Connected channels', color: 'green' },
 ]
 
 // Axis: clock time for 24h, the day for longer ranges. Tooltip: full date + time.
@@ -58,21 +60,24 @@ export function Health() {
     <>
       <PageHeader
         title="Bot Health"
-        subtitle="Bot process resources and IRC connections, sampled every minute."
+        subtitle="Current state, then bot process resources and channel connections, sampled every minute."
         actions={
-          <div style={{ width: 160 }}>
+          <div className={styles.rangeSelect}>
             <Select value={range} onChange={(e) => setRange(e.target.value)} options={RANGES} />
           </div>
         }
       />
 
       {isLoading ? (
-        <div style={{ display: 'grid', placeItems: 'center', padding: 60 }}><Spinner /></div>
+        <div className={styles.centered}><Spinner /></div>
       ) : isError || !data ? (
         <ErrorState message="Failed to load bot health." onRetry={() => refetch()} />
-      ) : data.performanceHistory.length === 0 ? (
-        <EmptyState icon="fas fa-heart-pulse" title="No performance history for this range" />
       ) : (
+        <>
+          <CurrentState data={data} />
+          {data.performanceHistory.length === 0 ? (
+            <EmptyState icon="fas fa-heart-pulse" title="No performance history for this range" />
+          ) : (
         <div className={styles.chartGrid}>
           {CHARTS.map((c) => {
             // Dither-kit has no connectNulls — drop gap points instead.
@@ -86,7 +91,7 @@ export function Health() {
             })
             return (
               <Card key={String(c.key)} title={c.label}>
-                <div style={{ height: 200 }}>
+                <div className={styles.chartBoxSm}>
                   {series.length === 0 ? (
                     <EmptyState icon="fas fa-heart-pulse" title="No data for this metric" />
                   ) : (
@@ -103,7 +108,33 @@ export function Health() {
             )
           })}
         </div>
+          )}
+        </>
       )}
     </>
+  )
+}
+
+/** "How is it now" row: current values from the same snapshot the API returns with the history. */
+function CurrentState({ data }: { data: BotHealth }) {
+  const { channels, bot, services } = data
+  return (
+    <div className={styles.summaryRow}>
+      <Badge variant={statusVariant(data.status)} dot>{data.status}</Badge>
+      <span className={styles.summaryItem}>Connected <strong>{fmt(channels.connected)} / {fmt(channels.expected)}</strong></span>
+      <span className={`${styles.summaryItem} ${channels.reconnecting > 0 ? styles.summaryItemBad : ''}`}>
+        Reconnecting <strong>{fmt(channels.reconnecting)}</strong>
+      </span>
+      <span className={`${styles.summaryItem} ${bot.controlApiReachable ? '' : styles.summaryItemBad}`}>
+        Control API <strong>{bot.controlApiReachable ? (bot.latencyMs != null ? `${bot.latencyMs}ms` : 'Reachable') : 'Down'}</strong>
+      </span>
+      <span className={styles.summaryItem}>Uptime <strong>{uptime(bot.uptimeSeconds)}</strong></span>
+      <span className={`${styles.summaryItem} ${services.eventSubHealthy ? '' : styles.summaryItemBad}`}>
+        EventSub <strong>{services.eventSubHealthy ? 'OK' : 'Problem'}</strong>
+      </span>
+      {isCacheStale(services.cacheAgeSeconds) && (
+        <span className={`${styles.summaryItem} ${styles.summaryItemBad}`}>Leaderboard cache <strong>Stale</strong></span>
+      )}
+    </div>
   )
 }

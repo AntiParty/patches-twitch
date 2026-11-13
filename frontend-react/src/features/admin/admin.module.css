@@ -96,6 +96,18 @@
   gap: 18px;
   align-items: start; /* don't stretch the chart card to match the incidents column */
 }
+.opColumns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.opStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
 .incidentList {
   display: flex;
   flex-direction: column;
@@ -131,6 +143,7 @@
 
 @media (max-width: 860px) {
   .opGrid,
+  .opColumns,
   .chartGrid {
     grid-template-columns: 1fr;
   }
@@ -187,7 +200,7 @@
 }
 .auditItem {
   display: grid;
-  grid-template-columns: 160px 1fr auto;
+  grid-template-columns: 70px 1fr auto;
   gap: 12px;
   align-items: center;
   padding: 12px 14px;
@@ -312,4 +325,229 @@
   .probeGrid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Shared page states / small layout helpers */
+.centered {
+  display: grid;
+  place-items: center;
+  padding: 60px;
+}
+.rangeSelect {
+  width: 140px;
+}
+.chartBox {
+  height: 220px;
+}
+.chartBoxSm {
+  height: 200px;
+}
+.sectionGap {
+  margin-top: 18px;
+}
+
+/* Overview: needs-attention rows */
+.attentionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.attentionRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  font-size: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+.attentionLink {
+  transition: background-color 140ms var(--ease, ease);
+}
+.attentionLink:hover {
+  background: var(--bg-hover);
+}
+.attentionLink:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.sideGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.quietLine {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-subtle);
+}
+.activitySection {
+  margin-top: 16px;
+}
+.activityHeading {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-subtle);
+}
+.activityList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.activityRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.activityRow:last-child {
+  border-bottom: 0;
+}
+.activityLabel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.activityTime {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.cardFooterLink {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--primary);
+  text-decoration: none;
+}
+.cardFooterLink:hover {
+  text-decoration: underline;
+}
+
+/* Overview / Health: compact service + state rows */
+.serviceList {
+  display: flex;
+  flex-direction: column;
+}
+.serviceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.serviceRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.serviceRow:first-child {
+  padding-top: 0;
+}
+.serviceDetail {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.summaryItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.summaryItem strong {
+  color: var(--text-main);
+  font-weight: 500;
+  font-size: 14px;
+}
+.summaryItemBad strong {
+  color: var(--danger);
+}
+
+/* Active commands: ranked bars */
+.commandList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.commandRow {
+  display: grid;
+  grid-template-columns: minmax(80px, 160px) 1fr 100px;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.commandRow code {
+  color: var(--primary);
+  font-family: var(--font-mono, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.commandCount {
+  text-align: right;
+  color: var(--text-muted);
+}
+
+/* Channels / Audit filters */
+.filterGroup {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filterChip {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease, ease), color 140ms var(--ease, ease);
+}
+.filterChip:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+.filterChipActive {
+  background: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--text-subtle);
+}
+.dayHeading {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.dayHeading:first-child {
+  margin-top: 0;
+}
+.statusActive {
+  color: var(--text-subtle);
 }

@@ -6,7 +6,10 @@ describe('custom bot access', () => {
     assert.equal(hasCustomBotAccess({ has_subscription: true, role: 'basic user' }), true);
   });
   it('allows privileged roles', () => {
-    for (const role of ['tester', 'Staff', 'admin']) assert.equal(hasCustomBotAccess({ role }), true);
+    for (const role of ['subscriber', 'tester', 'Staff', 'admin']) assert.equal(hasCustomBotAccess({ role }), true, role);
+  });
+  it('compares roles case-insensitively', () => {
+    for (const role of ['Subscriber', 'TESTER', 'staff', 'Admin']) assert.equal(hasCustomBotAccess({ role }), true, role);
   });
   it('denies basic users without a subscription', () => {
     assert.equal(hasCustomBotAccess({ has_subscription: false, role: 'basic user' }), false);

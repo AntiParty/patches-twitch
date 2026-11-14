@@ -124,7 +124,7 @@ router.get('/api/subscription/custom-bot-auth-url', requireUserAPI, requireSubsc
  * POST /api/subscription/unlink-bot
  * Unlink custom bot account and swap back to default bot
  */
-router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, requireSubscriptionAPI, async (req: Request, res: Response) => {
+router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, async (req: Request, res: Response) => {
   try {
     const channelId = req.session.channelId!;
     const username = req.session.twitchUsername!;
@@ -255,7 +255,9 @@ router.post('/api/subscription/refresh', requireUserAPI, csrfProtection, async (
       subscriptionTier: status.tier,
       tierName: getTierName(status.tier),
       message: status.isPremium
-        ? `Premium active! You're subscribed to antiparty (${getTierName(status.tier)})`
+        ? (getTierName(status.tier) !== 'None'
+            ? `Premium active! You're subscribed to antiparty (${getTierName(status.tier)})`
+            : 'Premium active!') // manual grant (tier is a plan name, not a Twitch tier)
         : 'No active subscription found. Subscribe to antiparty on Twitch to unlock premium features!'
     });
 

@@ -5,7 +5,7 @@ describe("myrank command", () => {
   it("formats the random rank response for the chatter", () => {
     assert.strictEqual(
       formatMyRankResponse("Antiparty", "Ruby", () => 0),
-      "@Antiparty is currently ranked Ruby"
+      "@Antiparty peaked at Ruby and has been talking about it ever since"
     );
   });
 
@@ -13,7 +13,7 @@ describe("myrank command", () => {
     const msg = formatMyRankResponse("Antiparty", "Goo Barrel Sommelier", () => 0.99);
     assert.ok(msg.includes("Antiparty"));
     assert.ok(msg.includes("Goo Barrel Sommelier"));
-    assert.notStrictEqual(msg, "@Antiparty is currently ranked Goo Barrel Sommelier");
+    assert.notStrictEqual(msg, formatMyRankResponse("Antiparty", "Goo Barrel Sommelier", () => 0));
   });
 
   it("usually selects a serious THE FINALS rank", () => {
@@ -25,12 +25,12 @@ describe("myrank command", () => {
     const rolls = [0.14, 0];
     assert.strictEqual(
       getRandomFinalsRank(() => rolls.shift() ?? 0),
-      "Unranked, but the drip is Ruby"
+      "Running It Down 1"
     );
   });
 
   it("caps the random index at the last fun rank", () => {
     const rolls = [0, 1];
-    assert.strictEqual(getRandomFinalsRank(() => rolls.shift() ?? 0), "Ruby in Quick Cash Only");
+    assert.strictEqual(getRandomFinalsRank(() => rolls.shift() ?? 0), "Top 500 In Practice Range");
   });
 });

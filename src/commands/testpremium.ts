@@ -12,6 +12,7 @@
 
 import logger from '@/util/logger';
 import { Channel, Subscription, CustomBotAccount } from '@/db';
+import { hasCustomBotAccess } from '@/chat/customBotAccess';
 
 // Minimum role required to use this command
 export const minRole = "tester";
@@ -174,7 +175,7 @@ async function handleStatus(
   }
 
   // Check if they have access (via subscription OR role)
-  const hasAccess = hasSub || ['tester', 'staff', 'admin'].includes(role.toLowerCase());
+  const hasAccess = hasCustomBotAccess({ has_subscription: hasSub, role });
   statusMsg += ` | Has Premium Access: ${hasAccess ? 'Yes' : 'No'}`;
 
   await ctx.say(statusMsg);
@@ -195,13 +196,14 @@ async function handleSimulate(
   // Check current status
   const hasSub = targetChannel.has_subscription;
   const role = targetChannel.role || 'Basic user';
-  const hasAccess = hasSub || ['tester', 'staff', 'admin'].includes(role.toLowerCase());
+  const hasAccess = hasCustomBotAccess({ has_subscription: hasSub, role });
+  const roleBypass = hasCustomBotAccess({ has_subscription: false, role });
 
   await ctx.say(
     `@${displayName} Simulating premium for ${targetUser}: ` +
     `Current access: ${hasAccess ? 'GRANTED' : 'DENIED'} | ` +
     `Subscription: ${hasSub ? 'Active' : 'Inactive'} | ` +
-    `Role bypass: ${['tester', 'staff', 'admin'].includes(role.toLowerCase()) ? 'Yes (' + role + ')' : 'No'}`
+    `Role bypass: ${roleBypass ? 'Yes (' + role + ')' : 'No'}`
   );
 }
 
@@ -267,6 +269,7 @@ async function handleRevoke(
   // Update channel
   await targetChannel.update({
     has_subscription: false,
+    subscription_tier: null,
   });
 
   // Update subscription record

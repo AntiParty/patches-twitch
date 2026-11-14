@@ -13,6 +13,7 @@ import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
 import { clearRefreshPermanentFailed } from '@/util/twitchUtils';
 import { getBroadcasterOAuthScopes } from '@/util/twitchScopes';
 import { checkTwitchSubscription } from '@/services/twitchSubscription.service';
+import { resolvePremiumStatus, loadActiveGrant } from '@/services/premiumStatus.service';
 import { TWITCH_HTTP_TIMEOUT_MS, BOT_CONTROL_TIMEOUT_MS } from '@/util/httpTimeouts';
 
 const router = Router();
@@ -250,14 +251,17 @@ router.get("/callback", async (req: any, res: any) => {
                 // Twitch unreachable: keep the stored value.
                 logger.warn(`[Auth] Could not verify subscription for ${twitchUsername}; keeping stored status.`);
             } else {
-            hasSubscription = subStatus.isPremium;
-            subscriptionTier = subStatus.tier;
-            if (channel) {
-                await channel.update({
-                    has_subscription: hasSubscription,
-                    subscription_tier: subscriptionTier,
-                });
-            }
+                // Twitch sub wins; otherwise an unexpired manual grant keeps premium.
+                const grant = channel ? await loadActiveGrant(channel.id) : null;
+                const resolved = resolvePremiumStatus(subStatus, grant);
+                hasSubscription = resolved.hasSubscription;
+                subscriptionTier = resolved.tier;
+                if (channel) {
+                    await channel.update({
+                        has_subscription: hasSubscription,
+                        subscription_tier: subscriptionTier,
+                    });
+                }
             }
         } catch (subError) {
             logger.error(`[Auth] Subscription check failed for ${twitchUsername}:`, subError);

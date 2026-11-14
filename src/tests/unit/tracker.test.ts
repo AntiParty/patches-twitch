@@ -1,6 +1,6 @@
 import { strict as assert } from 'assert';
 import { buildTrackerUrl, execute as trackerExecute } from '@/commands/tracker';
-import { matchesBlockRegex } from '@/util/messageFilter';
+import { getBlockedWords, matchesBlockRegex } from '@/util/messageFilter';
 import { Channel, CustomResponse, dbReady } from '@/db';
 
 function createCtx(channel: string) {
@@ -19,6 +19,23 @@ function createCtx(channel: string) {
 }
 
 describe('buildTrackerUrl', () => {
+  // The link rule lives in config/blocked.json, which is gitignored. On a fresh
+  // checkout (CI) there is no rule, so supply an equivalent one for these tests.
+  const LINK_RULE = '\\b(?:https?://)?(?:www\\.)?[a-zA-Z0-9-]+\\.[a-zA-Z]{2,}(?:/[^\\s]*)?\\b';
+  let restoreBlockedRegex: (() => void) | null = null;
+
+  before(() => {
+    if (getBlockedWords().regex) return;
+    const previous = process.env.BLOCKED_REGEX;
+    process.env.BLOCKED_REGEX = LINK_RULE;
+    restoreBlockedRegex = () => {
+      if (previous === undefined) delete process.env.BLOCKED_REGEX;
+      else process.env.BLOCKED_REGEX = previous;
+    };
+  });
+
+  after(() => { restoreBlockedRegex?.(); });
+
   it('builds the davg25 player-stats URL for a twitch-linked Embark id', () => {
     assert.equal(
       buildTrackerUrl('twitch.Antiparty#5331'),

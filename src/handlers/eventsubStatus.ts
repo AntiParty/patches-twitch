@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Request, Response } from 'express';
+import { TWITCH_HTTP_TIMEOUT_MS } from '@/util/httpTimeouts';
 
 export async function eventsubStatusHandler(req: Request, res: Response) {
   const userId = req.query.user_id;
@@ -14,6 +15,7 @@ export async function eventsubStatusHandler(req: Request, res: Response) {
   client_secret: process.env.TWITCH_CLIENT_SECRET,
         grant_type: 'client_credentials',
       },
+      timeout: TWITCH_HTTP_TIMEOUT_MS,
     });
     const appToken = tokenResponse.data.access_token;
 
@@ -25,6 +27,7 @@ export async function eventsubStatusHandler(req: Request, res: Response) {
       params: {
         user_id: userId,
       },
+      timeout: TWITCH_HTTP_TIMEOUT_MS,
     });
 
     const subs = resp.data.data;

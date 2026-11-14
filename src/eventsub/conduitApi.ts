@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { TWITCH_HTTP_TIMEOUT_MS } from '../util/httpTimeouts';
 import type { ConduitSubscription, EventSubSpec } from './types';
 
 const HELIX = 'https://api.twitch.tv/helix';
@@ -22,7 +23,7 @@ export interface ConduitApiDeps {
 
 /** Default HTTP: axios with validateStatus so 401/409 come back as values. */
 export const axiosConduitHttp: ConduitHttp = {
-  request: (cfg) => axios.request({ ...cfg, validateStatus: () => true }),
+  request: (cfg) => axios.request({ ...cfg, validateStatus: () => true, timeout: TWITCH_HTTP_TIMEOUT_MS }),
 };
 
 function describeError(data: any): string {

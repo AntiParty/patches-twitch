@@ -13,6 +13,7 @@ import { getTwitchRedirectUri, isDevelopment } from '@/util/envUtils';
 import { clearRefreshPermanentFailed } from '@/util/twitchUtils';
 import { getBroadcasterOAuthScopes } from '@/util/twitchScopes';
 import { checkTwitchSubscription } from '@/services/twitchSubscription.service';
+import { TWITCH_HTTP_TIMEOUT_MS, BOT_CONTROL_TIMEOUT_MS } from '@/util/httpTimeouts';
 
 const router = Router();
 
@@ -114,6 +115,7 @@ router.get("/callback", async (req: any, res: any) => {
                     grant_type: "authorization_code",
                     redirect_uri: getRedirectUri(),
                 },
+                timeout: TWITCH_HTTP_TIMEOUT_MS,
             }
         );
 
@@ -126,6 +128,7 @@ router.get("/callback", async (req: any, res: any) => {
                 Authorization: `Bearer ${access_token}`,
                 "Client-ID": clientId,
             },
+            timeout: TWITCH_HTTP_TIMEOUT_MS,
         });
 
         const twitchUser = userResponse.data.data[0];
@@ -187,7 +190,7 @@ router.get("/callback", async (req: any, res: any) => {
                 await axios.post(`${botControlUrl}/reconnect-custom-bot`, {
                     twitch_user_id: targetChannel.twitch_user_id,
                     username: targetUsername,
-                }, { headers: botControlHeaders() });
+                }, { headers: botControlHeaders(), timeout: BOT_CONTROL_TIMEOUT_MS });
                 swapSuccess = true;
                 logger.info(`[Custom Bot] Bot swapped instantly for ${targetUsername}`);
             } catch (swapError) {
@@ -243,6 +246,10 @@ router.get("/callback", async (req: any, res: any) => {
         let subscriptionTier = channel?.subscription_tier || null;
         try {
             const subStatus = await checkTwitchSubscription(access_token, twitchUserId);
+            if (subStatus.unknown) {
+                // Twitch unreachable: keep the stored value.
+                logger.warn(`[Auth] Could not verify subscription for ${twitchUsername}; keeping stored status.`);
+            } else {
             hasSubscription = subStatus.isPremium;
             subscriptionTier = subStatus.tier;
             if (channel) {
@@ -250,6 +257,7 @@ router.get("/callback", async (req: any, res: any) => {
                     has_subscription: hasSubscription,
                     subscription_tier: subscriptionTier,
                 });
+            }
             }
         } catch (subError) {
             logger.error(`[Auth] Subscription check failed for ${twitchUsername}:`, subError);
@@ -297,7 +305,7 @@ router.get("/callback", async (req: any, res: any) => {
                 twitch_user_id: twitchUserId,
                 username: twitchUsername,
                 is_new: isNewChannel,
-            }, { headers: botControlHeaders() });
+            }, { headers: botControlHeaders(), timeout: BOT_CONTROL_TIMEOUT_MS });
             logger.info(`[Callback] Bot notified to add channel: ${twitchUsername} (${twitchUserId})`);
         } catch (notifyError) {
             logger.error(`[Callback] Failed to notify bot for ${twitchUsername}:`, notifyError);

@@ -172,11 +172,15 @@ New periodic work goes in `src/jobs/<name>.ts`:
 - Export a `start<Name>()` function that sets up the interval and returns a stop function (or nothing).
 - Call it from `botService.ts` after `dbReady` resolves, or from `BotManager`'s constructor if it's per-channel lifecycle.
 - Skip a run when the previous one hasn't finished — see `cacheUpdater.ts` and `startTokenValidationInterval`.
-- Give every Twitch HTTP call a timeout.
+- Give every Twitch HTTP call a timeout, using the constants in `util/httpTimeouts.ts` (`timeout:` for axios, `signal: fetchTimeoutSignal(ms)` for fetch). A timeout is a transient failure: it must never mark a channel revoked, strip premium or tell a streamer to re-authorise.
+- Register cleanup with `onShutdown(name, fn)` from `util/processLifecycle.ts`. Never add your own `process.on('SIGINT'|'SIGTERM')` listener: one that does not exit keeps the process alive until pm2 kills it.
 
 ## Logging, metrics, tracking
 
-- Use `logger` from `util/logger.ts` (winston) everywhere, not `console.*`. Tag log lines with `[<module>]` prefixes.
+- Use `logger` from `util/logger.ts` (winston) everywhere, not `console.*`. Tag log lines with `[<module>]` prefixes; don't write `[ERROR]` yourself, the level is added for you.
+- Extra arguments are printed: `logger.error('[x] failed:', err)` prints the message, `code`, HTTP status and response body, then the stack. Pass the error itself rather than `err.message`.
+- Per-cycle and polling lines go at `debug` (`LOG_LEVEL=debug` shows them). Files rotate at 10 MB with 5 kept. The logger is silent under `NODE_ENV=test` unless `TEST_LOGS=1`.
+- Never log a raw URL: use `redactUrl()` from `util/logRedaction.ts`, because overlay tokens and OAuth codes travel in query strings.
 - Chat message rate: `trackMessageIn()` / `trackMessageOut()` from `util/messageRateTracker.ts`. Already wired in the dispatcher and `sendChatMessage`.
 - Operational events (connects, disconnects, recoveries): `recordOperationalEvent` from `services/operationalEvents.service.ts`. Only record a recovery once it actually succeeded.
 - `/metrics/operations` exposes connected channels, transports, conduit shard state, send-queue stats, cooldown hits and dispatch errors.

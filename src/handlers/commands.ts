@@ -84,10 +84,10 @@ export const loadCommands = () => {
                         }
                     });
                 } else if (command.aliases) {
-                    console.warn(`Aliases for command "${commandName}" are not an array.`);
+                    logger.warn(`Aliases for command "${commandName}" are not an array.`);
                 }
             } else {
-                console.warn(
+                logger.warn(
                     `Command "${file}" does not export an 'execute' function.`
                 );
             }
@@ -97,7 +97,7 @@ export const loadCommands = () => {
     });
 
     if (duplicateKeys.length > 0) {
-        console.warn(
+        logger.warn(
             `Duplicate command/alias keys detected: ${duplicateKeys.join(
                 ", "
             )}. Skipping all duplicates.`

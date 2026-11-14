@@ -3,6 +3,7 @@ import path from 'path';
 import { Channel, CustomBotAccount } from '../db';
 import logger from '@/util/logger';
 import { decryptToken, encryptToken } from './crypto';
+import { TWITCH_HTTP_TIMEOUT_MS, fetchTimeoutSignal } from './httpTimeouts';
 
 /**
  * Safely decrypt a token, handling both encrypted and legacy plain tokens.
@@ -63,6 +64,7 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<Twitc
           'Client-ID': clientId,
           Authorization: `Bearer ${accessToken}`,
         },
+        signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS),
       });
 
       if (!response.ok) {
@@ -98,6 +100,7 @@ export async function getLiveStreamsForUsers(usernames: string[]): Promise<Twitc
             'Client-ID': clientId,
             Authorization: `Bearer ${accessToken}`,
           },
+          signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS),
         });
         if (!pageResp.ok) {
           throw new Error(
@@ -153,6 +156,7 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
         'Client-ID': clientId,
         Authorization: `Bearer ${accessToken}`,
       },
+      signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -191,7 +195,7 @@ export const getStreamStatusForUser = async (username: string, accessToken: stri
         thumb = thumb.replace("{width}", "320").replace("{height}", "180");
       }
 
-      logger.info(`${username} has been live for ${liveDuration}`);
+      logger.debug(`${username} has been live for ${liveDuration}`);
       return {
         isLive: true,
         streamStartTime: startTime.toISOString(),
@@ -234,6 +238,7 @@ export async function refreshToken() {
     const response = await fetch(url, {
       method: 'POST',
       body: params,
+      signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS),
     });
     if (!response.ok) {
       const errorDetails = await response.text();
@@ -251,7 +256,7 @@ export async function refreshToken() {
   // process can use the token immediately. Persisting to disk creates race
   // conditions and is not reliable in multi-process deployments.
   process.env.TWITCH_APP_ACCESS_TOKEN = newToken;
-  logger.info('TWITCH_APP_ACCESS_TOKEN updated in process.env');
+  logger.debug('TWITCH_APP_ACCESS_TOKEN updated in process.env');
   return newToken;
 }
 
@@ -274,7 +279,7 @@ export const getStreamStatusWithAutoRefresh = async (username: string) => {
     let result = await getStreamStatusForUser(username, accessToken);
     if (result?.error && result.error.includes('401')) {
       // Token expired, refresh it
-      console.warn(`Access token expired for user: ${username}, attempting to refresh.`);
+      logger.warn(`Access token expired for user: ${username}, attempting to refresh.`);
       const newAccessToken = await refreshAccessToken(channel);
       if (!newAccessToken) {
         logger.error(`Failed to refresh token for user: ${username}`);
@@ -362,12 +367,12 @@ export const refreshAccessToken = async (channel: any) => {
   const cooldownExpiry = refreshCooldowns[key];
   if (cooldownExpiry && Date.now() < cooldownExpiry) {
     const remaining = Math.ceil((cooldownExpiry - Date.now()) / 1000);
-    console.warn(`[${username}] Token refresh in cooldown, ${remaining}s remaining.`);
+    logger.warn(`[${username}] Token refresh in cooldown, ${remaining}s remaining.`);
     return null;
   }
 
   if (refreshLocks[key]) {
-    console.warn(`[${username}] Token refresh already in progress, skipping duplicate attempt.`);
+    logger.warn(`[${username}] Token refresh already in progress, skipping duplicate attempt.`);
     return null;
   }
 
@@ -445,6 +450,7 @@ export const refreshAccessToken = async (channel: any) => {
     const response = await fetch(url, {
       method: 'POST',
       body: params,
+      signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS),
     });
     if (!response.ok) {
       const errorDetails = await response.text();
@@ -485,7 +491,7 @@ export const refreshAccessToken = async (channel: any) => {
       // Schedule retry using exponential backoff if not maxed out
       if (refreshRetries[key] < MAX_REFRESH_RETRIES) {
         const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, refreshRetries[key] - 1) * 60000); // cap at 10 minutes
-        console.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
+        logger.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
 
         // Store timer so we can clean it up
         refreshRetryTimers[key] = setTimeout(async () => {
@@ -543,7 +549,7 @@ export const refreshAccessToken = async (channel: any) => {
     // Schedule retry with exponential backoff
     if (refreshRetries[key] < MAX_REFRESH_RETRIES) {
       const retryDelay = Math.min(10 * 60 * 1000, Math.pow(2, refreshRetries[key] - 1) * 60000);
-      console.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
+      logger.info(`[${username}] Retrying in ${Math.round(retryDelay / 1000)} seconds...`);
 
       refreshRetryTimers[key] = setTimeout(async () => {
         delete refreshRetryTimers[key];
@@ -698,6 +704,7 @@ export const refreshCustomBotAccessToken = async (
     const response = await fetch('https://id.twitch.tv/oauth2/token', {
       method: 'POST',
       body: params,
+      signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS),
     });
 
     if (!response.ok) {

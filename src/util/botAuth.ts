@@ -1,6 +1,7 @@
 import axios from "axios";
 import { updateEnvVariables } from "./envUtils";
 import logger from "@/util/logger";
+import { TWITCH_HTTP_TIMEOUT_MS } from "@/util/httpTimeouts";
 
 export interface BotTokenRefreshResult {
   accessToken: string;
@@ -90,6 +91,7 @@ async function refreshBotTokenInner(): Promise<BotTokenRefreshResult> {
     // Verify the token is valid and belongs to the configured IRC bot.
     const validateResp = await axios.get("https://id.twitch.tv/oauth2/validate", {
       headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: TWITCH_HTTP_TIMEOUT_MS,
     });
     const metadataWarnings = getBotTokenMetadataWarnings(validateResp.data || {});
     if (metadataWarnings.length > 0) {

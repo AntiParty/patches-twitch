@@ -87,7 +87,7 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
     logger.info(`[DEBUG] Command detected: ${commandKey} from ${user} in #${channelName}`);
 
     if (!commandHandler || typeof commandHandler !== "object") {
-      logger.error("[ERROR] commandHandler is undefined or not an object. Cannot process command:", { commandKey, rawCommand, message });
+      logger.error("[Dispatcher] commandHandler is undefined or not an object. Cannot process command:", { commandKey, rawCommand, message });
       return;
     }
 
@@ -172,7 +172,7 @@ export function createChatDispatcher(deps: ChatDispatcherDeps) {
         commandSuccess = false;
         dispatchErrors++;
         errorMessage = err?.message || 'Unknown error';
-        logger.error(`[ERROR] Command execution failed for ${commandKey}:`, err);
+        logger.error(`[Dispatcher] Command execution failed for ${commandKey}:`, err);
       } finally {
         // Track command usage asynchronously (don't block command execution)
         const responseTime = Date.now() - startTime;

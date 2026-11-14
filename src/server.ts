@@ -15,6 +15,7 @@ import { Op } from 'sequelize';
 import session from 'express-session';
 import { sessionConfig } from '@/config/session.config';
 import logger from "@/util/logger";
+import { redactUrl } from "@/util/logRedaction";
 import path from "path";
 import { trackRequest, loadAnalytics } from "@/util/webAnalytics";
 import { trackIGNVisit } from "@/util/ignStats";
@@ -187,8 +188,7 @@ export const setupServer = () => {
   app.use(blockSuspiciousRequests);
   app.use(rateLimitByIP);
 
-  // Request logging
-  // Request logging
+  // Request logging (query secrets redacted)
   app.use((req, res, next) => {
     // Filter out static assets, health checks, and noisy paths
     const skipLog = 
@@ -199,7 +199,8 @@ export const setupServer = () => {
       /\.(css|js|jpg|png|ico|svg|woff|woff2|ttf)$/.test(req.url);
 
     if (!skipLog) {
-      logger.info(`[REQ] ${req.method} ${req.url}`);
+      const polled = req.path === '/admin/api/performance' || req.path === '/admin/api/logs';
+      logger[polled ? 'debug' : 'info'](`[REQ] ${req.method} ${redactUrl(req.url)}`);
     }
     next();
   });

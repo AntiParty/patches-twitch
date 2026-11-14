@@ -4,6 +4,7 @@ import { refreshBotToken } from "../util/botAuth";
 import { activeChatUsernames } from "../chat/chatPresence";
 import { loadCommands } from "../handlers/commands";
 import { shouldReconnectActiveIrcClientsAfterBotTokenRefresh } from "../util/botTokenRefreshPolicy";
+import { onShutdown } from "../util/processLifecycle";
 
 const VALIDATE_URL = "https://id.twitch.tv/oauth2/validate";
 const DEFAULT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -72,7 +73,7 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
         const raw = Number(resp.data?.expires_in);
         expiresIn = Number.isFinite(raw) ? raw : null;
         if (expiresIn !== null) {
-          logger.info(`[BotTokenRefresher] Token expires in: ${formatDuration(expiresIn)}`);
+          logger.debug(`[BotTokenRefresher] Token expires in: ${formatDuration(expiresIn)}`);
         }
       } catch (e: any) {
         logger.warn("[BotTokenRefresher] Validate check failed:", e?.response?.status, e?.message);
@@ -207,7 +208,7 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
       clearInterval(refreshInterval);
     }
     refreshInterval = setTimeout(() => {
-      logger.info(`[BotTokenRefresher] Next refresh attempt in: ${formatDuration(backoffMs / 1000)}`);
+      logger.debug(`[BotTokenRefresher] Next refresh attempt in: ${formatDuration(backoffMs / 1000)}`);
       checkAndRefresh().finally(() => {
         scheduleNextCheck(); // Schedule next check after current one completes
       });
@@ -249,9 +250,7 @@ export function startBotTokenAutoRefresher(onRefresh?: (result: any) => void) {
     logger.info("[BotTokenRefresher] Cleaned up on process exit");
   };
   
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
-  process.on('exit', cleanup);
+  onShutdown('botTokenRefresher', cleanup);
   
   return cleanup; // Return cleanup function for manual cleanup if needed
 }

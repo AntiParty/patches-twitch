@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import axios from 'axios';
+import { TWITCH_HTTP_TIMEOUT_MS } from '@/util/httpTimeouts';
 import logger from './logger';
 import { searchPlayer } from './leaderboardSearch';
 import { Channel, StreamSession } from '../db';
@@ -127,7 +128,8 @@ export async function removeRedemptionSubscription(userId: string, rewardId: str
       headers: {
         Authorization: `Bearer ${sub.accessToken}`,
         'Client-Id': process.env.TWITCH_CLIENT_ID!
-      }
+      },
+      timeout: TWITCH_HTTP_TIMEOUT_MS,
     });
     logger.info(`[EventSubWs] Deleted redemption subscription ${sub.twitchSubId} for ${userId}/${rewardId}`);
   } catch (err: any) {
@@ -415,12 +417,22 @@ async function subscribeUserToEvents(sub: UserSubscription, accessToken: string,
   let validToken = accessToken;
 
   // First, validate the token
+  let validateErr: any = null;
   try {
     await axios.get('https://id.twitch.tv/oauth2/validate', {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}` },
+      timeout: TWITCH_HTTP_TIMEOUT_MS,
     });
     logger.debug?.(`[EventSubWs] Token valid for user ${userId}`);
-  } catch {
+  } catch (e) {
+    validateErr = e;
+  }
+  if (validateErr && !validateErr.response) {
+    // Timeout / network error: Twitch gave no verdict on the token. Do not
+    // refresh (or disable reconnect); try the subscriptions with the current
+    // token — a genuinely bad token fails there with a real HTTP status.
+    logger.warn(`[EventSubWs] Token validation for ${userId} failed without a response (${validateErr.code || validateErr.message}); continuing with the current token.`);
+  } else if (validateErr) {
     // Token is invalid/expired, try to refresh it
     logger.warn(`[EventSubWs] Access token for ${userId} invalid/expired. Attempting to refresh...`);
 
@@ -513,7 +525,8 @@ async function subscribeUserToEvents(sub: UserSubscription, accessToken: string,
           Authorization: `Bearer ${validToken}`,
           'Client-Id': process.env.TWITCH_CLIENT_ID!,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: TWITCH_HTTP_TIMEOUT_MS,
       });
       const createdId = res.data?.data?.[0]?.id;
       if (sub.kind === 'redemption' && createdId) {

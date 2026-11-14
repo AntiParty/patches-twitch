@@ -1,3 +1,5 @@
+import logger from '@/util/logger';
+
 // Admin user list from environment
 const ADMIN_USERS = (process.env.ADMIN_USERS || '').split(',').map(u => u.trim().toLowerCase());
 
@@ -57,7 +59,7 @@ async function syncRole(req: any) {
 
     } catch (err) {
         // Log once – silent failures hide sync bugs
-        console.error('[syncRole] failed:', err);
+        logger.error('[syncRole] failed:', err);
     }
 }
 

@@ -4,6 +4,7 @@
  */
 import { Router } from 'express';
 import axios from 'axios';
+import { TWITCH_HTTP_TIMEOUT_MS, BOT_CONTROL_TIMEOUT_MS } from '@/util/httpTimeouts';
 import { botControlHeaders, botControlUrl } from '@/util/botControl';
 import { Channel, Subscription, CustomBotAccount } from '@/db';
 import logger from '@/util/logger';
@@ -179,7 +180,7 @@ router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: a
                 await axios.post(`${botControlUrl}/remove-channel`, {
                     twitch_user_id: twitchUserId,
                     username,
-                }, { headers: botControlHeaders() });
+                }, { headers: botControlHeaders(), timeout: BOT_CONTROL_TIMEOUT_MS });
                 logger.info(`[dashboard] Bot notified to remove channel: ${username} (${twitchUserId})`);
             } else {
                 logger.warn(`[dashboard] No twitch_user_id found for ${username}, skipping bot removal.`);
@@ -198,7 +199,8 @@ router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: a
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
                         'Client-ID': clientId,
-                    }
+                    },
+                    timeout: TWITCH_HTTP_TIMEOUT_MS,
                 });
 
                 const subs = subsResp.data.data || [];
@@ -207,7 +209,8 @@ router.post('/api/disconnect-bot', requireUserAPI, csrfProtection, async (req: a
                         headers: {
                             'Authorization': `Bearer ${accessToken}`,
                             'Client-ID': clientId,
-                        }
+                        },
+                        timeout: TWITCH_HTTP_TIMEOUT_MS,
                     });
                 }
                 logger.info(`[dashboard] Deleted ${subs.length} EventSub subscriptions for ${username}`);
@@ -255,12 +258,12 @@ router.post('/api/toggle-bot', requireUserAPI, csrfProtection, async (req: any, 
                 await axios.post(`${botControlUrl}/add-channel`, {
                     twitch_user_id: channelInstance.get('twitch_user_id'),
                     username,
-                }, { headers: botControlHeaders() });
+                }, { headers: botControlHeaders(), timeout: BOT_CONTROL_TIMEOUT_MS });
             } else {
                 await axios.post(`${botControlUrl}/remove-channel`, {
                     twitch_user_id: channelInstance.get('twitch_user_id'),
                     username,
-                }, { headers: botControlHeaders() });
+                }, { headers: botControlHeaders(), timeout: BOT_CONTROL_TIMEOUT_MS });
             }
         } catch (botErr) {
             logger.error(`[dashboard] Error notifying bot process of status change for ${username}:`, botErr);

@@ -1,6 +1,11 @@
-import { dbReady, Channel, StreamSession, Giveaway, CustomBotAccount } from "./db";
-// In-memory map to track active stream sessions
-const activeStreamSessions: Map<string, any> = new Map();
+import fs from "fs";
+import http from "http";
+import path from "path";
+import { dbReady, sequelize, Channel, StreamSession, Giveaway, CustomBotAccount } from "./db";
+import { sequelizeMetrics } from "./dbMetrics";
+import { sequelizeBalance } from "./dbBalance";
+import { installCrashHandlers, installShutdownHandlers, onShutdown } from "./util/processLifecycle";
+import { getMessageRates } from "./util/messageRateTracker";
 import { botManager } from "./botManager";
 import { startCacheUpdater, getRubyRankThreshold } from "./jobs/cacheUpdater";
 import { removeUserWebSocket } from "./util/twitchEventSubWs";
@@ -11,7 +16,7 @@ import { countConnectedChannels } from "./chat/connectedChannels";
 import { chatDispatchErrorCount, commandCooldownHitCount } from "./chat/chatDispatcher";
 import { chatSendLimiter } from "./util/chatSendLimiter";
 import { eventsubFallbackCount } from "./chat/chatTransportSwitch";
-import { createReward, deleteReward, getRewardDiagnostics, getRewardSnapshot, setRewardPaused, updateReward, hasRedemptionsScope } from "./services/twitchChannelPoints.service";
+import { createReward, deleteReward, getRewardDiagnostics, getRewardSnapshot, setRewardPaused, updateReward, checkRedemptionsScope } from "./services/twitchChannelPoints.service";
 import { createGiveaway, getActiveGiveaway, resetEntries } from "./services/giveaway.service";
 import { replaceRewardForNextRound } from "./services/giveawayRoundReward.service";
 import { decryptChannelAccessToken, clearCustomBotPermanentFailed } from "./util/twitchUtils";
@@ -28,6 +33,28 @@ import { startGiveawayRedemptionReconciler } from "./jobs/giveawayRedemptionReco
 import { startProcessMetricsRecorder } from "./jobs/processMetricsRecorder";
 import { balanceDbReady } from './dbBalance';
 import { startPatchNotesWatcher } from "./jobs/patchNotesWatcher";
+
+installCrashHandlers();
+installShutdownHandlers();
+
+// Read once; /health reports it.
+const appVersion: string = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8")).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+})();
+
+// Registered before any other hook: hooks run in reverse order, so the databases close last.
+onShutdown('databases', async () => {
+  await Promise.allSettled([sequelize.close(), sequelizeMetrics.close(), sequelizeBalance.close()]);
+});
+
+// Set once startup has finished joining channels; /health reports "starting" until then.
+let startupComplete = false;
+// Set by /pause, cleared by /resume; a deliberate pause must not read as an outage in /health.
+let botsPaused = false;
 
 const botControlSecret = process.env.BOT_CONTROL_SECRET ?? '';
 if (!botControlSecret) {
@@ -187,17 +214,17 @@ dbReady.then(async () => {
         return res.status(400).send("Missing twitch_user_id or username");
       }
 
-      // Try to find user by twitch_user_id or username
-      let user = null;
-      if (twitch_user_id) {
-        user = await Channel.findOne({ where: { twitch_user_id } });
-      }
-      if (!user && username) {
-        user = await Channel.findOne({ where: { username } });
-      }
-
       // Always attempt to stop bot and disconnect EventSub WebSocket
       try {
+        // Try to find user by twitch_user_id or username
+        let user = null;
+        if (twitch_user_id) {
+          user = await Channel.findOne({ where: { twitch_user_id } });
+        }
+        if (!user && username) {
+          user = await Channel.findOne({ where: { username } });
+        }
+
         const uname = user?.username || username;
         if (uname) {
           await botManager.stopBotForUser(uname);
@@ -238,6 +265,7 @@ dbReady.then(async () => {
     controlApp.post("/pause", async (req: any, res: any) => {
       try {
         await botManager.pauseAll();
+        botsPaused = true;
         res.json({ success: true });
       } catch (err) {
         logger.error("Failed to pause bots:", err);
@@ -248,6 +276,7 @@ dbReady.then(async () => {
     controlApp.post("/resume", async (req: any, res: any) => {
       try {
         await botManager.resumeAll();
+        botsPaused = false;
         res.json({ success: true });
       } catch (err) {
         logger.error("Failed to resume bots:", err);
@@ -285,17 +314,34 @@ dbReady.then(async () => {
         name: "bot",
         status: "ok",
         latencyMs: 0,
-        detail: "connected"
+        detail: "starting"
       };
 
-      try {
-        const t0 = performance.now();
-        // botManager.ping() doesn't exist, so we'll just assume it's ok if we're here
-        botStatus.latencyMs = Math.round(performance.now() - t0);
-      } catch (err) {
-        botStatus.status = "error";
-        botStatus.detail = "ECONNREFUSED";
-        botStatus.latencyMs = 0;
+      if (startupComplete) {
+        try {
+          const t0 = performance.now();
+          const runtime = getConduitRuntime();
+          const connected = countConnectedChannels({
+            ircClients: Object.values(clients),
+            eventsubChannels: channelsOnTransport('eventsub'),
+            conduitShardsAssigned: runtime?.shardsAssigned() ?? 0,
+          });
+          // Enabled, non-revoked channels are the ones the bot should be in. DEV_CHANNELS narrows this in development, like BotManager.
+          const expectedWhere: any = { bot_enabled: true, auth_revoked: false };
+          if (process.env.NODE_ENV === 'development' && process.env.DEV_CHANNELS) {
+            const allowed = process.env.DEV_CHANNELS.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+            if (allowed.length > 0) expectedWhere.username = { [Op.in]: allowed };
+          }
+          const expected = await Channel.count({ where: expectedWhere });
+          botStatus.detail = `${connected}/${expected} channels connected`;
+          if (botsPaused) botStatus.detail = `paused (${botStatus.detail})`;
+          else if (expected > 0 && connected === 0) botStatus.status = "error";
+          else if (connected < expected) botStatus.status = "degraded";
+          botStatus.latencyMs = Math.round(performance.now() - t0);
+        } catch (err: any) {
+          botStatus.status = "error";
+          botStatus.detail = err?.message || "bot check failed";
+        }
       }
 
       // -------------------------------------
@@ -312,7 +358,7 @@ dbReady.then(async () => {
 
       const result = {
         status: overallOk ? "ok" : "error",
-        version: "1.0.0",
+        version: appVersion,
         timestamp,
         uptime,
         checks,
@@ -329,10 +375,8 @@ dbReady.then(async () => {
 
     // Expose in-memory chat rate data to the web server process
     controlApp.get("/metrics/chat", (req: any, res: any) => {
-      const range  = (req.query.range  as string) || '1h';
       const window = (req.query.window as string) || String(60 * 60_000);
       const bucket = (req.query.bucket as string) || String(60_000);
-      const { getMessageRates } = require('./util/messageRateTracker');
       res.json(getMessageRates(Number(window), Number(bucket)));
     });
 
@@ -389,7 +433,12 @@ dbReady.then(async () => {
         if (!channel?.twitch_user_id) {
           return res.status(404).json({ error: "Channel not found" });
         }
-        if (!(await hasRedemptionsScope(channel.id))) {
+        const scopeCheck = await checkRedemptionsScope(channel.id);
+        if (scopeCheck === null) {
+          // Twitch did not answer; that is not a missing scope.
+          return res.status(503).json({ error: "Could not reach Twitch. Please try again." });
+        }
+        if (!scopeCheck) {
           return res.status(403).json({ reason: "no_scope", error: "Reauthorization required." });
         }
 
@@ -523,8 +572,16 @@ dbReady.then(async () => {
     });
     // --- end Giveaways ---
 
-    controlApp.listen(4000, '127.0.0.1', () => {
+    const controlServer: http.Server = controlApp.listen(4000, '127.0.0.1', () => {
       logger.info("Bot control API running on http://127.0.0.1:4000");
+    });
+    // Stop taking requests and drop idle keep-alive sockets.
+    onShutdown('controlApi', () => new Promise<void>((resolve) => {
+      controlServer.close(() => resolve());
+      controlServer.closeAllConnections?.();
+    }));
+    onShutdown('conduitRuntime', async () => {
+      await getConduitRuntime()?.stop();
     });
     // --- end Control API ---
 
@@ -541,22 +598,11 @@ dbReady.then(async () => {
     startCacheUpdater();
 
     logger.info("Bot is up and running!");
+    startupComplete = true;
 
-    // Restore and continue tracking active stream sessions from DB
+    // Stream sessions are persisted; the poller picks them back up on its own.
     const activeSessions = await StreamSession.findAll();
-    activeSessions.forEach(session => {
-      const channel = session.get('channel');
-      const start_score = session.get('start_score');
-      const started_at = session.get('started_at');
-      activeStreamSessions.set(String(channel), {
-        start_score,
-        started_at
-      });
-      // If you need to resume timers, stats, etc., do it here
-      logger.info(
-        `[Startup] Tracking resumed for ${channel} | started_at: ${started_at}, start_score: ${start_score}`
-      );
-    });
+    logger.info(`[Startup] Tracking resumed for ${activeSessions.length} active stream session(s)`);
 
     // Restore redemption EventSub subscriptions for every non-closed redeem
     // giveaway so paused/drawn rewards remain connected across bot restarts.
@@ -611,9 +657,7 @@ dbReady.then(async () => {
     }
 
     const stopGiveawayReconciler = startGiveawayRedemptionReconciler();
-    process.on('SIGINT', stopGiveawayReconciler);
-    process.on('SIGTERM', stopGiveawayReconciler);
-    process.on('exit', stopGiveawayReconciler);
+    onShutdown('giveawayReconciler', stopGiveawayReconciler);
 
     const stopProcessMetrics = startProcessMetricsRecorder({
       getConnectedChannels: () => countConnectedChannels({
@@ -622,13 +666,11 @@ dbReady.then(async () => {
         conduitShardsAssigned: getConduitRuntime()?.shardsAssigned() ?? 0,
       }),
     });
-    process.on('SIGINT', stopProcessMetrics);
-    process.on('SIGTERM', stopProcessMetrics);
+    onShutdown('processMetrics', stopProcessMetrics);
 
     await balanceDbReady;
     const stopPatchNotesWatcher = startPatchNotesWatcher();
-    process.on('SIGINT', stopPatchNotesWatcher);
-    process.on('SIGTERM', stopPatchNotesWatcher);
+    onShutdown('patchNotesWatcher', stopPatchNotesWatcher);
 
 
   } catch (error) {

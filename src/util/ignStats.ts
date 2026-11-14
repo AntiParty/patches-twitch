@@ -3,6 +3,7 @@ import fetch from 'node-fetch';
 import { IGNVisit, metricsDbReady } from '@/dbMetrics';
 import { Op, Sequelize } from 'sequelize';
 import logger from '@/util/logger';
+import { TWITCH_HTTP_TIMEOUT_MS, fetchTimeoutSignal } from '@/util/httpTimeouts';
 
 const BOT_KEYWORDS = [
     'bot', 'spider', 'crawler', 'python-requests', 'node-fetch', 'axios', 'curl', 'wget',
@@ -38,7 +39,8 @@ async function updateLiveStatus() {
             headers: {
                 'Client-ID': clientId,
                 'Authorization': `Bearer ${appToken}`
-            }
+            },
+            signal: fetchTimeoutSignal(TWITCH_HTTP_TIMEOUT_MS)
         });
 
         if (res.status === 401) {

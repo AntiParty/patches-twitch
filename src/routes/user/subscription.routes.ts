@@ -11,6 +11,7 @@ import { checkAndUpdatePremiumStatus, getTierName } from '@/services/twitchSubsc
 import { getTwitchRedirectUri } from '@/util/envUtils';
 import { getCustomBotOAuthScopes } from '@/util/twitchScopes';
 import { botControlHeaders, botControlUrl } from '@/util/botControl';
+import { BOT_CONTROL_TIMEOUT_MS } from '@/util/httpTimeouts';
 
 const router = Router();
 
@@ -143,7 +144,7 @@ router.post('/api/subscription/unlink-bot', requireUserAPI, csrfProtection, requ
       if (channel) {
         const restart = await axios.post(`${botControlUrl}/restart-channel-bot`, {
           username,
-        }, { headers: botControlHeaders() });
+        }, { headers: botControlHeaders(), timeout: BOT_CONTROL_TIMEOUT_MS });
         swapSuccess = restart.data?.success === true;
         logger.info(`[Custom Bot] Swapped back to default bot for ${username}`);
       }
@@ -225,6 +226,16 @@ router.post('/api/subscription/refresh', requireUserAPI, csrfProtection, async (
 
     // Check Twitch subscription and update database
     const status = await checkAndUpdatePremiumStatus(channelId);
+
+    // Twitch did not answer (timeout/network): keep the stored status instead of
+    // telling the user they are not subscribed.
+    if (status.unknown) {
+      res.status(503).json({
+        success: false,
+        message: 'Could not reach Twitch to check your subscription. Please try again in a moment.'
+      });
+      return;
+    }
 
     // Update session
     req.session.hasSubscription = status.isPremium;

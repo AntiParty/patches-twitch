@@ -5,6 +5,7 @@
 import axios from 'axios';
 import logger from '@/util/logger';
 import { Channel } from '@/db';
+import { TWITCH_HTTP_TIMEOUT_MS } from '@/util/httpTimeouts';
 
 // Your Twitch channel ID (antiparty)
 const ANTIPARTY_BROADCASTER_ID = process.env.ANTIPARTY_TWITCH_ID || '123456789';
@@ -16,6 +17,8 @@ interface SubscriptionStatus {
     tier: string | null;      // "1000" = Tier 1, "2000" = Tier 2, "3000" = Tier 3
     giftedBy: string | null;  // If subscription was gifted
     checkedAt: Date;
+    /** True when Twitch gave no answer (timeout/network). Callers must not persist isPremium=false. */
+    unknown?: boolean;
 }
 
 /**
@@ -38,7 +41,8 @@ export async function checkTwitchSubscription(
                 headers: {
                     'Authorization': `Bearer ${userAccessToken}`,
                     'Client-Id': clientId
-                }
+                },
+                timeout: TWITCH_HTTP_TIMEOUT_MS
             }
         );
 
@@ -77,6 +81,18 @@ export async function checkTwitchSubscription(
 
         // For other errors, log and return false
         logger.error(`[TwitchSub] Error checking subscription for user ${userId}:`, error.message);
+
+        // Timeout / network error: no verdict from Twitch. Flag it so the caller
+        // keeps the stored subscription instead of downgrading it.
+        if (axios.isAxiosError(error) && !error.response) {
+            return {
+                isPremium: false,
+                tier: null,
+                giftedBy: null,
+                checkedAt: new Date(),
+                unknown: true
+            };
+        }
 
         // If token is invalid/expired, we might need to refresh
         if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -125,6 +141,11 @@ export async function checkAndUpdatePremiumStatus(channelId: number): Promise<Su
 
         // Check subscription status
         const status = await checkTwitchSubscription(accessToken, channel.twitch_user_id);
+
+        if (status.unknown) {
+            logger.warn(`[TwitchSub] Could not verify subscription for ${channel.username} (Twitch unreachable); keeping stored status.`);
+            return status;
+        }
 
         // Update the database
         await Channel.update(

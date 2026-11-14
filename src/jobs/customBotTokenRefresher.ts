@@ -4,6 +4,7 @@ import { reconnectChatBot } from "../util/ircBot";
 import { ircClientFor, isEventSubChat } from "../chat/chatPresence";
 import { loadCommands } from "../handlers/commands";
 import logger from "../util/logger";
+import { onShutdown } from "../util/processLifecycle";
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 min
 const REFRESH_WINDOW_MS = 15 * 60 * 1000; // refresh when ≤15 min remain
@@ -150,8 +151,6 @@ export function startCustomBotTokenRefresher(): () => void {
       timer = null;
     }
   };
-  process.on("SIGINT", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("exit", cleanup);
+  onShutdown("customBotTokenRefresher", cleanup);
   return cleanup;
 }

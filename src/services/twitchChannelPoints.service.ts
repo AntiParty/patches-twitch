@@ -7,6 +7,7 @@
  * a re-auth prompt rather than proceed.
  */
 import axios from 'axios';
+import { TWITCH_HTTP_TIMEOUT_MS } from '@/util/httpTimeouts';
 import { Channel } from '@/db';
 import { decryptChannelAccessToken, refreshAccessToken } from '@/util/twitchUtils';
 import logger from '@/util/logger';
@@ -146,12 +147,17 @@ async function loadChannel(channelId: number): Promise<any | null> {
 async function validateScopes(accessToken: string): Promise<string[]> {
   const res = await axios.get('https://id.twitch.tv/oauth2/validate', {
     headers: { Authorization: `Bearer ${accessToken}` },
+    timeout: TWITCH_HTTP_TIMEOUT_MS,
   });
   return Array.isArray(res.data?.scopes) ? res.data.scopes : [];
 }
 
-/** True if the broadcaster's stored token carries the redemptions management scope. */
-export async function hasRedemptionsScope(channelId: number): Promise<boolean> {
+/**
+ * Tri-state scope check: true/false when Twitch answered, null when the answer
+ * is unknown (timeout, network error, 5xx). Unknown must never be reported to
+ * the streamer as "re-authorise".
+ */
+export async function checkRedemptionsScope(channelId: number): Promise<boolean | null> {
   try {
     const channel = await loadChannel(channelId);
     if (!channel) return false;
@@ -169,8 +175,13 @@ export async function hasRedemptionsScope(channelId: number): Promise<boolean> {
     }
   } catch (err) {
     logger.error('[ChannelPoints] hasRedemptionsScope failed', err);
-    return false;
+    return null;
   }
+}
+
+/** True if the broadcaster's stored token carries the redemptions management scope. */
+export async function hasRedemptionsScope(channelId: number): Promise<boolean> {
+  return (await checkRedemptionsScope(channelId)) === true;
 }
 
 async function requestWithRefresh(
@@ -250,6 +261,7 @@ export async function getRewardRedemptionsPage(
         first: 50,
         ...(after ? { after } : {}),
       },
+      timeout: TWITCH_HTTP_TIMEOUT_MS,
     });
     return res.data;
   });
@@ -269,6 +281,7 @@ export async function getRewardSnapshot(
           'Client-Id': process.env.TWITCH_CLIENT_ID!,
         },
         params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+        timeout: TWITCH_HTTP_TIMEOUT_MS,
       });
       return res.data;
     });
@@ -292,6 +305,7 @@ export async function getRewardDiagnostics(
           'Client-Id': process.env.TWITCH_CLIENT_ID!,
         },
         params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+        timeout: TWITCH_HTTP_TIMEOUT_MS,
       });
       return res.data;
     });
@@ -306,7 +320,11 @@ export async function createReward(
   channelId: number,
   input: { title: string; cost: number; prompt?: string; backgroundColor?: string } & RewardLimitInput
 ): Promise<CreateRewardResult> {
-  if (!(await hasRedemptionsScope(channelId))) {
+  const scopeCheck = await checkRedemptionsScope(channelId);
+  if (scopeCheck === null) {
+    return { ok: false, reason: 'error', message: 'Could not reach Twitch to verify permissions. Please try again.' };
+  }
+  if (!scopeCheck) {
     return { ok: false, reason: 'no_scope' };
   }
   const prompt = input.prompt?.trim().slice(0, 200);
@@ -334,6 +352,7 @@ export async function createReward(
             'Content-Type': 'application/json',
           },
           params: { broadcaster_id: channel.twitch_user_id },
+          timeout: TWITCH_HTTP_TIMEOUT_MS,
         }
       );
       return res.data;
@@ -403,6 +422,7 @@ export async function deleteReward(channelId: number, rewardId: string): Promise
           'Client-Id': process.env.TWITCH_CLIENT_ID!,
         },
         params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+        timeout: TWITCH_HTTP_TIMEOUT_MS,
       });
     });
     return true;
@@ -427,6 +447,7 @@ async function patchReward(
           'Content-Type': 'application/json',
         },
         params: { broadcaster_id: channel.twitch_user_id, id: rewardId },
+        timeout: TWITCH_HTTP_TIMEOUT_MS,
       });
     });
     return true;

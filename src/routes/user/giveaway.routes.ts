@@ -17,7 +17,7 @@ import {
   resetEntries,
   resumeGiveaway,
 } from '@/services/giveaway.service';
-import { hasRedemptionsScope, updateReward } from '@/services/twitchChannelPoints.service';
+import { checkRedemptionsScope, updateReward } from '@/services/twitchChannelPoints.service';
 import logger from '@/util/logger';
 import { botControlHeaders, botControlUrl } from '@/util/botControl';
 
@@ -97,7 +97,7 @@ router.get('/api/user/giveaways/current', requireUserAPI, (req, res) =>
     const summary = giveaway ? await listEntries(giveaway.id) : { perUser: [], total: 0 };
     // The dashboard polls this route while a giveaway is live. Scope validation
     // talks to Twitch, so only do it while the creation form actually needs it.
-    const redeemScope = giveaway ? giveaway.type === 'redeem' : await hasRedemptionsScope(channel.id);
+    const redeemScope = giveaway ? giveaway.type === 'redeem' : (await checkRedemptionsScope(channel.id)) !== false; // unknown (Twitch unreachable) is not "missing scope"
     return res.json({
       giveaway: serialize(giveaway),
       perUser: summary.perUser,

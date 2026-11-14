@@ -365,7 +365,7 @@ export async function sendChatMessage(
       logger.info("[DEBUG] No App Access Token found, generating new one...");
       appAccessToken = await getAppAccessToken();
     } catch (e) {
-      logger.error("[ERROR] Failed to generate App Access Token:", e);
+      logger.error("[ircBot] Failed to generate App Access Token:", e);
       return;
     }
   }
@@ -427,7 +427,7 @@ export async function sendChatMessage(
       }
     } catch (err: any) {
       // If anything goes wrong with filtering or sending, log and avoid sending potentially unsafe content
-      logger.error("[ERROR] Failed to send chat message or message was filtered:", err?.response?.data || err);
+      logger.error("[ircBot] Failed to send chat message or message was filtered:", err?.response?.data || err);
       return;
     }
   }
@@ -515,11 +515,11 @@ export async function sendChatMessage(
           return;
         }
       } catch (retryErr: any) {
-        logger.error("[ERROR] Failed to retry sendChatMessage after token refresh:", retryErr?.response?.data || retryErr);
+        logger.error("[ircBot] Failed to retry sendChatMessage after token refresh:", retryErr?.response?.data || retryErr);
         return;
       }
     }
-    logger.error("[ERROR] Failed to send chat message:", err?.response?.data || err?.message || err);
+    logger.error("[ircBot] Failed to send chat message:", err?.response?.data || err?.message || err);
     return;
   }
 }
@@ -748,7 +748,7 @@ export const startChatBot = async (
     // Only log NOTICE messages that indicate actual errors
     if (rawData.includes("Error logging in") || 
         (rawData.includes("NOTICE") && (rawData.includes("authentication") || rawData.includes("banned")))) {
-      logger.error(`[ERROR] Twitch IRC login error for ${sanitizedUsername}: ${rawData}`);
+      logger.error(`[ircBot] Twitch IRC login error for ${sanitizedUsername}: ${rawData}`);
     }
 
     const lines = rawData.split("\r\n");
@@ -815,7 +815,7 @@ export const startChatBot = async (
   });
 
   socket.on("error", (err) => {
-    logger.error(`[ERROR] IRC error for ${sanitizedUsername}:`, err);
+    logger.error(`[ircBot] IRC error for ${sanitizedUsername}:`, err);
     // If the socket errored out before we ever saw a 001 welcome, the start
     // guard would otherwise stay set forever and block all future reconnects.
     connectingChannels.delete(sanitizedUsername);
@@ -880,7 +880,7 @@ export const stopChatBot = async (username: string, intentional = false) => {
     client.socket.end();
     logger.info(`[DEBUG] Bot disconnected for ${username}`);
   } catch (err) {
-    logger.error(`[ERROR] Stopping bot for ${username}:`, err);
+    logger.error(`[ircBot] Stopping bot for ${username}:`, err);
   } finally {
     if (!intentional) {
       delete clients[username];

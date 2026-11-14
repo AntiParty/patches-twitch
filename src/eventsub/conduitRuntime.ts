@@ -100,6 +100,8 @@ export interface ConduitRuntime {
   started: Promise<void>;
   /** Set by startConduitRuntime; absent on bare runtimes. */
   outageMonitor?: ConduitOutageMonitor;
+  /** Closes every shard without triggering its reconnect logic. Safe to call more than once. */
+  stop(): Promise<void>;
 }
 
 export function createConduitRuntime(deps: {
@@ -151,6 +153,10 @@ export function createConduitRuntime(deps: {
       listeners.push(cb);
     },
     started,
+    async stop() {
+      await started;
+      for (const shard of shards) shard.stop();
+    },
   };
 }
 
@@ -242,7 +248,7 @@ export function startConduitRuntime(): ConduitRuntime | null {
   });
   runtime.outageMonitor = outageMonitor;
   let ticking = false;
-  setInterval(() => {
+  const outageTimer = setInterval(() => {
     if (ticking) return;
     ticking = true;
     outageMonitor
@@ -252,6 +258,11 @@ export function startConduitRuntime(): ConduitRuntime | null {
         ticking = false;
       });
   }, 15000);
+  const stopShards = runtime.stop;
+  runtime.stop = async () => {
+    clearInterval(outageTimer);
+    await stopShards();
+  };
   return runtime;
 }
 

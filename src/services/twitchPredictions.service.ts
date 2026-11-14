@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { TWITCH_HTTP_TIMEOUT_MS } from '@/util/httpTimeouts';
 import { Channel } from '@/db';
 import { PredictionPresetData, predictionPresetService } from './predictionPreset.service';
 
@@ -122,10 +123,11 @@ function extractPredictions(response: any): TwitchPrediction[] {
 
 function productionDependencies(): TwitchPredictionsDependencies {
   return {
-    request: (config) => axios.request(config),
+    request: (config) => axios.request({ timeout: TWITCH_HTTP_TIMEOUT_MS, ...config }),
     validateToken: async (accessToken) => {
       const response = await axios.get('https://id.twitch.tv/oauth2/validate', {
         headers: { Authorization: `Bearer ${accessToken}` },
+        timeout: TWITCH_HTTP_TIMEOUT_MS,
       });
       return response.data || {};
     },

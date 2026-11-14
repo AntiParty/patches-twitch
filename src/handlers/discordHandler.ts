@@ -1,6 +1,7 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
 import logger from '@/util/logger';
+import { DISCORD_HTTP_TIMEOUT_MS } from '@/util/httpTimeouts';
 
 dotenv.config();
 
@@ -42,12 +43,16 @@ export const sendDiscordAlert = async (options: {
     footer: { text: options.footer || 'FinalsRS' },
   };
   try {
-    await axios.post(discordWebhookUrl, { embeds: [embed] });
+    await axios.post(discordWebhookUrl, { embeds: [embed] }, { timeout: DISCORD_HTTP_TIMEOUT_MS });
   } catch (error: any) {
     if (error.response) {
-      logger.error('Discord webhook responded with error:', error.response.status, error.response.data);
+      let body = '';
+      try {
+        body = typeof error.response.data === 'string' ? error.response.data : JSON.stringify(error.response.data);
+      } catch { /* unserialisable body */ }
+      logger.error(`Discord webhook responded with error: ${error.response.status} ${String(body ?? '').slice(0, 500)}`);
     } else if (error.request) {
-      logger.error('No response from Discord webhook:', error.request);
+      logger.error(`No response from Discord webhook: ${error.code || error.message}`);
     } else {
       logger.error('Failed to send embed message to Discord webhook:', error.message);
     }

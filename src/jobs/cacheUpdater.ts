@@ -128,7 +128,7 @@ async function fetchFromDavg(forceWrite: boolean): Promise<FetchedBoard | null> 
       const head = await axios.head(NEW_REGULAR_API_URL, { timeout: 5000 });
       const newETag = head.headers['etag'];
       if (newETag && newETag === storedETag) {
-        logger.info('[CacheUpdater] davg25 leaderboard unchanged (ETag match), skipping.');
+        logger.debug('[CacheUpdater] davg25 leaderboard unchanged (ETag match), skipping.');
         return null;
       }
     } catch {
@@ -225,7 +225,7 @@ async function refreshRegular(forceWrite: boolean): Promise<boolean> {
     const normalized = board.players;
     const hash = hashPlayers(normalized);
     if (hash === lastBoardHash) {
-      logger.info(`[CacheUpdater] S${currentRegularSeason} leaderboard unchanged (${board.source}), skipping.`);
+      logger.debug(`[CacheUpdater] S${currentRegularSeason} leaderboard unchanged (${board.source}), skipping.`);
       return false;
     }
     lastBoardHash = hash;

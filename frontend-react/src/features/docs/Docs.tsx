@@ -22,6 +22,7 @@ const NAV = [
       ['goals', '!goal'],
       ['predict', '!predict'],
       ['top500', '!top500'],
+      ['top10k', '!top10k'],
       ['predictions', 'Predictions'],
     ],
   },
@@ -44,6 +45,7 @@ const COMMANDS: { name: string; aliases: string[]; who: string; desc: string }[]
   { name: 'rank', aliases: ['r', 'rs', 'rankscore'], who: 'Everyone', desc: 'Shows current ranked leaderboard rank, league, and Rank Score.' },
   { name: 'record', aliases: ['wl', 'winloss', 'session'], who: 'Everyone', desc: 'Shows Rank Score gained or lost this stream session.' },
   { name: 'top500', aliases: ['t500'], who: 'Everyone', desc: 'Shows the RS and player at rank #500.' },
+  { name: 'top10k', aliases: ['t10k'], who: 'Everyone', desc: 'Shows the RS and player in last place on the leaderboard (#10,000).' },
   { name: 'tracker', aliases: ['profile'], who: 'Everyone', desc: 'Links to your tracker profile.' },
   { name: 'update', aliases: ['nextupdate', 'updatetime', 'rankupdate'], who: 'Everyone', desc: 'Shows time until the next weekly ranked update (Thursdays 4 AM MDT).' },
   { name: 'addaccount', aliases: ['linkaccount', 'link'], who: 'Broadcaster / mods', desc: 'Links your THE FINALS account to the bot (!link <FinalsName#1234>).' },
@@ -250,6 +252,11 @@ export function Docs() {
         <Section id="top500" title="Current Top 500 Cutoff">
           <p>Use <code>!top500</code> (or <code>!t500</code>) to see the RS and player at rank #500 in the current season’s latest cached leaderboard. Available to everyone, including before Ruby unlocks. Ties may affect placement.</p>
           <CodeExample lines={[{ cmd: '!top500' }]} />
+        </Section>
+
+        <Section id="top10k" title="Leaderboard Cutoff (Last Place)">
+          <p>Use <code>!top10k</code> (or <code>!t10k</code>) to see the RS and player in last place (#10,000) on the current season’s latest cached leaderboard, which is the RS needed to be on the leaderboard at all. Available to everyone. Ties may affect placement.</p>
+          <CodeExample lines={[{ cmd: '!top10k' }]} />
         </Section>
 
         <Section id="predict" tag="Premium / testers" premium title="Predict Cutoff">

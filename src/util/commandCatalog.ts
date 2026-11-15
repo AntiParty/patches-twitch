@@ -43,6 +43,7 @@ export const COMMAND_CATALOG: CommandInfo[] = [
   { name: 'suppress', aliases: [], usage: '!suppress', description: 'Toggles the bot link-account reminder.', audience: 'broadcaster' },
   { name: 'testpremium', aliases: ['tpremium', 'premiumtest'], usage: '!testpremium <status|simulate|info> ...', description: 'Premium access testing tools.', audience: 'tester', hidden: true },
   { name: 'top500', aliases: ['t500'], usage: '!top500', description: 'Shows the RS and player at rank #500.', audience: 'everyone' },
+  { name: 'top10k', aliases: ['t10k'], usage: '!top10k', description: 'Shows the RS and player in last place on the leaderboard (#10,000).', audience: 'everyone' },
   { name: 'tracker', aliases: ['profile'], usage: '!tracker', description: 'Links to your tracker profile.', audience: 'everyone' },
   { name: 'unlink', aliases: ['remove', 'disconnect'], usage: '!unlink', description: 'Removes the link to your account and parts the bot.', audience: 'broadcaster' },
   { name: 'update', aliases: ['nextupdate', 'updatetime', 'rankupdate'], usage: '!update', description: 'Shows time until the next weekly ranked update (Thursdays 4 AM MDT).', audience: 'everyone' },

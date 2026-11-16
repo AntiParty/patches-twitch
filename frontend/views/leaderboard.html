@@ -704,7 +704,7 @@ function renderRow(p) {
   const platforms = [];
   if (p.steamName) platforms.push(`<img class="platform-icon" src="https://cdn.simpleicons.org/steam/a1a1aa" alt="Steam" title="${escHtml(p.steamName)}" />`);
   if (p.psnName)   platforms.push(`<img class="platform-icon" src="https://cdn.simpleicons.org/playstation/a1a1aa" alt="PlayStation" title="${escHtml(p.psnName)}" />`);
-  if (p.xboxName)  platforms.push(`<img class="platform-icon" src="https://cdn.simpleicons.org/xbox/a1a1aa" alt="Xbox" title="${escHtml(p.xboxName)}" />`);
+  if (p.xboxName)  platforms.push(`<img class="platform-icon" src="/assets/icons/xbox.svg" alt="Xbox" title="${escHtml(p.xboxName)}" />`);
 
   const leagueKey = (p.league || '').replace(/\s+/g, '-');
   const changeHtml = p.change !== undefined

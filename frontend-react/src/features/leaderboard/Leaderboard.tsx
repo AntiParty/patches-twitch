@@ -262,7 +262,7 @@ function Row({ p }: { p: LeaderboardEntry }) {
         <div className={styles.platforms}>
           {p.steamName && <img className={styles.platformIcon} src="https://cdn.simpleicons.org/steam/a1a1aa" alt="Steam" title={p.steamName} />}
           {p.psnName && <img className={styles.platformIcon} src="https://cdn.simpleicons.org/playstation/a1a1aa" alt="PlayStation" title={p.psnName} />}
-          {p.xboxName && <img className={styles.platformIcon} src="https://cdn.simpleicons.org/xbox/a1a1aa" alt="Xbox" title={p.xboxName} />}
+          {p.xboxName && <img className={styles.platformIcon} src="/assets/icons/xbox.svg" alt="Xbox" title={p.xboxName} />}
         </div>
       </td>
     </tr>

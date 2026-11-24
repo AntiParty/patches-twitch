@@ -12,24 +12,63 @@ const STEPS = [
   { title: 'Claim your rewards', body: 'Open your Twitch inventory to track your progress and claim each reward.', href: 'https://www.twitch.tv/drops/inventory', link: 'Open inventory' },
 ]
 
-export function Drops() {
+const MAX_TIMEOUT = 2 ** 31 - 1
+
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const days = Math.floor(total / 86400)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const rest = `${pad(Math.floor((total % 86400) / 3600))}h ${pad(Math.floor((total % 3600) / 60))}m ${pad(total % 60)}s`
+  return days > 0 ? `${days}d ${rest}` : rest
+}
+
+// Owns the per-second tick so the rest of the page does not re-render every second.
+function EndsCountdown({ endsAt, endsAtIso, endLabel }: { endsAt: number; endsAtIso?: string; endLabel: string }) {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
+  return (
+    <div className={styles.deadline}>
+      <span className={styles.deadlineLabel}>Ends in</span>
+      <strong className={styles.deadlineValue}>{formatCountdown(endsAt - now)}</strong>
+      <time className={styles.deadlineDate} dateTime={endsAtIso}>{endLabel}</time>
+    </div>
+  )
+}
+
+export function Drops() {
   const dropsQuery = useQuery({ queryKey: ['drops', 'public'], queryFn: publicApi.getDrops, refetchInterval: 60_000 })
   const streamersQuery = useQuery({ queryKey: ['drops', 'streamers'], queryFn: publicApi.getActiveStreamers, retry: false, refetchInterval: 60_000 })
   const data = dropsQuery.data
   const endsAt = data?.endsAt ? Date.parse(data.endsAt) : NaN
   const hasEndDate = Number.isFinite(endsAt)
-  const campaignExpired = hasEndDate && now >= endsAt
+  // Remember which end date has passed, so a changed endsAt is treated as not yet expired.
+  const [expiredFor, setExpiredFor] = useState<number | null>(null)
+  useEffect(() => {
+    if (!Number.isFinite(endsAt)) return
+    let timer = 0
+    const schedule = () => {
+      const delay = endsAt - Date.now()
+      if (delay <= 0) {
+        timer = window.setTimeout(() => setExpiredFor(endsAt), 0)
+      } else {
+        timer = window.setTimeout(schedule, Math.min(delay, MAX_TIMEOUT))
+      }
+    }
+    schedule()
+    return () => window.clearTimeout(timer)
+  }, [endsAt])
+  const campaignExpired = hasEndDate && expiredFor === endsAt
   const featuredImage = campaignExpired ? '' : data?.featuredImage
   const activeDrops = campaignExpired ? [] : (data?.drops ?? [])
   const streamers = streamersQuery.isError ? [] : (streamersQuery.data ?? [])
   const endLabel = hasEndDate ? new Intl.DateTimeFormat(undefined, {
     month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   }).format(endsAt) : ''
+  const live = !campaignExpired && activeDrops.length > 0
+  const statusText = campaignExpired ? 'Ended' : live ? 'Live now' : 'No active campaign'
 
   return (
     <div className={styles.page}>
@@ -44,7 +83,7 @@ export function Drops() {
         </a>
       </header>
 
-      <section className={styles.campaign} aria-labelledby="campaign-title">
+      <section className={styles.campaign} aria-label="Twitch Drops campaign">
         {featuredImage && !dropsQuery.isError && (
           <div className={styles.featuredMedia}>
             <img className={styles.featuredImg} src={featuredImage} alt="THE FINALS campaign rewards" />
@@ -52,18 +91,26 @@ export function Drops() {
         )}
         <div className={styles.campaignBody}>
           <div className={styles.campaignHeader}>
-            <div>
-              <p className={styles.campaignStatus}>{campaignExpired ? 'Campaign ended' : activeDrops.length ? 'Available now' : 'Twitch rewards'}</p>
-              <h2 id="campaign-title">{campaignExpired ? 'Catch the next drop' : 'Watch. Earn. Equip.'}</h2>
+            <div className={styles.campaignMeta}>
+              <span className={styles.status}>
+                {live && <span className={styles.statusDot} aria-hidden="true" />}
+                {statusText}
+              </span>
+              {activeDrops.length > 0 && <span className={styles.rewardCount}>{activeDrops.length} {activeDrops.length === 1 ? 'reward' : 'rewards'}</span>}
             </div>
             {data && !dropsQuery.isError && (
-              <div className={styles.deadline}>
-                <i className="far fa-clock" aria-hidden="true" />
-                <div>
-                  <span>{campaignExpired ? 'Ended' : 'Campaign ends'}</span>
-                  {hasEndDate ? <time dateTime={data.endsAt}>{endLabel}</time> : <strong>End date not announced</strong>}
-                </div>
-              </div>
+              hasEndDate ? (
+                campaignExpired ? (
+                  <div className={styles.deadline}>
+                    <span className={styles.deadlineLabel}>Ended</span>
+                    <time className={styles.deadlineValue} dateTime={data.endsAt}>{endLabel}</time>
+                  </div>
+                ) : (
+                  <EndsCountdown endsAt={endsAt} endsAtIso={data.endsAt} endLabel={endLabel} />
+                )
+              ) : (
+                <div className={styles.deadline}><strong className={styles.deadlineValue}>End date not announced</strong></div>
+              )
             )}
           </div>
           {dropsQuery.isLoading ? (
@@ -76,12 +123,11 @@ export function Drops() {
             <ul className={styles.dropsList} aria-label="Available rewards">
               {activeDrops.map((drop, i) => (
                 <li className={styles.dropItem} key={i}>
-                  <div className={styles.rewardIcon}><i className="fas fa-gift" aria-hidden="true" /></div>
                   <div className={styles.rewardInfo}>
                     <div className={styles.dropName}>{drop.name}</div>
                     {drop.category && <div className={styles.dropCategory}>{drop.category}</div>}
                   </div>
-                  {drop.duration && <span className={styles.dropTime}><i className="far fa-clock" aria-hidden="true" /> {formatWatchTime(drop.duration)}</span>}
+                  {drop.duration && <span className={styles.dropTime}>{formatWatchTime(drop.duration)}</span>}
                 </li>
               ))}
             </ul>
@@ -113,7 +159,6 @@ export function Drops() {
                 </div>
                 <div className={styles.streamerInfo}>
                   <strong>{streamer.channel}</strong>
-                  <span>THE FINALS <i className="fas fa-arrow-up-right-from-square" aria-hidden="true" /></span>
                 </div>
               </a>
             ))}

@@ -77,11 +77,23 @@ export function Leaderboard() {
 
   const stats = useMemo(() => {
     const top = all[0]
+    const baseName = (n: string) => n.split('#')[0]
+    // Ruby is the top 500; use #500's score so the cutoff shows even before Ruby unlocks.
+    const cutoffPlayer = all.find((p) => p.rank === 500)
+    // `change` is measured against the full ladder, so players who entered from off the
+    // board show huge jumps. Only count climbs from a rank that was already listed.
+    let climber: LeaderboardEntry | undefined
+    for (const p of all) {
+      const c = p.change ?? 0
+      if (c > (climber?.change ?? 0) && p.rank + c <= all.length) climber = p
+    }
     return {
       total: all.length,
-      topScore: top ? fmt(top.rankScore ?? 0) : '—',
-      topPlayer: top ? top.name.split('#')[0] : '—',
-      ruby: all.filter((p) => p.league === 'Ruby').length,
+      topScore: top ? `${fmt(top.rankScore ?? 0)} RS` : '—',
+      topPlayer: top ? baseName(top.name) : '—',
+      rubyCutoff: cutoffPlayer ? `${fmt(cutoffPlayer.rankScore ?? 0)} RS` : '—',
+      climberChange: climber ? `▲${fmt(climber.change ?? 0)}` : '—',
+      climberName: climber ? baseName(climber.name) : 'No movement',
     }
   }, [all])
 
@@ -107,12 +119,14 @@ export function Leaderboard() {
         title="Leaderboard"
         subtitle={
           <>
-            {data && <span className={styles.subtitle}>Season {data.season} · Ranked</span>}
+            {data && (
+              <span className={styles.subtitle}>
+                Season {data.season} · Ranked · {fmt(stats.total)} players
+              </span>
+            )}
             {data?.updated && (
               <span className={styles.updated} style={{ display: 'block' }}>
-                Last updated: {new Date(data.updated).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                {data.nextCheckAt && <> · <NextCheck nextCheckAt={data.nextCheckAt} /></>}
-              </span>
+                Last updated: {new Date(data.updated).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}              </span>
             )}
           </>
         }
@@ -121,17 +135,23 @@ export function Leaderboard() {
       {/* Stats */}
       <div className={styles.stats}>
         <div className={styles.stat}>
-          <div className={styles.statLabel}>Total Players</div>
-          <div className={styles.statValue}>{fmt(stats.total)}</div>
-        </div>
-        <div className={styles.stat}>
-          <div className={styles.statLabel}>Top RS</div>
+          <div className={styles.statLabel}>Leader</div>
           <div className={styles.statValue}>{stats.topScore}</div>
           <div className={styles.statSub}>{stats.topPlayer}</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statLabel}>Ruby Players</div>
-          <div className={styles.statValue}>{fmt(stats.ruby)}</div>
+          <div className={styles.statLabel}>Ruby cutoff</div>
+          <div className={styles.statValue}>{stats.rubyCutoff}</div>
+          <div className={styles.statSub}>{stats.rubyCutoff === '—' ? 'Fewer than 500 players' : 'RS needed for top 500'}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statLabel}>Biggest climber</div>
+          <div className={`${styles.statValue} ${stats.climberChange !== '—' ? styles.statUp : ''}`}>{stats.climberChange}</div>
+          <div className={styles.statSub}>{stats.climberName}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statLabel}>Next check</div>
+          <NextCheck nextCheckAt={data?.nextCheckAt} lastCheckedAt={data?.lastCheckedAt} />
         </div>
       </div>
 

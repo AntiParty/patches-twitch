@@ -18,7 +18,7 @@
 /* Stats strip */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14px;
   margin: 22px 0;
 }
@@ -230,8 +230,84 @@
   border-color: transparent;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 900px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 520px) {
   .stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Next-check countdown tile */
+.statUp {
+  color: var(--success);
+}
+.digits {
+  display: inline-flex;
+  align-items: baseline;
+}
+.digitSlot {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  line-height: 1.2;
+}
+.digitRoll {
+  display: inline-block;
+  animation: digitRoll 180ms var(--ease) both;
+}
+@keyframes digitRoll {
+  from {
+    transform: translateY(-55%);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .digitRoll {
+    animation: none;
+  }
+}
+.digitStatic {
+  display: inline-block;
+  line-height: 1.2;
+}
+.bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  margin-top: 10px;
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 1s linear;
+}
+.checking {
+  animation: checkPulse 1.8s ease-in-out infinite;
+}
+@keyframes checkPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .checking {
+    animation: none;
+  }
+  .barFill {
+    transition: none;
   }
 }

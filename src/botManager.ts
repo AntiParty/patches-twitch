@@ -84,6 +84,10 @@ export class BotManager {
       if (!channel || !channel.bot_enabled) {
         logger.info(`Bot not enabled for ${username}`);
         return;
+      } else if (channel.auth_revoked) {
+        // Matches the live user.authorization.revoke handler, which stops the bot; re-login clears the flag.
+        logger.info(`[${username}] auth_revoked=true, not starting chat until the streamer logs in again.`);
+        return;
       } else {
         const currentAccessToken = (channel as any).access_token || accessToken;
         const currentTwitchUserId = (channel as any).twitch_user_id || twitchUserId;
@@ -476,10 +480,15 @@ export class BotManager {
   public async loadChannels(prefetchedChannels?: Channel[]) {
     try {
       const allChannels = prefetchedChannels || await this.getChannels();
-      // Disabled channels would bail inside startBotForUser anyway; skip their
-      // validate call too. The periodic validateAllTokens pass still covers them.
-      const channels = allChannels.filter((channel) => channel.bot_enabled);
-      logger.info(`Found ${channels.length} enabled channels to load (${allChannels.length} total)`);
+      // Disabled and revoked channels would bail inside startBotForUser anyway; skip their
+      // validate call too. Revoked ones would otherwise hit a doomed conduit subscribe (403).
+      const enabled = allChannels.filter((channel) => channel.bot_enabled);
+      const channels = enabled.filter((channel) => !channel.auth_revoked);
+      const revoked = enabled.length - channels.length;
+      logger.info(
+        `Found ${channels.length} enabled channels to load (${allChannels.length} total` +
+          `${revoked ? `, ${revoked} skipped as auth_revoked` : ''})`,
+      );
 
       const customBots = await CustomBotAccount.findAll({ where: { is_active: true } });
       const customBotByChannelId = new Map<number, CustomBotAccount>();

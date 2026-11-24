@@ -3,14 +3,31 @@
   top: 0;
   z-index: 50;
   display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 56px;
+  background: transparent;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Visual surface that morphs between full-width bar and floating pill. */
+.surface {
+  display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   height: 56px;
   padding: 0 20px;
   background: var(--bg-app);
   border-bottom: 1px solid var(--border);
   box-sizing: border-box;
-  width: 100%;
+  transition: background-color 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.brandWrap {
+  display: flex;
+  flex-shrink: 0;
 }
 
 .inner {
@@ -72,28 +89,31 @@
   right: 0;
   height: auto;
   padding: 16px 12px 0;
-  background: transparent;
-  border-bottom: none;
   pointer-events: none;
   z-index: 60;
 }
 
-.landing .inner {
+.landing .surface {
   pointer-events: auto;
   width: auto;
+  height: auto;
   max-width: calc(100vw - 24px);
-  margin: 0 auto;
-  gap: 2px;
   padding: 5px;
   background: rgba(18, 18, 18, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.landing .inner {
+  width: auto;
+  max-width: 100%;
+  gap: 2px;
   justify-content: center;
   flex-wrap: nowrap;
-  overflow: hidden;
 }
 
 .landing .brand {
@@ -222,7 +242,7 @@
 }
 
 @media (max-width: 720px) {
-  .topnav {
+  .surface {
     padding: 0 12px;
   }
 
@@ -247,8 +267,9 @@
     display: none;
   }
 
-  .landing .inner {
+  .landing .surface {
     max-width: calc(100vw - 20px);
+    padding: 5px;
   }
 }
 

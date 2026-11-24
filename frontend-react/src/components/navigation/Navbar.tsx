@@ -5,6 +5,7 @@
  */
 import { useCallback, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { MotionConfig, motion } from 'motion/react'
 import { useAuth } from '@/hooks/useAuth'
 import { useClickOutside } from '@/hooks/useClickOutside'
 import styles from './Navbar.module.css'
@@ -23,6 +24,8 @@ const DEFAULT_LINKS: NavLinkDef[] = [
   { label: 'Drops', to: '/twitch-drops', hideOnMobile: true },
 ]
 
+const MORPH = { duration: 0.45, ease: [0.2, 0.7, 0.2, 1] as const }
+
 export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
   const { isAuthenticated, login } = useAuth()
   const { pathname } = useLocation()
@@ -33,14 +36,18 @@ export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
   useClickOutside(navRef, closeMenu, menuOpen)
 
   return (
+    <MotionConfig reducedMotion="user" transition={MORPH}>
     <nav ref={navRef} className={`${styles.topnav} ${isLanding ? styles.landing : ''}`}>
+      <motion.div layout className={styles.surface} style={{ borderRadius: isLanding ? 999 : 0 }}>
       <div className={styles.inner}>
+        <motion.div layout="position" className={styles.brandWrap}>
         <Link to="/" className={styles.brand} onClick={closeMenu}>
           <img src="/assets/logo.png" alt="" />
           <span className={styles.brandName}>FinalsRS</span>
         </Link>
+        </motion.div>
 
-        <div className={styles.links}>
+        <motion.div layout="position" className={styles.links}>
           {links.map((l) =>
             l.to ? (
               <Link
@@ -88,8 +95,9 @@ export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
           >
             <i className={`fa-solid ${menuOpen ? 'fa-xmark' : 'fa-bars'}`} aria-hidden="true" />
           </button>
-        </div>
+        </motion.div>
       </div>
+      </motion.div>
 
       {menuOpen && (
         <div id="site-menu" className={styles.menu}>
@@ -107,5 +115,6 @@ export function Navbar({ links = DEFAULT_LINKS }: { links?: NavLinkDef[] }) {
         </div>
       )}
     </nav>
+    </MotionConfig>
   )
 }
